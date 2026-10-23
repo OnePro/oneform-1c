@@ -1,0 +1,4 @@
+Synth: FAILED, OUTPUT_NOT_OWNED, existing src unchanged
+  src contains files not listed in the manifest
+  {"paths": ["foreign.txt"]}
+Batch: 0 packed, 0 updated, 0 unchanged, 1 failed; exit 1

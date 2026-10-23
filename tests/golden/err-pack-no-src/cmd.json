@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "epf",
+    "--pack",
+    "--root",
+    ".",
+    "--all",
+    "--form-backend",
+    "basic"
+  ],
+  "deleted": []
+}

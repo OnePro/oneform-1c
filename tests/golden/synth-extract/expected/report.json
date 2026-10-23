@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "mode": "extract",
+  "exitCode": 0,
+  "cliEncodingOverrides": {},
+  "processors": [
+    {
+      "path": "ExternalDataProcessors/Synth",
+      "status": "UPDATED",
+      "code": null,
+      "message": "",
+      "summary": "code complete, 1 form, 1 template, reference partial (2 warnings)",
+      "durationSeconds": 0
+    }
+  ]
+}

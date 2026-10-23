@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "processorRoot": "ExternalDataProcessors",
+  "defaults": {
+    "formBackend": "oof",
+    "encoding": "auto",
+    "retainFormBinary": "on-incomplete",
+    "limits": {
+      "maxInputMiB": 256,
+      "maxExpandedMiB": 1024,
+      "maxEntryMiB": 64,
+      "maxEntries": 3,
+      "maxDepth": 128,
+      "timeoutSeconds": 120
+    }
+  }
+}

@@ -1,0 +1,4 @@
+CommonForms/ОбщаяФорма: UNCHANGED, 1 form, reference partial (1 warning)
+Documents/ДокументТест: UNCHANGED, 1 form, reference partial (1 warning)
+Viewer: <ROOT>/.oneform/index.html (2 objects, 2 forms)
+Batch: 2 targets, 0 updated, 2 ok/unchanged, 0 differ, 0 planned, 0 skipped, 0 failed; exit 0

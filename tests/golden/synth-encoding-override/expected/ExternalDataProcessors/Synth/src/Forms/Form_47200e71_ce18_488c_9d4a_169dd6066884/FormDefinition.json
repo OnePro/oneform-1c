@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "OrdinaryFormReference",
+  "formId": "47200e71-ce18-488c-9d4a-169dd6066884",
+  "originalName": "Form",
+  "synonym": "Syn",
+  "alias": "Form_47200e71_ce18_488c_9d4a_169dd6066884",
+  "isDefault": true,
+  "module": "FormModule.bsl",
+  "projection": {
+    "backend": "basic",
+    "status": "unsupported",
+    "referenceOnly": true,
+    "controlsKnown": false,
+    "unknownSections": [
+      "Attributes",
+      "Controls",
+      "Events"
+    ]
+  },
+  "attributes": null,
+  "events": null,
+  "controls": null,
+  "binaryEvidence": {
+    "path": "Reference/FormStream.bin",
+    "representation": "raw-stream",
+    "size": 6,
+    "sha256": "1dc5ae5b68174891b6aa9850aa05ee0d9ae8a20468d9517259951a2dd9e9c0f0"
+  },
+  "diagnostics": []
+}

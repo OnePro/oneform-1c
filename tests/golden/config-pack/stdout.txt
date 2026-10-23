@@ -1,0 +1,6 @@
+CommonForms/ОбщаяФорма: UNCHANGED
+Documents/ДокументТест: PACKED, 1 file(s), 1 form, reference partial (1 warning)
+  pack Forms/ФормаДокумента/FormModule.bsl
+  backup Form.bin.bak
+Viewer: <ROOT>/.oneform/index.html (2 objects, 2 forms)
+Batch: 2 targets, 1 updated, 1 ok/unchanged, 0 differ, 0 planned, 0 skipped, 0 failed; exit 0

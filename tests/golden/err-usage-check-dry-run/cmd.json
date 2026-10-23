@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "epf",
+    "--root",
+    ".",
+    "--all",
+    "--check",
+    "--dry-run"
+  ],
+  "ignore": [
+    "stderr"
+  ],
+  "deleted": []
+}

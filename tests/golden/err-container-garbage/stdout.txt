@@ -1,0 +1,4 @@
+Synth: FAILED, CONTAINER_CORRUPT, existing src unchanged
+  bad first free block offset
+  {"value": 1651663207}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

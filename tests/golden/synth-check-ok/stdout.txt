@@ -1,0 +1,2 @@
+Synth: OK, code complete, 1 form, 1 template, reference partial (1 warning)
+Batch: 1 ok, 0 differ, 0 failed; exit 0

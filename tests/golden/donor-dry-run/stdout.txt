@@ -1,0 +1,18 @@
+DonorProcessor: WOULD UPDATE (+16 ~0 -0)
+  add ExtractionManifest.json
+  add ExtractionReport.md
+  add Forms/MainForm/Form.xml
+  add Forms/MainForm/FormDefinition.json
+  add Forms/MainForm/FormModule.bsl
+  add Forms/MainForm/FormPreview.html
+  add Forms/MainForm/Reference/FormStream.bin
+  add ObjectModule.bsl
+  add Templates/MainTemplate/Template.bin
+  add Templates/MainTemplate/TemplateDefinition.json
+  add Templates/Template2/Template.bin
+  add Templates/Template2/TemplateDefinition.json
+  add Templates/Template_7937f297_7b71_4830_8fa5_91e8ba586b36/Template.bin
+  add Templates/Template_7937f297_7b71_4830_8fa5_91e8ba586b36/TemplateDefinition.json
+  add Templates/Template_dc09fc43_3dc7_48ad_b69b_2681503366c6/Template.bin
+  add Templates/Template_dc09fc43_3dc7_48ad_b69b_2681503366c6/TemplateDefinition.json
+Batch: 1 would update, 0 unchanged, 0 failed; exit 0

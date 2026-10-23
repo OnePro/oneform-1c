@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "generator": {
+    "name": "oneform",
+    "version": "0.1.0",
+    "outputSchemaVersion": 1
+  },
+  "source": {
+    "kind": "config-object",
+    "objectClass": "CommonForms",
+    "processorId": "16a3885e-b44e-5260-bd58-5f8fc48143f0",
+    "processorName": "ОбщаяФорма",
+    "objectSynonym": "ОбщаяФорма",
+    "forms": {
+      "ОбщаяФорма": {
+        "binPath": "Ext/Form.bin",
+        "size": 116592,
+        "sha256": "0e3fcf7e230c80a4386d99c463b62eb32d43118a90c22f4cd2c4d9917281a606"
+      }
+    }
+  },
+  "status": "partial-reference",
+  "codeComplete": true,
+  "objectModule": {
+    "state": "absent",
+    "path": null
+  },
+  "forms": [
+    {
+      "id": "16a3885e-b44e-5260-bd58-5f8fc48143f0",
+      "originalName": "ОбщаяФорма",
+      "synonym": "ОбщаяФорма",
+      "alias": "ОбщаяФорма",
+      "kind": "OrdinaryForm",
+      "formType": "Ordinary",
+      "isDefault": false,
+      "definition": "Forms/ОбщаяФорма/FormDefinition.json",
+      "module": {
+        "state": "extracted",
+        "path": "Forms/ОбщаяФорма/FormModule.bsl",
+        "sourceLocator": "Ext/Form.bin#module",
+        "sourceSha256": "473a4acb1f163945618bbe557f642b551cc0cc5ee5d7d99da0ca2fc423b3ebf0",
+        "outputSha256": "e31ad2b09c2521f7d47dbad4ec41dc77a7a9c4deb7b9a13b1039f506eb409637",
+        "encoding": {
+          "codec": "utf-8",
+          "bomHex": "efbbbf",
+          "decision": "bom",
+          "byteRoundTrip": true
+        },
+        "newlines": {
+          "kind": "CRLF",
+          "counts": {
+            "CRLF": 2,
+            "LF": 0,
+            "CR": 0
+          },
+          "finalNewline": true
+        }
+      },
+      "layout": {
+        "backend": "oof",
+        "status": "partial",
+        "binary": {
+          "path": "Forms/ОбщаяФорма/Reference/FormStream.bin",
+          "representation": "raw-stream",
+          "sourceLocator": "Ext/Form.bin#form",
+          "sourceSha256": "d3eacdb9c03ca37f99550bf66148e2bcb9d5a5b008e46dce86186c7ecc344429",
+          "size": 115329
+        },
+        "xml": "Forms/ОбщаяФорма/Form.xml",
+        "preview": "Forms/ОбщаяФорма/FormPreview.html"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "ExtractionReport.md",
+      "role": "report",
+      "size": 567,
+      "sha256": "02dc1c4532003aac97805d1292975d18985179a031bfa57a1215b83db2c04f95"
+    },
+    {
+      "path": "Forms/ОбщаяФорма/Form.xml",
+      "role": "form-xml",
+      "size": 32245,
+      "sha256": "0ea178366a09c0acf8264a181dbcc2aa4260b3901c2f2efadc4e508b12be12ab"
+    },
+    {
+      "path": "Forms/ОбщаяФорма/FormDefinition.json",
+      "role": "form-definition",
+      "size": 44370,
+      "sha256": "89942be2de44217d64cc649a202ecdb8aababd971a74830e4bf65e83c251691d"
+    },
+    {
+      "path": "Forms/ОбщаяФорма/FormModule.bsl",
+      "role": "form-module",
+      "size": 73,
+      "sha256": "e31ad2b09c2521f7d47dbad4ec41dc77a7a9c4deb7b9a13b1039f506eb409637"
+    },
+    {
+      "path": "Forms/ОбщаяФорма/FormPreview.html",
+      "role": "form-preview",
+      "size": 238830,
+      "sha256": "259cc377281bde36452c6fc5f6cadc48b7e2d8cbb66135244fc30e00fda8cd01"
+    },
+    {
+      "path": "Forms/ОбщаяФорма/Reference/FormStream.bin",
+      "role": "form-binary",
+      "size": 115329,
+      "sha256": "d3eacdb9c03ca37f99550bf66148e2bcb9d5a5b008e46dce86186c7ecc344429"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "FORM_PROJECTION_INCOMPLETE",
+      "severity": "warning",
+      "component": "Forms/16a3885e-b44e-5260-bd58-5f8fc48143f0",
+      "params": {
+        "alias": "ОбщаяФорма",
+        "backend": "oof"
+      }
+    }
+  ]
+}

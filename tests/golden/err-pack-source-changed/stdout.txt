@@ -1,0 +1,4 @@
+Synth: FAILED, SOURCE_CHANGED, existing src unchanged
+  EPF changed since src was extracted; run extract before pack
+  {"epf": "Proc.epf"}
+Batch: 0 packed, 0 updated, 0 unchanged, 1 failed; exit 1

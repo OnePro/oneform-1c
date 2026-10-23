@@ -1,0 +1,699 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="16a3885e-b44e-5260-bd58-5f8fc48143f0" name="ОбщаяФорма" ordinaryFormVersion="2.1" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Обработка  ВнешняяОбработка1</Item>
+  </Caption>
+  <Width>937</Width>
+  <Height>693</Height>
+  <MainAttribute attributeId="1"/>
+  <DataProcessorFormExtension/>
+  <Events>
+    <BeforeOpen id="70000">ПередОткрытием</BeforeOpen>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <BeforeClose id="70002">ПередЗакрытием</BeforeClose>
+    <OnClose id="70003">ПриЗакрытии</OnClose>
+    <ChoiceProcessing id="70004">ОбработкаВыбора</ChoiceProcessing>
+    <ActivationProcessing id="70005">ОбработкаАктивизацииОбъекта</ActivationProcessing>
+    <NewObjectWriteProcessing id="70006">ОбработкаЗаписиНовогоОбъекта</NewObjectWriteProcessing>
+    <NotificationProcessing id="70007">ОбработкаОповещения</NotificationProcessing>
+    <OnReopen id="70008">ПриПовторномОткрытии</OnReopen>
+    <RefreshDisplay id="70009">ОбновлениеОтображения</RefreshDisplay>
+    <ExternalEvent id="70010">ВнешнееСобытие</ExternalEvent>
+    <ExternalAddInDisconnectOnError id="70011">ОтключениеВнешнейКомпонентыПриОшибке</ExternalAddInDisconnectOnError>
+    <FillCheckProcessing id="70012">ОбработкаПроверкиЗаполнения</FillCheckProcessing>
+    <OnCurrentPageChange id="0">ПриСменеСтраницы</OnCurrentPageChange>
+    <BeforeSaveValues id="80000">ПередСохранениемЗначений</BeforeSaveValues>
+    <AfterRestoreValues id="80001">ПослеВосстановленияЗначений</AfterRestoreValues>
+  </Events>
+  <Attributes>
+    <Attribute id="1" name="ОбработкаОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="2" name="ТабличноеПоле1">
+      <Main>true</Main>
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+    <Attribute id="3" name="ПолеВвода1">
+      <Main>true</Main>
+      <ValueType kind="ValueList" composite="false"/>
+    </Attribute>
+    <Attribute id="4" name="Флажок1">
+      <Main>true</Main>
+      <ValueType kind="Boolean" composite="false"/>
+    </Attribute>
+    <Attribute id="5" name="ПолеСписка1">
+      <Main>true</Main>
+      <ValueType kind="ValueList" composite="false"/>
+    </Attribute>
+    <Attribute id="6" name="ПолеКалендаря1">
+      <Main>true</Main>
+      <ValueType kind="DateTime" composite="false"/>
+    </Attribute>
+    <Attribute id="7" name="ПолосаРегулирования1">
+      <Main>true</Main>
+      <ValueType kind="Number" composite="false" fractionDigits="0"/>
+    </Attribute>
+    <Attribute id="8" name="Индикатор1">
+      <Main>true</Main>
+      <ValueType kind="Number" composite="false" fractionDigits="0"/>
+    </Attribute>
+    <Attribute id="9" name="ПолеВвода2">
+      <Main>true</Main>
+      <ValueType kind="Number" composite="false" fractionDigits="0"/>
+    </Attribute>
+    <Attribute id="10" name="ПолеВвода3">
+      <Main>true</Main>
+      <ValueType kind="Date" composite="false"/>
+    </Attribute>
+    <Attribute id="11" name="ПолеВвода4">
+      <Main>true</Main>
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+    <Attribute id="12" name="ПолеВвода5">
+      <Main>true</Main>
+      <ValueType kind="ValueList" composite="false"/>
+    </Attribute>
+    <Attribute id="13" name="ПолеВвода6">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="true"/>
+    </Attribute>
+    <Attribute id="14" name="ПолеВвода7">
+      <Main>true</Main>
+      <ValueType kind="String" composite="false"/>
+    </Attribute>
+    <Attribute id="15" name="ТабличноеПоле2">
+      <Main>true</Main>
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ShowTabs type="ShowTabs" member="Top" code="1"/>
+  <ChildItems>
+    <Page name="Страница1">
+      <Title>
+        <Item language="ru">Страница1</Item>
+      </Title>
+      <Left>1</Left>
+      <Top>19</Top>
+      <Width>935</Width>
+      <Height>673</Height>
+      <ChildItems>
+        <CommandBar name="КоманднаяПанель1" id="2">
+          <Left>0</Left>
+          <Top>0</Top>
+          <Width>935</Width>
+          <Height>25</Height>
+          <ZOrder>0</ZOrder>
+          <TabOrder>1</TabOrder>
+          <AutoFill>true</AutoFill>
+        </CommandBar>
+        <CommandBar name="ОсновныеДействияФормы" id="3">
+          <Left>0</Left>
+          <Top>648</Top>
+          <Width>935</Width>
+          <Height>25</Height>
+          <ZOrder>1</ZOrder>
+          <TabOrder>27</TabOrder>
+          <HorizontalAlign>Right</HorizontalAlign>
+          <AutoFill>false</AutoFill>
+          <Buttons>
+            <Button name="ОсновныеДействияФормыВыполнить" id="1" kind="Action" checked="false" representation="Text" actionKind="Handler" action="КнопкаВыполнитьНажатие">
+              <Caption>
+                <Item language="ru">Выполнить</Item>
+                <Item language="ro">Выполнить</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Кнопка выполнить нажатие</Item>
+                <Item language="ro">Кнопка выполнить нажатие</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Разделитель" id="2" kind="Separator" checked="false" representation="Text"/>
+            <Button name="ОсновныеДействияФормыЗакрыть" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:142">
+              <Caption>
+                <Item language="ru">Закрыть</Item>
+                <Item language="ro">Закрыть</Item>
+              </Caption>
+            </Button>
+          </Buttons>
+        </CommandBar>
+        <Button name="Кнопка1" id="4">
+          <Caption>
+            <Item language="ru">Кнопка1</Item>
+          </Caption>
+          <Left>21</Left>
+          <Top>42</Top>
+          <Width>53</Width>
+          <Height>17</Height>
+          <ZOrder>2</ZOrder>
+          <TabOrder>2</TabOrder>
+          <Events>
+            <Click id="0">Кнопка1Нажатие</Click>
+          </Events>
+        </Button>
+        <LabelDecoration name="Надпись1" id="5">
+          <Caption>
+            <Item language="ru">Надпись1</Item>
+          </Caption>
+          <Left>79</Left>
+          <Top>42</Top>
+          <Width>53</Width>
+          <Height>17</Height>
+          <ZOrder>3</ZOrder>
+          <TabOrder>3</TabOrder>
+          <Events>
+            <Click id="0">Надпись1Нажатие</Click>
+          </Events>
+        </LabelDecoration>
+        <Table name="ТабличноеПоле1" id="6">
+          <DataPath attributeId="2">ТабличноеПоле1</DataPath>
+          <Left>21</Left>
+          <Top>64</Top>
+          <Width>193</Width>
+          <Height>154</Height>
+          <ZOrder>4</ZOrder>
+          <TabOrder>9</TabOrder>
+          <Footer>false</Footer>
+          <Columns>
+            <Column name="Колонка1" id="0">
+              <DataPath attributeId="2">ТабличноеПоле1.Колонка1</DataPath>
+              <Header>
+                <Item language="ru">Колонка1</Item>
+              </Header>
+              <Width>100</Width>
+              <ValueType kind="String" composite="false"/>
+              <Editor>InputField</Editor>
+              <Events>
+                <StartListChoice id="1">ТабличноеПоле1Колонка1НачалоВыбораИзСписка</StartListChoice>
+                <StartChoice id="2">ТабличноеПоле1Колонка1НачалоВыбора</StartChoice>
+                <Clearing id="3">ТабличноеПоле1Колонка1Очистка</Clearing>
+                <Tuning id="4">ТабличноеПоле1Колонка1Регулирование</Tuning>
+                <Opening id="5">ТабличноеПоле1Колонка1Открытие</Opening>
+                <ChoiceProcessing id="7">ТабличноеПоле1Колонка1ОбработкаВыбора</ChoiceProcessing>
+                <TextEditEnd id="10">ТабличноеПоле1Колонка1ОкончаниеВводаТекста</TextEditEnd>
+                <AutoComplete id="11">ТабличноеПоле1Колонка1АвтоПодборТекста</AutoComplete>
+                <OnChange id="2147483647">ТабличноеПоле1Колонка1ПриИзменении</OnChange>
+              </Events>
+            </Column>
+            <Column name="Колонка2" id="1">
+              <DataPath attributeId="2">ТабличноеПоле1.Колонка2</DataPath>
+              <Header>
+                <Item language="ru">Колонка2</Item>
+              </Header>
+              <Width>100</Width>
+              <ValueType kind="String" composite="false"/>
+              <Editor>InputField</Editor>
+            </Column>
+          </Columns>
+          <Events>
+            <Selection id="34">ТабличноеПоле1Выбор</Selection>
+            <OnActivateRow id="35">ТабличноеПоле1ПриАктивизацииСтроки</OnActivateRow>
+            <OnActivateColumn id="36">ТабличноеПоле1ПриАктивизацииКолонки</OnActivateColumn>
+            <OnActivateCell id="37">ТабличноеПоле1ПриАктивизацииЯчейки</OnActivateCell>
+            <BeforeAddRow id="40">ТабличноеПоле1ПередНачаломДобавления</BeforeAddRow>
+            <BeforeRowChange id="41">ТабличноеПоле1ПередНачаломИзменения</BeforeRowChange>
+            <BeforeDeleteRow id="42">ТабличноеПоле1ПередУдалением</BeforeDeleteRow>
+            <OnStartEdit id="43">ТабличноеПоле1ПриНачалеРедактирования</OnStartEdit>
+            <BeforeEditEnd id="44">ТабличноеПоле1ПередОкончаниемРедактирования</BeforeEditEnd>
+            <OnCheckChange id="45">ТабличноеПоле1ПриИзмененииФлажка</OnCheckChange>
+            <OnRowOutput id="47">ТабличноеПоле1ПриВыводеСтроки</OnRowOutput>
+            <ValueChoice id="48">ТабличноеПоле1ВыборЗначения</ValueChoice>
+            <OnEditEnd id="49">ТабличноеПоле1ПриОкончанииРедактирования</OnEditEnd>
+            <NewWriteProcessing id="50">ТабличноеПоле1ОбработкаЗаписиНовогоОбъекта</NewWriteProcessing>
+            <AfterDeleteRow id="51">ТабличноеПоле1ПослеУдаления</AfterDeleteRow>
+            <ChoiceProcessing id="52">ТабличноеПоле1ОбработкаВыбора</ChoiceProcessing>
+            <OnGetData id="53">ТабличноеПоле1ПриПолученииДанных</OnGetData>
+            <DragStart id="900">ТабличноеПоле1НачалоПеретаскивания</DragStart>
+            <DragCheck id="901">ТабличноеПоле1ПроверкаПеретаскивания</DragCheck>
+            <DragEnd id="902">ТабличноеПоле1ОкончаниеПеретаскивания</DragEnd>
+            <Drag id="903">ТабличноеПоле1Перетаскивание</Drag>
+          </Events>
+        </Table>
+        <InputField name="ПолеВвода1" id="7">
+          <DataPath attributeId="3">ПолеВвода1</DataPath>
+          <Left>137</Left>
+          <Top>40</Top>
+          <Width>278</Width>
+          <Height>19</Height>
+          <ZOrder>5</ZOrder>
+          <TabOrder>4</TabOrder>
+          <ValueType kind="ValueList" composite="false"/>
+          <ChoiceButton>true</ChoiceButton>
+          <ClearButton>true</ClearButton>
+          <OpenButton>true</OpenButton>
+          <AutoMarkIncomplete>true</AutoMarkIncomplete>
+          <Events>
+            <StartListChoice id="1">ПолеВвода1НачалоВыбораИзСписка</StartListChoice>
+            <StartChoice id="2">ПолеВвода1НачалоВыбора</StartChoice>
+            <Clearing id="3">ПолеВвода1Очистка</Clearing>
+            <Tuning id="4">ПолеВвода1Регулирование</Tuning>
+            <Opening id="5">ПолеВвода1Открытие</Opening>
+            <ChoiceProcessing id="7">ПолеВвода1ОбработкаВыбора</ChoiceProcessing>
+            <TextEditEnd id="10">ПолеВвода1ОкончаниеВводаТекста</TextEditEnd>
+            <AutoComplete id="11">ПолеВвода1АвтоПодборТекста</AutoComplete>
+            <OnChange id="2147483647">ПолеВвода1ПриИзменении</OnChange>
+          </Events>
+        </InputField>
+        <CheckBox name="Флажок1" id="8">
+          <DataPath attributeId="4">Флажок1</DataPath>
+          <Caption>
+            <Item language="ru">Флажок1</Item>
+          </Caption>
+          <Left>420</Left>
+          <Top>40</Top>
+          <Width>278</Width>
+          <Height>19</Height>
+          <ZOrder>6</ZOrder>
+          <TabOrder>5</TabOrder>
+          <Events>
+            <OnChange id="2147483647">Флажок1ПриИзменении</OnChange>
+          </Events>
+        </CheckBox>
+        <RadioButton name="Переключатель1" id="9">
+          <Caption>
+            <Item language="ru">Переключатель1</Item>
+          </Caption>
+          <Left>222</Left>
+          <Top>64</Top>
+          <Width>193</Width>
+          <Height>154</Height>
+          <ZOrder>7</ZOrder>
+          <TabOrder>10</TabOrder>
+          <Events>
+            <OnChange id="2147483647">Переключатель1ПриИзменении</OnChange>
+          </Events>
+        </RadioButton>
+        <ListBox name="ПолеСписка1" id="10">
+          <DataPath attributeId="5">ПолеСписка1</DataPath>
+          <Left>420</Left>
+          <Top>64</Top>
+          <Width>278</Width>
+          <Height>154</Height>
+          <ZOrder>8</ZOrder>
+          <TabOrder>11</TabOrder>
+          <Events>
+            <OnCheckChange id="17">ПолеСписка1ПриИзмененииФлажка</OnCheckChange>
+            <Selection id="34">ПолеСписка1Выбор</Selection>
+            <OnActivateRow id="37">ПолеСписка1ПриАктивизацииСтроки</OnActivateRow>
+          </Events>
+        </ListBox>
+        <PictureDecoration name="ПолеКартинки1" id="11">
+          <Left>21</Left>
+          <Top>223</Top>
+          <Width>193</Width>
+          <Height>154</Height>
+          <ZOrder>9</ZOrder>
+          <TabOrder>13</TabOrder>
+          <Events>
+            <Click id="0">ПолеКартинки1Нажатие</Click>
+            <DragStart id="3">ПолеКартинки1НачалоПеретаскивания</DragStart>
+            <DragCheck id="4">ПолеКартинки1ПроверкаПеретаскивания</DragCheck>
+            <DragEnd id="5">ПолеКартинки1ОкончаниеПеретаскивания</DragEnd>
+            <Drag id="6">ПолеКартинки1Перетаскивание</Drag>
+          </Events>
+        </PictureDecoration>
+        <CommandBar name="КоманднаяПанель2" id="12">
+          <Left>222</Left>
+          <Top>223</Top>
+          <Width>193</Width>
+          <Height>154</Height>
+          <ZOrder>10</ZOrder>
+          <TabOrder>14</TabOrder>
+          <AutoFill>false</AutoFill>
+          <Buttons>
+            <Button name="НоваяКнопкаНаПанели" id="1" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанель2НоваяКнопкаНаПанели">
+              <Caption>
+                <Item language="ru">Новая кнопка на панели</Item>
+                <Item language="ro">Новая кнопка на панели</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Новая кнопка на панели</Item>
+                <Item language="ro">Новая кнопка на панели</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Подменю" id="2" kind="Submenu" checked="false" actionKind="Submenu">
+              <Caption>
+                <Item language="ru">Подменю</Item>
+              </Caption>
+              <Buttons>
+                <Button name="Действие" id="4" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанель2Действие">
+                  <Caption>
+                    <Item language="ru">Действие</Item>
+                    <Item language="ro">Действие</Item>
+                  </Caption>
+                  <Tooltip>
+                    <Item language="ru">Действие</Item>
+                    <Item language="ro">Действие</Item>
+                  </Tooltip>
+                </Button>
+                <Button name="Действие1" id="5" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанель2Действие1">
+                  <Caption>
+                    <Item language="ru">Действие1</Item>
+                    <Item language="ro">Действие1</Item>
+                  </Caption>
+                  <Tooltip>
+                    <Item language="ru">Действие1</Item>
+                    <Item language="ro">Действие1</Item>
+                  </Tooltip>
+                </Button>
+              </Buttons>
+            </Button>
+          </Buttons>
+        </CommandBar>
+        <Panel name="Панель1" id="13">
+          <Left>420</Left>
+          <Top>223</Top>
+          <Width>278</Width>
+          <Height>154</Height>
+          <ZOrder>11</ZOrder>
+          <TabOrder>15</TabOrder>
+          <ShowTabs type="ShowTabs" member="Unknown" code="2"/>
+          <Events>
+            <OnCurrentPageChange id="0">Панель1ПриСменеСтраницы</OnCurrentPageChange>
+          </Events>
+          <ChildItems>
+            <Page name="Страница1">
+              <Title>
+                <Item language="ru">Страница1</Item>
+              </Title>
+              <Left>1</Left>
+              <Top>19</Top>
+              <Width>276</Width>
+              <Height>134</Height>
+              <Visible>false</Visible>
+            </Page>
+            <Page name="Страница2">
+              <Title>
+                <Item language="ru">Страница2</Item>
+              </Title>
+              <Left>1</Left>
+              <Top>19</Top>
+              <Width>276</Width>
+              <Height>134</Height>
+              <ChildItems>
+                <Table name="ТабличноеПоле2" id="34">
+                  <DataPath attributeId="15">ТабличноеПоле2</DataPath>
+                  <Left>6</Left>
+                  <Top>38</Top>
+                  <Width>264</Width>
+                  <Height>90</Height>
+                  <ZOrder>0</ZOrder>
+                  <TabOrder>2</TabOrder>
+                  <Footer>false</Footer>
+                  <Columns>
+                    <Column name="Колонка1" id="0">
+                      <DataPath attributeId="15">ТабличноеПоле2.Колонка1</DataPath>
+                      <Header>
+                        <Item language="ru">Колонка1</Item>
+                      </Header>
+                      <Width>100</Width>
+                      <ValueType kind="String" composite="false"/>
+                      <Editor>InputField</Editor>
+                    </Column>
+                  </Columns>
+                </Table>
+                <CommandBar name="КоманднаяПанель3" id="35">
+                  <Left>6</Left>
+                  <Top>6</Top>
+                  <Width>264</Width>
+                  <Height>27</Height>
+                  <ZOrder>1</ZOrder>
+                  <TabOrder>1</TabOrder>
+                  <AutoFill>true</AutoFill>
+                </CommandBar>
+              </ChildItems>
+            </Page>
+          </ChildItems>
+        </Panel>
+        <Splitter name="Разделитель1" id="14">
+          <Left>703</Left>
+          <Top>42</Top>
+          <Width>12</Width>
+          <Height>335</Height>
+          <ZOrder>12</ZOrder>
+          <TabOrder>6</TabOrder>
+        </Splitter>
+        <SpreadsheetDocumentField name="ПолеТабличногоДокумента1" id="15">
+          <Left>21</Left>
+          <Top>382</Top>
+          <Width>694</Width>
+          <Height>189</Height>
+          <ZOrder>13</ZOrder>
+          <TabOrder>19</TabOrder>
+        </SpreadsheetDocumentField>
+        <CalendarField name="ПолеКалендаря1" id="16">
+          <DataPath attributeId="6">ПолеКалендаря1</DataPath>
+          <Left>728</Left>
+          <Top>42</Top>
+          <Width>128</Width>
+          <Height>155</Height>
+          <ZOrder>14</ZOrder>
+          <TabOrder>7</TabOrder>
+          <Events>
+            <OnActivateDate id="0">ПолеКалендаря1ПриАктивизацииДаты</OnActivateDate>
+            <Selection id="1">ПолеКалендаря1Выбор</Selection>
+            <OnPeriodOutput id="2">ПолеКалендаря1ПриВыводеПериода</OnPeriodOutput>
+            <DragStart id="3">ПолеКалендаря1НачалоПеретаскивания</DragStart>
+            <DragCheck id="4">ПолеКалендаря1ПроверкаПеретаскивания</DragCheck>
+            <DragEnd id="5">ПолеКалендаря1ОкончаниеПеретаскивания</DragEnd>
+            <Drag id="6">ПолеКалендаря1Перетаскивание</Drag>
+            <OnChange id="2147483647">ПолеКалендаря1ПриИзменении</OnChange>
+          </Events>
+        </CalendarField>
+        <TextDocumentField name="ПолеТекстовогоДокумента1" id="17">
+          <Left>861</Left>
+          <Top>42</Top>
+          <Width>66</Width>
+          <Height>155</Height>
+          <ZOrder>15</ZOrder>
+          <TabOrder>8</TabOrder>
+        </TextDocumentField>
+        <TrackBar name="ПолосаРегулирования1" id="18">
+          <DataPath attributeId="7">ПолосаРегулирования1</DataPath>
+          <Left>728</Left>
+          <Top>205</Top>
+          <Width>185</Width>
+          <Height>32</Height>
+          <ZOrder>16</ZOrder>
+          <TabOrder>12</TabOrder>
+          <Events>
+            <OnChange id="2147483647">ПолосаРегулирования1ПриИзменении</OnChange>
+          </Events>
+        </TrackBar>
+        <ProgressBar name="Индикатор1" id="19">
+          <DataPath attributeId="8">Индикатор1</DataPath>
+          <Left>728</Left>
+          <Top>242</Top>
+          <Width>185</Width>
+          <Height>32</Height>
+          <ZOrder>17</ZOrder>
+          <TabOrder>16</TabOrder>
+        </ProgressBar>
+        <GeographicalSchemaField name="ПолеГеографическойСхемы1" id="20">
+          <Left>728</Left>
+          <Top>279</Top>
+          <Width>185</Width>
+          <Height>71</Height>
+          <ZOrder>18</ZOrder>
+          <TabOrder>17</TabOrder>
+          <Events>
+            <OnActivate id="2">ПолеГеографическойСхемы1</OnActivate>
+          </Events>
+        </GeographicalSchemaField>
+        <HTMLDocumentField name="ПолеHTMLДокумента1" id="21">
+          <Left>728</Left>
+          <Top>364</Top>
+          <Width>185</Width>
+          <Height>72</Height>
+          <ZOrder>19</ZOrder>
+          <TabOrder>18</TabOrder>
+          <Events>
+            <DocumentComplete id="0">ПолеHTMLДокумента1ДокументСформирован</DocumentComplete>
+            <OnClick id="2">ПолеHTMLДокумента1onclick</OnClick>
+          </Events>
+        </HTMLDocumentField>
+        <InputField name="ПолеВвода2" id="28">
+          <DataPath attributeId="9">ПолеВвода2</DataPath>
+          <Left>21</Left>
+          <Top>580</Top>
+          <Width>136</Width>
+          <Height>21</Height>
+          <ZOrder>20</ZOrder>
+          <TabOrder>21</TabOrder>
+          <ValueType kind="Number" composite="false" fractionDigits="0"/>
+          <ChoiceButton>false</ChoiceButton>
+          <ClearButton>false</ClearButton>
+          <OpenButton>false</OpenButton>
+        </InputField>
+        <InputField name="ПолеВвода3" id="29">
+          <DataPath attributeId="10">ПолеВвода3</DataPath>
+          <Left>21</Left>
+          <Top>606</Top>
+          <Width>136</Width>
+          <Height>21</Height>
+          <ZOrder>21</ZOrder>
+          <TabOrder>24</TabOrder>
+          <ValueType kind="Date" composite="false"/>
+          <ChoiceButton>true</ChoiceButton>
+          <ClearButton>false</ClearButton>
+          <OpenButton>false</OpenButton>
+        </InputField>
+        <InputField name="ПолеВвода4" id="30">
+          <DataPath attributeId="11">ПолеВвода4</DataPath>
+          <Left>162</Left>
+          <Top>580</Top>
+          <Width>136</Width>
+          <Height>21</Height>
+          <ZOrder>22</ZOrder>
+          <TabOrder>22</TabOrder>
+          <ValueType kind="ValueTable" composite="false"/>
+          <ChoiceButton>false</ChoiceButton>
+          <ClearButton>false</ClearButton>
+          <OpenButton>false</OpenButton>
+        </InputField>
+        <InputField name="ПолеВвода5" id="31">
+          <DataPath attributeId="12">ПолеВвода5</DataPath>
+          <Left>162</Left>
+          <Top>606</Top>
+          <Width>136</Width>
+          <Height>21</Height>
+          <ZOrder>23</ZOrder>
+          <TabOrder>25</TabOrder>
+          <ValueType kind="ValueList" composite="false"/>
+          <ChoiceButton>true</ChoiceButton>
+          <ClearButton>true</ClearButton>
+          <OpenButton>false</OpenButton>
+        </InputField>
+        <InputField name="ПолеВвода6" id="32">
+          <DataPath attributeId="13">ПолеВвода6</DataPath>
+          <Left>303</Left>
+          <Top>580</Top>
+          <Width>136</Width>
+          <Height>21</Height>
+          <ZOrder>24</ZOrder>
+          <TabOrder>23</TabOrder>
+          <ValueType kind="Ref" composite="true"/>
+          <ChoiceButton>true</ChoiceButton>
+          <ClearButton>true</ClearButton>
+          <OpenButton>false</OpenButton>
+        </InputField>
+        <InputField name="ПолеВвода7" id="33">
+          <DataPath attributeId="14">ПолеВвода7</DataPath>
+          <Left>303</Left>
+          <Top>606</Top>
+          <Width>136</Width>
+          <Height>21</Height>
+          <ZOrder>25</ZOrder>
+          <TabOrder>26</TabOrder>
+          <ValueType kind="String" composite="false"/>
+          <ChoiceButton>false</ChoiceButton>
+          <ClearButton>false</ClearButton>
+          <OpenButton>false</OpenButton>
+        </InputField>
+        <Panel name="Панель2" id="36">
+          <Left>728</Left>
+          <Top>441</Top>
+          <Width>185</Width>
+          <Height>104</Height>
+          <ZOrder>26</ZOrder>
+          <TabOrder>20</TabOrder>
+          <ShowTabs type="ShowTabs" member="Unknown" code="3"/>
+          <ChildItems>
+            <Page name="Страница1">
+              <Title>
+                <Item language="ru">Страница1</Item>
+              </Title>
+              <Left>37</Left>
+              <Top>1</Top>
+              <Width>147</Width>
+              <Height>102</Height>
+            </Page>
+          </ChildItems>
+        </Panel>
+      </ChildItems>
+    </Page>
+    <Page name="Страница2">
+      <Title>
+        <Item language="ru">Страница2</Item>
+      </Title>
+      <Left>1</Left>
+      <Top>19</Top>
+      <Width>935</Width>
+      <Height>673</Height>
+      <ChildItems>
+        <GraphicalSchemaField name="ПолеГрафическойСхемы1" id="22">
+          <Left>8</Left>
+          <Top>8</Top>
+          <Width>228</Width>
+          <Height>124</Height>
+          <ZOrder>0</ZOrder>
+          <TabOrder>1</TabOrder>
+          <Events>
+            <Selection id="0">ПолеГрафическойСхемы1Выбор</Selection>
+            <OnActivate id="1">ПолеГрафическойСхемы1ПриАктивизации</OnActivate>
+          </Events>
+        </GraphicalSchemaField>
+        <Chart name="Диаграмма1" id="23">
+          <Left>241</Left>
+          <Top>8</Top>
+          <Width>228</Width>
+          <Height>124</Height>
+          <ZOrder>1</ZOrder>
+          <TabOrder>2</TabOrder>
+          <Events>
+            <Selection id="0">Диаграмма1Выбор</Selection>
+            <DetailProcessing id="1">Диаграмма1ОбработкаРасшифровки</DetailProcessing>
+            <OnActivate id="2">Диаграмма1ПриАктивизации</OnActivate>
+            <OnValueEdit id="3">Диаграмма1ПриРедактированииЗначения</OnValueEdit>
+          </Events>
+        </Chart>
+        <GanttChart name="ДиаграммаГанта1" id="24">
+          <Left>474</Left>
+          <Top>8</Top>
+          <Width>228</Width>
+          <Height>124</Height>
+          <ZOrder>2</ZOrder>
+          <TabOrder>3</TabOrder>
+          <Events>
+            <Selection id="0">ДиаграммаГанта1Выбор</Selection>
+            <DetailProcessing id="1">ДиаграммаГанта1ОбработкаРасшифровки</DetailProcessing>
+            <OnIntervalEditEnd id="2">ДиаграммаГанта1ПриОкончанииРедактированияИнтервала</OnIntervalEditEnd>
+            <OnValueActivate id="3">ДиаграммаГанта1ПриАктивизацииЗначения</OnValueActivate>
+            <OnIntervalActivate id="4">ДиаграммаГанта1ПриАктивизацииИнтервала</OnIntervalActivate>
+            <Event id="5">ДиаграммаГанта1</Event>
+            <Event id="6">ДиаграммаГанта1</Event>
+            <BeforeCollapse id="7">ДиаграммаГанта1ПередСворачиванием</BeforeCollapse>
+            <BeforeExpand id="8">ДиаграммаГанта1ПередСворачиванием</BeforeExpand>
+          </Events>
+        </GanttChart>
+        <PivotChart name="СводнаяДиаграмма1" id="25">
+          <Left>8</Left>
+          <Top>137</Top>
+          <Width>228</Width>
+          <Height>124</Height>
+          <ZOrder>3</ZOrder>
+          <TabOrder>4</TabOrder>
+        </PivotChart>
+        <Dendrogram name="Дендрограмма1" id="26">
+          <Left>241</Left>
+          <Top>137</Top>
+          <Width>228</Width>
+          <Height>124</Height>
+          <ZOrder>4</ZOrder>
+          <TabOrder>5</TabOrder>
+          <Events>
+            <Selection id="0">Дендрограмма1Выбор</Selection>
+            <DetailProcessing id="1">Дендрограмма1ОбработкаРасшифровки</DetailProcessing>
+          </Events>
+        </Dendrogram>
+        <PDFDocumentField name="ПолеPDFДокумента1" id="27">
+          <Left>480</Left>
+          <Top>158</Top>
+          <Width>182</Width>
+          <Height>110</Height>
+          <ZOrder>5</ZOrder>
+          <TabOrder>6</TabOrder>
+        </PDFDocumentField>
+      </ChildItems>
+    </Page>
+  </ChildItems>
+</Form>

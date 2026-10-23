@@ -1,0 +1,6 @@
+CommonForms/ОбщаяФорма: UNCHANGED, 1 form, reference partial (1 warning)
+Documents/ДокументТест: FAILED, GENERATED_FILE_MODIFIED
+  generated files were modified or removed; use --replace-generated
+  {"paths": ["Forms/ФормаДокумента/FormModule.bsl"]}
+Viewer: <ROOT>/.oneform/index.html (2 objects, 2 forms)
+Batch: 2 targets, 0 updated, 1 ok/unchanged, 0 differ, 0 planned, 0 skipped, 1 failed; exit 1

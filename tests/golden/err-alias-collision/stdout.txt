@@ -1,0 +1,4 @@
+DonorProcessor: FAILED, ALIAS_COLLISION, existing src unchanged
+  alias is used more than once
+  {"alias": "maintemplate", "kind": "Templates", "uuids": ["2b556694-58ba-41a0-84fe-7ea8313365ae", "5c9d9f39-6dea-46b0-b5dd-d241d1da0366"]}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

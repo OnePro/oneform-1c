@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "pack",
+    ".",
+    "-j",
+    "1",
+    "--backup"
+  ],
+  "base": "config-extract",
+  "input_deleted": [],
+  "compare": "pack",
+  "only": [
+    "/Form.bin",
+    ".bin.bak",
+    "/FormModule.bsl",
+    "/ExtractionManifest.json"
+  ],
+  "deleted": []
+}

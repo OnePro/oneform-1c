@@ -1,0 +1,2 @@
+DonorProcessor: OK, code complete, 1 form, 4 templates, reference partial (5 warnings)
+Batch: 1 ok, 0 differ, 0 failed; exit 0

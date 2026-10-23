@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "TemplateReference",
+  "templateId": "68b792c0-6443-4ad3-86cf-adadc7d25135",
+  "originalName": "Tmpl",
+  "synonym": "Syn",
+  "alias": "Template_68b792c0_6443_4ad3_86cf_adadc7d25135",
+  "templateType": "HTMLDocument",
+  "templateTypeCode": 3,
+  "languageCode": "ru",
+  "content": "Template.html",
+  "contentKnown": true,
+  "status": "extracted",
+  "sourceSha256": "c18fa8a710781c899ecc16c75c0cccfa19976ed8154cd99f79c8acd5a746c899"
+}

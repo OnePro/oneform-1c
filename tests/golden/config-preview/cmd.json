@@ -1,0 +1,42 @@
+{
+  "argv": [
+    "preview",
+    ".",
+    "-j",
+    "1"
+  ],
+  "base": "config-extract",
+  "input_deleted": [
+    ".extract-work/locks/39df03885992d84b.lock",
+    ".extract-work/locks/d0e8ab8dbd745ca8.lock",
+    ".oneform/forms/9508aa119412.data.js",
+    ".oneform/forms/9bf29573cc9a.data.js",
+    ".oneform/index.html",
+    ".oneform/index.js",
+    ".oneform/manifest.json",
+    ".oneform/owner.json",
+    "CommonForms/ОбщаяФорма.xml",
+    "CommonForms/ОбщаяФорма/Ext/Form.bin",
+    "CommonForms/ОбщаяФорма/src/ExtractionManifest.json",
+    "CommonForms/ОбщаяФорма/src/ExtractionReport.md",
+    "CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма/FormDefinition.json",
+    "CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма/FormPreview.html",
+    "CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма/Reference/FormStream.bin",
+    "Documents/ДокументТест.xml",
+    "Documents/ДокументТест/Ext/ObjectModule.bsl",
+    "Documents/ДокументТест/Forms/ФормаДокумента.xml",
+    "Documents/ДокументТест/Forms/ФормаДокумента/Ext/Form.bin",
+    "Documents/ДокументТест/src/ExtractionManifest.json",
+    "Documents/ДокументТест/src/ExtractionReport.md",
+    "Documents/ДокументТест/src/Forms/ФормаДокумента/FormDefinition.json",
+    "Documents/ДокументТест/src/Forms/ФормаДокумента/FormPreview.html",
+    "Documents/ДокументТест/src/Forms/ФормаДокумента/Reference/FormStream.bin"
+  ],
+  "only": [
+    "ДокументТест/src/Forms/ФормаДокумента/FormPreview.html",
+    "/manifest.json",
+    "/index.js",
+    "/owner.json"
+  ],
+  "deleted": []
+}

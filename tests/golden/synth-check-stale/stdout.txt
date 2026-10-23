@@ -1,0 +1,5 @@
+Synth: STALE, existing src is stale for current EPF (+0 ~3 -0)
+  update ExtractionManifest.json
+  update ExtractionReport.md
+  update ObjectModule.bsl
+Batch: 0 ok, 1 differ, 0 failed; exit 3

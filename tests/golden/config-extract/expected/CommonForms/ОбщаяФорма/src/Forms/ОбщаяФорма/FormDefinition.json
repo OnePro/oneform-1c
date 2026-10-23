@@ -1,0 +1,1793 @@
+{
+  "schemaVersion": 1,
+  "kind": "OrdinaryFormReference",
+  "formId": "16a3885e-b44e-5260-bd58-5f8fc48143f0",
+  "originalName": "ОбщаяФорма",
+  "synonym": "ОбщаяФорма",
+  "alias": "ОбщаяФорма",
+  "isDefault": false,
+  "module": "FormModule.bsl",
+  "projection": {
+    "backend": "oof",
+    "status": "partial",
+    "referenceOnly": true,
+    "controlsKnown": true,
+    "formXml": "Form.xml",
+    "unknownSections": [
+      "UnsupportedControlProperties"
+    ],
+    "formPreview": "FormPreview.html"
+  },
+  "attributes": [
+    {
+      "id": 1,
+      "name": "ОбработкаОбъект",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Ref",
+        "composite": false
+      }
+    },
+    {
+      "id": 2,
+      "name": "ТабличноеПоле1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "ValueTable",
+        "composite": false
+      }
+    },
+    {
+      "id": 3,
+      "name": "ПолеВвода1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "ValueList",
+        "composite": false
+      }
+    },
+    {
+      "id": 4,
+      "name": "Флажок1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Boolean",
+        "composite": false
+      }
+    },
+    {
+      "id": 5,
+      "name": "ПолеСписка1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "ValueList",
+        "composite": false
+      }
+    },
+    {
+      "id": 6,
+      "name": "ПолеКалендаря1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "DateTime",
+        "composite": false
+      }
+    },
+    {
+      "id": 7,
+      "name": "ПолосаРегулирования1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Number",
+        "fractionDigits": 0,
+        "composite": false
+      }
+    },
+    {
+      "id": 8,
+      "name": "Индикатор1",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Number",
+        "fractionDigits": 0,
+        "composite": false
+      }
+    },
+    {
+      "id": 9,
+      "name": "ПолеВвода2",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Number",
+        "fractionDigits": 0,
+        "composite": false
+      }
+    },
+    {
+      "id": 10,
+      "name": "ПолеВвода3",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Date",
+        "composite": false
+      }
+    },
+    {
+      "id": 11,
+      "name": "ПолеВвода4",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "ValueTable",
+        "composite": false
+      }
+    },
+    {
+      "id": 12,
+      "name": "ПолеВвода5",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "ValueList",
+        "composite": false
+      }
+    },
+    {
+      "id": 13,
+      "name": "ПолеВвода6",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "Ref",
+        "composite": true
+      }
+    },
+    {
+      "id": 14,
+      "name": "ПолеВвода7",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "String",
+        "composite": false
+      }
+    },
+    {
+      "id": 15,
+      "name": "ТабличноеПоле2",
+      "main": true,
+      "stored": false,
+      "valueType": {
+        "kind": "ValueTable",
+        "composite": false
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "BeforeOpen",
+      "id": 70000,
+      "handler": "ПередОткрытием"
+    },
+    {
+      "name": "OnOpen",
+      "id": 70001,
+      "handler": "ПриОткрытии"
+    },
+    {
+      "name": "BeforeClose",
+      "id": 70002,
+      "handler": "ПередЗакрытием"
+    },
+    {
+      "name": "OnClose",
+      "id": 70003,
+      "handler": "ПриЗакрытии"
+    },
+    {
+      "name": "ChoiceProcessing",
+      "id": 70004,
+      "handler": "ОбработкаВыбора"
+    },
+    {
+      "name": "ActivationProcessing",
+      "id": 70005,
+      "handler": "ОбработкаАктивизацииОбъекта"
+    },
+    {
+      "name": "NewObjectWriteProcessing",
+      "id": 70006,
+      "handler": "ОбработкаЗаписиНовогоОбъекта"
+    },
+    {
+      "name": "NotificationProcessing",
+      "id": 70007,
+      "handler": "ОбработкаОповещения"
+    },
+    {
+      "name": "OnReopen",
+      "id": 70008,
+      "handler": "ПриПовторномОткрытии"
+    },
+    {
+      "name": "RefreshDisplay",
+      "id": 70009,
+      "handler": "ОбновлениеОтображения"
+    },
+    {
+      "name": "ExternalEvent",
+      "id": 70010,
+      "handler": "ВнешнееСобытие"
+    },
+    {
+      "name": "ExternalAddInDisconnectOnError",
+      "id": 70011,
+      "handler": "ОтключениеВнешнейКомпонентыПриОшибке"
+    },
+    {
+      "name": "FillCheckProcessing",
+      "id": 70012,
+      "handler": "ОбработкаПроверкиЗаполнения"
+    },
+    {
+      "name": "OnCurrentPageChange",
+      "id": 0,
+      "handler": "ПриСменеСтраницы"
+    },
+    {
+      "name": "BeforeSaveValues",
+      "id": 80000,
+      "handler": "ПередСохранениемЗначений"
+    },
+    {
+      "name": "AfterRestoreValues",
+      "id": 80001,
+      "handler": "ПослеВосстановленияЗначений"
+    }
+  ],
+  "controls": [
+    {
+      "id": 2,
+      "name": "КоманднаяПанель1",
+      "type": "CommandBar",
+      "guid": "e69bf21d-97b2-4f37-86db-675aea9ec2cb",
+      "caption": [],
+      "left": 0,
+      "top": 0,
+      "width": 935,
+      "height": 25,
+      "visible": true,
+      "page": 0,
+      "ordinal": 0,
+      "tabOrder": 1,
+      "events": [],
+      "columns": [],
+      "props": {
+        "autoFill": true
+      },
+      "children": []
+    },
+    {
+      "id": 3,
+      "name": "ОсновныеДействияФормы",
+      "type": "CommandBar",
+      "guid": "e69bf21d-97b2-4f37-86db-675aea9ec2cb",
+      "caption": [],
+      "left": 0,
+      "top": 648,
+      "width": 935,
+      "height": 25,
+      "visible": true,
+      "page": 0,
+      "ordinal": 1,
+      "tabOrder": 27,
+      "events": [],
+      "columns": [],
+      "props": {
+        "autoFill": false,
+        "horizontalAlign": "Right",
+        "buttons": [
+          {
+            "name": "ОсновныеДействияФормыВыполнить",
+            "id": 1,
+            "kind": "Action",
+            "checked": false,
+            "action": "КнопкаВыполнитьНажатие",
+            "actionKind": "Handler",
+            "caption": [
+              [
+                "ru",
+                "Выполнить"
+              ],
+              [
+                "ro",
+                "Выполнить"
+              ]
+            ],
+            "tooltip": [
+              [
+                "ru",
+                "Кнопка выполнить нажатие"
+              ],
+              [
+                "ro",
+                "Кнопка выполнить нажатие"
+              ]
+            ],
+            "representation": "Text",
+            "hasPicture": false
+          },
+          {
+            "name": "Разделитель",
+            "id": 2,
+            "kind": "Separator",
+            "checked": false,
+            "action": "",
+            "actionKind": "",
+            "caption": [],
+            "tooltip": [],
+            "representation": "Text",
+            "hasPicture": false
+          },
+          {
+            "name": "ОсновныеДействияФормыЗакрыть",
+            "id": 3,
+            "kind": "Action",
+            "checked": false,
+            "action": "Standard:142",
+            "actionKind": "Standard",
+            "caption": [
+              [
+                "ru",
+                "Закрыть"
+              ],
+              [
+                "ro",
+                "Закрыть"
+              ]
+            ],
+            "tooltip": [],
+            "representation": "Text",
+            "hasPicture": false
+          }
+        ]
+      },
+      "children": []
+    },
+    {
+      "id": 4,
+      "name": "Кнопка1",
+      "type": "Button",
+      "guid": "6ff79819-710e-4145-97cd-1618da79e3e2",
+      "caption": [
+        [
+          "ru",
+          "Кнопка1"
+        ]
+      ],
+      "left": 21,
+      "top": 42,
+      "width": 53,
+      "height": 17,
+      "visible": true,
+      "page": 0,
+      "ordinal": 2,
+      "tabOrder": 2,
+      "events": [
+        {
+          "name": "Click",
+          "id": 0,
+          "handler": "Кнопка1Нажатие"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 5,
+      "name": "Надпись1",
+      "type": "LabelDecoration",
+      "guid": "0fc7e20d-f241-460c-bdf4-5ad88e5474a5",
+      "caption": [
+        [
+          "ru",
+          "Надпись1"
+        ]
+      ],
+      "left": 79,
+      "top": 42,
+      "width": 53,
+      "height": 17,
+      "visible": true,
+      "page": 0,
+      "ordinal": 3,
+      "tabOrder": 3,
+      "events": [
+        {
+          "name": "Click",
+          "id": 0,
+          "handler": "Надпись1Нажатие"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 6,
+      "name": "ТабличноеПоле1",
+      "type": "Table",
+      "guid": "ea83fe3a-ac3c-4cce-8045-3dddf35b28b1",
+      "caption": [],
+      "left": 21,
+      "top": 64,
+      "width": 193,
+      "height": 154,
+      "visible": true,
+      "page": 0,
+      "ordinal": 4,
+      "tabOrder": 9,
+      "events": [
+        {
+          "name": "Selection",
+          "id": 34,
+          "handler": "ТабличноеПоле1Выбор"
+        },
+        {
+          "name": "OnActivateRow",
+          "id": 35,
+          "handler": "ТабличноеПоле1ПриАктивизацииСтроки"
+        },
+        {
+          "name": "OnActivateColumn",
+          "id": 36,
+          "handler": "ТабличноеПоле1ПриАктивизацииКолонки"
+        },
+        {
+          "name": "OnActivateCell",
+          "id": 37,
+          "handler": "ТабличноеПоле1ПриАктивизацииЯчейки"
+        },
+        {
+          "name": "BeforeAddRow",
+          "id": 40,
+          "handler": "ТабличноеПоле1ПередНачаломДобавления"
+        },
+        {
+          "name": "BeforeRowChange",
+          "id": 41,
+          "handler": "ТабличноеПоле1ПередНачаломИзменения"
+        },
+        {
+          "name": "BeforeDeleteRow",
+          "id": 42,
+          "handler": "ТабличноеПоле1ПередУдалением"
+        },
+        {
+          "name": "OnStartEdit",
+          "id": 43,
+          "handler": "ТабличноеПоле1ПриНачалеРедактирования"
+        },
+        {
+          "name": "BeforeEditEnd",
+          "id": 44,
+          "handler": "ТабличноеПоле1ПередОкончаниемРедактирования"
+        },
+        {
+          "name": "OnCheckChange",
+          "id": 45,
+          "handler": "ТабличноеПоле1ПриИзмененииФлажка"
+        },
+        {
+          "name": "OnRowOutput",
+          "id": 47,
+          "handler": "ТабличноеПоле1ПриВыводеСтроки"
+        },
+        {
+          "name": "ValueChoice",
+          "id": 48,
+          "handler": "ТабличноеПоле1ВыборЗначения"
+        },
+        {
+          "name": "OnEditEnd",
+          "id": 49,
+          "handler": "ТабличноеПоле1ПриОкончанииРедактирования"
+        },
+        {
+          "name": "NewWriteProcessing",
+          "id": 50,
+          "handler": "ТабличноеПоле1ОбработкаЗаписиНовогоОбъекта"
+        },
+        {
+          "name": "AfterDeleteRow",
+          "id": 51,
+          "handler": "ТабличноеПоле1ПослеУдаления"
+        },
+        {
+          "name": "ChoiceProcessing",
+          "id": 52,
+          "handler": "ТабличноеПоле1ОбработкаВыбора"
+        },
+        {
+          "name": "OnGetData",
+          "id": 53,
+          "handler": "ТабличноеПоле1ПриПолученииДанных"
+        },
+        {
+          "name": "DragStart",
+          "id": 900,
+          "handler": "ТабличноеПоле1НачалоПеретаскивания"
+        },
+        {
+          "name": "DragCheck",
+          "id": 901,
+          "handler": "ТабличноеПоле1ПроверкаПеретаскивания"
+        },
+        {
+          "name": "DragEnd",
+          "id": 902,
+          "handler": "ТабличноеПоле1ОкончаниеПеретаскивания"
+        },
+        {
+          "name": "Drag",
+          "id": 903,
+          "handler": "ТабличноеПоле1Перетаскивание"
+        }
+      ],
+      "columns": [
+        {
+          "name": "Колонка1",
+          "header": [
+            [
+              "ru",
+              "Колонка1"
+            ]
+          ],
+          "editor": "InputField",
+          "width": 100,
+          "id": 0,
+          "valueType": {
+            "kind": "String",
+            "composite": false
+          },
+          "events": [
+            {
+              "name": "StartListChoice",
+              "id": 1,
+              "handler": "ТабличноеПоле1Колонка1НачалоВыбораИзСписка"
+            },
+            {
+              "name": "StartChoice",
+              "id": 2,
+              "handler": "ТабличноеПоле1Колонка1НачалоВыбора"
+            },
+            {
+              "name": "Clearing",
+              "id": 3,
+              "handler": "ТабличноеПоле1Колонка1Очистка"
+            },
+            {
+              "name": "Tuning",
+              "id": 4,
+              "handler": "ТабличноеПоле1Колонка1Регулирование"
+            },
+            {
+              "name": "Opening",
+              "id": 5,
+              "handler": "ТабличноеПоле1Колонка1Открытие"
+            },
+            {
+              "name": "ChoiceProcessing",
+              "id": 7,
+              "handler": "ТабличноеПоле1Колонка1ОбработкаВыбора"
+            },
+            {
+              "name": "TextEditEnd",
+              "id": 10,
+              "handler": "ТабличноеПоле1Колонка1ОкончаниеВводаТекста"
+            },
+            {
+              "name": "AutoComplete",
+              "id": 11,
+              "handler": "ТабличноеПоле1Колонка1АвтоПодборТекста"
+            },
+            {
+              "name": "OnChange",
+              "id": 2147483647,
+              "handler": "ТабличноеПоле1Колонка1ПриИзменении"
+            }
+          ],
+          "dataPath": {
+            "attributeId": 2,
+            "path": "ТабличноеПоле1.Колонка1"
+          }
+        },
+        {
+          "name": "Колонка2",
+          "header": [
+            [
+              "ru",
+              "Колонка2"
+            ]
+          ],
+          "editor": "InputField",
+          "width": 100,
+          "id": 1,
+          "valueType": {
+            "kind": "String",
+            "composite": false
+          },
+          "dataPath": {
+            "attributeId": 2,
+            "path": "ТабличноеПоле1.Колонка2"
+          }
+        }
+      ],
+      "props": {
+        "footer": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 2,
+        "path": "ТабличноеПоле1"
+      }
+    },
+    {
+      "id": 7,
+      "name": "ПолеВвода1",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 137,
+      "top": 40,
+      "width": 278,
+      "height": 19,
+      "visible": true,
+      "page": 0,
+      "ordinal": 5,
+      "tabOrder": 4,
+      "events": [
+        {
+          "name": "StartListChoice",
+          "id": 1,
+          "handler": "ПолеВвода1НачалоВыбораИзСписка"
+        },
+        {
+          "name": "StartChoice",
+          "id": 2,
+          "handler": "ПолеВвода1НачалоВыбора"
+        },
+        {
+          "name": "Clearing",
+          "id": 3,
+          "handler": "ПолеВвода1Очистка"
+        },
+        {
+          "name": "Tuning",
+          "id": 4,
+          "handler": "ПолеВвода1Регулирование"
+        },
+        {
+          "name": "Opening",
+          "id": 5,
+          "handler": "ПолеВвода1Открытие"
+        },
+        {
+          "name": "ChoiceProcessing",
+          "id": 7,
+          "handler": "ПолеВвода1ОбработкаВыбора"
+        },
+        {
+          "name": "TextEditEnd",
+          "id": 10,
+          "handler": "ПолеВвода1ОкончаниеВводаТекста"
+        },
+        {
+          "name": "AutoComplete",
+          "id": 11,
+          "handler": "ПолеВвода1АвтоПодборТекста"
+        },
+        {
+          "name": "OnChange",
+          "id": 2147483647,
+          "handler": "ПолеВвода1ПриИзменении"
+        }
+      ],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "ValueList",
+          "composite": false
+        },
+        "choiceButton": true,
+        "clearButton": true,
+        "openButton": true,
+        "autoMarkIncomplete": true
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 3,
+        "path": "ПолеВвода1"
+      }
+    },
+    {
+      "id": 8,
+      "name": "Флажок1",
+      "type": "CheckBox",
+      "guid": "35af3d93-d7c7-4a2e-a8eb-bac87a1a3f26",
+      "caption": [
+        [
+          "ru",
+          "Флажок1"
+        ]
+      ],
+      "left": 420,
+      "top": 40,
+      "width": 278,
+      "height": 19,
+      "visible": true,
+      "page": 0,
+      "ordinal": 6,
+      "tabOrder": 5,
+      "events": [
+        {
+          "name": "OnChange",
+          "id": 2147483647,
+          "handler": "Флажок1ПриИзменении"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": [],
+      "dataPath": {
+        "attributeId": 4,
+        "path": "Флажок1"
+      }
+    },
+    {
+      "id": 9,
+      "name": "Переключатель1",
+      "type": "RadioButton",
+      "guid": "782e569a-79a7-4a4f-a936-b48d013936ec",
+      "caption": [
+        [
+          "ru",
+          "Переключатель1"
+        ]
+      ],
+      "left": 222,
+      "top": 64,
+      "width": 193,
+      "height": 154,
+      "visible": true,
+      "page": 0,
+      "ordinal": 7,
+      "tabOrder": 10,
+      "events": [
+        {
+          "name": "OnChange",
+          "id": 2147483647,
+          "handler": "Переключатель1ПриИзменении"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 10,
+      "name": "ПолеСписка1",
+      "type": "ListBox",
+      "guid": "19f8b798-314e-4b4e-8121-905b2a7a03f5",
+      "caption": [],
+      "left": 420,
+      "top": 64,
+      "width": 278,
+      "height": 154,
+      "visible": true,
+      "page": 0,
+      "ordinal": 8,
+      "tabOrder": 11,
+      "events": [
+        {
+          "name": "OnCheckChange",
+          "id": 17,
+          "handler": "ПолеСписка1ПриИзмененииФлажка"
+        },
+        {
+          "name": "Selection",
+          "id": 34,
+          "handler": "ПолеСписка1Выбор"
+        },
+        {
+          "name": "OnActivateRow",
+          "id": 37,
+          "handler": "ПолеСписка1ПриАктивизацииСтроки"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": [],
+      "dataPath": {
+        "attributeId": 5,
+        "path": "ПолеСписка1"
+      }
+    },
+    {
+      "id": 11,
+      "name": "ПолеКартинки1",
+      "type": "PictureDecoration",
+      "guid": "151ef23e-6bb2-4681-83d0-35bc2217230c",
+      "caption": [],
+      "left": 21,
+      "top": 223,
+      "width": 193,
+      "height": 154,
+      "visible": true,
+      "page": 0,
+      "ordinal": 9,
+      "tabOrder": 13,
+      "events": [
+        {
+          "name": "Click",
+          "id": 0,
+          "handler": "ПолеКартинки1Нажатие"
+        },
+        {
+          "name": "DragStart",
+          "id": 3,
+          "handler": "ПолеКартинки1НачалоПеретаскивания"
+        },
+        {
+          "name": "DragCheck",
+          "id": 4,
+          "handler": "ПолеКартинки1ПроверкаПеретаскивания"
+        },
+        {
+          "name": "DragEnd",
+          "id": 5,
+          "handler": "ПолеКартинки1ОкончаниеПеретаскивания"
+        },
+        {
+          "name": "Drag",
+          "id": 6,
+          "handler": "ПолеКартинки1Перетаскивание"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 12,
+      "name": "КоманднаяПанель2",
+      "type": "CommandBar",
+      "guid": "e69bf21d-97b2-4f37-86db-675aea9ec2cb",
+      "caption": [],
+      "left": 222,
+      "top": 223,
+      "width": 193,
+      "height": 154,
+      "visible": true,
+      "page": 0,
+      "ordinal": 10,
+      "tabOrder": 14,
+      "events": [],
+      "columns": [],
+      "props": {
+        "autoFill": false,
+        "buttons": [
+          {
+            "name": "НоваяКнопкаНаПанели",
+            "id": 1,
+            "kind": "Action",
+            "checked": false,
+            "action": "КоманднаяПанель2НоваяКнопкаНаПанели",
+            "actionKind": "Handler",
+            "caption": [
+              [
+                "ru",
+                "Новая кнопка на панели"
+              ],
+              [
+                "ro",
+                "Новая кнопка на панели"
+              ]
+            ],
+            "tooltip": [
+              [
+                "ru",
+                "Новая кнопка на панели"
+              ],
+              [
+                "ro",
+                "Новая кнопка на панели"
+              ]
+            ],
+            "representation": "Auto",
+            "hasPicture": false
+          },
+          {
+            "name": "Подменю",
+            "id": 2,
+            "kind": "Submenu",
+            "checked": false,
+            "action": "",
+            "actionKind": "Submenu",
+            "caption": [
+              [
+                "ru",
+                "Подменю"
+              ]
+            ],
+            "tooltip": [],
+            "representation": "Auto",
+            "hasPicture": false,
+            "buttons": [
+              {
+                "name": "Действие",
+                "id": 4,
+                "kind": "Action",
+                "checked": false,
+                "action": "КоманднаяПанель2Действие",
+                "actionKind": "Handler",
+                "caption": [
+                  [
+                    "ru",
+                    "Действие"
+                  ],
+                  [
+                    "ro",
+                    "Действие"
+                  ]
+                ],
+                "tooltip": [
+                  [
+                    "ru",
+                    "Действие"
+                  ],
+                  [
+                    "ro",
+                    "Действие"
+                  ]
+                ],
+                "representation": "Auto",
+                "hasPicture": false
+              },
+              {
+                "name": "Действие1",
+                "id": 5,
+                "kind": "Action",
+                "checked": false,
+                "action": "КоманднаяПанель2Действие1",
+                "actionKind": "Handler",
+                "caption": [
+                  [
+                    "ru",
+                    "Действие1"
+                  ],
+                  [
+                    "ro",
+                    "Действие1"
+                  ]
+                ],
+                "tooltip": [
+                  [
+                    "ru",
+                    "Действие1"
+                  ],
+                  [
+                    "ro",
+                    "Действие1"
+                  ]
+                ],
+                "representation": "Auto",
+                "hasPicture": false
+              }
+            ]
+          }
+        ]
+      },
+      "children": []
+    },
+    {
+      "id": 13,
+      "name": "Панель1",
+      "type": "Panel",
+      "guid": "09ccdc77-ea1a-4a6d-ab1c-3435eada2433",
+      "caption": [],
+      "left": 420,
+      "top": 223,
+      "width": 278,
+      "height": 154,
+      "visible": true,
+      "page": 0,
+      "ordinal": 11,
+      "tabOrder": 15,
+      "events": [
+        {
+          "name": "OnCurrentPageChange",
+          "id": 0,
+          "handler": "Панель1ПриСменеСтраницы"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": [
+        {
+          "id": 34,
+          "name": "ТабличноеПоле2",
+          "type": "Table",
+          "guid": "ea83fe3a-ac3c-4cce-8045-3dddf35b28b1",
+          "caption": [],
+          "left": 6,
+          "top": 38,
+          "width": 264,
+          "height": 90,
+          "visible": true,
+          "page": 1,
+          "ordinal": 0,
+          "tabOrder": 2,
+          "events": [],
+          "columns": [
+            {
+              "name": "Колонка1",
+              "header": [
+                [
+                  "ru",
+                  "Колонка1"
+                ]
+              ],
+              "editor": "InputField",
+              "width": 100,
+              "id": 0,
+              "valueType": {
+                "kind": "String",
+                "composite": false
+              },
+              "dataPath": {
+                "attributeId": 15,
+                "path": "ТабличноеПоле2.Колонка1"
+              }
+            }
+          ],
+          "props": {
+            "footer": false
+          },
+          "children": [],
+          "dataPath": {
+            "attributeId": 15,
+            "path": "ТабличноеПоле2"
+          }
+        },
+        {
+          "id": 35,
+          "name": "КоманднаяПанель3",
+          "type": "CommandBar",
+          "guid": "e69bf21d-97b2-4f37-86db-675aea9ec2cb",
+          "caption": [],
+          "left": 6,
+          "top": 6,
+          "width": 264,
+          "height": 27,
+          "visible": true,
+          "page": 1,
+          "ordinal": 1,
+          "tabOrder": 1,
+          "events": [],
+          "columns": [],
+          "props": {
+            "autoFill": true
+          },
+          "children": []
+        }
+      ],
+      "showTabs": 2,
+      "pages": [
+        {
+          "name": "Страница1",
+          "title": [
+            [
+              "ru",
+              "Страница1"
+            ]
+          ],
+          "visible": false,
+          "enabled": true,
+          "left": 1,
+          "top": 19,
+          "width": 276,
+          "height": 134
+        },
+        {
+          "name": "Страница2",
+          "title": [
+            [
+              "ru",
+              "Страница2"
+            ]
+          ],
+          "visible": true,
+          "enabled": true,
+          "left": 1,
+          "top": 19,
+          "width": 276,
+          "height": 134
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "Разделитель1",
+      "type": "Splitter",
+      "guid": "36e52348-5d60-4770-8e89-a16ed50a2006",
+      "caption": [],
+      "left": 703,
+      "top": 42,
+      "width": 12,
+      "height": 335,
+      "visible": true,
+      "page": 0,
+      "ordinal": 12,
+      "tabOrder": 6,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 15,
+      "name": "ПолеТабличногоДокумента1",
+      "type": "SpreadsheetDocumentField",
+      "guid": "236a17b3-7f44-46d9-a907-75f9cdc61ab5",
+      "caption": [],
+      "left": 21,
+      "top": 382,
+      "width": 694,
+      "height": 189,
+      "visible": true,
+      "page": 0,
+      "ordinal": 13,
+      "tabOrder": 19,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 16,
+      "name": "ПолеКалендаря1",
+      "type": "CalendarField",
+      "guid": "e3c063d8-ef92-41be-9c89-b70290b5368b",
+      "caption": [],
+      "left": 728,
+      "top": 42,
+      "width": 128,
+      "height": 155,
+      "visible": true,
+      "page": 0,
+      "ordinal": 14,
+      "tabOrder": 7,
+      "events": [
+        {
+          "name": "OnActivateDate",
+          "id": 0,
+          "handler": "ПолеКалендаря1ПриАктивизацииДаты"
+        },
+        {
+          "name": "Selection",
+          "id": 1,
+          "handler": "ПолеКалендаря1Выбор"
+        },
+        {
+          "name": "OnPeriodOutput",
+          "id": 2,
+          "handler": "ПолеКалендаря1ПриВыводеПериода"
+        },
+        {
+          "name": "DragStart",
+          "id": 3,
+          "handler": "ПолеКалендаря1НачалоПеретаскивания"
+        },
+        {
+          "name": "DragCheck",
+          "id": 4,
+          "handler": "ПолеКалендаря1ПроверкаПеретаскивания"
+        },
+        {
+          "name": "DragEnd",
+          "id": 5,
+          "handler": "ПолеКалендаря1ОкончаниеПеретаскивания"
+        },
+        {
+          "name": "Drag",
+          "id": 6,
+          "handler": "ПолеКалендаря1Перетаскивание"
+        },
+        {
+          "name": "OnChange",
+          "id": 2147483647,
+          "handler": "ПолеКалендаря1ПриИзменении"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": [],
+      "dataPath": {
+        "attributeId": 6,
+        "path": "ПолеКалендаря1"
+      }
+    },
+    {
+      "id": 17,
+      "name": "ПолеТекстовогоДокумента1",
+      "type": "TextDocumentField",
+      "guid": "14c4a229-bfc3-42fe-9ce1-2da049fd0109",
+      "caption": [],
+      "left": 861,
+      "top": 42,
+      "width": 66,
+      "height": 155,
+      "visible": true,
+      "page": 0,
+      "ordinal": 15,
+      "tabOrder": 8,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 18,
+      "name": "ПолосаРегулирования1",
+      "type": "TrackBar",
+      "guid": "6c06cd5d-8481-4b6f-a90a-7a97a8bb8bef",
+      "caption": [],
+      "left": 728,
+      "top": 205,
+      "width": 185,
+      "height": 32,
+      "visible": true,
+      "page": 0,
+      "ordinal": 16,
+      "tabOrder": 12,
+      "events": [
+        {
+          "name": "OnChange",
+          "id": 2147483647,
+          "handler": "ПолосаРегулирования1ПриИзменении"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": [],
+      "dataPath": {
+        "attributeId": 7,
+        "path": "ПолосаРегулирования1"
+      }
+    },
+    {
+      "id": 19,
+      "name": "Индикатор1",
+      "type": "ProgressBar",
+      "guid": "b1db1f86-abbb-4cf0-8852-fe6ae21650c2",
+      "caption": [],
+      "left": 728,
+      "top": 242,
+      "width": 185,
+      "height": 32,
+      "visible": true,
+      "page": 0,
+      "ordinal": 17,
+      "tabOrder": 16,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": [],
+      "dataPath": {
+        "attributeId": 8,
+        "path": "Индикатор1"
+      }
+    },
+    {
+      "id": 20,
+      "name": "ПолеГеографическойСхемы1",
+      "type": "GeographicalSchemaField",
+      "guid": "ad37194e-555e-4305-b718-5dca84baf145",
+      "caption": [],
+      "left": 728,
+      "top": 279,
+      "width": 185,
+      "height": 71,
+      "visible": true,
+      "page": 0,
+      "ordinal": 18,
+      "tabOrder": 17,
+      "events": [
+        {
+          "name": "OnActivate",
+          "id": 2,
+          "handler": "ПолеГеографическойСхемы1"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 21,
+      "name": "ПолеHTMLДокумента1",
+      "type": "HTMLDocumentField",
+      "guid": "d92a805c-98ae-4750-9158-d9ce7cec2f20",
+      "caption": [],
+      "left": 728,
+      "top": 364,
+      "width": 185,
+      "height": 72,
+      "visible": true,
+      "page": 0,
+      "ordinal": 19,
+      "tabOrder": 18,
+      "events": [
+        {
+          "name": "DocumentComplete",
+          "id": 0,
+          "handler": "ПолеHTMLДокумента1ДокументСформирован"
+        },
+        {
+          "name": "OnClick",
+          "id": 2,
+          "handler": "ПолеHTMLДокумента1onclick"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 22,
+      "name": "ПолеГрафическойСхемы1",
+      "type": "GraphicalSchemaField",
+      "guid": "42248403-7748-49da-b782-e4438fd7bff3",
+      "caption": [],
+      "left": 8,
+      "top": 8,
+      "width": 228,
+      "height": 124,
+      "visible": true,
+      "page": 1,
+      "ordinal": 0,
+      "tabOrder": 1,
+      "events": [
+        {
+          "name": "Selection",
+          "id": 0,
+          "handler": "ПолеГрафическойСхемы1Выбор"
+        },
+        {
+          "name": "OnActivate",
+          "id": 1,
+          "handler": "ПолеГрафическойСхемы1ПриАктивизации"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 23,
+      "name": "Диаграмма1",
+      "type": "Chart",
+      "guid": "a8b97779-1a4b-4059-b09c-807f86d2a461",
+      "caption": [],
+      "left": 241,
+      "top": 8,
+      "width": 228,
+      "height": 124,
+      "visible": true,
+      "page": 1,
+      "ordinal": 1,
+      "tabOrder": 2,
+      "events": [
+        {
+          "name": "Selection",
+          "id": 0,
+          "handler": "Диаграмма1Выбор"
+        },
+        {
+          "name": "DetailProcessing",
+          "id": 1,
+          "handler": "Диаграмма1ОбработкаРасшифровки"
+        },
+        {
+          "name": "OnActivate",
+          "id": 2,
+          "handler": "Диаграмма1ПриАктивизации"
+        },
+        {
+          "name": "OnValueEdit",
+          "id": 3,
+          "handler": "Диаграмма1ПриРедактированииЗначения"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 24,
+      "name": "ДиаграммаГанта1",
+      "type": "GanttChart",
+      "guid": "e5fdc112-5c84-4a16-9728-72b85692b6e2",
+      "caption": [],
+      "left": 474,
+      "top": 8,
+      "width": 228,
+      "height": 124,
+      "visible": true,
+      "page": 1,
+      "ordinal": 2,
+      "tabOrder": 3,
+      "events": [
+        {
+          "name": "Selection",
+          "id": 0,
+          "handler": "ДиаграммаГанта1Выбор"
+        },
+        {
+          "name": "DetailProcessing",
+          "id": 1,
+          "handler": "ДиаграммаГанта1ОбработкаРасшифровки"
+        },
+        {
+          "name": "OnIntervalEditEnd",
+          "id": 2,
+          "handler": "ДиаграммаГанта1ПриОкончанииРедактированияИнтервала"
+        },
+        {
+          "name": "OnValueActivate",
+          "id": 3,
+          "handler": "ДиаграммаГанта1ПриАктивизацииЗначения"
+        },
+        {
+          "name": "OnIntervalActivate",
+          "id": 4,
+          "handler": "ДиаграммаГанта1ПриАктивизацииИнтервала"
+        },
+        {
+          "name": "Event",
+          "id": 5,
+          "handler": "ДиаграммаГанта1"
+        },
+        {
+          "name": "Event",
+          "id": 6,
+          "handler": "ДиаграммаГанта1"
+        },
+        {
+          "name": "BeforeCollapse",
+          "id": 7,
+          "handler": "ДиаграммаГанта1ПередСворачиванием"
+        },
+        {
+          "name": "BeforeExpand",
+          "id": 8,
+          "handler": "ДиаграммаГанта1ПередСворачиванием"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 25,
+      "name": "СводнаяДиаграмма1",
+      "type": "PivotChart",
+      "guid": "a26da99e-184a-4823-b0d6-62816d38dc4e",
+      "caption": [],
+      "left": 8,
+      "top": 137,
+      "width": 228,
+      "height": 124,
+      "visible": true,
+      "page": 1,
+      "ordinal": 3,
+      "tabOrder": 4,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 26,
+      "name": "Дендрограмма1",
+      "type": "Dendrogram",
+      "guid": "984981b1-622d-4ebc-94f7-885f0cdfb59a",
+      "caption": [],
+      "left": 241,
+      "top": 137,
+      "width": 228,
+      "height": 124,
+      "visible": true,
+      "page": 1,
+      "ordinal": 4,
+      "tabOrder": 5,
+      "events": [
+        {
+          "name": "Selection",
+          "id": 0,
+          "handler": "Дендрограмма1Выбор"
+        },
+        {
+          "name": "DetailProcessing",
+          "id": 1,
+          "handler": "Дендрограмма1ОбработкаРасшифровки"
+        }
+      ],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 27,
+      "name": "ПолеPDFДокумента1",
+      "type": "PDFDocumentField",
+      "guid": "48537cf6-4901-4b8f-9869-e4b1564af79c",
+      "caption": [],
+      "left": 480,
+      "top": 158,
+      "width": 182,
+      "height": 110,
+      "visible": true,
+      "page": 1,
+      "ordinal": 5,
+      "tabOrder": 6,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": []
+    },
+    {
+      "id": 28,
+      "name": "ПолеВвода2",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 21,
+      "top": 580,
+      "width": 136,
+      "height": 21,
+      "visible": true,
+      "page": 0,
+      "ordinal": 20,
+      "tabOrder": 21,
+      "events": [],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "Number",
+          "fractionDigits": 0,
+          "composite": false
+        },
+        "choiceButton": false,
+        "clearButton": false,
+        "openButton": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 9,
+        "path": "ПолеВвода2"
+      }
+    },
+    {
+      "id": 29,
+      "name": "ПолеВвода3",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 21,
+      "top": 606,
+      "width": 136,
+      "height": 21,
+      "visible": true,
+      "page": 0,
+      "ordinal": 21,
+      "tabOrder": 24,
+      "events": [],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "Date",
+          "composite": false
+        },
+        "choiceButton": true,
+        "clearButton": false,
+        "openButton": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 10,
+        "path": "ПолеВвода3"
+      }
+    },
+    {
+      "id": 30,
+      "name": "ПолеВвода4",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 162,
+      "top": 580,
+      "width": 136,
+      "height": 21,
+      "visible": true,
+      "page": 0,
+      "ordinal": 22,
+      "tabOrder": 22,
+      "events": [],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "ValueTable",
+          "composite": false
+        },
+        "choiceButton": false,
+        "clearButton": false,
+        "openButton": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 11,
+        "path": "ПолеВвода4"
+      }
+    },
+    {
+      "id": 31,
+      "name": "ПолеВвода5",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 162,
+      "top": 606,
+      "width": 136,
+      "height": 21,
+      "visible": true,
+      "page": 0,
+      "ordinal": 23,
+      "tabOrder": 25,
+      "events": [],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "ValueList",
+          "composite": false
+        },
+        "choiceButton": true,
+        "clearButton": true,
+        "openButton": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 12,
+        "path": "ПолеВвода5"
+      }
+    },
+    {
+      "id": 32,
+      "name": "ПолеВвода6",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 303,
+      "top": 580,
+      "width": 136,
+      "height": 21,
+      "visible": true,
+      "page": 0,
+      "ordinal": 24,
+      "tabOrder": 23,
+      "events": [],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "Ref",
+          "composite": true
+        },
+        "choiceButton": true,
+        "clearButton": true,
+        "openButton": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 13,
+        "path": "ПолеВвода6"
+      }
+    },
+    {
+      "id": 33,
+      "name": "ПолеВвода7",
+      "type": "InputField",
+      "guid": "381ed624-9217-4e63-85db-c4c3cb87daae",
+      "caption": [],
+      "left": 303,
+      "top": 606,
+      "width": 136,
+      "height": 21,
+      "visible": true,
+      "page": 0,
+      "ordinal": 25,
+      "tabOrder": 26,
+      "events": [],
+      "columns": [],
+      "props": {
+        "valueType": {
+          "kind": "String",
+          "composite": false
+        },
+        "choiceButton": false,
+        "clearButton": false,
+        "openButton": false
+      },
+      "children": [],
+      "dataPath": {
+        "attributeId": 14,
+        "path": "ПолеВвода7"
+      }
+    },
+    {
+      "id": 36,
+      "name": "Панель2",
+      "type": "Panel",
+      "guid": "09ccdc77-ea1a-4a6d-ab1c-3435eada2433",
+      "caption": [],
+      "left": 728,
+      "top": 441,
+      "width": 185,
+      "height": 104,
+      "visible": true,
+      "page": 0,
+      "ordinal": 26,
+      "tabOrder": 20,
+      "events": [],
+      "columns": [],
+      "props": {},
+      "children": [],
+      "showTabs": 3,
+      "pages": [
+        {
+          "name": "Страница1",
+          "title": [
+            [
+              "ru",
+              "Страница1"
+            ]
+          ],
+          "visible": true,
+          "enabled": true,
+          "left": 37,
+          "top": 1,
+          "width": 147,
+          "height": 102
+        }
+      ]
+    }
+  ],
+  "binaryEvidence": {
+    "path": "Reference/FormStream.bin",
+    "representation": "raw-stream",
+    "size": 115329,
+    "sha256": "d3eacdb9c03ca37f99550bf66148e2bcb9d5a5b008e46dce86186c7ecc344429"
+  },
+  "diagnostics": []
+}

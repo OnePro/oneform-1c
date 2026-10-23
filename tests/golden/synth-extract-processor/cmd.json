@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "epf",
+    "--root",
+    ".",
+    "--processor",
+    "ExternalDataProcessors/Synth"
+  ],
+  "deleted": []
+}

@@ -1,0 +1,4 @@
+Synth: FAILED, CONTAINER_DUPLICATE_ENTRY, existing src unchanged
+  duplicate entry name
+  {"name": "a"}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "TemplateReference",
+  "templateId": "2b556694-58ba-41a0-84fe-7ea8313365ae",
+  "originalName": "Макет",
+  "synonym": "Макет",
+  "alias": "MainTemplate",
+  "templateType": "Unknown",
+  "templateTypeCode": 0,
+  "content": "Template.bin",
+  "contentKnown": false,
+  "status": "reference-only",
+  "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

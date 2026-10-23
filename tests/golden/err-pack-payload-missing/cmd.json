@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "epf",
+    "--pack",
+    "--root",
+    ".",
+    "--all",
+    "--form-backend",
+    "basic"
+  ],
+  "base": "synth-extract-basic",
+  "input_deleted": [
+    "ExternalDataProcessors/Synth/src/Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormModule.bsl"
+  ],
+  "deleted": []
+}

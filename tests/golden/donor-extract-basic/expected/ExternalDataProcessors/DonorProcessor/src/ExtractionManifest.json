@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "generator": {
+    "name": "epf-source-extractor",
+    "version": "0.1.0",
+    "outputSchemaVersion": 1
+  },
+  "source": {
+    "epf": "donor.epf",
+    "size": 23748,
+    "sha256": "80e99e9aec2c81c72a92f10246f4ba34e8c7d1aca784272f006117f79c5a54d2",
+    "processorId": "c5912057-dc42-417c-bc2e-758a81c5642f",
+    "processorName": "ВнешняяОбработка1"
+  },
+  "configuration": {
+    "effectiveConfigSha256": "72654a5ba1542ff33ef3fac6e01ee00fac6e247cc532e400766aad3a7cf8b819"
+  },
+  "tools": {
+    "lockSha256": "df4158918cf5089c9180188043b8cd81f8cc478f0e097f9b2d390f29d1396e7f",
+    "containerBackend": {
+      "name": "epf_extract.adapters.container",
+      "kind": "builtin-bounded-reader"
+    },
+    "formBackend": "basic"
+  },
+  "status": "partial-reference",
+  "codeComplete": true,
+  "objectModule": {
+    "state": "empty",
+    "path": "ObjectModule.bsl",
+    "sourceLocator": "container:0/entry:c5912057-dc42-417c-bc2e-758a81c5642f.0/entry:text",
+    "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": {
+      "codec": "utf-8",
+      "bomHex": "",
+      "decision": "ascii",
+      "byteRoundTrip": true
+    },
+    "newlines": {
+      "kind": "none",
+      "counts": {
+        "CRLF": 0,
+        "LF": 0,
+        "CR": 0
+      },
+      "finalNewline": false
+    }
+  },
+  "forms": [
+    {
+      "id": "0a4d3811-c3ab-4e8b-b826-6144d8606e9d",
+      "originalName": "Форма",
+      "synonym": "Форма",
+      "alias": "MainForm",
+      "kind": "OrdinaryForm",
+      "isDefault": true,
+      "definition": "Forms/MainForm/FormDefinition.json",
+      "module": {
+        "state": "extracted",
+        "path": "Forms/MainForm/FormModule.bsl",
+        "sourceLocator": "container:0/entry:0a4d3811-c3ab-4e8b-b826-6144d8606e9d.0/entry:module",
+        "sourceSha256": "a0564a3fe8ad466cfc19a8265027641f242b6aaa5e3e9caff2963249fad0fc8c",
+        "outputSha256": "9af87785044a372324402cba59873aba9b5a55fe3b3e769d972bf51b1bbce215",
+        "encoding": {
+          "codec": "utf-8",
+          "bomHex": "efbbbf",
+          "decision": "bom",
+          "byteRoundTrip": true
+        },
+        "newlines": {
+          "kind": "CRLF",
+          "counts": {
+            "CRLF": 396,
+            "LF": 0,
+            "CR": 0
+          },
+          "finalNewline": true
+        }
+      },
+      "layout": {
+        "backend": "basic",
+        "status": "unsupported",
+        "binary": {
+          "path": "Forms/MainForm/Reference/FormStream.bin",
+          "representation": "raw-stream",
+          "sourceLocator": "container:0/entry:0a4d3811-c3ab-4e8b-b826-6144d8606e9d.0/entry:form",
+          "sourceSha256": "0d601144a3b95def642e89bd9af4416811993a00d3cf5abb2e5d544b75faec7a",
+          "size": 115329
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "2b556694-58ba-41a0-84fe-7ea8313365ae",
+      "originalName": "Макет",
+      "synonym": "Макет",
+      "alias": "MainTemplate",
+      "templateType": "Unknown",
+      "templateTypeCode": 0,
+      "status": "reference-only",
+      "definition": "Templates/MainTemplate/TemplateDefinition.json",
+      "content": {
+        "path": "Templates/MainTemplate/Template.bin",
+        "sourceLocator": "container:0/entry:2b556694-58ba-41a0-84fe-7ea8313365ae.0",
+        "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "contentKnown": false
+      }
+    },
+    {
+      "id": "5c9d9f39-6dea-46b0-b5dd-d241d1da0366",
+      "originalName": "Макет2",
+      "synonym": "Макет2",
+      "alias": "Template2",
+      "templateType": "Unknown",
+      "templateTypeCode": 6,
+      "status": "reference-only",
+      "definition": "Templates/Template2/TemplateDefinition.json",
+      "content": {
+        "path": "Templates/Template2/Template.bin",
+        "sourceLocator": "container:0/entry:5c9d9f39-6dea-46b0-b5dd-d241d1da0366.0",
+        "sourceSha256": "629523fc77309e0ff430ca60c91467842795be3858795c4a52f4ac3b573cf798",
+        "outputSha256": "629523fc77309e0ff430ca60c91467842795be3858795c4a52f4ac3b573cf798",
+        "contentKnown": false
+      }
+    },
+    {
+      "id": "7937f297-7b71-4830-8fa5-91e8ba586b36",
+      "originalName": "Макет1",
+      "synonym": "Макет1",
+      "alias": "Template_7937f297_7b71_4830_8fa5_91e8ba586b36",
+      "templateType": "Unknown",
+      "templateTypeCode": 4,
+      "status": "reference-only",
+      "definition": "Templates/Template_7937f297_7b71_4830_8fa5_91e8ba586b36/TemplateDefinition.json",
+      "content": {
+        "path": "Templates/Template_7937f297_7b71_4830_8fa5_91e8ba586b36/Template.bin",
+        "sourceLocator": "container:0/entry:7937f297-7b71-4830-8fa5-91e8ba586b36.0",
+        "sourceSha256": "f1945cd6c19e56b3c1c78943ef5ec18116907a4ca1efc40a57d48ab1db7adfc5",
+        "outputSha256": "f1945cd6c19e56b3c1c78943ef5ec18116907a4ca1efc40a57d48ab1db7adfc5",
+        "contentKnown": false
+      }
+    },
+    {
+      "id": "dc09fc43-3dc7-48ad-b69b-2681503366c6",
+      "originalName": "Макет3",
+      "synonym": "Макет3",
+      "alias": "Template_dc09fc43_3dc7_48ad_b69b_2681503366c6",
+      "templateType": "Unknown",
+      "templateTypeCode": 1,
+      "status": "reference-only",
+      "definition": "Templates/Template_dc09fc43_3dc7_48ad_b69b_2681503366c6/TemplateDefinition.json",
+      "content": {
+        "path": "Templates/Template_dc09fc43_3dc7_48ad_b69b_2681503366c6/Template.bin",
+        "sourceLocator": "container:0/entry:dc09fc43-3dc7-48ad-b69b-2681503366c6.0",
+        "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "contentKnown": false
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "ExtractionReport.md",
+      "role": "report",
+      "size": 1771,
+      "sha256": "bdd737188ec2cb049b68684325f906eba97914dd0a32dc927a8910230245ac2f"
+    },
+    {
+      "path": "Forms/MainForm/FormDefinition.json",
+      "role": "form-definition",
+      "size": 745,
+      "sha256": "97407770f7f479d38910ca9b862570ea2473cb109c8c7a21b1d957b29c33322b"
+    },
+    {
+      "path": "Forms/MainForm/FormModule.bsl",
+      "role": "form-module",
+      "size": 22278,
+      "sha256": "9af87785044a372324402cba59873aba9b5a55fe3b3e769d972bf51b1bbce215"
+    },
+    {
+      "path": "Forms/MainForm/Reference/FormStream.bin",
+      "role": "form-binary",
+      "size": 115329,
+      "sha256": "0d601144a3b95def642e89bd9af4416811993a00d3cf5abb2e5d544b75faec7a"
+    },
+    {
+      "path": "ObjectModule.bsl",
+      "role": "object-module",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Templates/MainTemplate/Template.bin",
+      "role": "template-content",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Templates/MainTemplate/TemplateDefinition.json",
+      "role": "template-definition",
+      "size": 422,
+      "sha256": "41e8bbf8c2018fb3fc5c695a03e85b8969a5a8c0425015744f39d5bda8c3a8c2"
+    },
+    {
+      "path": "Templates/Template2/Template.bin",
+      "role": "template-content",
+      "size": 1446,
+      "sha256": "629523fc77309e0ff430ca60c91467842795be3858795c4a52f4ac3b573cf798"
+    },
+    {
+      "path": "Templates/Template2/TemplateDefinition.json",
+      "role": "template-definition",
+      "size": 421,
+      "sha256": "3e2490d4d6366da5ca4ecd9af12fca242f2f377af8dba91c25bea70b5fa7f93c"
+    },
+    {
+      "path": "Templates/Template_7937f297_7b71_4830_8fa5_91e8ba586b36/Template.bin",
+      "role": "template-content",
+      "size": 3,
+      "sha256": "f1945cd6c19e56b3c1c78943ef5ec18116907a4ca1efc40a57d48ab1db7adfc5"
+    },
+    {
+      "path": "Templates/Template_7937f297_7b71_4830_8fa5_91e8ba586b36/TemplateDefinition.json",
+      "role": "template-definition",
+      "size": 457,
+      "sha256": "97d67a58ee967eff1e22333e6044409f22deab5de3ca9f023fd426058f203b6d"
+    },
+    {
+      "path": "Templates/Template_dc09fc43_3dc7_48ad_b69b_2681503366c6/Template.bin",
+      "role": "template-content",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Templates/Template_dc09fc43_3dc7_48ad_b69b_2681503366c6/TemplateDefinition.json",
+      "role": "template-definition",
+      "size": 457,
+      "sha256": "5067f12487424e4ef89320e575e77b9fdfdbc68e8abdcae6d6697b2834cb1af5"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "FORM_PROJECTION_UNSUPPORTED",
+      "severity": "warning",
+      "component": "Forms/0a4d3811-c3ab-4e8b-b826-6144d8606e9d",
+      "params": {
+        "alias": "MainForm",
+        "backend": "basic"
+      }
+    },
+    {
+      "code": "TEMPLATE_KIND_UNKNOWN",
+      "severity": "warning",
+      "component": "Templates/2b556694-58ba-41a0-84fe-7ea8313365ae",
+      "params": {
+        "templateTypeCode": 0
+      }
+    },
+    {
+      "code": "TEMPLATE_KIND_UNKNOWN",
+      "severity": "warning",
+      "component": "Templates/5c9d9f39-6dea-46b0-b5dd-d241d1da0366",
+      "params": {
+        "templateTypeCode": 6
+      }
+    },
+    {
+      "code": "TEMPLATE_KIND_UNKNOWN",
+      "severity": "warning",
+      "component": "Templates/7937f297-7b71-4830-8fa5-91e8ba586b36",
+      "params": {
+        "templateTypeCode": 4
+      }
+    },
+    {
+      "code": "TEMPLATE_KIND_UNKNOWN",
+      "severity": "warning",
+      "component": "Templates/dc09fc43-3dc7-48ad-b69b-2681503366c6",
+      "params": {
+        "templateTypeCode": 1
+      }
+    }
+  ]
+}

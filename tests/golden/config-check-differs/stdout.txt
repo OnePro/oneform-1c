@@ -1,0 +1,4 @@
+CommonForms/ОбщаяФорма: OK, 1 form, reference partial (1 warning)
+Documents/ДокументТест: DIFFERS, src differs from the current extraction (+0 ~1 -0)
+  update Forms/ФормаДокумента/FormModule.bsl
+Batch: 2 targets, 0 updated, 1 ok/unchanged, 1 differ, 0 planned, 0 skipped, 0 failed; exit 3

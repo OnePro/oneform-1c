@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "kind": "OrdinaryFormReference",
+  "formId": "0a4d3811-c3ab-4e8b-b826-6144d8606e9d",
+  "originalName": "Форма",
+  "synonym": "Форма",
+  "alias": "MainForm",
+  "isDefault": true,
+  "module": "FormModule.bsl",
+  "projection": {
+    "backend": "basic",
+    "status": "unsupported",
+    "referenceOnly": true,
+    "controlsKnown": false,
+    "unknownSections": [
+      "Attributes",
+      "Controls",
+      "Events"
+    ]
+  },
+  "attributes": null,
+  "events": null,
+  "controls": null,
+  "binaryEvidence": {
+    "path": "Reference/FormStream.bin",
+    "representation": "raw-stream",
+    "size": 115329,
+    "sha256": "0d601144a3b95def642e89bd9af4416811993a00d3cf5abb2e5d544b75faec7a"
+  },
+  "diagnostics": []
+}

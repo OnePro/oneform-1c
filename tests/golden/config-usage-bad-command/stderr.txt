@@ -1,0 +1,1 @@
+oneform: error: unknown command 'bogus'; expected one of extract, pack, preview, check

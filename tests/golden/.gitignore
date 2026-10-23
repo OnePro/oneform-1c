@@ -1,0 +1,5 @@
+# the corpus stores generated trees verbatim
+!.extract-work/
+!.oneform/
+!*.epf.bak
+!*.bin.bak

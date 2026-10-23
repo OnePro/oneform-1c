@@ -1,0 +1,4 @@
+Synth: FAILED, CONTAINER_LIMIT_EXCEEDED, existing src unchanged
+  inflated data exceeds limit
+  {"limit": "maxEntryMiB"}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

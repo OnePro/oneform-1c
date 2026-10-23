@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "objects": [
+    {
+      "id": "16a3885e-b44e-5260-bd58-5f8fc48143f0",
+      "name": "ОбщаяФорма",
+      "synonym": "ОбщаяФорма",
+      "className": "CommonForms",
+      "classTitle": "Общие формы",
+      "relPath": "CommonForms/ОбщаяФорма",
+      "objectModulePath": "",
+      "hasObjectModule": false,
+      "forms": [
+        {
+          "key": "9508aa119412",
+          "id": "16a3885e-b44e-5260-bd58-5f8fc48143f0",
+          "name": "ОбщаяФорма",
+          "alias": "ОбщаяФорма",
+          "synonym": "ОбщаяФорма",
+          "width": 937,
+          "height": 693,
+          "controlCount": 40,
+          "warningCount": 1,
+          "xmlPath": "CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма/Form.xml",
+          "modulePath": "CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма/FormModule.bsl",
+          "previewPath": "CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма/FormPreview.html",
+          "dataScript": "forms/9508aa119412.data.js"
+        }
+      ]
+    },
+    {
+      "id": "a63b4d77-d77e-5295-913d-cba0fe9ee943",
+      "name": "ДокументТест",
+      "synonym": "ДокументТест",
+      "className": "Documents",
+      "classTitle": "Документы",
+      "relPath": "Documents/ДокументТест",
+      "objectModulePath": "Documents/ДокументТест/Ext/ObjectModule.bsl",
+      "hasObjectModule": true,
+      "forms": [
+        {
+          "key": "9bf29573cc9a",
+          "id": "ebbb313d-e661-58e9-90b4-7eb9db4ad433",
+          "name": "ФормаДокумента",
+          "alias": "ФормаДокумента",
+          "synonym": "ФормаДокумента",
+          "width": 937,
+          "height": 693,
+          "controlCount": 40,
+          "warningCount": 1,
+          "xmlPath": "Documents/ДокументТест/src/Forms/ФормаДокумента/Form.xml",
+          "modulePath": "Documents/ДокументТест/src/Forms/ФормаДокумента/FormModule.bsl",
+          "previewPath": "Documents/ДокументТест/src/Forms/ФормаДокумента/FormPreview.html",
+          "dataScript": "forms/9bf29573cc9a.data.js"
+        }
+      ]
+    }
+  ],
+  "totalObjects": 2,
+  "totalForms": 2,
+  "totalWarnings": 2
+}

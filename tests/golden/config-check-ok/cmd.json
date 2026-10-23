@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "check",
+    ".",
+    "-j",
+    "1"
+  ],
+  "base": "config-extract",
+  "input_deleted": [],
+  "deleted": []
+}

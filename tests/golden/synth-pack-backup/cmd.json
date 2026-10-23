@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "epf",
+    "--pack",
+    "--root",
+    ".",
+    "--all",
+    "--form-backend",
+    "basic",
+    "--backup"
+  ],
+  "base": "synth-extract-basic",
+  "input_deleted": [],
+  "compare": "pack",
+  "deleted": []
+}

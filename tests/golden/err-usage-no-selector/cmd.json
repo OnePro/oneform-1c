@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "epf",
+    "--root",
+    "."
+  ],
+  "ignore": [
+    "stderr"
+  ],
+  "deleted": []
+}

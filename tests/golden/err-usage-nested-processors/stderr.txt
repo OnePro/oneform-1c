@@ -1,0 +1,1 @@
+epf-extract: error: CONFIG_INVALID: nested processors are not allowed {"child": "ExternalDataProcessors/Synth/Inner", "parent": "ExternalDataProcessors/Synth"}

@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "epf",
+    "props",
+    "Form.bin",
+    "--control",
+    "Кнопка1"
+  ],
+  "deleted": []
+}

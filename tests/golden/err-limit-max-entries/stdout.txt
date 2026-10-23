@@ -1,0 +1,4 @@
+Synth: FAILED, CONTAINER_LIMIT_EXCEEDED, existing src unchanged
+  too many entries
+  {"limit": "maxEntries"}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

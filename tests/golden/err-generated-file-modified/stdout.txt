@@ -1,0 +1,4 @@
+Synth: FAILED, GENERATED_FILE_MODIFIED, existing src unchanged
+  generated files were modified or removed; use --replace-generated
+  {"paths": ["ObjectModule.bsl"]}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

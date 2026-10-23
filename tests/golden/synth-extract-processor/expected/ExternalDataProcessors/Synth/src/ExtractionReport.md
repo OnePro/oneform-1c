@@ -1,0 +1,31 @@
+# Extraction report
+
+- Status: `partial-reference`
+- Code complete: yes
+- Source: "Proc.epf" (sha256 `6a21447350a5f88d0450d04a3a0e2ee9302aa3e20e89d8c4f88183e6df959d18`)
+- Processor: "Obj" (`710723d8-83e7-48ae-9996-7a45571ed0df`)
+
+## Counts
+
+- Object module: extracted
+- Forms: 1
+- Templates: 1
+- Warnings: 2
+
+## Forms
+
+- `Form_47200e71_ce18_488c_9d4a_169dd6066884` "Form" (`47200e71-ce18-488c-9d4a-169dd6066884`): module extracted, layout unsupported (basic)
+
+## Templates
+
+- `Template_68b792c0_6443_4ad3_86cf_adadc7d25135` "Tmpl" (`68b792c0-6443-4ad3-86cf-adadc7d25135`): HTMLDocument, extracted
+
+## Warnings
+
+- `FORM_PROJECTION_UNSUPPORTED` in `Forms/47200e71-ce18-488c-9d4a-169dd6066884`: {"alias": "Form_47200e71_ce18_488c_9d4a_169dd6066884", "backend": "basic"}
+- `FORM_XML_EXTRACTION_FAILED` in `Forms/47200e71-ce18-488c-9d4a-169dd6066884`: {"alias": "Form_47200e71_ce18_488c_9d4a_169dd6066884", "backend": "oof", "reason": "value outside of the root list"}
+
+## Notes
+
+- Form layouts are reference-only: the basic backend does not decode controls, attributes or events. The raw form stream is kept as binary evidence.
+- The EPF is the single source of truth. `src/` is a derived projection for review; change the processor, save the EPF and extract again.

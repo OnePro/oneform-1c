@@ -1,0 +1,4 @@
+Synth: FAILED, PAYLOAD_MISSING, existing src unchanged
+  expected src file is missing
+  {"paths": ["Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormModule.bsl"]}
+Batch: 0 packed, 0 updated, 0 unchanged, 1 failed; exit 1

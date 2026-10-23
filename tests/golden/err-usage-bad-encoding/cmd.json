@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "epf",
+    "--root",
+    ".",
+    "--all",
+    "--encoding",
+    "Bogus=utf-8"
+  ],
+  "deleted": []
+}

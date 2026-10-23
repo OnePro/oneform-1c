@@ -1,0 +1,37 @@
+[package]
+name = "oneform"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+description = "Single-binary extractor, 1:1 HTML previewer, and packer for 1C 8.2/8.3 ordinary forms and external processors"
+license = "MIT"
+repository = "https://github.com/OnePro/oneform-1c"
+
+[[bin]]
+name = "oneform"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+rayon = "1"
+indicatif = "0.17"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+base64 = "0.22"
+encoding_rs = "0.8"
+uuid = { version = "1", features = ["v5"] }
+roxmltree = "0.20"
+regex = "1"
+
+[dev-dependencies]
+similar = "2"
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"

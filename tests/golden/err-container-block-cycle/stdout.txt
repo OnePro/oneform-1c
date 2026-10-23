@@ -1,0 +1,4 @@
+Synth: FAILED, CONTAINER_CYCLE, existing src unchanged
+  block chain revisits a block
+  {"offset": 114}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

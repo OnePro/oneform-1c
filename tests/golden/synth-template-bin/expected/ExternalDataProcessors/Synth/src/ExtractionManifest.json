@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "generator": {
+    "name": "epf-source-extractor",
+    "version": "0.1.0",
+    "outputSchemaVersion": 1
+  },
+  "source": {
+    "epf": "Proc.epf",
+    "size": 7017,
+    "sha256": "ac840e1875a04d3331f873c73871ca806aaed446a88d31a7fc72033cf1623fae",
+    "processorId": "710723d8-83e7-48ae-9996-7a45571ed0df",
+    "processorName": "Obj"
+  },
+  "configuration": {
+    "effectiveConfigSha256": "765c2bd0d591254b69123a070be3666e36c337730ffba91d5b580c8135a0a817"
+  },
+  "tools": {
+    "lockSha256": "df4158918cf5089c9180188043b8cd81f8cc478f0e097f9b2d390f29d1396e7f",
+    "containerBackend": {
+      "name": "epf_extract.adapters.container",
+      "kind": "builtin-bounded-reader"
+    },
+    "formBackend": "basic"
+  },
+  "status": "partial-reference",
+  "codeComplete": true,
+  "objectModule": {
+    "state": "extracted",
+    "path": "ObjectModule.bsl",
+    "sourceLocator": "container:0/entry:710723d8-83e7-48ae-9996-7a45571ed0df.0/entry:text",
+    "sourceSha256": "511d3f7d80f4ec9b215715f20a54041183c090883d7a22b5bb0b8029ac07324e",
+    "outputSha256": "efecc96bede6c7f05b78cbefc2c65b257b3facd20d97d96092e09c2099c567cc",
+    "encoding": {
+      "codec": "utf-8",
+      "bomHex": "efbbbf",
+      "decision": "bom",
+      "byteRoundTrip": true
+    },
+    "newlines": {
+      "kind": "none",
+      "counts": {
+        "CRLF": 0,
+        "LF": 0,
+        "CR": 0
+      },
+      "finalNewline": false
+    }
+  },
+  "forms": [
+    {
+      "id": "47200e71-ce18-488c-9d4a-169dd6066884",
+      "originalName": "Form",
+      "synonym": "Syn",
+      "alias": "Form_47200e71_ce18_488c_9d4a_169dd6066884",
+      "kind": "OrdinaryForm",
+      "isDefault": true,
+      "definition": "Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormDefinition.json",
+      "module": {
+        "state": "extracted",
+        "path": "Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormModule.bsl",
+        "sourceLocator": "container:0/entry:47200e71-ce18-488c-9d4a-169dd6066884.0/entry:module",
+        "sourceSha256": "cbaf23412a277af10d87c10d1efcfaf0c0ca85d44097973ffd6e388b355328b4",
+        "outputSha256": "2b10802de1087937085da3d40b2f93978c2865d6a64e6a70835ac5c9700dc967",
+        "encoding": {
+          "codec": "utf-8",
+          "bomHex": "efbbbf",
+          "decision": "bom",
+          "byteRoundTrip": true
+        },
+        "newlines": {
+          "kind": "none",
+          "counts": {
+            "CRLF": 0,
+            "LF": 0,
+            "CR": 0
+          },
+          "finalNewline": false
+        }
+      },
+      "layout": {
+        "backend": "basic",
+        "status": "unsupported",
+        "binary": {
+          "path": "Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/Reference/FormStream.bin",
+          "representation": "raw-stream",
+          "sourceLocator": "container:0/entry:47200e71-ce18-488c-9d4a-169dd6066884.0/entry:form",
+          "sourceSha256": "1dc5ae5b68174891b6aa9850aa05ee0d9ae8a20468d9517259951a2dd9e9c0f0",
+          "size": 6
+        }
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "68b792c0-6443-4ad3-86cf-adadc7d25135",
+      "originalName": "Tmpl",
+      "synonym": "Syn",
+      "alias": "Template_68b792c0_6443_4ad3_86cf_adadc7d25135",
+      "templateType": "Unknown",
+      "templateTypeCode": 3,
+      "status": "reference-only",
+      "definition": "Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/TemplateDefinition.json",
+      "content": {
+        "path": "Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/Template.bin",
+        "sourceLocator": "container:0/entry:68b792c0-6443-4ad3-86cf-adadc7d25135.0",
+        "sourceSha256": "f8c1ccc7df7243da4740c5b7875f88b70e3f935d99c7b37a5f7239d152d994e6",
+        "outputSha256": "f8c1ccc7df7243da4740c5b7875f88b70e3f935d99c7b37a5f7239d152d994e6",
+        "contentKnown": false
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "ExtractionReport.md",
+      "role": "report",
+      "size": 1174,
+      "sha256": "64192cdce580132c819d0fe87d162c3e0f040cce9efb0111f5083f565bc98b67"
+    },
+    {
+      "path": "Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormDefinition.json",
+      "role": "form-definition",
+      "size": 760,
+      "sha256": "90e2351330cd17353f41d2a5387b022a839176c6ce4373bc6834f4a479382dd1"
+    },
+    {
+      "path": "Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormModule.bsl",
+      "role": "form-module",
+      "size": 10,
+      "sha256": "2b10802de1087937085da3d40b2f93978c2865d6a64e6a70835ac5c9700dc967"
+    },
+    {
+      "path": "Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/Reference/FormStream.bin",
+      "role": "form-binary",
+      "size": 6,
+      "sha256": "1dc5ae5b68174891b6aa9850aa05ee0d9ae8a20468d9517259951a2dd9e9c0f0"
+    },
+    {
+      "path": "ObjectModule.bsl",
+      "role": "object-module",
+      "size": 9,
+      "sha256": "efecc96bede6c7f05b78cbefc2c65b257b3facd20d97d96092e09c2099c567cc"
+    },
+    {
+      "path": "Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/Template.bin",
+      "role": "template-content",
+      "size": 8,
+      "sha256": "f8c1ccc7df7243da4740c5b7875f88b70e3f935d99c7b37a5f7239d152d994e6"
+    },
+    {
+      "path": "Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/TemplateDefinition.json",
+      "role": "template-definition",
+      "size": 442,
+      "sha256": "f430752ce3213d244f5cbdf04d247958fbb8b9b2d9634390a3f4ecdf10e195cd"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "FORM_PROJECTION_UNSUPPORTED",
+      "severity": "warning",
+      "component": "Forms/47200e71-ce18-488c-9d4a-169dd6066884",
+      "params": {
+        "alias": "Form_47200e71_ce18_488c_9d4a_169dd6066884",
+        "backend": "basic"
+      }
+    },
+    {
+      "code": "TEMPLATE_LAYOUT_UNSUPPORTED",
+      "severity": "warning",
+      "component": "Templates/68b792c0-6443-4ad3-86cf-adadc7d25135",
+      "params": {
+        "templateTypeCode": 3
+      }
+    }
+  ]
+}

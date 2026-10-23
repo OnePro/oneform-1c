@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "epf",
+    "props",
+    "a.bin",
+    "--control",
+    "Кнопка1",
+    "--diff",
+    "b.bin"
+  ],
+  "base": "props-control",
+  "input_deleted": [],
+  "deleted": []
+}

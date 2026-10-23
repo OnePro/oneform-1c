@@ -1,0 +1,3 @@
+Synth: UPDATED, code complete, 1 form, 1 template, reference partial (1 warning)
+Note: one-off CLI overrides were used (ObjectModule=utf-8); they are not saved. Move accepted values to the processor extraction.json (encodingOverrides) so the next run and --check reproduce this result.
+Batch: 1 updated, 0 unchanged, 0 failed; exit 0

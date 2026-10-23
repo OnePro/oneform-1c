@@ -1,0 +1,2 @@
+Synth: UPDATED, code complete, 1 form, 1 template, reference partial (1 warning)
+Batch: 1 updated, 0 unchanged, 0 failed; exit 0

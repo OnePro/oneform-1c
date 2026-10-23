@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "epf",
+    "props",
+    "a.bin",
+    "--control",
+    "Нет"
+  ],
+  "base": "props-control",
+  "input_deleted": [],
+  "deleted": []
+}

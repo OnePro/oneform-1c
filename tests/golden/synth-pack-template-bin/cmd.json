@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "epf",
+    "--pack",
+    "--root",
+    ".",
+    "--all",
+    "--form-backend",
+    "basic"
+  ],
+  "base": "synth-template-bin",
+  "input_deleted": [],
+  "compare": "pack",
+  "deleted": []
+}

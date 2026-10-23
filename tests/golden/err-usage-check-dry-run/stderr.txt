@@ -1,0 +1,7 @@
+usage: epf-extract [-h] [--version] [--root PATH] (--processor PATH | --all)
+                   [--check | --dry-run] [--pack] [--backup | --no-backup]
+                   [--encoding KEY=CODEC]
+                   [--form-backend {basic,v8unpack-json,oof}] [--form-xml]
+                   [--oof-path PATH] [--keep-work] [--replace-generated]
+                   [--report-json PATH]
+epf-extract: error: argument --dry-run: not allowed with argument --check

@@ -1,0 +1,10 @@
+Synth: WOULD UPDATE (+8 ~0 -0)
+  add ExtractionManifest.json
+  add ExtractionReport.md
+  add Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormDefinition.json
+  add Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/FormModule.bsl
+  add Forms/Form_47200e71_ce18_488c_9d4a_169dd6066884/Reference/FormStream.bin
+  add ObjectModule.bsl
+  add Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/Template.html
+  add Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/TemplateDefinition.json
+Batch: 1 would update, 0 unchanged, 0 failed; exit 0

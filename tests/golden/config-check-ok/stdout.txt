@@ -1,0 +1,3 @@
+CommonForms/ОбщаяФорма: OK, 1 form, reference partial (1 warning)
+Documents/ДокументТест: OK, 1 form, reference partial (1 warning)
+Batch: 2 targets, 0 updated, 2 ok/unchanged, 0 differ, 0 planned, 0 skipped, 0 failed; exit 0

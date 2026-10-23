@@ -1,0 +1,4 @@
+Synth: FAILED, CONTAINER_CORRUPT, existing src unchanged
+  truncated block data
+  {"offset": 2197}
+Batch: 0 updated, 0 unchanged, 1 failed; exit 1

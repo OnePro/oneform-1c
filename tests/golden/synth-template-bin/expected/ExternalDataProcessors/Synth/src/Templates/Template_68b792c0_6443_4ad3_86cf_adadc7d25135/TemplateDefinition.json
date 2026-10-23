@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "TemplateReference",
+  "templateId": "68b792c0-6443-4ad3-86cf-adadc7d25135",
+  "originalName": "Tmpl",
+  "synonym": "Syn",
+  "alias": "Template_68b792c0_6443_4ad3_86cf_adadc7d25135",
+  "templateType": "Unknown",
+  "templateTypeCode": 3,
+  "content": "Template.bin",
+  "contentKnown": false,
+  "status": "reference-only",
+  "sourceSha256": "f8c1ccc7df7243da4740c5b7875f88b70e3f935d99c7b37a5f7239d152d994e6"
+}

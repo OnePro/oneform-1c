@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "generator": {
+    "name": "oneform",
+    "version": "0.1.0",
+    "outputSchemaVersion": 1
+  },
+  "source": {
+    "kind": "config-object",
+    "objectClass": "Documents",
+    "processorId": "a63b4d77-d77e-5295-913d-cba0fe9ee943",
+    "processorName": "ДокументТест",
+    "objectSynonym": "ДокументТест",
+    "forms": {
+      "ФормаДокумента": {
+        "binPath": "Forms/ФормаДокумента/Ext/Form.bin",
+        "size": 116592,
+        "sha256": "27f7f88fe05de84cf0a8d17d91b5970206d7ab9b48fc843f99a6f2a63d24e552"
+      }
+    }
+  },
+  "status": "partial-reference",
+  "codeComplete": true,
+  "objectModule": {
+    "state": "referenced",
+    "path": "../Ext/ObjectModule.bsl",
+    "sourceSha256": "f77354a92e0de0c8e3adc82d1ace223fc9fe3ef59c2007776d2548d5658a5e5c"
+  },
+  "forms": [
+    {
+      "id": "ebbb313d-e661-58e9-90b4-7eb9db4ad433",
+      "originalName": "ФормаДокумента",
+      "synonym": "ФормаДокумента",
+      "alias": "ФормаДокумента",
+      "kind": "OrdinaryForm",
+      "formType": "Ordinary",
+      "isDefault": false,
+      "definition": "Forms/ФормаДокумента/FormDefinition.json",
+      "module": {
+        "state": "extracted",
+        "path": "Forms/ФормаДокумента/FormModule.bsl",
+        "sourceLocator": "Forms/ФормаДокумента/Ext/Form.bin#module",
+        "sourceSha256": "473a4acb1f163945618bbe557f642b551cc0cc5ee5d7d99da0ca2fc423b3ebf0",
+        "outputSha256": "e31ad2b09c2521f7d47dbad4ec41dc77a7a9c4deb7b9a13b1039f506eb409637",
+        "encoding": {
+          "codec": "utf-8",
+          "bomHex": "efbbbf",
+          "decision": "bom",
+          "byteRoundTrip": true
+        },
+        "newlines": {
+          "kind": "CRLF",
+          "counts": {
+            "CRLF": 2,
+            "LF": 0,
+            "CR": 0
+          },
+          "finalNewline": true
+        }
+      },
+      "layout": {
+        "backend": "oof",
+        "status": "partial",
+        "binary": {
+          "path": "Forms/ФормаДокумента/Reference/FormStream.bin",
+          "representation": "raw-stream",
+          "sourceLocator": "Forms/ФормаДокумента/Ext/Form.bin#form",
+          "sourceSha256": "0d601144a3b95def642e89bd9af4416811993a00d3cf5abb2e5d544b75faec7a",
+          "size": 115329
+        },
+        "xml": "Forms/ФормаДокумента/Form.xml",
+        "preview": "Forms/ФормаДокумента/FormPreview.html"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "ExtractionReport.md",
+      "role": "report",
+      "size": 589,
+      "sha256": "652c6a73b9b55cc29e60ce39ec848a362caa8da9443be3fb4cfa631a35b43406"
+    },
+    {
+      "path": "Forms/ФормаДокумента/Form.xml",
+      "role": "form-xml",
+      "size": 32253,
+      "sha256": "587277b36fb3fc3dbe75da8ff0eeb7b0579211b127a7c61a6724c826a3f3a36e"
+    },
+    {
+      "path": "Forms/ФормаДокумента/FormDefinition.json",
+      "role": "form-definition",
+      "size": 44394,
+      "sha256": "7628ef1488a6cc7cee2c5a2dae3050c092d71b10243c61afe729ac2011b11766"
+    },
+    {
+      "path": "Forms/ФормаДокумента/FormModule.bsl",
+      "role": "form-module",
+      "size": 73,
+      "sha256": "e31ad2b09c2521f7d47dbad4ec41dc77a7a9c4deb7b9a13b1039f506eb409637"
+    },
+    {
+      "path": "Forms/ФормаДокумента/FormPreview.html",
+      "role": "form-preview",
+      "size": 239051,
+      "sha256": "af0426a0cc0a29b75c4ff5b6e0dc3c5f4bd73d25c14d3bd845672f3561d2d822"
+    },
+    {
+      "path": "Forms/ФормаДокумента/Reference/FormStream.bin",
+      "role": "form-binary",
+      "size": 115329,
+      "sha256": "0d601144a3b95def642e89bd9af4416811993a00d3cf5abb2e5d544b75faec7a"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "FORM_PROJECTION_INCOMPLETE",
+      "severity": "warning",
+      "component": "Forms/ebbb313d-e661-58e9-90b4-7eb9db4ad433",
+      "params": {
+        "alias": "ФормаДокумента",
+        "backend": "oof"
+      }
+    }
+  ]
+}

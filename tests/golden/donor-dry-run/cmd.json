@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "epf",
+    "--root",
+    ".",
+    "--all",
+    "--dry-run"
+  ],
+  "deleted": []
+}

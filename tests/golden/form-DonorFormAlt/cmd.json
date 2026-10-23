@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "extract",
+    ".",
+    "-j",
+    "1"
+  ],
+  "only": [
+    "/Form.xml"
+  ],
+  "deleted": []
+}
