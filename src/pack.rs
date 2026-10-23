@@ -1,5 +1,6 @@
 //! Repacking of edited `src/` files into the EPF (the inverse of extraction; port of `pack.py`).
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::Write;
@@ -9,6 +10,7 @@ use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine;
 use serde_json::Value;
 
+use crate::brace::parse_spanned;
 use crate::canonical::sha256_hex;
 use crate::config::{effective_config, load_json_bytes};
 use crate::container::{deflate, inflate, parse_container, serialize_container, EntryOut, Limits};
@@ -17,6 +19,7 @@ use crate::errors::{
     ExtractionError, Result, ENCODING_INVALID, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
     PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
+use crate::form_patch::{diff_forms, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
 use crate::manifest::MANIFEST_PATH;
 use crate::metadata::discover;
 use crate::stage::{stage_processor, ExtractionResult, StageOpts};
@@ -30,6 +33,106 @@ pub const PACK_SRC_ONLY: &str = "SRC_REFRESHED";
 const UTF8_BOM: [u8; 3] = [0xef, 0xbb, 0xbf];
 const BASE64_MARK: &[u8] = b"{#base64:";
 pub const READ_ONLY_ROLES: [&str; 2] = ["form-definition", "template-definition"];
+
+type PatchHook = Box<dyn FnMut(&mut PatchedForm)>;
+
+thread_local! {
+    static PATCH_HOOK: RefCell<Option<PatchHook>> = const { RefCell::new(None) };
+}
+
+/// Test hook: may alter the planned form patch of the current thread before it is staged, to simulate a planner
+/// defect that the staged verification must catch (`None` removes it).
+pub fn set_patch_hook(hook: Option<PatchHook>) {
+    PATCH_HOOK.with(|h| *h.borrow_mut() = hook);
+}
+
+/// A supported `Form.xml` edit of one form, planned against its original `Reference/FormStream.bin`.
+#[derive(Debug, Clone)]
+pub struct LayoutPatch {
+    /// Edited `Form.xml` (src-relative); the only file reported as packed for this edit.
+    pub xml_path: String,
+    /// `Reference/FormStream.bin` (src-relative) that receives the patched stream.
+    pub stream_path: String,
+    /// Uncompressed stream as extracted from the target.
+    pub original: Vec<u8>,
+    pub patched: PatchedForm,
+    /// The user's edited `Form.xml`, parsed.
+    pub requested: FormXml,
+}
+
+/// Plan the edit of one form's `Form.xml` (`layout` is the form's manifest `layout` record). `existing` is the
+/// edited `src`, `current` the extraction of the unmodified target. `None` means "no layout edit": the XML is
+/// unchanged or differs only in formatting. Unsupported differences, simultaneous independent `FormStream.bin`
+/// and XML layout edits and failed patch verification are errors; nothing is written.
+pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Result<Option<LayoutPatch>> {
+    let Some(xml_path) = layout["xml"].as_str() else { return Ok(None) };
+    let stream_path = layout["binary"]["path"].as_str().unwrap_or("");
+    let (Some(edited), Some(baseline)) = (existing.get(xml_path), current.get(xml_path)) else { return Ok(None) };
+    if edited == baseline {
+        return Ok(None);
+    }
+    let original = current.get(stream_path).ok_or_else(|| {
+        ExtractionError::new(PAYLOAD_MISSING, "form stream of the edited Form.xml is missing").with("path", stream_path)
+    })?;
+    let source = parse_spanned(original).map_err(|e| e.with("path", stream_path))?;
+    let plan = plan_form_patch(&source, baseline, edited).map_err(|e| e.with("path", xml_path))?;
+    if plan.is_empty() {
+        return Ok(None);
+    }
+    if existing.get(stream_path) != Some(original) {
+        return Err(ExtractionError::new(
+            GENERATED_FILE_MODIFIED,
+            format!(
+                "{xml_path} layout edits and independent {stream_path} edits cannot be combined: it is ambiguous which one wins; edit only one of them"
+            ),
+        )
+        .with("kind", "ambiguous-layout-edit")
+        .with("paths", Value::Array(vec![Value::from(xml_path), Value::from(stream_path)])));
+    }
+    let mut patched = plan.apply().map_err(|e| e.with("path", xml_path))?;
+    PATCH_HOOK.with(|h| {
+        if let Some(f) = h.borrow_mut().as_mut() {
+            f(&mut patched);
+        }
+    });
+    let requested = parse_form_xml(edited, "edited").map_err(|e| e.with("path", xml_path))?;
+    Ok(Some(LayoutPatch {
+        xml_path: xml_path.to_string(),
+        stream_path: stream_path.to_string(),
+        original: original.clone(),
+        patched,
+        requested,
+    }))
+}
+
+impl LayoutPatch {
+    /// Verify the normally staged result before anything is published: the staged stream is the original with
+    /// exactly the authorized replacements, and the `Form.xml` the normal decoder produces from it holds every
+    /// requested edit (with the derived panel pages and decoder control order) and nothing else.
+    pub fn verify_staged(&self, staged: &Tree) -> Result<()> {
+        let fail = |message: &str| {
+            ExtractionError::new(PUBLISH_VERIFY_FAILED, message.to_string()).with("path", self.xml_path.as_str())
+        };
+        let stream = staged.get(&self.stream_path).ok_or_else(|| fail("staged form stream is missing"))?;
+        verify_preserved(&self.original, stream, &self.patched.replacements).map_err(|e| {
+            fail("staged form stream differs from the original outside the authorized ranges")
+                .with("kind", "unauthorized-stream-change")
+                .with("error", e.message)
+        })?;
+        let xml = staged.get(&self.xml_path).ok_or_else(|| fail("staged Form.xml is missing"))?;
+        let decoded =
+            parse_form_xml(xml, "packed").map_err(|e| fail("staged Form.xml cannot be read").with("error", e.message))?;
+        let expected = self.requested.with_derived_pages(&self.patched.derived_pages).in_decoder_order();
+        match diff_forms(&expected, &decoded) {
+            Ok(d) if d.is_empty() => Ok(()),
+            Ok(_) => Err(fail("packed form does not reproduce the requested Form.xml").with("kind", "xml-mismatch")),
+            Err(e) => Err(fail("packed form does not reproduce the requested Form.xml")
+                .with("kind", "xml-mismatch")
+                .with("error", e.message)
+                .with("problems", e.params.get("problems").cloned().unwrap_or(Value::Null))),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct PackPlan {
@@ -212,11 +315,11 @@ pub fn stage_pack(
         )
         .with("paths", Value::Array(paths)));
     }
-
     let mut top: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut inner: BTreeMap<String, BTreeMap<String, Vec<u8>>> = BTreeMap::new();
     let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut packed: BTreeSet<String> = BTreeSet::new();
+    let mut layouts: Vec<LayoutPatch> = Vec::new();
 
     fn text_change(
         path: &str,
@@ -267,7 +370,12 @@ pub fn stage_pack(
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("module".into(), payload);
         }
         let bin_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
-        if let Some(payload) = binary_change(bin_path, existing_src, &current.files, &mut packed, &mut expected) {
+        if let Some(lp) = plan_layout_patch(&rec["layout"], existing_src, &current.files)? {
+            inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), lp.patched.bytes.clone());
+            expected.insert(bin_path.to_string(), lp.patched.bytes.clone());
+            packed.insert(lp.xml_path.clone());
+            layouts.push(lp);
+        } else if let Some(payload) = binary_change(bin_path, existing_src, &current.files, &mut packed, &mut expected) {
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), payload);
         }
     }
@@ -329,6 +437,9 @@ pub fn stage_pack(
     if !wrong.is_empty() {
         return Err(ExtractionError::new(PUBLISH_VERIFY_FAILED, "packed EPF does not reproduce the edited files")
             .with("paths", Value::Array(wrong)));
+    }
+    for lp in &layouts {
+        lp.verify_staged(&new.files)?;
     }
     Ok(PackPlan {
         status: PACK_PACKED,

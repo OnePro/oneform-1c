@@ -26,7 +26,7 @@ use crate::manifest::{module_record, sort_diagnostics, GENERATOR_VERSION, MANIFE
 use crate::metadata::{FormInfo, Payload};
 use crate::naming::{is_uuid, resolve_1c_aliases, safe_join};
 use crate::oof::{apply_projection, build_oof, MetaLookup, FORM_XML_NAME};
-use crate::pack::{atomic_write, encode_text, PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES};
+use crate::pack::{atomic_write, encode_text, plan_layout_patch, LayoutPatch, PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES};
 use crate::preview::{render_form_preview_html, FORM_PREVIEW_NAME};
 use crate::stage::{ExtractionResult, STATUS_PARTIAL};
 use crate::transaction::{
@@ -797,12 +797,12 @@ pub fn stage_config_pack(
         )
         .with("paths", paths_value(readonly)));
     }
-
     let name_of_bin: HashMap<String, &String> = obj.forms.iter().map(|n| (form_bin_rel(obj, n), n)).collect();
     // form name -> [(entry, data)] in insertion order
     let mut edits: BTreeMap<&str, Vec<(&str, Vec<u8>)>> = BTreeMap::new();
     let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut packed: Vec<String> = Vec::new();
+    let mut layouts: Vec<LayoutPatch> = Vec::new();
     for rec in cur["forms"].as_array().map(Vec::as_slice).unwrap_or_default() {
         let alias = rec["alias"].as_str().unwrap_or("");
         let bin = cur["source"]["forms"][alias]["binPath"].as_str().unwrap_or("");
@@ -818,7 +818,12 @@ pub fn stage_config_pack(
         }
         let stream_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
         let ex_stream = existing_file(existing, stream_path)?;
-        if Some(ex_stream) != current.files.get(stream_path) {
+        if let Some(lp) = plan_layout_patch(&rec["layout"], existing, &current.files)? {
+            edits.entry(name.as_str()).or_default().push(("form", lp.patched.bytes.clone()));
+            expected.insert(stream_path.to_string(), lp.patched.bytes.clone());
+            packed.push(lp.xml_path.clone());
+            layouts.push(lp);
+        } else if Some(ex_stream) != current.files.get(stream_path) {
             edits.entry(name.as_str()).or_default().push(("form", ex_stream.clone()));
             expected.insert(stream_path.to_string(), ex_stream.clone());
             packed.push(stream_path.to_string());
@@ -848,6 +853,9 @@ pub fn stage_config_pack(
     if !wrong.is_empty() {
         return Err(ExtractionError::new(PUBLISH_VERIFY_FAILED, "packed Form.bin does not reproduce the edited files")
             .with("paths", paths_value(wrong)));
+    }
+    for lp in &layouts {
+        lp.verify_staged(&new.files)?;
     }
     packed.sort();
     Ok(ConfigPackPlan { status: PACK_PACKED, packed_paths: packed, new_sources, result: new, existing: existing.clone() })

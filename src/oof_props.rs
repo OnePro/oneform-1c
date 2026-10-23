@@ -489,14 +489,19 @@ fn std_element(code: i64) -> Option<&'static str> {
     })
 }
 
+/// Path of the localized caption inside the info node for types with a known location.
+pub fn caption_path(type_name: Option<&str>) -> Option<&'static [i64]> {
+    match type_name.unwrap_or("") {
+        "LabelDecoration" | "UsualGroup" => Some(&[1, 2]),
+        "CheckBox" => Some(&[1, 0, 2]),
+        "RadioButton" => Some(&[2, 0, 2]),
+        _ => None,
+    }
+}
+
 /// The caption of types with a known location (empty when blank); `None` to let the caller guess.
 pub fn control_caption(type_name: Option<&str>, info: &Node) -> Result<Option<Vec<(String, String)>>, OofError> {
-    let path: &[i64] = match type_name.unwrap_or("") {
-        "LabelDecoration" | "UsualGroup" => &[1, 2],
-        "CheckBox" => &[1, 0, 2],
-        "RadioButton" => &[2, 0, 2],
-        _ => return Ok(None),
-    };
+    let Some(path) = caption_path(type_name) else { return Ok(None) };
     Ok(Some(localized(at_n(info, path)?).unwrap_or_default()))
 }
 
