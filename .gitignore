@@ -1,6 +1,10 @@
+
 /target/
 /.extract-work/
 /.oneform/
 *.epf.bak
 *.erf.bak
 *.bin.bak
+openspec/
+
+pi-session-*
