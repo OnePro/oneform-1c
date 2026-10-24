@@ -76,7 +76,7 @@
 | Все элементы | `ПорядокОбхода` (`TabOrder`) | `<TabOrder>` | `geom[22]` | 🟢 R/W | Полная поддержка чтения и записи |
 | Дети `Panel` | Индекс страницы панели | Вложенность в `<Page>` | `geom[19]` | 🟢 R/W | Новые контролы внутри `<Page>` получают правильный индекс страницы |
 | Все элементы | **Привязки границ (`Anchors`)** | `<Anchors left="..." top="..." right="..." bottom="..."/>` | `geom[6..9]` (`{0,{2,target,side,offset},...}`) | 🟢 R/W | Патчится для существующих и добавляемых из донора элементов (`Left`/`Top`/`Right`/`Bottom`/`None`, per-edge `*Target`/`*Offset`) |
-| Все элементы | `АвтоПорядокОбхода` / `ПропускПриВводе` | *(не выводится)* | `geom[20..24]` / `info` | ⚪ Unk | Кандидаты в хвосте `geom` (`geom[20]`, `geom[23]`, `geom[24]`) |
+| Все элементы | **`ИзменяетДанные`, `ПропускатьПриВводе`, `ПервыйВГруппе`** | `<ModifiesData>`, `<SkipOnInput>`, `<FirstInGroup>` | `meta[3]`, `meta[4]`, `meta[5]` (`0/1`) | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` (`inp7-m3..m5`); патчатся на всех типах контролов |
 
 ### 3.2. Идентификация, Заголовок и События
 
@@ -122,8 +122,11 @@
 | `InputField` | **`ВертикальнаяПолосаПрокрутки`** | `<VerticalScrollBar>` | **`info[2][0][3]`** (`0`=DontUse, `1`=Use, `2`=Auto) | 🟢 R/W | Полный цикл чтения и записи (`inputfield-flag-01`) |
 | `InputField` | **`АвтоПереносСтрок` (`AutoCellHeight`)** | `<AutoCellHeight>` | **`info[2][0][4]`** (`0/1`) | 🟢 R/W | Патчится при указании в `Form.xml` (`inputfield-flag-02`) |
 | `InputField` | **`РежимВыбораИзСписка` (`ChoiceListMode`)** | `<ChoiceListMode>` | **`info[9]`** (`0/1`) | 🟢 R/W | Полный цикл чтения и записи (`inputfield-tail-09`) |
-| `InputField` | **Тип значения (`ValueType`)** | `<ValueType kind="..." ref="..." length="..." digits="..."/>` | `info[1]` (`{"Pattern", ...}`) | 🟢 R/W | Полный цикл чтения и записи паттерна типа (примитивные типы, `ValueList`, `ValueTable`, конкретные ссылки `Ref` на объекты метаданных через `ConfigDumpInfo.xml`, составные типы и квалификаторы длины/разрядности) |
-| `InputField` | `РежимПароля`, `МногострочныйРежим`, `Маска` | *(не выводится)* | Внутри `info[2][0][11..41]` | ⚪ Unk | Зависят от строкового типа значения; нужен прогон на строковом `ПолеВвода` |
+| `InputField` | **Тип значения (`ValueType`)** | `<ValueType kind="..." ref="..." length="..." digits="..."/>` | `info[1]` (`{"Pattern", ...}`) | 🟢 R/W | Полный цикл чтения и записи паттерна типа (примитивные типы, `ValueList`, `ValueTable`, конкретные ссылки `Ref` на объекты метаданных, составные типы и квалификаторы длины/разрядности) |
+| `InputField` | **`МногострочныйРежим`, `РежимПароля`, `РасширенноеРедактирование`, `Маска`** | `<MultiLine>`, `<PasswordMode>`, `<ExtendedEdit>`, `<Mask>` | `info[3]` (`9a7643d2-...` `[3..6]`) + `info[2][0][26,5,24,21]` | 🟢 R/W | Двойная запись в строковое расширение `9a7643d2` и зеркало `info[2][0]` (`inp7-i3-ml/pw/ext/mask`) |
+| `InputField` | **`ВыбиратьТип` (`ChooseType`), `РедактированиеТекста` (`TextEdit`)** | `<ChooseType>`, `<TextEdit>` | `info[6]` (`1/0`), `info[5]` + `info[2][0][12]` (`0/1` инверт.) | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` (`inp7-i06`, `inp7-i05`) |
+| `InputField` | **Выравнивание текста (`HorizontalAlign`, `VerticalAlign`)** | `<HorizontalAlign>`, `<VerticalAlign>` | `info[2][0][17]` (`0,1,2,4`), `info[2][0][18]` (`0,1,2`) | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` (`inp1-q17`, `inp7-q18`) |
+| `InputField` | **`СвязьПоТипу` (`TypeLink`)** | `<TypeLink attributeId="..." [fieldGuid="..."]>` | `info[8]` (`{1,1,{0,c866d8e7-...,{2,1..2,...}}}`) | 🟢 R/W | Каноническая привязка по `attributeId` и `fieldGuid` |
 
 ### 4.2. Надпись (`LabelDecoration`), Флажок (`CheckBox`), Группа (`UsualGroup`), Поле выбора (`ChoiceField`)
 

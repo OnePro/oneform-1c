@@ -1274,3 +1274,47 @@ fn epf_anchors_pack() {
 fn config_anchors_pack() {
     assert_anchors_pack(Target::Config);
 }
+
+fn assert_inputfield_flags_and_typelink_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let stream_file = w.src_file("FormStream.bin");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    xml = xml
+        .replacen(
+            "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <ChoiceButton>false</ChoiceButton>\n          <ClearButton>false</ClearButton>\n          <OpenButton>false</OpenButton>",
+            "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <ChoiceButton>false</ChoiceButton>\n          <ClearButton>false</ClearButton>\n          <OpenButton>false</OpenButton>\n          <ModifiesData>true</ModifiesData>\n          <SkipOnInput>true</SkipOnInput>\n          <FirstInGroup>true</FirstInGroup>\n          <MultiLine>true</MultiLine>\n          <PasswordMode>true</PasswordMode>\n          <ExtendedEdit>true</ExtendedEdit>\n          <Mask>@@@-999</Mask>\n          <ChooseType>false</ChooseType>\n          <TextEdit>false</TextEdit>\n          <HorizontalAlign>Center</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>",
+            1,
+        )
+        .replacen(
+            "<InputField name=\"ПолеВвода6\" id=\"32\">\n          <DataPath attributeId=\"13\">ПолеВвода6</DataPath>\n          <Left>303</Left>\n          <Top>580</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>24</ZOrder>\n          <TabOrder>23</TabOrder>\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>",
+            "<InputField name=\"ПолеВвода6\" id=\"32\">\n          <DataPath attributeId=\"13\">ПолеВвода6</DataPath>\n          <Left>303</Left>\n          <Top>580</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>24</ZOrder>\n          <TabOrder>23</TabOrder>\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>\n          <TypeLink attributeId=\"14\">ПолеВвода7</TypeLink>",
+            1,
+        );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let stream_after: String = String::from_utf8_lossy(&after[&rel(&w, &stream_file)])
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    assert!(stream_after.contains("{14,\"ПолеВвода7\",4294967295,1,1,1}"), "{target:?}: meta flags missing");
+    assert!(stream_after.contains("9a7643d2-19e9-45e2-8893-280bc9195a97,{4,{\"U\"},{\"U\"},1,\"@@@-999\",1,1}"), "{target:?}: string ext missing");
+    assert!(stream_after.contains("{1,1,{0,c866d8e7-76ff-4334-9d02-144f1efe5e1d,{2,1,{14}}}}"), "{target:?}: TypeLink missing");
+}
+
+#[test]
+fn epf_inputfield_flags_and_typelink_pack() {
+    assert_inputfield_flags_and_typelink_pack(Target::Epf);
+}
+
+#[test]
+fn config_inputfield_flags_and_typelink_pack() {
+    assert_inputfield_flags_and_typelink_pack(Target::Config);
+}

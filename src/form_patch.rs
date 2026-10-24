@@ -40,7 +40,9 @@ use crate::oof_props::{app_path, atom, caption_path, localized};
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 44] = [
+const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
+const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
+const SUPPORTED_TAGS: [&str; 55] = [
     "DataPath",
     "Caption",
     "Left",
@@ -85,6 +87,17 @@ const SUPPORTED_TAGS: [&str; 44] = [
     "AutoFill",
     "Buttons",
     "BorderStyle",
+    "ModifiesData",
+    "SkipOnInput",
+    "FirstInGroup",
+    "MultiLine",
+    "PasswordMode",
+    "ExtendedEdit",
+    "Mask",
+    "ChooseType",
+    "TextEdit",
+    "VerticalAlign",
+    "TypeLink",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -662,6 +675,25 @@ pub struct ControlValues {
     pub buttons: Vec<CommandBarButton>,
     pub border_style: Option<i64>,
     pub anchors: Option<AnchorsSpec>,
+    pub modifies_data: Option<bool>,
+    pub skip_on_input: Option<bool>,
+    pub first_in_group: Option<bool>,
+    pub multi_line: Option<bool>,
+    pub password_mode: Option<bool>,
+    pub extended_edit: Option<bool>,
+    pub mask: Option<String>,
+    pub choose_type: Option<bool>,
+    pub text_edit: Option<bool>,
+    pub vertical_align: Option<String>,
+    pub type_link: Option<TypeLinkSpec>,
+}
+
+/// `<TypeLink>` of an `InputField`: the attribute (and optional field GUID) whose type the field follows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeLinkSpec {
+    pub attr_id: i64,
+    pub field_guid: Option<String>,
+    pub path: String,
 }
 
 impl ControlValues {
@@ -714,6 +746,17 @@ impl ControlValues {
             buttons: Vec::new(),
             border_style: None,
             anchors: None,
+            modifies_data: None,
+            skip_on_input: None,
+            first_in_group: None,
+            multi_line: None,
+            password_mode: None,
+            extended_edit: None,
+            mask: None,
+            choose_type: None,
+            text_edit: None,
+            vertical_align: None,
+            type_link: None,
         }
     }
 }
@@ -767,6 +810,17 @@ pub enum Property {
     Buttons,
     BorderStyle,
     Anchors,
+    ModifiesData,
+    SkipOnInput,
+    FirstInGroup,
+    MultiLine,
+    PasswordMode,
+    ExtendedEdit,
+    Mask,
+    ChooseType,
+    TextEdit,
+    VerticalAlign,
+    TypeLink,
 }
 
 impl Property {
@@ -819,6 +873,17 @@ impl Property {
             Property::Buttons => "Buttons",
             Property::BorderStyle => "BorderStyle",
             Property::Anchors => "Anchors",
+            Property::ModifiesData => "ModifiesData",
+            Property::SkipOnInput => "SkipOnInput",
+            Property::FirstInGroup => "FirstInGroup",
+            Property::MultiLine => "MultiLine",
+            Property::PasswordMode => "PasswordMode",
+            Property::ExtendedEdit => "ExtendedEdit",
+            Property::Mask => "Mask",
+            Property::ChooseType => "ChooseType",
+            Property::TextEdit => "TextEdit",
+            Property::VerticalAlign => "VerticalAlign",
+            Property::TypeLink => "TypeLink",
         }
     }
 }
@@ -874,6 +939,17 @@ impl ControlValues {
             (self.buttons == other.buttons, Property::Buttons),
             (self.border_style == other.border_style, Property::BorderStyle),
             (self.anchors == other.anchors, Property::Anchors),
+            (self.modifies_data == other.modifies_data, Property::ModifiesData),
+            (self.skip_on_input == other.skip_on_input, Property::SkipOnInput),
+            (self.first_in_group == other.first_in_group, Property::FirstInGroup),
+            (self.multi_line == other.multi_line, Property::MultiLine),
+            (self.password_mode == other.password_mode, Property::PasswordMode),
+            (self.extended_edit == other.extended_edit, Property::ExtendedEdit),
+            (self.mask == other.mask, Property::Mask),
+            (self.choose_type == other.choose_type, Property::ChooseType),
+            (self.text_edit == other.text_edit, Property::TextEdit),
+            (self.vertical_align == other.vertical_align, Property::VerticalAlign),
+            (self.type_link == other.type_link, Property::TypeLink),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -1009,6 +1085,20 @@ impl FormXml {
             c.values.auto_choice_incomplete = None;
             c.values.auto_cell_height = None;
             c.values.anchors = None;
+            c.values.modifies_data = None;
+            c.values.skip_on_input = None;
+            c.values.first_in_group = None;
+            c.values.multi_line = None;
+            c.values.password_mode = None;
+            c.values.extended_edit = None;
+            c.values.mask = None;
+            c.values.choose_type = None;
+            c.values.text_edit = None;
+            c.values.vertical_align = None;
+            c.values.type_link = None;
+            if c.type_name == "InputField" {
+                c.values.horizontal_align = String::new();
+            }
         }
         out
     }
@@ -1016,7 +1106,11 @@ impl FormXml {
 
 fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
-        "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" | "Anchors" => true,
+        "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" | "Anchors"
+        | "ModifiesData" | "SkipOnInput" | "FirstInGroup" => true,
+        "MultiLine" | "PasswordMode" | "ExtendedEdit" | "Mask" | "ChooseType" | "TextEdit" | "VerticalAlign" | "TypeLink" => {
+            type_name == "InputField"
+        }
         "Events" => crate::donor::has_event_list(type_name),
         "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" => {
             app_path(type_name).is_some()
@@ -1024,7 +1118,7 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "ValueType" | "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" | "ChoiceButton" | "ClearButton"
         | "OpenButton" | "DropListButton" | "SpinButton" | "AutoMarkIncomplete" | "AutoChoiceIncomplete"
         | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => type_name == "InputField",
-        "HorizontalAlign" => matches!(type_name, "LabelDecoration" | "CommandBar"),
+        "HorizontalAlign" => matches!(type_name, "LabelDecoration" | "CommandBar" | "InputField"),
         "Hyperlink" => type_name == "LabelDecoration",
         "ThreeState" | "TitleLocation" => type_name == "CheckBox",
         "ChoiceList" => type_name == "ChoiceField",
@@ -1204,7 +1298,49 @@ impl Parser<'_> {
         let horizontal_align = match type_name.as_str() {
             "LabelDecoration" => enum_of("HorizontalAlign", &["Left", "Center", "Right"], "Left")?,
             "CommandBar" => enum_of("HorizontalAlign", &["Left", "Right"], "Left")?,
+            "InputField" => enum_of("HorizontalAlign", &["Auto", "Left", "Center", "Right"], "")?,
             _ => String::new(),
+        };
+        let vertical_align = match found.get("VerticalAlign") {
+            None => None,
+            Some(e) => {
+                let v = e.text.trim();
+                if !e.children.is_empty() || !e.attrs.is_empty() || !["Top", "Center", "Bottom"].contains(&v) {
+                    return Err(self.bad(e.line, format!("{who}: <VerticalAlign> must be one of Top, Center, Bottom, got '{v}'")));
+                }
+                Some(v.to_string())
+            }
+        };
+        let mask = match found.get("Mask") {
+            None => None,
+            Some(e) => {
+                if !e.children.is_empty() || !e.attrs.is_empty() {
+                    return Err(self.bad(e.line, format!("{who}: <Mask> must be a plain text value")));
+                }
+                Some(e.text.clone())
+            }
+        };
+        let type_link = match found.get("TypeLink") {
+            None => None,
+            Some(e) => {
+                let path = e.text.trim();
+                let attr_id = e.attrs.get("attributeId").and_then(|v| v.trim().parse::<i64>().ok()).filter(|v| *v >= 0);
+                let field_guid = e.attrs.get("fieldGuid").map(|g| g.trim().to_string());
+                let attrs_ok = e.attrs.keys().all(|k| k == "attributeId" || k == "fieldGuid");
+                let Some(attr_id) = attr_id.filter(|_| attrs_ok && e.children.is_empty() && !path.is_empty()) else {
+                    return Err(self.bad(
+                        e.line,
+                        format!("{who}: <TypeLink> needs a non-negative attributeId, optional fieldGuid and a non-empty path"),
+                    ));
+                };
+                if field_guid.as_deref().is_some_and(|g| !is_uuid(g)) {
+                    return Err(self.bad(e.line, format!("{who}: <TypeLink> fieldGuid is not a UUID")));
+                }
+                if field_guid.is_none() && !self.attr_names.is_empty() && self.attr_names.get(&attr_id).map(String::as_str) != Some(path) {
+                    return Err(self.bad(e.line, format!("{who}: <TypeLink> attribute {attr_id} does not match path '{path}'")));
+                }
+                Some(TypeLinkSpec { attr_id, field_guid, path: path.to_string() })
+            }
         };
         let show_tabs = if type_name == "Panel" {
             match found.get("ShowTabs") {
@@ -1779,6 +1915,17 @@ impl Parser<'_> {
                 None
             },
             anchors,
+            modifies_data: opt_bool_of("ModifiesData")?,
+            skip_on_input: opt_bool_of("SkipOnInput")?,
+            first_in_group: opt_bool_of("FirstInGroup")?,
+            multi_line: opt_bool_of("MultiLine")?,
+            password_mode: opt_bool_of("PasswordMode")?,
+            extended_edit: opt_bool_of("ExtendedEdit")?,
+            mask,
+            choose_type: opt_bool_of("ChooseType")?,
+            text_edit: opt_bool_of("TextEdit")?,
+            vertical_align,
+            type_link,
         };
         Ok((values, rest))
     }
@@ -2856,6 +3003,98 @@ fn nav_mut<'a>(mut cur: &'a mut Node, path: &[usize]) -> Result<&'a mut Node> {
     Ok(cur)
 }
 
+fn format_type_link(tl: &TypeLinkSpec) -> String {
+    match &tl.field_guid {
+        None => format!("{{1,1,{{0,{TYPE_LINK_GUID},{{2,1,{{{}}}}}}}}}", tl.attr_id),
+        Some(fg) => format!("{{1,1,{{0,{TYPE_LINK_GUID},{{2,2,{{{}}},{{0,{fg}}}}}}}}}", tl.attr_id),
+    }
+}
+
+fn horizontal_align_code(s: &str) -> i64 {
+    match s {
+        "Center" => 1,
+        "Right" => 2,
+        "Auto" => 4,
+        _ => 0,
+    }
+}
+
+fn vertical_align_code(s: &str) -> i64 {
+    match s {
+        "Center" => 1,
+        "Bottom" => 2,
+        _ => 0,
+    }
+}
+
+/// Child index of the string-extension sub-block inside the counted list `info[3]`.
+fn string_ext_index(info: &Node) -> Option<usize> {
+    let list = info.children.get(3)?.as_node()?;
+    list.children.iter().enumerate().skip(1).find_map(|(i, it)| {
+        let sub = it.as_node()?;
+        (sub.children.first()?.as_atom()?.value == STRING_EXT_GUID).then_some(i)
+    })
+}
+
+/// Body node (`{4, min, max, MultiLine, Mask, PasswordMode, ExtendedEdit}`) of the string extension, when present.
+fn string_ext_body<'a>(info: NodeRef<'a>) -> Option<NodeRef<'a>> {
+    let i = string_ext_index(info.node)?;
+    info.child(3)?.child(i)?.child(1)
+}
+
+fn string_ext_body_mut(info: &mut Node) -> Option<&mut Node> {
+    let i = string_ext_index(info)?;
+    info.children.get_mut(3)?.as_node_mut()?.children.get_mut(i)?.as_node_mut()?.children.get_mut(1)?.as_node_mut()
+}
+
+/// Apply the `InputField` flags, alignment, mask and type link to a donor-cloned `info` node.
+fn set_input_extras(info: &mut Node, v: &ControlValues) -> Result<()> {
+    {
+        let q = nav_mut(info, &[2, 0])?;
+        for (idx, flag) in [(5, v.password_mode), (24, v.extended_edit), (26, v.multi_line)] {
+            if let Some(b) = flag {
+                q.children[idx] = bare(i64::from(b));
+            }
+        }
+        if let Some(b) = v.text_edit {
+            q.children[12] = bare(i64::from(!b));
+        }
+        if let Some(m) = &v.mask {
+            q.children[21] = Item::Atom(Atom::new(QUOTED, m.clone()));
+        }
+        if !v.horizontal_align.is_empty() {
+            q.children[17] = bare(horizontal_align_code(&v.horizontal_align));
+        }
+        if let Some(a) = &v.vertical_align {
+            q.children[18] = bare(vertical_align_code(a));
+        }
+    }
+    if let Some(b) = v.text_edit {
+        info.children[5] = bare(i64::from(!b));
+    }
+    if let Some(b) = v.choose_type {
+        info.children[6] = bare(i64::from(b));
+    }
+    if let Some(tl) = &v.type_link {
+        if info.len() <= 8 {
+            return Err(layout_err("prototype: info[8] (TypeLink) missing"));
+        }
+        info.children[8] =
+            Item::Node(crate::brace::parse_metadata(format_type_link(tl).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
+    }
+    if let Some(body) = string_ext_body_mut(info) {
+        for (idx, flag) in [(3, v.multi_line), (5, v.password_mode), (6, v.extended_edit)] {
+            if let Some(b) = flag {
+                body.children[idx] = bare(i64::from(b));
+            }
+        }
+        if let Some(m) = &v.mask {
+            body.children[4] = Item::Atom(Atom::new(QUOTED, m.clone()));
+        }
+    }
+    Ok(())
+}
+
 /// Apply all non-geometry, non-caption `ControlValues` properties to a donor-cloned control node.
 fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
     if let Some(anchors) = &v.anchors {
@@ -2871,6 +3110,15 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
             rec.children[1] = Item::Node(
                 crate::brace::parse_metadata(format_edge_target(&edge).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
             );
+        }
+    }
+    if let Some(meta) = n.len().checked_sub(2).and_then(|i| n.children.get_mut(i)).and_then(Item::as_node_mut) {
+        if meta.len() > 5 {
+            for (idx, flag) in [(3, v.modifies_data), (4, v.skip_on_input), (5, v.first_in_group)] {
+                if let Some(b) = flag {
+                    meta.children[idx] = bare(i64::from(b));
+                }
+            }
         }
     }
     let info = clone_info_mut(n)?;
@@ -2931,6 +3179,7 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
             if info.len() > 9 {
                 info.children[9] = bare(i64::from(v.choice_list_mode));
             }
+            set_input_extras(info, v)?;
         }
         "LabelDecoration" => {
             let p = nav_mut(info, &[1])?;
@@ -3749,6 +3998,52 @@ fn info_int_slot(site: &Site, path: &[usize], idx: usize, prop: Property) -> Res
     int_slot(site, n, idx, prop.xml_name(), prop.xml_name())
 }
 
+fn meta_bool_piece(site: &Site, idx: usize, new: bool, prop: Property) -> Result<Piece> {
+    let meta = site
+        .entry
+        .meta()
+        .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), "control meta node is missing".into()))?;
+    let (_, span) = int_slot(site, meta, idx, prop.xml_name(), prop.xml_name())?;
+    Ok(piece(span, i32::from(new), &[prop]))
+}
+
+fn meta_flag(site: &Site, idx: usize, prop: Property) -> Result<bool> {
+    let meta = site
+        .entry
+        .meta()
+        .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), "control meta node is missing".into()))?;
+    Ok(int_slot(site, meta, idx, prop.xml_name(), prop.xml_name())?.0 != 0)
+}
+
+/// Mirror piece in the string extension body (`info[3]`), when the extension exists.
+fn ext_piece(site: &Site, idx: usize, value: impl ToString, prop: Property) -> Result<Option<Piece>> {
+    let info = info_node_at(site, &[], prop)?;
+    let Some(body) = string_ext_body(info) else { return Ok(None) };
+    let span = body
+        .span
+        .children
+        .get(idx)
+        .map(SpanItem::span)
+        .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), format!("string extension slot {idx} is missing")))?;
+    Ok(Some(piece(span, value, &[prop])))
+}
+
+/// Value of the string extension integer slot `idx`, `None` when there is no extension.
+fn ext_int(site: &Site, idx: usize, prop: Property) -> Result<Option<i64>> {
+    let info = info_node_at(site, &[], prop)?;
+    match string_ext_body(info) {
+        None => Ok(None),
+        Some(body) => Ok(Some(int_slot(site, body, idx, prop.xml_name(), prop.xml_name())?.0)),
+    }
+}
+
+fn info_atom_span(site: &Site, path: &[usize], idx: usize, prop: Property) -> Result<(String, Span)> {
+    let n = info_node_at(site, path, prop)?;
+    n.atom(idx)
+        .map(|(a, s)| (a.value.clone(), s))
+        .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), format!("info slot {idx} is not an atom")))
+}
+
 fn info_bool_piece(site: &Site, path: &[usize], idx: usize, old: Option<bool>, new: bool, prop: Property) -> Result<Piece> {
     let (cur, span) = info_int_slot(site, path, idx, prop)?;
     if let Some(expected) = old {
@@ -4346,7 +4641,10 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 out.push(info_bool_piece(site, &[], 9, Some(old.choice_list_mode), new.choice_list_mode, prop)?);
             }
             Property::HorizontalAlign => {
-                if site.entry.type_name == "CommandBar" {
+                if site.entry.type_name == "InputField" {
+                    let (_, span) = info_int_slot(site, &[2, 0], 17, prop)?;
+                    out.push(piece(span, horizontal_align_code(&new.horizontal_align), &[prop]));
+                } else if site.entry.type_name == "CommandBar" {
                     let (cur, span) = info_int_slot(site, &[1], 4, prop)?;
                     let cur_s = if cur == 2 { "Right" } else { "" };
                     if cur_s != old.horizontal_align {
@@ -4371,6 +4669,49 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     };
                     out.push(piece(span, want, &[prop]));
                 }
+            }
+            Property::ModifiesData => out.push(meta_bool_piece(site, 3, new.modifies_data.unwrap_or(false), prop)?),
+            Property::SkipOnInput => out.push(meta_bool_piece(site, 4, new.skip_on_input.unwrap_or(false), prop)?),
+            Property::FirstInGroup => out.push(meta_bool_piece(site, 5, new.first_in_group.unwrap_or(false), prop)?),
+            Property::MultiLine => {
+                let want = new.multi_line.unwrap_or(false);
+                out.push(info_bool_piece(site, &[2, 0], 26, None, want, prop)?);
+                out.extend(ext_piece(site, 3, i32::from(want), prop)?);
+            }
+            Property::PasswordMode => {
+                let want = new.password_mode.unwrap_or(false);
+                out.push(info_bool_piece(site, &[2, 0], 5, None, want, prop)?);
+                out.extend(ext_piece(site, 5, i32::from(want), prop)?);
+            }
+            Property::ExtendedEdit => {
+                let want = new.extended_edit.unwrap_or(false);
+                out.push(info_bool_piece(site, &[2, 0], 24, None, want, prop)?);
+                out.extend(ext_piece(site, 6, i32::from(want), prop)?);
+            }
+            Property::Mask => {
+                let q = quote(new.mask.as_deref().unwrap_or(""));
+                out.push(piece(info_atom_span(site, &[2, 0], 21, prop)?.1, &q, &[prop]));
+                out.extend(ext_piece(site, 4, q, prop)?);
+            }
+            Property::ChooseType => {
+                let (_, span) = info_int_slot(site, &[], 6, prop)?;
+                out.push(piece(span, i32::from(new.choose_type.unwrap_or(false)), &[prop]));
+            }
+            Property::TextEdit => {
+                let inv = i32::from(!new.text_edit.unwrap_or(true));
+                out.push(piece(info_int_slot(site, &[], 5, prop)?.1, inv, &[prop]));
+                out.push(piece(info_int_slot(site, &[2, 0], 12, prop)?.1, inv, &[prop]));
+            }
+            Property::VerticalAlign => {
+                let a = new.vertical_align.as_deref().ok_or_else(|| site.invalid("invalid-xml", "VerticalAlign", "cannot remove VerticalAlign".into()))?;
+                out.push(piece(info_int_slot(site, &[2, 0], 18, prop)?.1, vertical_align_code(a), &[prop]));
+            }
+            Property::TypeLink => {
+                let tl = new.type_link.as_ref().ok_or_else(|| site.invalid("invalid-xml", "TypeLink", "cannot remove TypeLink".into()))?;
+                let node = info_node_at(site, &[], prop)?
+                    .child(8)
+                    .ok_or_else(|| site.layout("unexpected-shape", "TypeLink", "info[8] type link node is missing".into()))?;
+                out.push(piece(node.span.span, format_type_link(tl), &[prop]));
             }
             Property::Hyperlink => {
                 out.push(info_bool_piece(site, &[1], 5, Some(old.hyperlink), new.hyperlink, prop)?);
@@ -4717,8 +5058,49 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             Property::AutoMarkIncomplete => (info_int_slot(site, &[2, 0], 35, p)?.0 != 0) == new.auto_mark_incomplete,
             Property::AutoChoiceIncomplete => Some(info_int_slot(site, &[2, 0], 36, p)?.0 != 0) == new.auto_choice_incomplete,
             Property::ChoiceListMode => (info_int_slot(site, &[], 9, p)?.0 != 0) == new.choice_list_mode,
+            Property::ModifiesData => Some(meta_flag(site, 3, p)?) == new.modifies_data,
+            Property::SkipOnInput => Some(meta_flag(site, 4, p)?) == new.skip_on_input,
+            Property::FirstInGroup => Some(meta_flag(site, 5, p)?) == new.first_in_group,
+            Property::MultiLine => {
+                let want = new.multi_line.unwrap_or(false);
+                (info_int_slot(site, &[2, 0], 26, p)?.0 != 0) == want && ext_int(site, 3, p)?.is_none_or(|v| (v != 0) == want)
+            }
+            Property::PasswordMode => {
+                let want = new.password_mode.unwrap_or(false);
+                (info_int_slot(site, &[2, 0], 5, p)?.0 != 0) == want && ext_int(site, 5, p)?.is_none_or(|v| (v != 0) == want)
+            }
+            Property::ExtendedEdit => {
+                let want = new.extended_edit.unwrap_or(false);
+                (info_int_slot(site, &[2, 0], 24, p)?.0 != 0) == want && ext_int(site, 6, p)?.is_none_or(|v| (v != 0) == want)
+            }
+            Property::Mask => {
+                let want = new.mask.as_deref().unwrap_or("");
+                let ext_ok = match string_ext_body(info_node_at(site, &[], p)?) {
+                    None => true,
+                    Some(body) => body.atom(4).is_some_and(|(a, _)| a.kind == QUOTED && a.value == want),
+                };
+                let (cur, _) = info_atom_span(site, &[2, 0], 21, p)?;
+                cur == want && ext_ok
+            }
+            Property::ChooseType => Some(info_int_slot(site, &[], 6, p)?.0 != 0) == new.choose_type,
+            Property::TextEdit => {
+                let want = i64::from(!new.text_edit.unwrap_or(true));
+                info_int_slot(site, &[], 5, p)?.0 == want && info_int_slot(site, &[2, 0], 12, p)?.0 == want
+            }
+            Property::VerticalAlign => {
+                Some(info_int_slot(site, &[2, 0], 18, p)?.0) == new.vertical_align.as_deref().map(vertical_align_code)
+            }
+            Property::TypeLink => {
+                let expected = new
+                    .type_link
+                    .as_ref()
+                    .and_then(|tl| crate::brace::parse_metadata(format_type_link(tl).as_bytes()).ok());
+                expected.is_some() && info_node_at(site, &[], p)?.child(8).map(|n| n.node) == expected.as_ref()
+            }
             Property::HorizontalAlign => {
-                if site.entry.type_name == "CommandBar" {
+                if site.entry.type_name == "InputField" {
+                    info_int_slot(site, &[2, 0], 17, p)?.0 == horizontal_align_code(&new.horizontal_align)
+                } else if site.entry.type_name == "CommandBar" {
                     let cur = if info_int_slot(site, &[1], 4, p)?.0 == 2 { "Right" } else { "" };
                     cur == new.horizontal_align
                 } else {

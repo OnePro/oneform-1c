@@ -1869,3 +1869,57 @@ fn edited_attribute_keeps_the_original_type_pattern_bytes() {
     let tail: String = text[at..].chars().filter(|c| !c.is_whitespace()).collect();
     assert!(tail.contains("\"ПолосаРегулирования1\",{\"Pattern\",{\"N\",10,0,1}}"), "pattern bytes changed");
 }
+
+#[test]
+fn inputfield_flags_alignment_typelink_and_meta_flags_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. ПолеВвода7 (id 33, String): MultiLine, PasswordMode, ExtendedEdit, Mask, ChooseType, TextEdit, HorizontalAlign, VerticalAlign, ModifiesData, SkipOnInput, FirstInGroup
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода7",
+        &[(
+            "<OpenButton>false</OpenButton>",
+            "<OpenButton>false</OpenButton>\n          <ModifiesData>true</ModifiesData>\n          <SkipOnInput>true</SkipOnInput>\n          <FirstInGroup>true</FirstInGroup>\n          <MultiLine>true</MultiLine>\n          <PasswordMode>true</PasswordMode>\n          <ExtendedEdit>true</ExtendedEdit>\n          <Mask>@@@-999</Mask>\n          <ChooseType>false</ChooseType>\n          <TextEdit>false</TextEdit>\n          <HorizontalAlign>Center</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>",
+        )],
+    );
+    // 2. ПолеВвода6 (id 32, AnyRef): TypeLink to attributeId="14" (ПолеВвода7)
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода6",
+        &[(
+            "<OpenButton>false</OpenButton>",
+            "<OpenButton>false</OpenButton>\n          <TypeLink attributeId=\"14\">ПолеВвода7</TypeLink>",
+        )],
+    );
+    // 3. Added InputField with meta flags, alignment, mask, and TypeLink with fieldGuid
+    let added = "<InputField name=\"ПолеНовое\" id=\"999\">\n          <Left>510</Left><Top>510</Top><Width>120</Width><Height>20</Height>\n          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>\n          <ModifiesData>true</ModifiesData>\n          <SkipOnInput>true</SkipOnInput>\n          <MultiLine>true</MultiLine>\n          <Mask>99-99</Mask>\n          <HorizontalAlign>Right</HorizontalAlign>\n          <VerticalAlign>Center</VerticalAlign>\n          <TypeLink attributeId=\"1\" fieldGuid=\"3efc6139-7638-42a9-9b06-9d9d953b97c3\">ОбработкаОбъект.Поле</TypeLink>\n        </InputField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(added.to_string() + anchor), 1);
+
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(compact.contains("{14,\"ПолеВвода7\",4294967295,1,1,1}"), "meta flags not patched on ПолеВвода7");
+    assert!(compact.contains("9a7643d2-19e9-45e2-8893-280bc9195a97,{4,{\"U\"},{\"U\"},1,\"@@@-999\",1,1}"), "9a7643d2 string ext not patched");
+    assert!(compact.contains("{1,1,{0,c866d8e7-76ff-4334-9d02-144f1efe5e1d,{2,1,{14}}}}"), "TypeLink attr not patched");
+    assert!(compact.contains("{1,1,{0,c866d8e7-76ff-4334-9d02-144f1efe5e1d,{2,2,{1},{0,3efc6139-7638-42a9-9b06-9d9d953b97c3}}}}"), "TypeLink fieldGuid not patched");
+}
+
+#[test]
+fn invalid_typelink_and_vertical_align_are_rejected() {
+    let base = baseline("DonorForm");
+    let from = "<OpenButton>false</OpenButton>";
+    for bad in [
+        "<TypeLink attributeId=\"14\">НеТоИмя</TypeLink>",
+        "<TypeLink attributeId=\"999\">ПолеВвода7</TypeLink>",
+        "<TypeLink attributeId=\"1\" fieldGuid=\"not-a-uuid\">ОбработкаОбъект.Поле</TypeLink>",
+        "<VerticalAlign>Middle</VerticalAlign>",
+    ] {
+        let xml = edit_ctl(&base, "ПолеВвода7", &[(from, &format!("{from}\n          {bad}"))]);
+        let (kind, _) = patch_rejected("DonorForm", &xml);
+        assert!(
+            matches!(kind.as_str(), "invalid-xml" | "unsupported-property" | "unsupported-unknown-element"),
+            "{bad}: got {kind}"
+        );
+    }
+}

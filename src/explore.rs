@@ -58,6 +58,7 @@ pub struct SlotPath {
 pub enum SlotSection {
     Info,
     Geom,
+    Meta,
 }
 
 impl SlotSection {
@@ -65,6 +66,7 @@ impl SlotSection {
         match self {
             SlotSection::Info => "info",
             SlotSection::Geom => "geom",
+            SlotSection::Meta => "meta",
         }
     }
 }
@@ -82,6 +84,8 @@ impl SlotPath {
             (SlotSection::Info, r)
         } else if let Some(r) = text.strip_prefix("geom") {
             (SlotSection::Geom, r)
+        } else if let Some(r) = text.strip_prefix("meta") {
+            (SlotSection::Meta, r)
         } else {
             return Err(bad());
         };
@@ -186,6 +190,7 @@ fn leaf_span(entry: &ControlEntry, slot: &SlotPath) -> Result<(Span, String, Ato
     let mut cur: NodeRef = match slot.section {
         SlotSection::Info => entry.info(),
         SlotSection::Geom => entry.geom(),
+        SlotSection::Meta => entry.meta(),
     }
     .ok_or_else(|| ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, format!("control '{}' has no {} node", entry.name, slot.section.as_str())))?;
     let last = slot.indices.len() - 1;
@@ -379,6 +384,13 @@ pub const RUNTIME_PROBED_PROPERTIES: &[&str] = &[
     "Доступность",
     "ТолькоПросмотр",
     "ПропускПриВводе",
+    "ПропускатьПриВводе",
+    "ПервыйВГруппе",
+    "АвтоКонтекстноеМеню",
+    "ВыбиратьТип",
+    "РедактированиеТекста",
+    "ГоризонтальноеПоложение",
+    "ВертикальноеПоложение",
     "АктивизироватьПоУмолчанию",
     "КнопкаПоУмолчанию",
     "ИзменяетДанные",
@@ -405,6 +417,7 @@ pub const RUNTIME_PROBED_PROPERTIES: &[&str] = &[
     "РежимПароля",
     "Маска",
     "СвязьПоТипу",
+    "ЭлементСвязиПоТипу",
     "ВыборГруппИЭлементов",
     "ОграничениеТипа",
     "АвтоОтметкаНезаполненного",
@@ -424,7 +437,12 @@ pub const RUNTIME_PROBED_PROPERTIES: &[&str] = &[
     "ОтображатьЗаголовки",
     "ОтображатьПодвал",
     "АвтоВводНезаполненного",
+    "АвтоВводНовойСтроки",
     "ИзменениеСоставаСтрок",
+    "ИзменятьСоставСтрок",
+    "ИзменятьПозициюКолонок",
+    "ИзменятьНастройкуКолонок",
+    "НачальноеОтображениеСписка",
     "ДобавлениеСтрок",
     "ГоризонтальнаяПолосаПрокрутки",
     "ВертикальнаяПолосаПрокрутки",
