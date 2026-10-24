@@ -2263,7 +2263,7 @@ fn remaining_table_column_page_button_and_form_root_properties_round_trip() {
         "КоманднаяПанель2",
         &[(
             "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">",
-            "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">\n              <Picture kind=\"2\" stdId=\"8\"/>\n              <Shortcut key=\"3\" shift=\"true\"/>",
+            "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">\n              <Picture kind=\"2\" stdId=\"8\"/>\n              <Shortcut key=\"3\" shift=\"true\"/>\n              <DefaultButton>true</DefaultButton>\n              <ButtonOrder>Ascending</ButtonOrder>\n              <Description>\n                <Item language=\"ru\">Пояснение кнопки</Item>\n                <Item language=\"ro\">Пояснение кнопки</Item>\n              </Description>",
         )],
     );
 

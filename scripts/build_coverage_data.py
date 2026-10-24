@@ -361,8 +361,11 @@ KNOWN_PROPERTIES_STATUS = {
     ("CommandBarButton", "Representation"): {"xml": "representation", "status": "rw", "priority": "P0", "slot": "b[10]"},
     ("CommandBarButton", "Check"): {"xml": "checked", "status": "rw", "priority": "P0", "slot": "b[12]"},
     ("CommandBarButton", "ToolTip"): {"xml": "Tooltip", "status": "rw", "priority": "P0", "slot": "action[4][2][3]"},
+    ("CommandBarButton", "Description"): {"xml": "Description", "status": "rw", "priority": "P1", "slot": "action[4][2][4]"},
     ("CommandBarButton", "Picture"): {"xml": "Picture", "status": "rw", "priority": "P1", "slot": "action[4][2][5]"},
     ("CommandBarButton", "Shortcut"): {"xml": "Shortcut", "status": "rw", "priority": "P1", "slot": "action[4][2][6]"},
+    ("CommandBarButton", "DefaultButton"): {"xml": "DefaultButton", "status": "rw", "priority": "P1", "slot": "b[13]"},
+    ("CommandBarButton", "ButtonOrder"): {"xml": "ButtonOrder", "status": "rw", "priority": "P1", "slot": "b[14]"},
     ("CommandBarButton", "Buttons"): {"xml": "Buttons", "status": "rw", "priority": "P0", "slot": "X[7] group"},
 
     # Panel
@@ -534,7 +537,7 @@ RUNTIME_PROPERTIES = {
     ("Button", "Buttons"),
     ("TableBox", "CurrentRow"), ("TableBox", "CurrentColumn"), ("TableBox", "CurrentData"),
     ("TableBox", "CurrentParent"), ("TableBox", "SelectedRows"), ("TableBox", "Columns"),
-    ("TableBoxColumn", "Control"),
+    ("TableBoxColumn", "Control"), ("TableBoxColumn", "HeaderAdditionalPicture"),
     ("TableBoxColumns", "<Column name>"),
     ("CommandBarButtons", "<Button name>"),
     ("Controls", "<Control name>"),

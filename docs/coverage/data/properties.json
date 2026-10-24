@@ -3135,6 +3135,21 @@
     "source_excerpt": "Содержит цвет фона выбранной даты, заголовка календаря, кнопок перехода на"
   },
   {
+    "id": "CommandBarButton.ButtonOrder",
+    "owner_api": "CommandBarButton",
+    "owner_xml": "CommandBarButton",
+    "name_ru": "ПорядокКнопок",
+    "name_en": "ButtonOrder",
+    "type_ru": "ПорядокКнопокКоманднойПанели",
+    "xml_tag": "ButtonOrder",
+    "status": "rw",
+    "priority": "P1",
+    "slot": "b[14]",
+    "dental_count": 0,
+    "api_access": "read_write",
+    "source_excerpt": "Признак, определяющий сортировку кнопок по тексту подменю в пределах разделителей."
+  },
+  {
     "id": "Button.ButtonTextColor",
     "owner_api": "Button",
     "owner_xml": "Button",
@@ -3538,6 +3553,36 @@
     "dental_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак использования в сочетании клавиши Ctrl. Истина - используется."
+  },
+  {
+    "id": "CommandBarButton.DefaultButton",
+    "owner_api": "CommandBarButton",
+    "owner_xml": "CommandBarButton",
+    "name_ru": "КнопкаПоУмолчанию",
+    "name_en": "DefaultButton",
+    "type_ru": "Булево",
+    "xml_tag": "DefaultButton",
+    "status": "rw",
+    "priority": "P1",
+    "slot": "b[13]",
+    "dental_count": 0,
+    "api_access": "read_write",
+    "source_excerpt": "Указывает, является ли кнопка кнопкой \"по умолчанию\". Истина - является."
+  },
+  {
+    "id": "CommandBarButton.Description",
+    "owner_api": "CommandBarButton",
+    "owner_xml": "CommandBarButton",
+    "name_ru": "Пояснение",
+    "name_en": "Description",
+    "type_ru": "Строка",
+    "xml_tag": "Description",
+    "status": "rw",
+    "priority": "P1",
+    "slot": "action[4][2][4]",
+    "dental_count": 0,
+    "api_access": "read_write",
+    "source_excerpt": "Содержит текст, выводимый в панель состояния."
   },
   {
     "id": "TableBoxColumn.EditMode",
@@ -6780,21 +6825,6 @@
     "source_excerpt": "Содержит ширину поля отступа снизу при печати (в миллиметрах). Значение"
   },
   {
-    "id": "CommandBarButton.ButtonOrder",
-    "owner_api": "CommandBarButton",
-    "owner_xml": "CommandBarButton",
-    "name_ru": "ПорядокКнопок",
-    "name_en": "ButtonOrder",
-    "type_ru": "ПорядокКнопокКоманднойПанели",
-    "xml_tag": "ButtonOrder",
-    "status": "unk",
-    "priority": "P3",
-    "slot": "Не исследован",
-    "dental_count": 0,
-    "api_access": "read_write",
-    "source_excerpt": "Признак, определяющий сортировку кнопок по тексту подменю в пределах разделителей."
-  },
-  {
     "id": "ValueListItem.Check",
     "owner_api": "ValueListItem",
     "owner_xml": "ValueListItem",
@@ -6885,21 +6915,6 @@
     "source_excerpt": "Содержит текущую активную область или рисунок табличного документа."
   },
   {
-    "id": "CommandBarButton.DefaultButton",
-    "owner_api": "CommandBarButton",
-    "owner_xml": "CommandBarButton",
-    "name_ru": "КнопкаПоУмолчанию",
-    "name_en": "DefaultButton",
-    "type_ru": "Булево",
-    "xml_tag": "DefaultButton",
-    "status": "unk",
-    "priority": "P3",
-    "slot": "Не исследован",
-    "dental_count": 0,
-    "api_access": "read_write",
-    "source_excerpt": "Указывает, является ли кнопка кнопкой \"по умолчанию\". Истина - является."
-  },
-  {
     "id": "Extension for controls located in a form.DefaultButton",
     "owner_api": "Extension for controls located in a form",
     "owner_xml": "Extension for controls located in a form",
@@ -6928,21 +6943,6 @@
     "dental_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Истина - элемент управления будет активизирован при открытии формы."
-  },
-  {
-    "id": "CommandBarButton.Description",
-    "owner_api": "CommandBarButton",
-    "owner_xml": "CommandBarButton",
-    "name_ru": "Пояснение",
-    "name_en": "Description",
-    "type_ru": "Строка",
-    "xml_tag": "Description",
-    "status": "unk",
-    "priority": "P3",
-    "slot": "Не исследован",
-    "dental_count": 0,
-    "api_access": "read_write",
-    "source_excerpt": "Содержит текст, выводимый в панель состояния."
   },
   {
     "id": "SpreadsheetDocument.Drawings",
@@ -7123,21 +7123,6 @@
     "dental_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит верхний колонтитул табличного документа."
-  },
-  {
-    "id": "TableBoxColumn.HeaderAdditionalPicture",
-    "owner_api": "TableBoxColumn",
-    "owner_xml": "TableColumn",
-    "name_ru": "ДополнительнаяКартинкаШапки",
-    "name_en": "HeaderAdditionalPicture",
-    "type_ru": "Картинка",
-    "xml_tag": "HeaderAdditionalPicture",
-    "status": "unk",
-    "priority": "P3",
-    "slot": "Не исследован",
-    "dental_count": 0,
-    "api_access": "read_write",
-    "source_excerpt": "Содержит дополнительную пиктограмму, расположенную в шапке колонки. Картинка располагается с"
   },
   {
     "id": "SpreadsheetDocument.HeaderSize",
@@ -8578,6 +8563,21 @@
     "dental_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит форму или элемент управления, который является владельцем данной формы."
+  },
+  {
+    "id": "TableBoxColumn.HeaderAdditionalPicture",
+    "owner_api": "TableBoxColumn",
+    "owner_xml": "TableColumn",
+    "name_ru": "ДополнительнаяКартинкаШапки",
+    "name_en": "HeaderAdditionalPicture",
+    "type_ru": "Картинка",
+    "xml_tag": "-",
+    "status": "runtime",
+    "priority": "P4",
+    "slot": "Runtime-only (память 1С)",
+    "dental_count": 0,
+    "api_access": "read_write",
+    "source_excerpt": "Содержит дополнительную пиктограмму, расположенную в шапке колонки. Картинка располагается с"
   },
   {
     "id": "CellAppearance.Hyperlink",

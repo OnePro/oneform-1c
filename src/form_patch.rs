@@ -819,6 +819,12 @@ pub struct CommandBarButton {
     pub picture: Option<PictureSpec>,
     /// Write-only action shortcut (`action[4][2][6]`); verified in binary, not emitted to `Form.xml`.
     pub shortcut: Option<ShortcutSpec>,
+    /// Write-only status-bar description (`action[4][2][4]`).
+    pub description: Vec<(String, String)>,
+    /// Write-only default-button flag (`bnode[13]`).
+    pub default_button: Option<bool>,
+    /// Write-only submenu button order (`bnode[14]`: `0` DontOrder, `1` Ascending).
+    pub button_order: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2919,13 +2925,31 @@ impl Parser<'_> {
                 let action = b.attrs.get("action").cloned().unwrap_or_default();
                 let mut caption = Vec::new();
                 let mut tooltip = Vec::new();
+                let mut description = Vec::new();
                 let mut sub_buttons = Vec::new();
                 let mut picture = None;
                 let mut shortcut = None;
+                let mut default_button = None;
+                let mut button_order = None;
                 for ch in &b.children {
                     match ch.tag.as_str() {
                         "Picture" if picture.is_none() => picture = Some(parse_picture_elem(ch)?),
                         "Shortcut" if shortcut.is_none() => shortcut = Some(parse_shortcut_elem(ch)?),
+                        "Description" if description.is_empty() => description = parse_loc(ch)?,
+                        "DefaultButton" if default_button.is_none() && ch.children.is_empty() && ch.attrs.is_empty() => {
+                            default_button = Some(match ch.text.trim() {
+                                "true" => true,
+                                "false" => false,
+                                _ => return None,
+                            });
+                        }
+                        "ButtonOrder" if button_order.is_none() && ch.children.is_empty() && ch.attrs.is_empty() => {
+                            button_order = Some(match ch.text.trim() {
+                                "DontOrder" | "0" => 0,
+                                "Ascending" | "1" => 1,
+                                _ => return None,
+                            });
+                        }
                         "Caption" => caption = parse_loc(ch)?,
                         "Tooltip" => tooltip = parse_loc(ch)?,
                         "Buttons" => sub_buttons = parse_cb_buttons(ch, parse_loc)?,
@@ -2946,6 +2970,9 @@ impl Parser<'_> {
                     buttons: sub_buttons,
                     picture,
                     shortcut,
+                    description,
+                    default_button,
+                    button_order,
                 });
             }
             Some(out)
@@ -6250,6 +6277,9 @@ fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
                 buttons: sub,
                 picture: None,
                 shortcut: None,
+                description: Vec::new(),
+                default_button: None,
+                button_order: None,
             });
         }
         out
@@ -6261,7 +6291,15 @@ fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
 fn buttons_without_extras(btns: &[CommandBarButton]) -> Vec<CommandBarButton> {
     btns.iter()
         .cloned()
-        .map(|b| CommandBarButton { picture: None, shortcut: None, buttons: buttons_without_extras(&b.buttons), ..b })
+        .map(|b| CommandBarButton {
+            picture: None,
+            shortcut: None,
+            description: Vec::new(),
+            default_button: None,
+            button_order: None,
+            buttons: buttons_without_extras(&b.buttons),
+            ..b
+        })
         .collect()
 }
 
@@ -6292,14 +6330,31 @@ fn cb_action_meta<'a>(t: NodeRef<'a>, action_count: usize, guid: &str) -> Option
         .and_then(|b| b.child(2))
 }
 
-/// Every root button that sets a `Picture` / `Shortcut` holds it in the patched stream.
+/// Every root button that sets a `Picture` / `Shortcut` / `Description` / `DefaultButton` / `ButtonOrder` holds it in the patched stream.
 fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
-    if new_btns.iter().all(|b| b.picture.is_none() && b.shortcut.is_none()) {
+    if new_btns.iter().all(|b| {
+        b.picture.is_none()
+            && b.shortcut.is_none()
+            && b.description.is_empty()
+            && b.default_button.is_none()
+            && b.button_order.is_none()
+    }) {
         return Ok(true);
     }
     let (t, action_count, root_g) = cb_table(site, Property::Buttons)?;
     for (i, nb) in new_btns.iter().enumerate() {
-        if nb.picture.is_none() && nb.shortcut.is_none() {
+        let Some(bnode) = root_g.child(6 + 2 * i) else { return Ok(false) };
+        if let Some(want) = nb.default_button {
+            if int_slot(site, bnode, 13, "Buttons", "DefaultButton")?.0 != i64::from(want) {
+                return Ok(false);
+            }
+        }
+        if let Some(want) = nb.button_order {
+            if int_slot(site, bnode, 14, "Buttons", "ButtonOrder")?.0 != want {
+                return Ok(false);
+            }
+        }
+        if nb.picture.is_none() && nb.shortcut.is_none() && nb.description.is_empty() {
             continue;
         }
         let Some(guid) = root_g.atom(5 + 2 * i).map(|(a, _)| a.value.clone()) else { return Ok(false) };
@@ -6309,6 +6364,13 @@ fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
         }
         if nb.shortcut.as_ref().is_some_and(|want| meta.node.children.get(6).and_then(read_shortcut_spec).as_ref() != Some(want)) {
             return Ok(false);
+        }
+        if !nb.description.is_empty() {
+            let got: Option<LocItems> =
+                meta.child(4).and_then(strict_localized).map(|items| items.into_iter().map(|i| (i.lang, i.text)).collect());
+            if got.as_ref() != Some(&nb.description) {
+                return Ok(false);
+            }
         }
     }
     Ok(true)
@@ -6360,11 +6422,33 @@ fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[Comm
                 .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button checked missing".into()))?;
             out.push(piece(span, i32::from(nb.checked), &[prop]));
         }
+        if let Some(def) = nb.default_button.filter(|_| ob.default_button != nb.default_button) {
+            let (_, span) = bnode
+                .atom(13)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button DefaultButton slot missing".into()))?;
+            out.push(piece(span, i32::from(def), &[prop]));
+        }
+        if let Some(ord) = nb.button_order.filter(|_| ob.button_order != nb.button_order) {
+            let (_, span) = bnode
+                .atom(14)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button ButtonOrder slot missing".into()))?;
+            out.push(piece(span, ord, &[prop]));
+        }
         let new_picture = nb.picture.as_ref().filter(|_| ob.picture != nb.picture);
         let new_shortcut = nb.shortcut.as_ref().filter(|_| ob.shortcut != nb.shortcut);
-        if new_picture.is_some() || new_shortcut.is_some() {
+        let new_desc = (!nb.description.is_empty() && ob.description != nb.description).then_some(&nb.description);
+        if new_picture.is_some() || new_shortcut.is_some() || new_desc.is_some() {
             let meta = cb_action_meta(t, action_count, &guid)
                 .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button action record missing".into()))?;
+            if let Some(desc) = new_desc {
+                let dnode = meta
+                    .child(4)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button description slot missing".into()))?;
+                let items = strict_localized(dnode)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button description malformed".into()))?;
+                let current: LocItems = items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
+                out.extend(localized_pieces(site, dnode, &items, &current, desc, prop)?);
+            }
             for (idx, text) in [
                 (5usize, new_picture.map(format_picture_node)),
                 (6usize, new_shortcut.map(format_shortcut_node)),

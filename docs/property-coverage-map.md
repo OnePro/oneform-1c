@@ -4,13 +4,13 @@
 
 ## 1. Итоговая сводка
 
-| Статус | Кол-во | % от всех (610) | % от сериализуемых в `FormStream.bin` (527) |
+| Статус | Кол-во | % от всех (610) | % от сериализуемых в `FormStream.bin` (526) |
 |---|---:|---:|---:|
-| **🟢 Полная поддержка (`rw`: `extract` + `pack` + read-back)** | **433** | **71.0%** | **82.2%** |
-| **🟡 Чтение (`ro`)** | **5** | **0.8%** | **0.9%** |
-| **⚙️ Только рантайм 1С (`runtime`)** | **83** | **13.6%** | — |
-| **⚪ Не покрыто (`unk`)** | **89** | **14.6%** | **16.9%** |
-| **ИТОГО покрыто сериализуемых (`rw` + `ro`)** | **438 / 527** | — | **83.1%** |
+| **🟢 Полная поддержка (`rw`: `extract` + `pack` + read-back)** | **436** | **71.5%** | **82.9%** |
+| **🟡 Чтение (`ro`)** | **5** | **0.8%** | **1.0%** |
+| **⚙️ Только рантайм 1С (`runtime`)** | **84** | **13.8%** | — |
+| **⚪ Не покрыто (`unk`)** | **85** | **13.9%** | **16.2%** |
+| **ИТОГО покрыто сериализуемых (`rw` + `ro`)** | **441 / 526** | — | **83.8%** |
 
 ## 2. Сводка по классам объектов и элементов управления
 
@@ -18,7 +18,7 @@
 |---|---:|---:|---:|---:|---:|---:|
 | `SpreadsheetDocument` (`SpreadsheetDocument`) | 53 | 0 | 0 | 1 | 52 | **0.0%** (0/52) |
 | `InputField` (`TextBox`) | 45 | 43 | 0 | 2 | 0 | **100.0%** (43/43) |
-| `TableColumn` (`TableBoxColumn`) | 44 | 42 | 0 | 1 | 1 | **97.7%** (42/43) |
+| `TableColumn` (`TableBoxColumn`) | 44 | 42 | 0 | 2 | 0 | **100.0%** (42/42) |
 | `Table` (`TableBox`) | 46 | 40 | 0 | 6 | 0 | **100.0%** (40/40) |
 | `Form` (`Form`) | 38 | 18 | 2 | 12 | 6 | **76.9%** (20/26) |
 | `ChoiceField` (`ComboBox`) | 21 | 21 | 0 | 0 | 0 | **100.0%** (21/21) |
@@ -28,9 +28,9 @@
 | `PictureField` (`PictureBox`) | 17 | 17 | 0 | 0 | 0 | **100.0%** (17/17) |
 | `Button` (`Button`) | 16 | 15 | 0 | 1 | 0 | **100.0%** (15/15) |
 | `CheckBox` (`CheckBox`) | 15 | 15 | 0 | 0 | 0 | **100.0%** (15/15) |
+| `CommandBarButton` (`CommandBarButton`) | 15 | 15 | 0 | 0 | 0 | **100.0%** (15/15) |
 | `RadioButton` (`RadioButton`) | 15 | 15 | 0 | 0 | 0 | **100.0%** (15/15) |
 | `TrackBar` (`TrackBar`) | 15 | 15 | 0 | 0 | 0 | **100.0%** (15/15) |
-| `CommandBarButton` (`CommandBarButton`) | 15 | 12 | 0 | 0 | 3 | **80.0%** (12/15) |
 | `CommandBar` (`CommandBar`) | 14 | 14 | 0 | 0 | 0 | **100.0%** (14/14) |
 | `ProgressBar` (`ProgressBar`) | 12 | 12 | 0 | 0 | 0 | **100.0%** (12/12) |
 | `Extension for controls located in a form` (`Extension for controls located in a form`) | 11 | 6 | 0 | 1 | 4 | **60.0%** (6/10) |
@@ -193,7 +193,7 @@
 | `СписокВыбора` | `ChoiceList` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 | `ВыделенныйТекст` | `SelectedText` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
-### `TableColumn` (`TableBoxColumn`) — 42 R/W, 0 R/O, 1 Runtime, 1 Unk
+### `TableColumn` (`TableBoxColumn`) — 42 R/W, 0 R/O, 2 Runtime, 0 Unk
 
 | Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
@@ -240,7 +240,7 @@
 | `Видимость` | `Visible` | `Visible` | `col_props[25]` | 🟢 R/W |
 | `Ширина` | `Width` | `Width` | `col_props[4]` | 🟢 R/W |
 | `ЭлементУправления` | `Control` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
-| `ДополнительнаяКартинкаШапки` | `HeaderAdditionalPicture` | `HeaderAdditionalPicture` | `Не исследован` | ⚪ Unk |
+| `ДополнительнаяКартинкаШапки` | `HeaderAdditionalPicture` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
 ### `Table` (`TableBox`) — 40 R/W, 0 R/O, 6 Runtime, 0 Unk
 
@@ -498,6 +498,26 @@
 | `ПрозрачныйФон` | `Transparent` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
 | `ВертикальноеПоложение` | `VerticalAlign` | `VerticalAlign` | `info[1][0][5]` | 🟢 R/W |
 
+### `CommandBarButton` (`CommandBarButton`) — 15 R/W, 0 R/O, 0 Runtime, 0 Unk
+
+| Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
+|---|---|---|---|---|
+| `Действие` | `Action` | `action` | `action[4][1]` | 🟢 R/W |
+| `ПорядокКнопок` | `ButtonOrder` | `ButtonOrder` | `b[14]` | 🟢 R/W |
+| `ТипКнопки` | `ButtonType` | `kind` | `b[9]` | 🟢 R/W |
+| `Кнопки` | `Buttons` | `Buttons` | `X[7] group` | 🟢 R/W |
+| `Пометка` | `Check` | `checked` | `b[12]` | 🟢 R/W |
+| `КнопкаПоУмолчанию` | `DefaultButton` | `DefaultButton` | `b[13]` | 🟢 R/W |
+| `Пояснение` | `Description` | `Description` | `action[4][2][4]` | 🟢 R/W |
+| `Доступность` | `Enabled` | `Enabled` | `<base>[1]` | 🟢 R/W |
+| `ИзменяетДанные` | `ModifiesData` | `ModifiesData` | `meta[3]` | 🟢 R/W |
+| `Имя` | `Name` | `name` | `b[1]` | 🟢 R/W |
+| `Картинка` | `Picture` | `Picture` | `action[4][2][5]` | 🟢 R/W |
+| `Отображение` | `Representation` | `representation` | `b[10]` | 🟢 R/W |
+| `СочетаниеКлавиш` | `Shortcut` | `Shortcut` | `action[4][2][6]` | 🟢 R/W |
+| `Текст` | `Text` | `Caption` | `b[4]` | 🟢 R/W |
+| `Подсказка` | `ToolTip` | `Tooltip` | `action[4][2][3]` | 🟢 R/W |
+
 ### `RadioButton` (`RadioButton`) — 15 R/W, 0 R/O, 0 Runtime, 0 Unk
 
 | Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
@@ -537,26 +557,6 @@
 | `ЦветТекста` | `TextColor` | `TextColor` | `<base>[3]` | 🟢 R/W |
 | `Подсказка` | `ToolTip` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `ПрозрачныйФон` | `Transparent` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
-
-### `CommandBarButton` (`CommandBarButton`) — 12 R/W, 0 R/O, 0 Runtime, 3 Unk
-
-| Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
-|---|---|---|---|---|
-| `Действие` | `Action` | `action` | `action[4][1]` | 🟢 R/W |
-| `ТипКнопки` | `ButtonType` | `kind` | `b[9]` | 🟢 R/W |
-| `Кнопки` | `Buttons` | `Buttons` | `X[7] group` | 🟢 R/W |
-| `Пометка` | `Check` | `checked` | `b[12]` | 🟢 R/W |
-| `Доступность` | `Enabled` | `Enabled` | `<base>[1]` | 🟢 R/W |
-| `ИзменяетДанные` | `ModifiesData` | `ModifiesData` | `meta[3]` | 🟢 R/W |
-| `Имя` | `Name` | `name` | `b[1]` | 🟢 R/W |
-| `Картинка` | `Picture` | `Picture` | `action[4][2][5]` | 🟢 R/W |
-| `Отображение` | `Representation` | `representation` | `b[10]` | 🟢 R/W |
-| `СочетаниеКлавиш` | `Shortcut` | `Shortcut` | `action[4][2][6]` | 🟢 R/W |
-| `Текст` | `Text` | `Caption` | `b[4]` | 🟢 R/W |
-| `Подсказка` | `ToolTip` | `Tooltip` | `action[4][2][3]` | 🟢 R/W |
-| `ПорядокКнопок` | `ButtonOrder` | `ButtonOrder` | `Не исследован` | ⚪ Unk |
-| `КнопкаПоУмолчанию` | `DefaultButton` | `DefaultButton` | `Не исследован` | ⚪ Unk |
-| `Пояснение` | `Description` | `Description` | `Не исследован` | ⚪ Unk |
 
 ### `CommandBar` (`CommandBar`) — 14 R/W, 0 R/O, 0 Runtime, 0 Unk
 
