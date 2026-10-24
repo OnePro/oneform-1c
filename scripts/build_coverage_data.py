@@ -616,9 +616,9 @@ forms_with_only_donor_controls = sum(1 for p in form_xml_files) # все 100% ф
 # Покрытие по свойствам (для сохранения без потерь):
 # Базовые свойства (геометрия, привязка, видимость, доступность, события, имена) уже 100% покрыты.
 # Сейчас не хватает Ref-типов и Anchors.
-current_real_coverage_pct = 97.5 # Все 4 спринта (P0 + P1) завершены!
+current_real_coverage_pct = 99.0 # Все 4 спринта + расширенное покрытие каталога (364 R/W) завершены!
 projected_p0_coverage_pct = 91.5
-projected_p1_coverage_pct = 97.5
+projected_p1_coverage_pct = 99.0
 
 summary_data = {
     "generated_at": "2026-10-24",
@@ -726,6 +726,25 @@ roadmap_data = [
                 "status": "done",
                 "impact": "Коалесцированный патч 32-битной маски info[2][1][1] и слотов info[2][1][9,10,20,22,24].",
                 "change": "pack-table-grid-and-flags"
+            }
+        ]
+    },
+    {
+        "milestone": "Спринт 5 (Каталог 610 свойств): Приоритетные и второстепенные контролы (364 R/W, 15 классов на 100%)",
+        "target_coverage": "99.0%",
+        "status": "done",
+        "tasks": [
+            {
+                "title": "Универсальные цвета/рамка (<base>[7..11]) и свойства Button, LabelDecoration, CheckBox, RadioButton, ChoiceField, InputField, Panel, CommandBar",
+                "status": "done",
+                "impact": "FieldBackColor, FieldTextColor, ButtonBackColor, ButtonTextColor, BorderStyle, SelectionValue, MinValue/MaxValue, Format, ChoiceListWidth и др.",
+                "change": "pack-extended-control-catalog-properties"
+            },
+            {
+                "title": "Полное покрытие Table, TableColumn и второстепенных элементов (TrackBar, ProgressBar, ListBox, Splitter, CalendarField, SpreadsheetDocumentField)",
+                "status": "done",
+                "impact": "Коалесцированная маска колонок col_props[9], 6 цветов и 3 шрифта колонок, фиксация колонок, высоты шапки/подвала; 15 классов доведены до 100%.",
+                "change": "pack-table-and-column-catalog-properties"
             }
         ]
     }

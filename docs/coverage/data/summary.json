@@ -28,9 +28,9 @@
     }
   },
   "coverage_progress": {
-    "current_coverage_pct": 97.5,
+    "current_coverage_pct": 99.0,
     "projected_with_p0_pct": 91.5,
-    "projected_with_p1_pct": 97.5,
+    "projected_with_p1_pct": 99.0,
     "target_pct": 90.0
   }
 }

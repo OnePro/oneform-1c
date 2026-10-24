@@ -109,6 +109,20 @@
 
 ---
 
+### 🟢 Спринт 5: Расширенное покрытие каталога свойств (364 R/W из 610, 15 классов на 100%) — ✅ ВЫПОЛНЕНО
+- **Целевое покрытие:** **99.0% форм** (69.8% всех сериализуемых свойств каталога `1c-ordinary-forms-research/catalog.json`)
+- **Статус OpenSpec:** Заархивированы:
+  - `openspec/changes/archive/2026-10-24-pack-extended-control-catalog-properties/`
+  - `openspec/changes/archive/2026-10-24-pack-table-and-column-catalog-properties/`
+  - `openspec/changes/archive/2026-10-24-pack-universal-border-and-spreadsheet-doc-properties/`
+- **Детальная карта покрытия и взаимосвязанных свойств:** [`docs/property-coverage-map.md`](property-coverage-map.md)
+- **Что покрыто:**
+  1. **Универсальный блок `<base>[7..=11]` (20 типов контролов):** `FieldBackColor`, `FieldTextColor`, `ButtonBackColor`, `ButtonTextColor`, `BorderStyle`.
+  2. **15 классов доведены до 100% сериализуемых свойств:** `CheckBox`, `RadioButton`, `CommandBar`, `UsualGroup`, `TrackBar`, `ProgressBar`, `ListBox`, `Splitter`, `GraphicalSchemaField`, `TextDocumentField`, `HTMLDocumentField`, `Color`, `Border`, `ValueList`, `*Qualifiers`.
+  3. **`Table` (95.0%) и `TableColumn` (69.8%):** коалесцированная маска колонки `col_props[9]` (`ShowHierarchy`, `CheckBoxThreeState`, `ShowInHeader`, `ShowInFooter`, `ChangeSetting`, `ChangePosition`), 6 цветов и 3 шрифта колонки (`col_props[16..=24]`), выравнивание (`col_props[27..=29]`), `Format` (`col_props[34]`), `CellHeight` (`col_props[37]`), а также цвета, шрифты, высоты и фиксация самой таблицы (`info[2][1][2..=19]`).
+
+---
+
 ## 4. Контрольный протокол приёмки и архитектурные правила
 
 ### Архитектурный принцип: Первичность сырых идентификаторов (GUID / ID)
@@ -138,6 +152,8 @@
 
 ## 5. Инструменты отслеживания прогресса
 
+- **Полная карта покрытия каталога (610 свойств) и взаимосвязанных свойств:** `docs/property-coverage-map.md`.
+- **Матрица совместимости:** `docs/compatibility-matrix.md` и `docs/compatibility-matrix.html` (96 `🟢 R/W`, 0 `🔵 Bin`, 0 `⚪ Unk`).
 - **Интерактивный дашборд:** `docs/coverage/index.html` (открывается двойным кликом в Проводнике Windows).
-- **Машинные данные:** `docs/coverage/data/*.json` (сводка, 27 контролов, 610 свойств, дорожная карта).
+- **Машинные данные:** `docs/coverage/data/*.json` + `dataset.js` (сводка, 27 контролов, 610 свойств, дорожная карта).
 - **Скрипт пересчёта:** `python scripts/build_coverage_data.py`.

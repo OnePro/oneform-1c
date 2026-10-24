@@ -133,11 +133,11 @@
           <span class="text-xs text-slate-400">в исследовании</span>
         </div>
         <div class="mt-2 text-xs text-slate-400 flex items-center gap-2">
-          <span class="text-emerald-400 font-medium">174 🟢 R/W</span>
+          <span class="text-emerald-400 font-medium" x-text="(summary.catalog_totals?.status_counts?.rw || 0) + ' 🟢 R/W'"></span>
           <span>•</span>
-          <span class="text-amber-400">3 🟡 R/O</span>
+          <span class="text-amber-400" x-text="(summary.catalog_totals?.status_counts?.ro || 0) + ' 🟡 R/O'"></span>
           <span>•</span>
-          <span class="text-slate-500">16 ⚙️ Run</span>
+          <span class="text-slate-500" x-text="(summary.catalog_totals?.status_counts?.runtime || 0) + ' ⚙️ Run'"></span>
         </div>
       </div>
     </div>
@@ -201,38 +201,42 @@
           <div class="space-y-3.5 text-sm">
             <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
               <div class="text-emerald-400 text-lg font-bold">1</div>
-              <div class="space-y-1">
-                <div class="font-semibold text-white">Базовый слой (Текущее состояние: ~72.5%)</div>
+              <div class="space-y-1 w-full">
+                <div class="font-semibold text-white flex items-center justify-between">
+                  <span>Базовый слой (72.5%)</span>
+                  <span class="text-xs text-emerald-400 font-medium">✓ ВЫПОЛНЕНО</span>
+                </div>
                 <div class="text-xs text-slate-400">
                   Полный цикл геометрии (x, y, w, h), ZOrder, TabOrder, видимость, доступность, события формы и контролов, цвета, шрифты, базовые типы, колонки таблиц, кнопки командных панелей.
                 </div>
               </div>
             </div>
 
-            <div class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-800/40 flex items-start gap-3">
-              <div class="text-indigo-400 text-lg font-bold">2</div>
-              <div class="space-y-1">
+            <div class="p-3 rounded-xl bg-emerald-950/20 border border-emerald-800/40 flex items-start gap-3">
+              <div class="text-emerald-400 text-lg font-bold">2</div>
+              <div class="space-y-1 w-full">
                 <div class="font-semibold text-white flex items-center justify-between">
-                  <span>Этап P0: Ссылки и Привязка (+16.7% → 89.2%)</span>
-                  <span class="text-xs text-amber-400 font-medium">В РАБОТЕ</span>
+                  <span>Спринты 1–2 (P0): Ссылки и Привязка (+19.0% → 91.5%)</span>
+                  <span class="text-xs text-emerald-400 font-medium">✓ ВЫПОЛНЕНО</span>
                 </div>
                 <div class="text-xs text-slate-300">
-                  • <strong>ValueType Ref</strong>: Ссылочные типы реквизитов (99.2% форм базы имеют реквизиты!) через <code class="font-mono text-indigo-300">ConfigDumpInfo.xml</code>.<br>
-                  • <strong>Anchors (geom[6..11])</strong>: Привязка границ контролов к краям формы при ресайзе.<br>
-                  • <strong>Квалификаторы типов</strong>: Длина строки и точность числа.
+                  • <strong>ValueType Ref</strong>: Канонический <code class="font-mono text-indigo-300">refGuid</code> + справочный <code class="font-mono text-indigo-300">title</code> из <code class="font-mono text-indigo-300">&lt;xr:GeneratedType&gt;</code>, квалификаторы <code class="font-mono text-indigo-300">String</code>/<code class="font-mono text-indigo-300">Number</code>.<br>
+                  • <strong>Anchors (geom[6..9])</strong>: Привязка границ контролов к краям формы и соседним элементам.
                 </div>
               </div>
             </div>
 
-            <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
-              <div class="text-purple-400 text-lg font-bold">3</div>
-              <div class="space-y-1">
-                <div class="font-semibold text-white">Этап P1: Тонкие настройки контролов (+6.6% → 95.8%)</div>
-                <div class="text-xs text-slate-400">
-                  • <strong>TypeLink</strong> для полиморфных полей ввода.<br>
-                  • Строковые флаги (многострочный режим, пароль, маска).<br>
-                  • Порядок обхода и фокус (ПропускатьПриВводе, ПервыйВГруппе).<br>
-                  • Табличные флаги (ТолькоПросмотр, линии сетки).
+            <div class="p-3 rounded-xl bg-emerald-950/20 border border-emerald-800/40 flex items-start gap-3">
+              <div class="text-emerald-400 text-lg font-bold">3</div>
+              <div class="space-y-1 w-full">
+                <div class="font-semibold text-white flex items-center justify-between">
+                  <span>Спринты 3–5 (P1): Каталог свойств (→ 99.0% / 364 R/W)</span>
+                  <span class="text-xs text-emerald-400 font-medium">✓ ВЫПОЛНЕНО</span>
+                </div>
+                <div class="text-xs text-slate-300">
+                  • <strong>InputField &amp; TypeLink</strong>: строковое расширение <code class="font-mono text-indigo-300">9a7643d2</code> + зеркало <code class="font-mono text-indigo-300">info[2][0]</code>, <code class="font-mono text-indigo-300">MinValue</code>/<code class="font-mono text-indigo-300">MaxValue</code>, <code class="font-mono text-indigo-300">Format</code>.<br>
+                  • <strong>Table &amp; TableColumn</strong>: коалесцированные маски <code class="font-mono text-indigo-300">info[2][1][1]</code> и <code class="font-mono text-indigo-300">col_props[9]</code>, цвета, шрифты, фиксация, высоты.<br>
+                  • <strong>15 классов на 100%</strong>: <code class="font-mono text-indigo-300">CheckBox</code>, <code class="font-mono text-indigo-300">RadioButton</code>, <code class="font-mono text-indigo-300">CommandBar</code>, <code class="font-mono text-indigo-300">UsualGroup</code>, <code class="font-mono text-indigo-300">TrackBar</code>, <code class="font-mono text-indigo-300">ProgressBar</code>, <code class="font-mono text-indigo-300">ListBox</code>, <code class="font-mono text-indigo-300">Splitter</code> и др.
                 </div>
               </div>
             </div>
