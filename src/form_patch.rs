@@ -36,7 +36,8 @@ use crate::oof_props::{app_path, caption_path, localized};
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 31] = [
+const SUPPORTED_TAGS: [&str; 32] = [
+    "DataPath",
     "Caption",
     "Left",
     "Top",
@@ -118,6 +119,41 @@ impl XmlElement {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormAttribute {
+    pub id: i64,
+    pub name: String,
+    pub main: bool,
+    pub stored: bool,
+    pub kind: String,
+    pub composite: bool,
+    pub fraction_digits: Option<i64>,
+}
+
+fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
+    match (a.kind.as_str(), a.composite) {
+        ("String", false) => Some("{\"Pattern\",{\"S\"}}".to_string()),
+        ("Boolean", false) => Some("{\"Pattern\",{\"B\"}}".to_string()),
+        ("Number", false) => {
+            let f = a.fraction_digits.unwrap_or(0);
+            Some(format!("{{\"Pattern\",{{\"N\",10,{f},0}}}}"))
+        }
+        ("DateTime", false) => Some("{\"Pattern\",{\"D\"}}".to_string()),
+        ("Date", false) => Some("{\"Pattern\",{\"D\",\"D\"}}".to_string()),
+        ("Time", false) => Some("{\"Pattern\",{\"D\",\"T\"}}".to_string()),
+        ("ValueTable", false) => Some("{\"Pattern\",{\"#\",acf6192e-81ca-46ef-93a6-5a6968b78663}}".to_string()),
+        ("ValueTree", false) => Some("{\"Pattern\",{\"#\",e603c0f2-92fb-4d47-8f38-a44a381cf235}}".to_string()),
+        ("ValueList", false) => Some("{\"Pattern\",{\"#\",4772b3b4-f4a3-49c0-a1a5-8cb5961511a3}}".to_string()),
+        ("Ref", true) => Some("{\"Pattern\",{\"#\",e61ef7b8-f3e1-4f4b-8ac7-676e90524997}}".to_string()),
+        _ => None,
+    }
+}
+
+fn format_attr_record(a: &FormAttribute) -> Result<String> {
+    let pat = format_attr_pattern(a).ok_or_else(|| layout_err(format!("unsupported attribute ValueType '{}' (composite={})", a.kind, a.composite)))?;
+    Ok(format!("{{{{{}}},{},{},1,{},{}}}", a.id, i32::from(a.main), i32::from(a.stored), quote(&a.name), pat))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PageValues {
     pub name: String,
     pub title: Vec<(String, String)>,
@@ -143,6 +179,7 @@ pub struct ColumnValues {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ControlValues {
     pub name: String,
+    pub data_path: Option<(i64, String)>,
     /// `(language, text)` pairs in document order.
     pub caption: Vec<(String, String)>,
     pub left: i64,
@@ -183,6 +220,7 @@ impl ControlValues {
     fn empty() -> ControlValues {
         ControlValues {
             name: String::new(),
+            data_path: None,
             caption: Vec::new(),
             left: 0,
             top: 0,
@@ -223,6 +261,7 @@ impl ControlValues {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Property {
     Name,
+    DataPath,
     Caption,
     Left,
     Top,
@@ -262,6 +301,7 @@ impl Property {
     pub fn xml_name(self) -> &'static str {
         match self {
             Property::Name => "name",
+            Property::DataPath => "DataPath",
             Property::Caption => "Caption",
             Property::Left => "Left",
             Property::Top => "Top",
@@ -304,6 +344,7 @@ impl ControlValues {
     pub fn changed_from(&self, other: &ControlValues) -> Vec<Property> {
         [
             (self.name == other.name, Property::Name),
+            (self.data_path == other.data_path, Property::DataPath),
             (self.caption == other.caption, Property::Caption),
             (self.left == other.left, Property::Left),
             (self.top == other.top, Property::Top),
@@ -378,6 +419,8 @@ pub struct FormXml {
     /// `baseline` / `edited`, used in messages.
     pub label: String,
     pub name: String,
+    /// Non-main form attributes with deterministic ValueType patterns.
+    pub attributes: Vec<FormAttribute>,
     /// Controls in document order.
     pub controls: Vec<ControlXml>,
     /// The `Form` element with every control replaced by a [`CONTROL_STUB`] (`id` attribute only).
@@ -474,7 +517,7 @@ impl FormXml {
 
 fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
-        "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" => true,
+        "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" => true,
         "Events" => crate::donor::has_event_list(type_name),
         "Enabled" | "TransparentBack" | "Tooltip" => app_path(type_name).is_some(),
         "ReadOnly" | "ChoiceButton" | "ClearButton" | "OpenButton" | "DropListButton" | "SpinButton"
@@ -524,6 +567,7 @@ fn convert(n: roxmltree::Node, doc: &roxmltree::Document) -> XmlElement {
 struct Parser<'a> {
     label: &'a str,
     form: String,
+    attr_names: HashMap<i64, String>,
     controls: Vec<ControlXml>,
 }
 
@@ -958,8 +1002,28 @@ impl Parser<'_> {
                 }
             }
         }
+        let mut data_path: Option<(i64, String)> = None;
+        if let Some(e) = found.get("DataPath") {
+            let mut valid = e.children.is_empty() && e.attrs.len() == 1;
+            if valid {
+                if let Some(aid) = e.attrs.get("attributeId").and_then(|v| v.trim().parse::<i64>().ok()) {
+                    let path = e.text.trim();
+                    if self.attr_names.get(&aid).map(String::as_str) == Some(path) {
+                        data_path = Some((aid, path.to_string()));
+                    } else {
+                        valid = false;
+                    }
+                } else {
+                    valid = false;
+                }
+            }
+            if !valid {
+                rest.children.push((*e).clone());
+            }
+        }
         let values = ControlValues {
             name: ctrl_name,
+            data_path,
             caption: loc_of("Caption")?,
             left: int_of("Left", true)?,
             top: int_of("Top", true)?,
@@ -998,6 +1062,137 @@ impl Parser<'_> {
     }
 }
 
+fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec<FormAttribute>) {
+    let main_attr_id = shell
+        .children
+        .iter()
+        .find(|e| e.tag == "MainAttribute")
+        .and_then(|e| e.attrs.get("attributeId"))
+        .and_then(|v| v.trim().parse::<i64>().ok());
+    let mut attr_names: HashMap<i64, String> = HashMap::new();
+    let Some(attrs_el) = shell.children.iter_mut().find(|e| e.tag == "Attributes") else {
+        return (attr_names, Vec::new());
+    };
+    if !attrs_el.attrs.is_empty() || !attrs_el.text.trim().is_empty() {
+        return (attr_names, Vec::new());
+    }
+    for a in &attrs_el.children {
+        if a.tag == "Attribute" {
+            if let (Some(id), Some(name)) = (
+                a.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()),
+                a.attrs.get("name").filter(|n| !n.trim().is_empty()),
+            ) {
+                attr_names.insert(id, name.clone());
+            }
+        }
+    }
+    let mut ok = true;
+    let mut extracted = Vec::new();
+    let mut seen_ids = std::collections::HashSet::new();
+    let mut seen_names = std::collections::HashSet::new();
+    for a in &attrs_el.children {
+        if a.tag != "Attribute" || a.attrs.len() != 2 || !a.text.trim().is_empty() {
+            ok = false;
+            break;
+        }
+        let Some(id) = a.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()).filter(|&i| i > 0) else {
+            ok = false;
+            break;
+        };
+        let Some(name) = a.attrs.get("name").filter(|n| !n.trim().is_empty()).cloned() else {
+            ok = false;
+            break;
+        };
+        if !seen_ids.insert(id) || !seen_names.insert(name.clone()) {
+            ok = false;
+            break;
+        }
+        if Some(id) == main_attr_id {
+            continue;
+        }
+        let mut main = false;
+        let mut stored = false;
+        let mut vt_info: Option<(String, bool, Option<i64>)> = None;
+        let mut seen_tags = std::collections::HashSet::new();
+        for ch in &a.children {
+            match ch.tag.as_str() {
+                "Main" => {
+                    if !seen_tags.insert("Main") || !ch.children.is_empty() || !ch.attrs.is_empty() || ch.text.trim() != "true" {
+                        ok = false;
+                        break;
+                    }
+                    main = true;
+                }
+                "StoredData" => {
+                    if !seen_tags.insert("StoredData") || !ch.children.is_empty() || !ch.attrs.is_empty() || ch.text.trim() != "true" {
+                        ok = false;
+                        break;
+                    }
+                    stored = true;
+                }
+                "ValueType" => {
+                    if !seen_tags.insert("ValueType") || !ch.children.is_empty() || !ch.text.trim().is_empty() {
+                        ok = false;
+                        break;
+                    }
+                    let Some(kind) = ch.attrs.get("kind").cloned() else {
+                        ok = false;
+                        break;
+                    };
+                    let comp = match ch.attrs.get("composite").map(String::as_str) {
+                        Some("true") => true,
+                        Some("false") => false,
+                        _ => {
+                            ok = false;
+                            break;
+                        }
+                    };
+                    let frac = match ch.attrs.get("fractionDigits") {
+                        Some(s) => match s.trim().parse::<i64>() {
+                            Ok(v) => Some(v),
+                            Err(_) => {
+                                ok = false;
+                                break;
+                            }
+                        },
+                        None => None,
+                    };
+                    if ch.attrs.keys().any(|k| !matches!(k.as_str(), "kind" | "composite" | "fractionDigits")) {
+                        ok = false;
+                        break;
+                    }
+                    vt_info = Some((kind, comp, frac));
+                }
+                _ => {
+                    ok = false;
+                    break;
+                }
+            }
+        }
+        if !ok {
+            break;
+        }
+        let Some((kind, composite, fraction_digits)) = vt_info else {
+            ok = false;
+            break;
+        };
+        let fa = FormAttribute { id, name, main, stored, kind, composite, fraction_digits };
+        if format_attr_pattern(&fa).is_none() {
+            ok = false;
+            break;
+        }
+        extracted.push(fa);
+    }
+    if ok {
+        attrs_el
+            .children
+            .retain(|a| a.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()) == main_attr_id);
+        (attr_names, extracted)
+    } else {
+        (attr_names, Vec::new())
+    }
+}
+
 /// Parse a `Form.xml` (UTF-8, BOM optional) into a [`FormXml`]. `label` (`"baseline"`/`"edited"`) is
 /// used in errors. Indentation, line endings, attribute order and inter-element whitespace do not
 /// influence the result.
@@ -1010,13 +1205,16 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     let bytes = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
     let text = std::str::from_utf8(bytes).map_err(|e| malformed(format!("not valid UTF-8 ({e})")))?;
     let doc = roxmltree::Document::parse(text).map_err(|e| malformed(e.to_string()))?;
-    let root = convert(doc.root_element(), &doc);
-    let mut p = Parser { label, form: root.attrs.get("name").cloned().unwrap_or_default(), controls: Vec::new() };
+    let mut root = convert(doc.root_element(), &doc);
+    let form_name = root.attrs.get("name").cloned().unwrap_or_default();
     if root.tag != "Form" {
+        let p = Parser { label, form: form_name, attr_names: HashMap::new(), controls: Vec::new() };
         return Err(p.bad(root.line, format!("root element must be <Form>, found <{}>", root.tag)));
     }
+    let (attr_names, attributes) = extract_form_attributes(&mut root);
+    let mut p = Parser { label, form: form_name, attr_names, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
-    Ok(FormXml { label: label.to_string(), name: p.form, controls: p.controls, shell })
+    Ok(FormXml { label: label.to_string(), name: p.form, attributes, controls: p.controls, shell })
 }
 
 // ------------------------------------------------------------------ 3.2 control identity index
@@ -1320,11 +1518,14 @@ pub struct FormDiff {
     pub additions: Vec<ControlXml>,
     /// Controls present only in the baseline XML (to be removed).
     pub deletions: Vec<ControlXml>,
+    pub attributes_changed: bool,
+    pub old_attributes: Vec<FormAttribute>,
+    pub new_attributes: Vec<FormAttribute>,
 }
 
 impl FormDiff {
     pub fn is_empty(&self) -> bool {
-        self.edits.is_empty() && self.additions.is_empty() && self.deletions.is_empty()
+        self.edits.is_empty() && self.additions.is_empty() && self.deletions.is_empty() && !self.attributes_changed
     }
 }
 
@@ -1610,8 +1811,16 @@ pub fn diff_forms_full(
             });
         }
     }
+    let attributes_changed = baseline.attributes != edited.attributes;
     if problems.is_empty() {
-        Ok(FormDiff { edits, additions, deletions })
+        Ok(FormDiff {
+            edits,
+            additions,
+            deletions,
+            attributes_changed,
+            old_attributes: baseline.attributes.clone(),
+            new_attributes: edited.attributes.clone(),
+        })
     } else {
         Err(fail(&baseline.name, &edited.label, problems))
     }
@@ -2856,7 +3065,8 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
     let app_vec: Option<Vec<usize>> = app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
     for &prop in &site.edit.changed {
         match prop {
-            Property::Caption
+            Property::DataPath
+            | Property::Caption
             | Property::Left
             | Property::Top
             | Property::Width
@@ -3200,6 +3410,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
     for &p in &site.edit.changed {
         let ok = match p {
             Property::Name => site.entry.name == new.name,
+            Property::DataPath => read_control_data_path(site.source, site.edit.id) == new.data_path.as_ref().map(|(id, _)| *id),
             Property::Events => read_control_events(site.entry)? == new.events,
             Property::Enabled => (info_int_slot(site, app_vec.as_deref().unwrap(), 1, p)?.0 != 0) == new.enabled,
             Property::TransparentBack => (info_int_slot(site, app_vec.as_deref().unwrap(), 5, p)?.0 != 0) == new.transparent_back,
@@ -3283,12 +3494,27 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
 
 type ZMember<'e, 'a> = (&'e ControlEntry<'a>, i64, i64);
 
+fn read_control_data_path(source: &SpannedMetadata, control_id: i64) -> Option<i64> {
+    let links = source.root.node(2)?.node(3)?;
+    for item in links.children.iter().skip(1) {
+        let Item::Node(row) = item else { continue };
+        let cid: i64 = row.children.first()?.as_atom()?.value.parse().ok()?;
+        if cid == control_id {
+            let body = row.node(1)?;
+            let aid_item = body.children.get(1)?;
+            return crate::oof_props::int_or_first(aid_item, "attr id").ok();
+        }
+    }
+    None
+}
+
 impl FormPatchPlan<'_> {
-    /// Structural edits (additions/deletions): produce replacements on the original stream and the
+    /// Structural edits (additions/deletions/attributes/DataPath links): produce replacements on the original stream and the
     /// data `verify_structural` needs afterwards. Property pieces are produced separately by the caller.
     fn structural_pieces(&self, out: &mut Vec<AppliedReplacement>) -> Result<Vec<(i64, i64)>> {
         let mut allocated: Vec<(i64, i64)> = Vec::new();
-        if self.diff.additions.is_empty() && self.diff.deletions.is_empty() {
+        let has_dp_edits = self.diff.edits.iter().any(|e| e.changed.contains(&Property::DataPath));
+        if self.diff.additions.is_empty() && self.diff.deletions.is_empty() && !self.diff.attributes_changed && !has_dp_edits {
             return Ok(allocated);
         }
         // list span start -> (list NodeRef, original count, edits)
@@ -3300,6 +3526,70 @@ impl FormPatchPlan<'_> {
             let count: usize = count_atom.value.parse().map_err(|_| layout_err("structural edit: bad count atom"))?;
             Ok((nr.span.span.start, count))
         };
+
+        // ---- form attributes (root[2][1] and root[2][2])
+        if self.diff.attributes_changed {
+            let attr_sec = self.index.at_path(&[2])?;
+            let (_, next_id_span) = attr_sec
+                .atom(1)
+                .ok_or_else(|| layout_err("form stream: next attribute id slot missing at root[2][1]"))?;
+            let attr_list = attr_sec
+                .child(2)
+                .ok_or_else(|| layout_err("form stream: attributes list missing at root[2][2]"))?;
+            let (_k, acount) = list_entry(attr_list)?;
+            let mut orig_by_id: HashMap<i64, Span> = HashMap::new();
+            let mut kept_records: Vec<String> = Vec::new();
+            let mut max_attr_id: i64 = 0;
+            let old_ids: std::collections::HashSet<i64> = self.diff.old_attributes.iter().map(|a| a.id).collect();
+            for i in 1..=acount {
+                let rec = attr_list
+                    .child(i)
+                    .ok_or_else(|| layout_err("form stream: attribute record is not a node"))?;
+                let id_item = rec
+                    .node
+                    .children
+                    .first()
+                    .ok_or_else(|| layout_err("form stream: attribute record id missing"))?;
+                let aid = crate::oof_props::int_or_first(id_item, "attribute id").map_err(|e| layout_err(e.to_string()))?;
+                orig_by_id.insert(aid, rec.span.span);
+                if !old_ids.contains(&aid) {
+                    max_attr_id = max_attr_id.max(aid);
+                    let raw_slice = std::str::from_utf8(&self.source.source()[rec.span.span.start..rec.span.span.end])
+                        .map_err(|_| layout_err("form stream: non-utf8 attribute record"))?;
+                    kept_records.push(raw_slice.to_string());
+                }
+            }
+            for a in &self.diff.new_attributes {
+                max_attr_id = max_attr_id.max(a.id);
+                if self.diff.old_attributes.iter().any(|old| old == a) {
+                    if let Some(sp) = orig_by_id.get(&a.id) {
+                        let raw_slice = std::str::from_utf8(&self.source.source()[sp.start..sp.end])
+                            .map_err(|_| layout_err("form stream: non-utf8 attribute record"))?;
+                        kept_records.push(raw_slice.to_string());
+                        continue;
+                    }
+                }
+                kept_records.push(format_attr_record(a)?);
+            }
+            let mut list_text = format!("{{{}" , kept_records.len());
+            for r in &kept_records {
+                list_text.push(',');
+                list_text.push_str(r);
+            }
+            list_text.push('}');
+            out.push(AppliedReplacement {
+                control_id: 0,
+                properties: Vec::new(),
+                range: next_id_span,
+                bytes: (max_attr_id + 1).to_string().into_bytes(),
+            });
+            out.push(AppliedReplacement {
+                control_id: 0,
+                properties: Vec::new(),
+                range: attr_list.span.span,
+                bytes: list_text.into_bytes(),
+            });
+        }
 
         // ---- deletions
         for d in &self.diff.deletions {
@@ -3366,6 +3656,52 @@ impl FormPatchPlan<'_> {
             let (key, count) = list_entry(list)?;
             lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.inserts.push(buf);
             allocated.push((c.id, max_id));
+            if let Some((attr_id, _)) = &c.values.data_path {
+                if let Some(links) = self.index.links_list() {
+                    let (_k, lcount) = list_entry(links)?;
+                    let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
+                    e.2.inserts.push(format!("{{{max_id},{{1,{{{attr_id}}}}}}}").into_bytes());
+                }
+            }
+        }
+
+        // ---- existing control DataPath edits
+        for ed in &self.diff.edits {
+            if !ed.changed.contains(&Property::DataPath) {
+                continue;
+            }
+            let Some(links) = self.index.links_list() else {
+                return Err(layout_err("form stream: links list missing at root[2][3]"));
+            };
+            let (_k, lcount) = list_entry(links)?;
+            let existing_idx = links.node.children.iter().enumerate().skip(1).find_map(|(i, c)| {
+                let Item::Node(row) = c else { return None };
+                let cid: i64 = row.children.first()?.as_atom()?.value.parse().ok()?;
+                (cid == ed.id).then_some(i)
+            });
+            match (existing_idx, &ed.new.data_path) {
+                (Some(i), Some((new_aid, _))) => {
+                    let row = links
+                        .child(i)
+                        .and_then(|r| r.child(1))
+                        .ok_or_else(|| layout_err("form stream: link row body missing"))?;
+                    out.push(AppliedReplacement {
+                        control_id: ed.id,
+                        properties: vec![Property::DataPath],
+                        range: row.span.span,
+                        bytes: format!("{{1,{{{new_aid}}}}}").into_bytes(),
+                    });
+                }
+                (Some(i), None) => {
+                    let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
+                    e.2.removals.push(i - 1);
+                }
+                (None, Some((new_aid, _))) => {
+                    let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
+                    e.2.inserts.push(format!("{{{0},{{1,{{{new_aid}}}}}}}", ed.id).into_bytes());
+                }
+                (None, None) => {}
+            }
         }
 
         // ---- materialize replacements

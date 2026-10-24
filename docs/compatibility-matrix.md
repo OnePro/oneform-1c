@@ -22,8 +22,8 @@
 | **Заголовок формы** (`Заголовок`) | `<Form><Caption>` | `root[1][1][0]` (localized) | 🟡 R/O | Читается в `Form.xml`; слот известен — легко добавить патч |
 | **Ширина и Высота формы** | `<Form><Width>`, `<Height>` | `root[1][3]`, `root[1][4]` | 🟡 R/O | Читаются в `Form.xml`; при ресайзе нужно также обновлять границы корневой панели |
 | **События самой формы** (`ПриОткрытии`, `ПередОткрытием` и др.) | `<Form><Events>` | `root[4]`, `root[1][2][1]`, `root[3]` | 🟡 R/O | Читаются в `Form.xml` (включая события расширения документа/обработки) |
-| **Реквизиты формы** (`Attributes`) | `<Attributes><Attribute>` | `root[2][2]` | 🟡 R/O | Читаются (`id`, `name`, `main`, `stored`, `ValueType`) |
-| **Привязки данных к реквизитам** (`DataPath`) | `<DataPath attributeId="...">` | `root[2][3]` (таблица связей) | 🟡 R/O | Читается в `Form.xml`; при удалении элемента чистится из `root[2][3]`. Назначение нового `DataPath` пока не пакуется |
+| **Реквизиты формы** (`Attributes`) | `<Attributes><Attribute>` | `root[2][2]` (`{{id},main,stored,1,name,pattern}`) | 🟢 R/W | Полный цикл чтения, создания, изменения и удаления реквизитов формы с пересчётом `root[2][1]` |
+| **Привязки данных к реквизитам** (`DataPath`) | `<DataPath attributeId="...">` | `root[2][3]` (таблица связей) | 🟢 R/W | Полный цикл чтения, привязки, перепривязки и очистки `DataPath` на существующих и новых контролах |
 
 ---
 
@@ -170,5 +170,4 @@
 1. ✅ **Шаг А — Перевод всех найденных флагов и простых свойств (🔵 + 🟡 -> 🟢 R/W): ВЫПОЛНЕНО** (`pack-discovered-control-properties`). Подключены `<Enabled>`, `<TransparentBack>`, `<Tooltip>`, `<ReadOnly>`, все 5 кнопок `InputField`, `<AutoMarkIncomplete>`, `<AutoChoiceIncomplete>`, `<MarkNegatives>`, `<AutoCellHeight>`, `<ChoiceListMode>`, `<ThreeState>`, `<TitleLocation>`, `<Hyperlink>`, `<HorizontalAlign>`, `<ShowTabs>`, `<Footer>`, `<SelectionMode>`, `<AutoFill>`.
 2. ✅ **Шаг Б — События и переименование существующих элементов: ВЫПОЛНЕНО** (`pack-existing-control-events-and-renames`). Разрешено редактировать `<Events>` и переименовывать `name` (при сохранении `id`) у уже существующих элементов на форме.
 3. ✅ **Шаг В — Патч колонок `Table` и вкладок `Panel`: ВЫПОЛНЕНО** (`pack-table-columns-and-panel-pages`). Разрешено менять имя, ширину, заголовок, текст подвала, подсказку, видимость, `ReadOnly` и `Editor` существующих колонок `<Column>` табличного поля и заголовки, видимость и доступность вкладок `<Page>` у `Panel`.
-4. **Шаг Г — Донор 27/27 и Реквизиты формы + `DataPath`:**
-   добавить в `donor.epf` недостающие 3 типа (`UsualGroup`, `ChoiceField`, `ActiveXControl`) и научить `form_patch.rs` добавлять реквизиты в `root[2][2]` и привязывать их к контролам в `root[2][3]` (`<DataPath>`).
+4. ✅ **Шаг Г — Реквизиты формы `<Attributes>` и привязка `<DataPath>`: ВЫПОЛНЕНО** (`pack-form-attributes-and-datapath`). Подключено добавление, изменение и удаление реквизитов формы в `root[2][2]` (с обновлением счётчика `root[2][1]`) и привязка/перепривязка `<DataPath>` к существующим и новым контролам в `root[2][3]`.

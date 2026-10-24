@@ -139,17 +139,17 @@
 </header>
 <div class="container">
   <div class="kpi-grid">
-    <div class="kpi"><div class="num">65</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
+    <div class="kpi"><div class="num">67</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
     <div class="kpi"><div class="num">3</div><div class="label">🔵 Найдено в бинарнике через <code>explore</code> (готово к проводке)</div></div>
-    <div class="kpi"><div class="num">18</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
+    <div class="kpi"><div class="num">16</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
     <div class="kpi"><div class="num">4</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
   </div>
   <div class="toolbar">
     <div class="filters">
       <button class="filter-btn active" data-filter="all">Все статусы</button>
-      <button class="filter-btn" data-filter="rw">🟢 R/W (65)</button>
+      <button class="filter-btn" data-filter="rw">🟢 R/W (67)</button>
       <button class="filter-btn" data-filter="bin">🔵 Bin (3)</button>
-      <button class="filter-btn" data-filter="ro">🟡 R/O (18)</button>
+      <button class="filter-btn" data-filter="ro">🟡 R/O (16)</button>
       <button class="filter-btn" data-filter="unk">⚪ Unk (4)</button>
     </div>
     <input type="search" id="searchInput" class="search-box" placeholder="Поиск по свойству, XML-тегу, слоту info[...] или типу..." />
@@ -172,8 +172,8 @@
 <tr data-status="ro"><td><strong>Заголовок формы</strong> (<code>Заголовок</code>)</td><td><code>&lt;Form&gt;&lt;Caption&gt;</code></td><td><code>root[1][1][0]</code> (localized)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code>; слот известен — легко добавить патч</td></tr>
 <tr data-status="ro"><td><strong>Ширина и Высота формы</strong></td><td><code>&lt;Form&gt;&lt;Width&gt;</code>, <code>&lt;Height&gt;</code></td><td><code>root[1][3]</code>, <code>root[1][4]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code>; при ресайзе нужно также обновлять границы корневой панели</td></tr>
 <tr data-status="ro"><td><strong>События самой формы</strong> (<code>ПриОткрытии</code>, <code>ПередОткрытием</code> и др.)</td><td><code>&lt;Form&gt;&lt;Events&gt;</code></td><td><code>root[4]</code>, <code>root[1][2][1]</code>, <code>root[3]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code> (включая события расширения документа/обработки)</td></tr>
-<tr data-status="ro"><td><strong>Реквизиты формы</strong> (<code>Attributes</code>)</td><td><code>&lt;Attributes&gt;&lt;Attribute&gt;</code></td><td><code>root[2][2]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются (<code>id</code>, <code>name</code>, <code>main</code>, <code>stored</code>, <code>ValueType</code>)</td></tr>
-<tr data-status="ro"><td><strong>Привязки данных к реквизитам</strong> (<code>DataPath</code>)</td><td><code>&lt;DataPath attributeId=&quot;...&quot;&gt;</code></td><td><code>root[2][3]</code> (таблица связей)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code>; при удалении элемента чистится из <code>root[2][3]</code>. Назначение нового <code>DataPath</code> пока не пакуется</td></tr>
+<tr data-status="rw"><td><strong>Реквизиты формы</strong> (<code>Attributes</code>)</td><td><code>&lt;Attributes&gt;&lt;Attribute&gt;</code></td><td><code>root[2][2]</code> (<code>{{id},main,stored,1,name,pattern}</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, создания, изменения и удаления реквизитов формы с пересчётом <code>root[2][1]</code></td></tr>
+<tr data-status="rw"><td><strong>Привязки данных к реквизитам</strong> (<code>DataPath</code>)</td><td><code>&lt;DataPath attributeId=&quot;...&quot;&gt;</code></td><td><code>root[2][3]</code> (таблица связей)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, привязки, перепривязки и очистки <code>DataPath</code> на существующих и новых контролах</td></tr>
 </tbody></table>
 </section><section>
 <h2>2. Все 27 типов элементов обычных форм 1С</h2>
@@ -295,7 +295,7 @@
 <li>✅ <strong>Шаг А — Перевод всех найденных флагов и простых свойств (🔵 + 🟡 -&gt; 🟢 R/W): ВЫПОЛНЕНО</strong> (<code>pack-discovered-control-properties</code>). Подключены <code>&lt;Enabled&gt;</code>, <code>&lt;TransparentBack&gt;</code>, <code>&lt;Tooltip&gt;</code>, <code>&lt;ReadOnly&gt;</code>, все 5 кнопок <code>InputField</code>, <code>&lt;AutoMarkIncomplete&gt;</code>, <code>&lt;AutoChoiceIncomplete&gt;</code>, <code>&lt;MarkNegatives&gt;</code>, <code>&lt;AutoCellHeight&gt;</code>, <code>&lt;ChoiceListMode&gt;</code>, <code>&lt;ThreeState&gt;</code>, <code>&lt;TitleLocation&gt;</code>, <code>&lt;Hyperlink&gt;</code>, <code>&lt;HorizontalAlign&gt;</code>, <code>&lt;ShowTabs&gt;</code>, <code>&lt;Footer&gt;</code>, <code>&lt;SelectionMode&gt;</code>, <code>&lt;AutoFill&gt;</code>.</li>
 <li>✅ <strong>Шаг Б — События и переименование существующих элементов: ВЫПОЛНЕНО</strong> (<code>pack-existing-control-events-and-renames</code>). Разрешено редактировать <code>&lt;Events&gt;</code> и переименовывать <code>name</code> (при сохранении <code>id</code>) у уже существующих элементов на форме.</li>
 <li>✅ <strong>Шаг В — Патч колонок <code>Table</code> и вкладок <code>Panel</code>: ВЫПОЛНЕНО</strong> (<code>pack-table-columns-and-panel-pages</code>). Разрешено менять имя, ширину, заголовок, текст подвала, подсказку, видимость, <code>ReadOnly</code> и <code>Editor</code> существующих колонок <code>&lt;Column&gt;</code> табличного поля и заголовки, видимость и доступность вкладок <code>&lt;Page&gt;</code> у <code>Panel</code>.</li>
-<li><strong>Шаг Г — Донор 27/27 и Реквизиты формы + <code>DataPath</code>:</strong> добавить в <code>donor.epf</code> недостающие 3 типа (<code>UsualGroup</code>, <code>ChoiceField</code>, <code>ActiveXControl</code>) и научить <code>form_patch.rs</code> добавлять реквизиты в <code>root[2][2]</code> и привязывать их к контролам в <code>root[2][3]</code> (<code>&lt;DataPath&gt;</code>).</li>
+<li>✅ <strong>Шаг Г — Реквизиты формы <code>&lt;Attributes&gt;</code> и привязка <code>&lt;DataPath&gt;</code>: ВЫПОЛНЕНО</strong> (<code>pack-form-attributes-and-datapath</code>). Подключено добавление, изменение и удаление реквизитов формы в <code>root[2][2]</code> (с обновлением счётчика <code>root[2][1]</code>) и привязка/перепривязка <code>&lt;DataPath&gt;</code> к существующим и новым контролам в <code>root[2][3]</code>.</li>
 </ol>
 </section>
 </div>

@@ -1006,3 +1006,54 @@ fn epf_panel_pages_and_table_columns_pack() {
 fn config_panel_pages_and_table_columns_pack() {
     assert_panel_pages_and_table_columns_pack(Target::Config);
 }
+
+fn assert_form_attributes_and_datapath_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    // Add attribute id=16 name=НовыйСтроковыйРеквизит
+    xml = xml.replacen(
+        "  </Attributes>",
+        "    <Attribute id=\"16\" name=\"НовыйСтроковыйРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"String\" composite=\"false\"/>\n    </Attribute>\n  </Attributes>",
+        1,
+    );
+    // Rebind ПолеВвода1 to attributeId=16
+    xml = xml.replacen(
+        "<DataPath attributeId=\"3\">ПолеВвода1</DataPath>",
+        "<DataPath attributeId=\"16\">НовыйСтроковыйРеквизит</DataPath>",
+        1,
+    );
+    // Add a new InputField bound to attributeId=14 (ПолеВвода7)
+    let new_inp = "\n        <InputField name=\"НовоеПолеСПривязкой\" id=\"999\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>520</Left>\n          <Top>500</Top>\n          <Width>120</Width>\n          <Height>20</Height>\n          <ZOrder>55</ZOrder>\n          <TabOrder>55</TabOrder>\n        </InputField>";
+    let anchor = xml.find(LABEL).expect("label");
+    let insert_at = xml[anchor..].find("</LabelDecoration>").map(|i| anchor + i + "</LabelDecoration>".len()).unwrap();
+    xml.insert_str(insert_at, new_inp);
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    for needle in [
+        r#"<Attribute id="16" name="НовыйСтроковыйРеквизит">"#,
+        r#"<DataPath attributeId="16">НовыйСтроковыйРеквизит</DataPath>"#,
+        r#"<InputField name="НовоеПолеСПривязкой" id="37">"#,
+        r#"<DataPath attributeId="14">ПолеВвода7</DataPath>"#,
+    ] {
+        assert!(packed_xml.contains(needle), "{target:?}: missing {needle} in:\n{packed_xml}");
+    }
+}
+
+#[test]
+fn epf_form_attributes_and_datapath_pack() {
+    assert_form_attributes_and_datapath_pack(Target::Epf);
+}
+
+#[test]
+fn config_form_attributes_and_datapath_pack() {
+    assert_form_attributes_and_datapath_pack(Target::Config);
+}

@@ -1603,3 +1603,32 @@ fn panel_pages_and_table_columns_round_trip() {
     assert!(col.read_only);
 }
 
+#[test]
+fn form_attributes_and_control_datapath_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. Add a new attribute id="16" name="НовыйСтроковыйРеквизит"
+    edited = edited.replacen(
+        "  </Attributes>",
+        "    <Attribute id=\"16\" name=\"НовыйСтроковыйРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"String\" composite=\"false\"/>\n    </Attribute>\n  </Attributes>",
+        1,
+    );
+    // 2. Rebind ПолеВвода1 (id 7) from attributeId="3" (ПолеВвода1) to attributeId="16" (НовыйСтроковыйРеквизит)
+    edited = edited.replacen(
+        "<DataPath attributeId=\"3\">ПолеВвода1</DataPath>",
+        "<DataPath attributeId=\"16\">НовыйСтроковыйРеквизит</DataPath>",
+        1,
+    );
+    // 3. Add a new InputField bound to attributeId="14" (ПолеВвода7)
+    let new_inp = "<InputField name=\"НовоеПолеСПривязкой\" id=\"999\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>520</Left><Top>500</Top><Width>120</Width><Height>20</Height>\n          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>\n        </InputField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(new_inp.to_string() + anchor), 1);
+
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    assert!(got.attributes.iter().any(|a| a.id == 16 && a.name == "НовыйСтроковыйРеквизит" && a.kind == "String"));
+    assert_eq!(got.control(7).unwrap().values.data_path, Some((16, "НовыйСтроковыйРеквизит".to_string())));
+    assert_eq!(
+        got.control(pf.allocated[0].1).unwrap().values.data_path,
+        Some((14, "ПолеВвода7".to_string()))
+    );
+}
+
