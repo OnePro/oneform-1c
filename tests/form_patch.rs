@@ -2227,3 +2227,50 @@ fn font_shortcut_picture_and_remaining_control_slots_round_trip() {
     assert!(text.contains("{4,1,{0,785362cb-3756-48ed-87d2-292ded17054a},\"\",-1,-1,1,0,\"\"}"));
     assert!(text.contains("20260101000000,20261231000000"));
 }
+
+#[test]
+fn remaining_table_column_page_button_and_form_root_properties_round_trip() {
+    let mut edited = baseline("DonorForm");
+    edited = edited.replacen(
+        "<Form name=\"ФормаДокумента\">",
+        "<Form name=\"ФормаДокумента\">\n  <AutoTitle>false</AutoTitle>\n  <WindowState>Float</WindowState>\n  <SizeChange>DontChange</SizeChange>\n  <ConnectableWindow>true</ConnectableWindow>\n  <AllowJoinWindow>true</AllowJoinWindow>\n  <CaptionPicture kind=\"1\" refGuid=\"785362cb-3756-48ed-87d2-292ded17054a\"/>\n  <WindowAppearanceMode>Maximized</WindowAppearanceMode>\n  <WindowLocation>Center</WindowLocation>\n  <ChangeWindowAppearanceMode>Allow</ChangeWindowAppearanceMode>\n  <DesktopMode>true</DesktopMode>\n  <AllowClose>false</AllowClose>\n  <EnterKeyBehavior>DefaultButton</EnterKeyBehavior>\n  <AllowNormalState>false</AllowNormalState>\n  <AllowDockedState>true</AllowDockedState>\n  <AllowAutohideState>false</AllowAutohideState>\n  <AllowFloatState>true</AllowFloatState>\n  <WindowDockLocation>2</WindowDockLocation>",
+        1,
+    );
+    edited = edit_ctl(
+        &edited,
+        "ТабличноеПоле1",
+        &[
+            (
+                "<TabOrder>9</TabOrder>",
+                "<TabOrder>9</TabOrder>\n          <EnableDrag>true</EnableDrag>\n          <ChoiceMode>true</ChoiceMode>",
+            ),
+            (
+                "<Editor>InputField</Editor>\n              <Events>",
+                "<Editor>InputField</Editor>\n              <MarkNegatives>true</MarkNegatives>\n              <ChangeVisible>false</ChangeVisible>\n              <AutoMarkIncomplete>true</AutoMarkIncomplete>\n              <AutoCellHeight>true</AutoCellHeight>\n              <Hyperlink>true</Hyperlink>\n              <CheckData>2</CheckData>\n              <RowsPictures kind=\"2\" stdId=\"11\"/>\n              <HeaderPicture kind=\"1\" refGuid=\"785362cb-3756-48ed-87d2-292ded17054a\"/>\n              <FooterPicture kind=\"2\" stdId=\"12\"/>\n              <Location>OnNextLine</Location>\n              <SizeChange>DontChange</SizeChange>\n              <EditMode>Directly</EditMode>\n              <Events>",
+            ),
+        ],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Панель1",
+        &[(
+            "<Page name=\"Страница1\">\n              <Title>",
+            "<Page name=\"Страница1\">\n              <TitlePicture kind=\"2\" stdId=\"5\"/>\n              <Title>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "КоманднаяПанель2",
+        &[(
+            "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">",
+            "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">\n              <Picture kind=\"2\" stdId=\"8\"/>\n              <Shortcut key=\"3\" shift=\"true\"/>",
+        )],
+    );
+
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    let expected_tbl_flags = 117644301i64 | (1 << 9) | (1 << 20);
+    let expected_col_flags = 12590592i64 | (1 << 15) | (1 << 18) | (1 << 19) | (1 << 20) | (1 << 21);
+    assert!(text.contains(&format!("{{19,{expected_tbl_flags},")));
+    assert!(text.contains(&format!(",{expected_col_flags},")));
+}

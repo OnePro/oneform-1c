@@ -42,7 +42,7 @@ pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 pub const CONTROL_STUB: &str = "#control";
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
-const SUPPORTED_TAGS: [&str; 123] = [
+const SUPPORTED_TAGS: [&str; 124] = [
     "DataPath",
     "Caption",
     "Left",
@@ -128,6 +128,7 @@ const SUPPORTED_TAGS: [&str; 123] = [
     "NonselectedPictureText",
     "EnableStartDrag",
     "EnableDrag",
+    "ChoiceMode",
     "ShowPicture",
     "ShowCheckBox",
     "Step",
@@ -424,6 +425,8 @@ pub struct PageValues {
     pub title: Vec<(String, String)>,
     pub visible: bool,
     pub enabled: bool,
+    /// Write-only `<TitlePicture>` (`rec[2][2]`); verified in binary, not emitted to `Form.xml`.
+    pub title_picture: Option<PictureSpec>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -812,6 +815,10 @@ pub struct CommandBarButton {
     pub caption: Vec<(String, String)>,
     pub tooltip: Vec<(String, String)>,
     pub buttons: Vec<CommandBarButton>,
+    /// Write-only action picture (`action[4][2][5]`); verified in binary, not emitted to `Form.xml`.
+    pub picture: Option<PictureSpec>,
+    /// Write-only action shortcut (`action[4][2][6]`); verified in binary, not emitted to `Form.xml`.
+    pub shortcut: Option<ShortcutSpec>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -839,6 +846,18 @@ pub struct ColumnExt {
     pub show_in_footer: Option<bool>,
     pub change_setting: Option<bool>,
     pub change_position: Option<bool>,
+    pub mark_negatives: Option<bool>,
+    pub change_visible: Option<bool>,
+    pub auto_mark_incomplete: Option<bool>,
+    pub auto_cell_height: Option<bool>,
+    pub hyperlink: Option<bool>,
+    pub check_data: Option<i64>,
+    pub rows_pictures: Option<PictureSpec>,
+    pub header_picture: Option<PictureSpec>,
+    pub footer_picture: Option<PictureSpec>,
+    pub location: Option<String>,
+    pub size_change: Option<String>,
+    pub edit_mode: Option<String>,
     pub field_back_color: Option<ColorSpec>,
     pub field_text_color: Option<ColorSpec>,
     pub header_back_color: Option<ColorSpec>,
@@ -949,6 +968,7 @@ pub struct ControlValues {
     pub nonselected_picture_text: LocItems,
     pub enable_start_drag: Option<bool>,
     pub enable_drag: Option<bool>,
+    pub choice_mode: Option<bool>,
     pub show_picture: Option<bool>,
     pub show_check_box: Option<bool>,
     pub step: Option<i64>,
@@ -1089,6 +1109,7 @@ impl ControlValues {
             nonselected_picture_text: Vec::new(),
             enable_start_drag: None,
             enable_drag: None,
+            choice_mode: None,
             show_picture: None,
             show_check_box: None,
             step: None,
@@ -1221,6 +1242,7 @@ pub enum Property {
     NonselectedPictureText,
     EnableStartDrag,
     EnableDrag,
+    ChoiceMode,
     ShowPicture,
     ShowCheckBox,
     Step,
@@ -1352,6 +1374,7 @@ impl Property {
             Property::NonselectedPictureText => "NonselectedPictureText",
             Property::EnableStartDrag => "EnableStartDrag",
             Property::EnableDrag => "EnableDrag",
+            Property::ChoiceMode => "ChoiceMode",
             Property::ShowPicture => "ShowPicture",
             Property::ShowCheckBox => "ShowCheckBox",
             Property::Step => "Step",
@@ -1489,6 +1512,7 @@ impl ControlValues {
             (self.nonselected_picture_text == other.nonselected_picture_text, Property::NonselectedPictureText),
             (self.enable_start_drag == other.enable_start_drag, Property::EnableStartDrag),
             (self.enable_drag == other.enable_drag, Property::EnableDrag),
+            (self.choice_mode == other.choice_mode, Property::ChoiceMode),
             (self.show_picture == other.show_picture, Property::ShowPicture),
             (self.show_check_box == other.show_check_box, Property::ShowCheckBox),
             (self.step == other.step, Property::Step),
@@ -1562,6 +1586,28 @@ impl ControlXml {
     }
 }
 
+/// Write-only root `<Form>` window/behavior properties (verified in binary, cleared in `in_decoder_order`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FormRootProps {
+    pub auto_title: Option<bool>,
+    pub window_state: Option<i64>,
+    pub size_change: Option<i64>,
+    pub connectable_window: Option<bool>,
+    pub allow_join_window: Option<bool>,
+    pub caption_picture: Option<PictureSpec>,
+    pub window_appearance_mode: Option<i64>,
+    pub window_location: Option<i64>,
+    pub change_window_appearance_mode: Option<i64>,
+    pub desktop_mode: Option<bool>,
+    pub allow_close: Option<bool>,
+    pub enter_key_behavior: Option<i64>,
+    pub allow_normal_state: Option<bool>,
+    pub allow_docked_state: Option<bool>,
+    pub allow_autohide_state: Option<bool>,
+    pub allow_float_state: Option<bool>,
+    pub window_dock_location: Option<i64>,
+}
+
 /// Comparable semantic model of one `Form.xml`.
 #[derive(Debug, Clone)]
 pub struct FormXml {
@@ -1570,6 +1616,7 @@ pub struct FormXml {
     pub name: String,
     pub form_caption: Vec<(String, String)>,
     pub form_events: Vec<(i64, String)>,
+    pub form_props: FormRootProps,
     /// Non-main form attributes with deterministic ValueType patterns.
     pub attributes: Vec<FormAttribute>,
     /// Controls in document order.
@@ -1652,6 +1699,7 @@ impl FormXml {
         }
         let z: HashMap<i64, i64> = self.controls.iter().map(|c| (c.id, c.values.z_order)).collect();
         let mut out = self.clone();
+        out.form_props = FormRootProps::default();
         reorder(&mut out.shell, &z);
         for c in &mut out.controls {
             reorder(&mut c.rest, &z);
@@ -1694,6 +1742,7 @@ impl FormXml {
             c.values.nonselected_picture_text.clear();
             c.values.enable_start_drag = None;
             c.values.enable_drag = None;
+            c.values.choice_mode = None;
             c.values.show_picture = None;
             c.values.show_check_box = None;
             c.values.step = None;
@@ -1721,6 +1770,20 @@ impl FormXml {
             c.values.footer_height = None;
             c.values.header_font = None;
             c.values.footer_font = None;
+            if c.type_name == "LabelDecoration" {
+                if let Some(pic) = &c.values.picture {
+                    c.rest.children.retain(|ch| !(ch.tag == "Picture" && ch.attrs.is_empty()));
+                    if pic.kind == 1 && pic.ref_guid.as_deref().is_some_and(|g| g != "00000000-0000-0000-0000-000000000000") {
+                        let mut marker = XmlElement::new("Picture", 0);
+                        marker.text = "true".to_string();
+                        if let Some(pos) = c.rest.children.iter().position(|ch| ch.tag == "Events") {
+                            c.rest.children.insert(pos, marker);
+                        } else {
+                            c.rest.children.push(marker);
+                        }
+                    }
+                }
+            }
             c.values.shortcut = None;
             c.values.picture = None;
             c.values.choice_button_picture = None;
@@ -1732,7 +1795,12 @@ impl FormXml {
             c.values.show_selection = None;
             c.values.begin_of_display_period = None;
             c.values.end_of_display_period = None;
+            for page in &mut c.values.pages {
+                page.title_picture = None;
+            }
+            c.values.buttons = buttons_without_extras(&c.values.buttons);
             for col in &mut c.values.columns {
+                col.read_only |= location_reads_as_read_only(&col.ext);
                 col.ext = ColumnExt::default();
             }
             if crate::oof_props::app_path(&c.type_name).is_none() && patch_app_path(&c.type_name).is_some() {
@@ -1788,7 +1856,10 @@ impl FormXml {
             if matches!(c.type_name.as_str(), "SpreadsheetDocumentField" | "HTMLDocumentField") {
                 c.values.border_color = None;
             }
-            if matches!(c.type_name.as_str(), "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField") {
+            if matches!(
+                c.type_name.as_str(),
+                "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField" | "SpreadsheetDocumentField"
+            ) {
                 c.values.output = None;
             }
             if matches!(c.type_name.as_str(), "InputField" | "Button" | "CheckBox" | "RadioButton") {
@@ -1842,7 +1913,14 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         }
         "HorizontalScrollBar" | "VerticalScrollBar" if matches!(type_name, "Table" | "SpreadsheetDocumentField") => true,
         "ReadOnly" if matches!(type_name, "Table" | "ListBox" | "GraphicalSchemaField" | "TextDocumentField") => true,
-        "Output" if matches!(type_name, "Table" | "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField") => true,
+        "Output"
+            if matches!(
+                type_name,
+                "Table" | "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField" | "SpreadsheetDocumentField"
+            ) =>
+        {
+            true
+        }
         "Header" | "HorizontalLines" | "VerticalLines" | "AutoInsertNewRow" | "ChangeRowSet" | "ChangePositionOfColumns"
         | "ChangeSettingOfColumns" | "InitialListView" => type_name == "Table",
         "ReadOnly" | "ChoiceButton" | "ClearButton" | "SpinButton" | "OpenButton" if type_name == "ChoiceField" => true,
@@ -1861,7 +1939,7 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "ChoiceList" => type_name == "ChoiceField",
         "ShowTabs" => type_name == "Panel",
         "SelectionMode" if type_name == "CalendarField" => true,
-        "Footer" | "SelectionMode" | "InitialTreeView" => type_name == "Table",
+        "Footer" | "SelectionMode" | "InitialTreeView" | "ChoiceMode" => type_name == "Table",
         "AutoFill" | "Buttons" => type_name == "CommandBar",
         "BorderStyle" => {
             type_name == "UsualGroup"
@@ -2226,6 +2304,7 @@ impl Parser<'_> {
                     let mut title = Vec::new();
                     let mut visible = true;
                     let mut enabled = true;
+                    let mut title_picture = None;
                     let mut seen_tags = std::collections::HashSet::new();
                     for ch in &p.children {
                         match ch.tag.as_str() {
@@ -2262,18 +2341,25 @@ impl Parser<'_> {
                                 };
                                 enabled = v;
                             }
+                            "TitlePicture" => {
+                                let Some(pic) = seen_tags.insert("TitlePicture").then(|| parse_picture_elem(ch)).flatten() else {
+                                    ok = false;
+                                    break;
+                                };
+                                title_picture = Some(pic);
+                            }
                             _ => {}
                         }
                     }
                     if !ok {
                         break;
                     }
-                    extracted.push(PageValues { name: pname, title, visible, enabled });
+                    extracted.push(PageValues { name: pname, title, visible, enabled, title_picture });
                 }
                 if ok {
                     for p in &mut ci.children {
                         if p.tag == "Page" {
-                            p.children.retain(|ch| !matches!(ch.tag.as_str(), "Title" | "Visible" | "Enabled"));
+                            p.children.retain(|ch| !matches!(ch.tag.as_str(), "Title" | "Visible" | "Enabled" | "TitlePicture"));
                         }
                     }
                     pages = extracted;
@@ -2450,6 +2536,61 @@ impl Parser<'_> {
                                         _ => ext.change_position = Some(v),
                                     }
                                 }
+                                "MarkNegatives" | "ChangeVisible" | "AutoMarkIncomplete" | "AutoCellHeight" | "Hyperlink" => {
+                                    let tag = ch.tag.as_str();
+                                    let Some(v) = seen_tags.insert(tag).then(|| parse_bool_elem(ch)).flatten() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    match tag {
+                                        "MarkNegatives" => ext.mark_negatives = Some(v),
+                                        "ChangeVisible" => ext.change_visible = Some(v),
+                                        "AutoMarkIncomplete" => ext.auto_mark_incomplete = Some(v),
+                                        "AutoCellHeight" => ext.auto_cell_height = Some(v),
+                                        _ => ext.hyperlink = Some(v),
+                                    }
+                                }
+                                "CheckData" => {
+                                    if !seen_tags.insert("CheckData") || !ch.children.is_empty() || !ch.attrs.is_empty() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Ok(v) = ch.text.trim().parse::<i64>() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    ext.check_data = Some(v);
+                                }
+                                "RowsPictures" | "HeaderPicture" | "FooterPicture" => {
+                                    let tag = ch.tag.as_str();
+                                    let Some(pic) = seen_tags.insert(tag).then(|| parse_picture_elem(ch)).flatten() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    match tag {
+                                        "RowsPictures" => ext.rows_pictures = Some(pic),
+                                        "HeaderPicture" => ext.header_picture = Some(pic),
+                                        _ => ext.footer_picture = Some(pic),
+                                    }
+                                }
+                                "Location" | "SizeChange" | "EditMode" => {
+                                    let tag = ch.tag.as_str();
+                                    let v = ch.text.trim();
+                                    if !seen_tags.insert(tag)
+                                        || !ch.children.is_empty()
+                                        || !ch.attrs.is_empty()
+                                        || column_enum_code(tag, v).is_none()
+                                    {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let slot = match tag {
+                                        "Location" => &mut ext.location,
+                                        "SizeChange" => &mut ext.size_change,
+                                        _ => &mut ext.edit_mode,
+                                    };
+                                    *slot = Some(v.to_string());
+                                }
                                 "FieldBackColor" | "FieldTextColor" | "HeaderBackColor" | "HeaderTextColor" | "FooterBackColor"
                                 | "FooterTextColor" => {
                                     let tag = ch.tag.as_str();
@@ -2564,6 +2705,18 @@ impl Parser<'_> {
                                     | "ShowInFooter"
                                     | "ChangeSetting"
                                     | "ChangePosition"
+                                    | "MarkNegatives"
+                                    | "ChangeVisible"
+                                    | "AutoMarkIncomplete"
+                                    | "AutoCellHeight"
+                                    | "Hyperlink"
+                                    | "CheckData"
+                                    | "RowsPictures"
+                                    | "HeaderPicture"
+                                    | "FooterPicture"
+                                    | "Location"
+                                    | "SizeChange"
+                                    | "EditMode"
                                     | "FieldBackColor"
                                     | "FieldTextColor"
                                     | "HeaderBackColor"
@@ -2767,8 +2920,12 @@ impl Parser<'_> {
                 let mut caption = Vec::new();
                 let mut tooltip = Vec::new();
                 let mut sub_buttons = Vec::new();
+                let mut picture = None;
+                let mut shortcut = None;
                 for ch in &b.children {
                     match ch.tag.as_str() {
+                        "Picture" if picture.is_none() => picture = Some(parse_picture_elem(ch)?),
+                        "Shortcut" if shortcut.is_none() => shortcut = Some(parse_shortcut_elem(ch)?),
                         "Caption" => caption = parse_loc(ch)?,
                         "Tooltip" => tooltip = parse_loc(ch)?,
                         "Buttons" => sub_buttons = parse_cb_buttons(ch, parse_loc)?,
@@ -2787,6 +2944,8 @@ impl Parser<'_> {
                     caption,
                     tooltip,
                     buttons: sub_buttons,
+                    picture,
+                    shortcut,
                 });
             }
             Some(out)
@@ -2919,6 +3078,7 @@ impl Parser<'_> {
             nonselected_picture_text: loc_of("NonselectedPictureText")?,
             enable_start_drag: opt_bool_of("EnableStartDrag")?,
             enable_drag: opt_bool_of("EnableDrag")?,
+            choice_mode: opt_bool_of("ChoiceMode")?,
             show_picture: opt_bool_of("ShowPicture")?,
             show_check_box: opt_bool_of("ShowCheckBox")?,
             step: opt_int_of("Step")?,
@@ -3141,6 +3301,89 @@ fn extract_form_header(root: &mut XmlElement) -> (LocItems, EventItems) {
     (form_caption, form_events)
 }
 
+fn extract_form_root_props(root: &mut XmlElement) -> FormRootProps {
+    let mut fp = FormRootProps::default();
+    let parse_bool = |e: &XmlElement| -> Option<bool> {
+        if !e.children.is_empty() || !e.attrs.is_empty() {
+            return None;
+        }
+        match e.text.trim() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
+    };
+    let parse_code = |e: &XmlElement, table: &[(&str, i64)]| -> Option<i64> {
+        if !e.children.is_empty() {
+            return None;
+        }
+        if let Some(c) = e.attrs.get("code") {
+            return c.trim().parse::<i64>().ok().filter(|v| table.iter().any(|(_, tc)| tc == v));
+        }
+        if !e.attrs.is_empty() {
+            return None;
+        }
+        let s = e.text.trim();
+        table
+            .iter()
+            .find(|(n, _)| *n == s)
+            .map(|(_, c)| *c)
+            .or_else(|| s.parse::<i64>().ok().filter(|v| table.iter().any(|(_, tc)| tc == v)))
+    };
+    let mut seen_tags = std::collections::HashSet::new();
+    let mut remove_idx = std::collections::HashSet::new();
+    for (idx, e) in root.children.iter().enumerate() {
+        if seen_tags.contains(e.tag.as_str()) {
+            continue;
+        }
+        let ok = match e.tag.as_str() {
+            "AutoTitle" => parse_bool(e).map(|v| fp.auto_title = Some(v)).is_some(),
+            "ConnectableWindow" => parse_bool(e).map(|v| fp.connectable_window = Some(v)).is_some(),
+            "AllowJoinWindow" => parse_bool(e).map(|v| fp.allow_join_window = Some(v)).is_some(),
+            "DesktopMode" => parse_bool(e).map(|v| fp.desktop_mode = Some(v)).is_some(),
+            "AllowClose" => parse_bool(e).map(|v| fp.allow_close = Some(v)).is_some(),
+            "AllowNormalState" => parse_bool(e).map(|v| fp.allow_normal_state = Some(v)).is_some(),
+            "AllowDockedState" => parse_bool(e).map(|v| fp.allow_docked_state = Some(v)).is_some(),
+            "AllowAutohideState" => parse_bool(e).map(|v| fp.allow_autohide_state = Some(v)).is_some(),
+            "AllowFloatState" => parse_bool(e).map(|v| fp.allow_float_state = Some(v)).is_some(),
+            "CaptionPicture" => parse_picture_elem(e).map(|v| fp.caption_picture = Some(v)).is_some(),
+            "WindowState" => parse_code(e, &[("Docked", 0), ("Autohide", 1), ("Float", 2), ("Normal", 4)])
+                .map(|v| fp.window_state = Some(v))
+                .is_some(),
+            "SizeChange" => parse_code(e, &[("Change", 0), ("DontChange", 1)])
+                .map(|v| fp.size_change = Some(v))
+                .is_some(),
+            "WindowAppearanceMode" => parse_code(e, &[("Normal", 0), ("Minimized", 1), ("Maximized", 2)])
+                .map(|v| fp.window_appearance_mode = Some(v))
+                .is_some(),
+            "WindowLocation" => parse_code(e, &[("DontOverlapOwner", 0), ("Center", 1), ("Auto", 2)])
+                .map(|v| fp.window_location = Some(v))
+                .is_some(),
+            "ChangeWindowAppearanceMode" => parse_code(e, &[("Auto", 0), ("Allow", 1), ("DontAllow", 2)])
+                .map(|v| fp.change_window_appearance_mode = Some(v))
+                .is_some(),
+            "EnterKeyBehavior" => parse_code(e, &[("DefaultButton", 0), ("ControlNavigation", 1)])
+                .map(|v| fp.enter_key_behavior = Some(v))
+                .is_some(),
+            "WindowDockLocation" => parse_code(e, &[("Left", 0), ("Top", 1), ("Right", 2), ("Bottom", 3), ("Auto", 4)])
+                .map(|v| fp.window_dock_location = Some(v))
+                .is_some(),
+            _ => false,
+        };
+        if ok {
+            seen_tags.insert(e.tag.clone());
+            remove_idx.insert(idx);
+        }
+    }
+    let mut cur_idx = 0usize;
+    root.children.retain(|_| {
+        let keep = !remove_idx.contains(&cur_idx);
+        cur_idx += 1;
+        keep
+    });
+    fp
+}
+
 /// Parse a `Form.xml` (UTF-8, BOM optional) into a [`FormXml`]. `label` (`"baseline"`/`"edited"`) is
 /// used in errors. Indentation, line endings, attribute order and inter-element whitespace do not
 /// influence the result.
@@ -3160,10 +3403,11 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         return Err(p.bad(root.line, format!("root element must be <Form>, found <{}>", root.tag)));
     }
     let (form_caption, form_events) = extract_form_header(&mut root);
+    let form_props = extract_form_root_props(&mut root);
     let (attr_names, attributes) = extract_form_attributes(&mut root);
     let mut p = Parser { label, form: form_name, attr_names, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
-    Ok(FormXml { label: label.to_string(), name: p.form, form_caption, form_events, attributes, controls: p.controls, shell })
+    Ok(FormXml { label: label.to_string(), name: p.form, form_caption, form_events, form_props, attributes, controls: p.controls, shell })
 }
 
 // ------------------------------------------------------------------ 3.2 control identity index
@@ -3475,6 +3719,8 @@ pub struct FormDiff {
     pub attributes_changed: bool,
     pub old_attributes: Vec<FormAttribute>,
     pub new_attributes: Vec<FormAttribute>,
+    pub form_props_changed: bool,
+    pub new_form_props: FormRootProps,
 }
 
 impl FormDiff {
@@ -3485,6 +3731,7 @@ impl FormDiff {
             && !self.form_caption_changed
             && !self.form_events_changed
             && !self.attributes_changed
+            && !self.form_props_changed
     }
 }
 
@@ -3781,6 +4028,7 @@ pub fn diff_forms_full(
     let form_caption_changed = baseline.form_caption != edited.form_caption;
     let form_events_changed = baseline.form_events != edited.form_events;
     let attributes_changed = baseline.attributes != edited.attributes;
+    let form_props_changed = baseline.form_props != edited.form_props;
     if problems.is_empty() {
         Ok(FormDiff {
             edits,
@@ -3794,6 +4042,8 @@ pub fn diff_forms_full(
             attributes_changed,
             old_attributes: baseline.attributes.clone(),
             new_attributes: edited.attributes.clone(),
+            form_props_changed,
+            new_form_props: edited.form_props.clone(),
         })
     } else {
         Err(fail(&baseline.name, &edited.label, problems))
@@ -4188,6 +4438,7 @@ const EXT_PROPS: &[Property] = &[
     Property::NonselectedPictureText,
     Property::EnableStartDrag,
     Property::EnableDrag,
+    Property::ChoiceMode,
     Property::ShowPicture,
     Property::ShowCheckBox,
     Property::Step,
@@ -5604,7 +5855,7 @@ fn info_atom_span(site: &Site, path: &[usize], idx: usize, prop: Property) -> Re
         .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), format!("info slot {idx} is not an atom")))
 }
 
-const TABLE_FLAGS: [Property; 10] = [
+const TABLE_FLAGS: [Property; 12] = [
     Property::UseAlternationRowColor,
     Property::EnableStartDrag,
     Property::Header,
@@ -5615,6 +5866,8 @@ const TABLE_FLAGS: [Property; 10] = [
     Property::AutoInsertNewRow,
     Property::ChangeSettingOfColumns,
     Property::ChangePositionOfColumns,
+    Property::EnableDrag,
+    Property::ChoiceMode,
 ];
 
 /// Bit of the coalesced `Table` flag word `info[2][1][1]`; `ReadOnly` is stored inverted.
@@ -5626,6 +5879,8 @@ fn table_flag_bit(p: Property) -> Option<i64> {
         Property::HorizontalLines => 8,
         Property::UseAlternationRowColor => 1 << 4,
         Property::EnableStartDrag => 1 << 14,
+        Property::EnableDrag => 1 << 20,
+        Property::ChoiceMode => 1 << 9,
         Property::ReadOnly => 1 << 10,
         Property::AutoInsertNewRow => 1 << 15,
         Property::ChangeSettingOfColumns => 1 << 25,
@@ -5647,6 +5902,8 @@ fn table_flag_value(v: &ControlValues, p: Property) -> Option<bool> {
         Property::HorizontalLines => v.horizontal_lines,
         Property::UseAlternationRowColor => v.use_alternation_row_color,
         Property::EnableStartDrag => v.enable_start_drag,
+        Property::EnableDrag => v.enable_drag,
+        Property::ChoiceMode => v.choice_mode,
         Property::ReadOnly => v.table_read_only,
         Property::AutoInsertNewRow => v.auto_insert_new_row,
         Property::ChangeSettingOfColumns => v.change_setting_of_columns,
@@ -5775,9 +6032,14 @@ fn read_panel_page_values(site: &Site) -> Result<Vec<PageValues>> {
             .collect();
         let visible = int_slot(site, rec, 4, "Pages", "Visible")?.0 != 0;
         let enabled = int_slot(site, rec, 5, "Pages", "Enabled")?.0 != 0;
-        out.push(PageValues { name, title, visible, enabled });
+        out.push(PageValues { name, title, visible, enabled, title_picture: None });
     }
     Ok(out)
+}
+
+/// The pages without the write-only `TitlePicture`, as [`read_panel_page_values`] reports them.
+fn pages_without_pictures(pages: &[PageValues]) -> Vec<PageValues> {
+    pages.iter().cloned().map(|p| PageValues { title_picture: None, ..p }).collect()
 }
 
 fn table_column_props<'a>(site: &Site<'_, 'a>) -> Result<Vec<(NodeRef<'a>, NodeRef<'a>)>> {
@@ -5986,6 +6248,8 @@ fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
                 caption: loc("caption"),
                 tooltip: loc("tooltip"),
                 buttons: sub,
+                picture: None,
+                shortcut: None,
             });
         }
         out
@@ -5993,10 +6257,16 @@ fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
     conv(arr)
 }
 
-fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[CommandBarButton], prop: Property) -> Result<Vec<Piece>> {
-    if old_btns.len() != new_btns.len() {
-        return Err(site.layout("unexpected-shape", "Buttons", "button count mismatch".into()));
-    }
+/// The buttons without the write-only `Picture` / `Shortcut`, as [`read_cb_buttons`] reports them.
+fn buttons_without_extras(btns: &[CommandBarButton]) -> Vec<CommandBarButton> {
+    btns.iter()
+        .cloned()
+        .map(|b| CommandBarButton { picture: None, shortcut: None, buttons: buttons_without_extras(&b.buttons), ..b })
+        .collect()
+}
+
+/// `(action table, action count, root button group)` of a command bar.
+fn cb_table<'a>(site: &Site<'_, 'a>, prop: Property) -> Result<(NodeRef<'a>, usize, NodeRef<'a>)> {
     let x = info_node_at(site, &[1], prop)?;
     let t = x.child(7).ok_or_else(|| site.layout("unexpected-shape", "Buttons", "command bar table missing".into()))?;
     let action_count: usize = t
@@ -6010,6 +6280,45 @@ fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[Comm
     let root_g = t
         .child(6 + action_count + group_count.saturating_sub(1))
         .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "root button group missing".into()))?;
+    Ok((t, action_count, root_g))
+}
+
+/// The `action[4][2]` record that holds the `Picture` (`[5]`) and `Shortcut` (`[6]`) of the action `guid`.
+fn cb_action_meta<'a>(t: NodeRef<'a>, action_count: usize, guid: &str) -> Option<NodeRef<'a>> {
+    (0..action_count)
+        .filter_map(|ai| t.child(5 + ai))
+        .find(|a| a.atom(1).map(|(a, _)| a.value.as_str()) == Some(guid))
+        .and_then(|a| a.child(4))
+        .and_then(|b| b.child(2))
+}
+
+/// Every root button that sets a `Picture` / `Shortcut` holds it in the patched stream.
+fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
+    if new_btns.iter().all(|b| b.picture.is_none() && b.shortcut.is_none()) {
+        return Ok(true);
+    }
+    let (t, action_count, root_g) = cb_table(site, Property::Buttons)?;
+    for (i, nb) in new_btns.iter().enumerate() {
+        if nb.picture.is_none() && nb.shortcut.is_none() {
+            continue;
+        }
+        let Some(guid) = root_g.atom(5 + 2 * i).map(|(a, _)| a.value.clone()) else { return Ok(false) };
+        let Some(meta) = cb_action_meta(t, action_count, &guid) else { return Ok(false) };
+        if nb.picture.as_ref().is_some_and(|want| meta.node.children.get(5).and_then(read_picture_spec).as_ref() != Some(want)) {
+            return Ok(false);
+        }
+        if nb.shortcut.as_ref().is_some_and(|want| meta.node.children.get(6).and_then(read_shortcut_spec).as_ref() != Some(want)) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[CommandBarButton], prop: Property) -> Result<Vec<Piece>> {
+    if old_btns.len() != new_btns.len() {
+        return Err(site.layout("unexpected-shape", "Buttons", "button count mismatch".into()));
+    }
+    let (t, action_count, root_g) = cb_table(site, prop)?;
     let mut out = Vec::new();
     for (i, (ob, nb)) in old_btns.iter().zip(new_btns.iter()).enumerate() {
         let guid = root_g
@@ -6050,6 +6359,25 @@ fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[Comm
                 .atom(12)
                 .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button checked missing".into()))?;
             out.push(piece(span, i32::from(nb.checked), &[prop]));
+        }
+        let new_picture = nb.picture.as_ref().filter(|_| ob.picture != nb.picture);
+        let new_shortcut = nb.shortcut.as_ref().filter(|_| ob.shortcut != nb.shortcut);
+        if new_picture.is_some() || new_shortcut.is_some() {
+            let meta = cb_action_meta(t, action_count, &guid)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button action record missing".into()))?;
+            for (idx, text) in [
+                (5usize, new_picture.map(format_picture_node)),
+                (6usize, new_shortcut.map(format_shortcut_node)),
+            ] {
+                if let Some(text) = text {
+                    let span = meta
+                        .child(idx)
+                        .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button picture/shortcut slot missing".into()))?
+                        .span
+                        .span;
+                    out.push(piece(span, text, &[prop]));
+                }
+            }
         }
         if ob.action != nb.action && nb.action_kind == "Handler" {
             for ai in 0..action_count {
@@ -6140,10 +6468,60 @@ fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
     Ok(out)
 }
 
-const COLUMN_FLAG_BITS: [i64; 6] = [1, 1 << 3, 1 << 11, 1 << 12, 1 << 22, 1 << 23];
+/// `Location` shares `col_props[26]` with the column read-only flag, so a non-zero location decodes as `ReadOnly`.
+fn location_reads_as_read_only(e: &ColumnExt) -> bool {
+    matches!(e.location.as_deref(), Some("OnNextLine" | "InSameCell"))
+}
 
-fn column_ext_flags(e: &ColumnExt) -> [Option<bool>; 6] {
-    [e.show_hierarchy, e.check_box_three_state, e.show_in_header, e.show_in_footer, e.change_setting, e.change_position]
+/// `(bit, inverted)` of the column flag word `col_props[9]`, in the order of [`column_ext_flags`].
+const COLUMN_FLAG_BITS: [(i64, bool); 11] = [
+    (1, false),
+    (1 << 3, false),
+    (1 << 11, false),
+    (1 << 12, false),
+    (1 << 15, false),
+    (1 << 18, true),
+    (1 << 19, false),
+    (1 << 20, false),
+    (1 << 21, false),
+    (1 << 22, false),
+    (1 << 23, false),
+];
+
+fn column_ext_flags(e: &ColumnExt) -> [Option<bool>; 11] {
+    [
+        e.show_hierarchy,
+        e.check_box_three_state,
+        e.show_in_header,
+        e.show_in_footer,
+        e.mark_negatives,
+        e.change_visible,
+        e.auto_mark_incomplete,
+        e.auto_cell_height,
+        e.hyperlink,
+        e.change_setting,
+        e.change_position,
+    ]
+}
+
+/// Column picture slots `col_props[10..=12]`.
+fn column_ext_pictures(e: &ColumnExt) -> [(usize, &Option<PictureSpec>); 3] {
+    [(10, &e.rows_pictures), (11, &e.header_picture), (12, &e.footer_picture)]
+}
+
+/// Slot (`col_props` index) and code of a `Location` / `SizeChange` / `EditMode` column value.
+fn column_enum_code(tag: &str, v: &str) -> Option<i64> {
+    let names: &[&str] = match tag {
+        "Location" => &["NewColumn", "OnNextLine", "InSameCell"],
+        "SizeChange" => &["Change", "DontChange"],
+        "EditMode" => &["Enter", "Directly", "EnterOnInput"],
+        _ => return None,
+    };
+    names.iter().position(|n| *n == v).map(|i| i as i64)
+}
+
+fn column_ext_enums(e: &ColumnExt) -> [(usize, &'static str, &Option<String>); 3] {
+    [(26, "Location", &e.location), (33, "SizeChange", &e.size_change), (36, "EditMode", &e.edit_mode)]
 }
 
 fn column_ext_colors(e: &ColumnExt) -> [(usize, &Option<ColorSpec>); 6] {
@@ -6176,8 +6554,25 @@ fn column_ext_matches(site: &Site, want: &[ColumnValues]) -> Result<bool> {
         let flags = column_ext_flags(e);
         if flags.iter().any(Option::is_some) {
             let cur = int_slot(site, cp, 9, "Columns", "Flags")?.0;
-            for (bit, f) in COLUMN_FLAG_BITS.iter().zip(flags) {
-                if f.is_some_and(|b| (cur & bit != 0) != b) {
+            for ((bit, inverted), f) in COLUMN_FLAG_BITS.iter().zip(flags) {
+                if f.is_some_and(|b| (cur & bit != 0) != (b != *inverted)) {
+                    return Ok(false);
+                }
+            }
+        }
+        if let Some(v) = e.check_data {
+            if int_slot(site, cp, 7, "Columns", "CheckData")?.0 != v {
+                return Ok(false);
+            }
+        }
+        for (idx, pic) in column_ext_pictures(e) {
+            if pic.as_ref().is_some_and(|p| cp.node.children.get(idx).and_then(read_picture_spec).as_ref() != Some(p)) {
+                return Ok(false);
+            }
+        }
+        for (idx, tag, v) in column_ext_enums(e) {
+            if let Some(v) = v {
+                if Some(int_slot(site, cp, idx, "Columns", tag)?.0) != column_enum_code(tag, v) {
                     return Ok(false);
                 }
             }
@@ -6495,8 +6890,9 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             Property::Pages => {
                 let recs = panel_page_records(site)?;
                 let cur_pages = read_panel_page_values(site)?;
-                if cur_pages != old.pages {
-                    return Err(site.mismatch("Pages", &format!("{:?}", old.pages), &format!("{cur_pages:?}")));
+                let old_pages = pages_without_pictures(&old.pages);
+                if cur_pages != old_pages {
+                    return Err(site.mismatch("Pages", &format!("{old_pages:?}"), &format!("{cur_pages:?}")));
                 }
                 if recs.len() != new.pages.len() {
                     return Err(site.layout("unexpected-shape", "Pages", "page count mismatch".into()));
@@ -6519,9 +6915,19 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         let (_, span) = int_slot(site, rec, 5, "Pages", "Enabled")?;
                         out.push(piece(span, i32::from(np.enabled), &[prop]));
                     }
+                    if let Some(pic) = np.title_picture.as_ref().filter(|_| op.title_picture != np.title_picture) {
+                        let span = rec
+                            .child(2)
+                            .and_then(|w| w.child(2))
+                            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page title picture node missing".into()))?
+                            .span
+                            .span;
+                        out.push(piece(span, format_picture_node(pic), &[prop]));
+                    }
                 }
             }
             Property::EnableStartDrag if site.entry.type_name == "Table" => table_flag_piece(site, prop, &mut out)?,
+            Property::EnableDrag if site.entry.type_name == "Table" => table_flag_piece(site, prop, &mut out)?,
             Property::UseAlternationRowColor
             | Property::Header
             | Property::Footer
@@ -6529,7 +6935,8 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             | Property::HorizontalLines
             | Property::AutoInsertNewRow
             | Property::ChangeSettingOfColumns
-            | Property::ChangePositionOfColumns => table_flag_piece(site, prop, &mut out)?,
+            | Property::ChangePositionOfColumns
+            | Property::ChoiceMode => table_flag_piece(site, prop, &mut out)?,
             Property::ChangeRowSet => {
                 let want = new.change_row_set.ok_or_else(|| site.invalid("invalid-xml", "ChangeRowSet", "cannot remove ChangeRowSet".into()))?;
                 out.push(info_bool_piece(site, &[2, 1], 22, old.change_row_set, want, prop)?);
@@ -6614,7 +7021,8 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         let (_, span) = int_slot(site, cp, 25, "Columns", "Visible")?;
                         out.push(piece(span, i32::from(nc.visible), &[prop]));
                     }
-                    if oc.read_only != nc.read_only {
+                    // `Location` shares `col_props[26]` with the read-only flag and is written by the ext block.
+                    if oc.read_only != nc.read_only && !(oc.ext != nc.ext && nc.ext.location.is_some()) {
                         let (_, span) = int_slot(site, cp, 26, "Columns", "ReadOnly")?;
                         out.push(piece(span, i32::from(nc.read_only), &[prop]));
                     }
@@ -6642,14 +7050,43 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         let flags = column_ext_flags(ne);
                         if flags.iter().any(Option::is_some) {
                             let (mut cur, span) = int_slot(site, cp, 9, "Columns", "Flags")?;
-                            for (bit, f) in COLUMN_FLAG_BITS.iter().zip(flags) {
-                                match f {
+                            for ((bit, inverted), f) in COLUMN_FLAG_BITS.iter().zip(flags) {
+                                match f.map(|b| b != *inverted) {
                                     Some(true) => cur |= bit,
                                     Some(false) => cur &= !bit,
                                     None => {}
                                 }
                             }
                             out.push(piece(span, cur, &[prop]));
+                        }
+                        if let Some(v) = ne.check_data {
+                            let (_, span) = int_slot(site, cp, 7, "Columns", "CheckData")?;
+                            out.push(piece(span, v, &[prop]));
+                        }
+                        for (idx, pic) in column_ext_pictures(ne) {
+                            if let Some(pic) = pic {
+                                let span = cp
+                                    .child(idx)
+                                    .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column picture node missing".into()))?
+                                    .span
+                                    .span;
+                                out.push(piece(span, format_picture_node(pic), &[prop]));
+                            }
+                        }
+                        for (idx, tag, v) in column_ext_enums(ne) {
+                            if let Some(v) = v {
+                                let code = column_enum_code(tag, v)
+                                    .ok_or_else(|| site.invalid("invalid-xml", "Columns", format!("invalid {tag} '{v}'")))?;
+                                if tag == "Location" && code == 0 && nc.read_only {
+                                    return Err(site.invalid(
+                                        "invalid-xml",
+                                        "Columns",
+                                        "Location NewColumn cannot be combined with a read-only column".into(),
+                                    ));
+                                }
+                                let (_, span) = int_slot(site, cp, idx, "Columns", tag)?;
+                                out.push(piece(span, code, &[prop]));
+                            }
                         }
                         for (idx, c) in column_ext_colors(ne) {
                             if let Some(c) = c {
@@ -6866,6 +7303,9 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 };
                 cur == want || (want.is_empty() && cur == "DontUse")
             }
+            Property::EnableDrag if site.entry.type_name == "Table" => {
+                Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == table_flag_value(new, p)
+            }
             Property::ReadOnly if site.entry.type_name == "Table" => {
                 Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == table_flag_value(new, p)
             }
@@ -6876,7 +7316,8 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             | Property::HorizontalLines
             | Property::AutoInsertNewRow
             | Property::ChangeSettingOfColumns
-            | Property::ChangePositionOfColumns => {
+            | Property::ChangePositionOfColumns
+            | Property::ChoiceMode => {
                 Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == table_flag_value(new, p)
             }
             Property::ChangeRowSet => Some(info_int_slot(site, &[2, 1], 22, p)?.0 != 0) == new.change_row_set,
@@ -6992,7 +7433,14 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             }
             Property::ChoiceList => read_choice_list_values(site.entry.info().unwrap().node) == new.choice_list,
             Property::ShowTabs => Some(read_panel(site)?.show_tabs.0) == new.show_tabs,
-            Property::Pages => read_panel_page_values(site)? == new.pages,
+            Property::Pages => {
+                read_panel_page_values(site)? == pages_without_pictures(&new.pages)
+                    && panel_page_records(site)?.into_iter().zip(&new.pages).all(|(rec, np)| {
+                        np.title_picture.as_ref().is_none_or(|want| {
+                            rec.child(2).and_then(|w| w.node.children.get(2)).and_then(read_picture_spec).as_ref() == Some(want)
+                        })
+                    })
+            }
             Property::Footer => Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == new.footer,
             Property::SelectionMode => {
                 let cur = if info_int_slot(site, &[2, 1], 15, p)?.0 == 1 { "Multi" } else { "" };
@@ -7008,11 +7456,14 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             }
             Property::Columns => {
                 let plain: Vec<ColumnValues> =
-                    new.columns.iter().cloned().map(|c| ColumnValues { ext: ColumnExt::default(), ..c }).collect();
+                    new.columns.iter().cloned().map(|c| ColumnValues { read_only: c.read_only || location_reads_as_read_only(&c.ext), ext: ColumnExt::default(), ..c }).collect();
                 read_table_column_values(site)? == plain && column_ext_matches(site, &new.columns)?
             }
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
-            Property::Buttons => read_cb_buttons(site.entry.info().unwrap().node) == new.buttons,
+            Property::Buttons => {
+                read_cb_buttons(site.entry.info().unwrap().node) == buttons_without_extras(&new.buttons)
+                    && cb_extras_match(site, &new.buttons)?
+            }
             Property::BorderStyle => Some(info_int_slot(site, &[1, 3], 3, p)?.0) == new.border_style,
             _ => true,
         };
@@ -7071,9 +7522,73 @@ impl FormPatchPlan<'_> {
             && !self.diff.form_caption_changed
             && !self.diff.form_events_changed
             && !self.diff.attributes_changed
+            && !self.diff.form_props_changed
             && !has_dp_edits
         {
             return Ok(allocated);
+        }
+
+        // ---- form root properties
+        if self.diff.form_props_changed {
+            let fp = &self.diff.new_form_props;
+            let root = self.index.at_path(&[])?;
+            let h1 = self.index.at_path(&[1])?;
+            for (idx, val) in [
+                (5usize, fp.auto_title.map(i64::from)),
+                (6, fp.window_state),
+                (8, fp.size_change),
+                (9, fp.connectable_window.map(i64::from)),
+                (10, fp.allow_join_window.map(i64::from)),
+                (14, fp.window_appearance_mode),
+                (15, fp.window_location),
+                (16, fp.change_window_appearance_mode),
+                (17, fp.desktop_mode.map(i64::from)),
+                (18, fp.allow_close.map(i64::from)),
+                (19, fp.enter_key_behavior),
+            ] {
+                if let Some(v) = val {
+                    let (_, span) = root
+                        .atom(idx)
+                        .ok_or_else(|| layout_err(format!("form stream: root[{idx}] atom missing")))?;
+                    out.push(AppliedReplacement {
+                        control_id: 0,
+                        properties: Vec::new(),
+                        range: span,
+                        bytes: v.to_string().into_bytes(),
+                    });
+                }
+            }
+            for (idx, val) in [
+                (5usize, fp.allow_normal_state.map(i64::from)),
+                (6, fp.allow_docked_state.map(i64::from)),
+                (7, fp.allow_autohide_state.map(i64::from)),
+                (8, fp.allow_float_state.map(i64::from)),
+                (9, fp.window_dock_location),
+            ] {
+                if let Some(v) = val {
+                    let (_, span) = h1
+                        .atom(idx)
+                        .ok_or_else(|| layout_err(format!("form stream: root[1][{idx}] atom missing")))?;
+                    out.push(AppliedReplacement {
+                        control_id: 0,
+                        properties: Vec::new(),
+                        range: span,
+                        bytes: v.to_string().into_bytes(),
+                    });
+                }
+            }
+            if let Some(pic) = &fp.caption_picture {
+                let pnode = self
+                    .index
+                    .at_path(&[13, 2])
+                    .map_err(|_| layout_err("form stream: root[13][2] caption picture missing"))?;
+                out.push(AppliedReplacement {
+                    control_id: 0,
+                    properties: Vec::new(),
+                    range: pnode.span.span,
+                    bytes: format_picture_node(pic).into_bytes(),
+                });
+            }
         }
         // list span start -> (list NodeRef, original count, edits)
         let mut lists: BTreeMap<usize, (NodeRef, usize, ListEdit)> = BTreeMap::new();
@@ -7516,6 +8031,9 @@ impl FormPatchPlan<'_> {
         } else {
             self.verify_structural(&index, &allocated)?;
         }
+        if self.diff.form_props_changed {
+            self.verify_form_props(&index)?;
+        }
         let mut derived_pages = Vec::new();
         for (edit, entry) in self.targets() {
             let patched = index.get(edit.id).expect("layout compared above");
@@ -7523,6 +8041,55 @@ impl FormPatchPlan<'_> {
             derived_pages.extend(read_back(&Site { source: &reparsed, edit, entry: patched }, &original)?);
         }
         Ok(PatchedForm { bytes, replacements, derived_pages, allocated })
+    }
+
+    fn verify_form_props(&self, index: &ControlIndex) -> Result<()> {
+        let bad = |m: String| ExtractionError::new(GENERATED_FILE_MODIFIED, m).with("kind", "verification-failed");
+        let fp = &self.diff.new_form_props;
+        let root = index.at_path(&[])?;
+        let h1 = index.at_path(&[1])?;
+        for (idx, val) in [
+            (5usize, fp.auto_title.map(i64::from)),
+            (6, fp.window_state),
+            (8, fp.size_change),
+            (9, fp.connectable_window.map(i64::from)),
+            (10, fp.allow_join_window.map(i64::from)),
+            (14, fp.window_appearance_mode),
+            (15, fp.window_location),
+            (16, fp.change_window_appearance_mode),
+            (17, fp.desktop_mode.map(i64::from)),
+            (18, fp.allow_close.map(i64::from)),
+            (19, fp.enter_key_behavior),
+        ] {
+            if let Some(v) = val {
+                let got = root.atom(idx).and_then(|(a, _)| strict_int(&a.value));
+                if got != Some(v) {
+                    return Err(bad(format!("form stream: root[{idx}] did not read back as {v}")));
+                }
+            }
+        }
+        for (idx, val) in [
+            (5usize, fp.allow_normal_state.map(i64::from)),
+            (6, fp.allow_docked_state.map(i64::from)),
+            (7, fp.allow_autohide_state.map(i64::from)),
+            (8, fp.allow_float_state.map(i64::from)),
+            (9, fp.window_dock_location),
+        ] {
+            if let Some(v) = val {
+                let got = h1.atom(idx).and_then(|(a, _)| strict_int(&a.value));
+                if got != Some(v) {
+                    return Err(bad(format!("form stream: root[1][{idx}] did not read back as {v}")));
+                }
+            }
+        }
+        if let Some(pic) = &fp.caption_picture {
+            let pnode = index.at_path(&[13])?;
+            let got = pnode.node.children.get(2).and_then(read_picture_spec);
+            if got.as_ref() != Some(pic) {
+                return Err(bad("form stream: root[13][2] caption picture did not read back".to_string()));
+            }
+        }
+        Ok(())
     }
 }
 
