@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>oneform — Матрица совместимости обычных форм 1С (8.2)</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --border: #dcdfe6;
+      --text: #1f2329;
+      --muted: #646a73;
+      --rw-bg: #e8f8ee; --rw-fg: #137333; --rw-bd: #a8dab5;
+      --ro-bg: #fef7e0; --ro-fg: #b06000; --ro-bd: #fde293;
+      --bin-bg: #e8f0fe; --bin-fg: #1967d2; --bin-bd: #aecbfa;
+      --unk-bg: #f1f3f4; --unk-fg: #5f6368; --unk-bd: #dadce0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    header {
+      background: linear-gradient(135deg, #fff6cf 0%, #f3e29f 100%);
+      border-bottom: 1px solid #d7c37a;
+      padding: 20px 28px;
+    }
+    header h1 { margin: 0 0 6px 0; font-size: 22px; color: #3d2e00; }
+    header p { margin: 0; color: #5c4908; font-size: 13.5px; }
+    .container { max-width: 1440px; margin: 0 auto; padding: 20px 28px 48px; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .kpi {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    .kpi .num { font-size: 26px; font-weight: 700; margin-bottom: 2px; }
+    .kpi .label { color: var(--muted); font-size: 12.5px; }
+    .toolbar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filter-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .filter-btn.active { border-color: #3d2e00; background: #3d2e00; color: #fff; }
+    .search-box {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-width: 280px;
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .badge.rw  { background: var(--rw-bg);  color: var(--rw-fg);  border-color: var(--rw-bd); }
+    .badge.ro  { background: var(--ro-bg);  color: var(--ro-fg);  border-color: var(--ro-bd); }
+    .badge.bin { background: var(--bin-bg); color: var(--bin-fg); border-color: var(--bin-bd); }
+    .badge.unk { background: var(--unk-bg); color: var(--unk-fg); border-color: var(--unk-bd); }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 22px;
+      overflow: hidden;
+    }
+    section h2 {
+      margin: 0;
+      padding: 14px 18px;
+      font-size: 16px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--border);
+    }
+    section h3 {
+      margin: 0;
+      padding: 10px 18px;
+      font-size: 14px;
+      background: #f3f5f8;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 9px 14px; border-bottom: 1px solid #eef0f4; text-align: left; vertical-align: top; }
+    th { background: #f8f9fb; font-weight: 600; color: #42464e; font-size: 12px; text-transform: uppercase; }
+    tr:hover td { background: #fcfcfd; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #f2f4f8;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 12.5px;
+    }
+    .roadmap-list { padding: 14px 28px; margin: 0; }
+    .roadmap-list li { margin-bottom: 10px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>oneform — Матрица совместимости обычных форм 1С (8.2)</h1>
+  <p>Собрано автоматически из <code>docs/compatibility-matrix.md</code></p>
+</header>
+<div class="container">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="num">60</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
+    <div class="kpi"><div class="num">3</div><div class="label">🔵 Найдено в бинарнике через <code>explore</code> (готово к проводке)</div></div>
+    <div class="kpi"><div class="num">23</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
+    <div class="kpi"><div class="num">4</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
+  </div>
+  <div class="toolbar">
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">Все статусы</button>
+      <button class="filter-btn" data-filter="rw">🟢 R/W (60)</button>
+      <button class="filter-btn" data-filter="bin">🔵 Bin (3)</button>
+      <button class="filter-btn" data-filter="ro">🟡 R/O (23)</button>
+      <button class="filter-btn" data-filter="unk">⚪ Unk (4)</button>
+    </div>
+    <input type="search" id="searchInput" class="search-box" placeholder="Поиск по свойству, XML-тегу, слоту info[...] или типу..." />
+  </div>
+  <section>
+<p style='margin:10px 18px'>Единая карта покрытия: какие элементы и свойства обычных форм мы уже читаем в <code>Form.xml</code>, рисуем в <code>FormPreview.html</code>, находим в бинарнике <code>FormStream.bin</code> и пакуем обратно через <code>oneform pack</code>.</p>
+</section><section>
+<h2>Легенда статусов</h2>
+<p style='margin:6px 18px'><strong>🟢 R/W (<code>extract</code> + <code>preview</code> + <code>pack</code>)</strong> — свойство/элемент полностью поддерживается в обе стороны без потерь.</p>
+<p style='margin:6px 18px'><strong>🔵 Bin (<code>explore</code> подтвердил слот)</strong> — точный адрес слота в <code>FormStream.bin</code> уже доказан прогоном через <code>1С:Конфигуратор</code> и <code>1С:Предприятие</code>, осталось подключить чтение в <code>Form.xml</code> и запись в <code>form_patch.rs</code>.</p>
+<p style='margin:6px 18px'><strong>🟡 R/O (<code>extract</code> есть, <code>pack</code> ещё нет)</strong> — уже выгружается в <code>Form.xml</code> (и часто отображается в <code>FormPreview.html</code>), но при попытке изменить его <code>oneform pack</code> пока возвращает <code>unsupported</code>.</p>
+<p style='margin:6px 18px'><strong>⚪ Unk (не исследовано)</strong> — свойство есть в 1С, но его координаты в бинарнике ещё не прозвонены через <code>explore</code>.</p>
+</section><section>
+<h2>1. Уровень самой формы, модулей и макетов</h2>
+<table class="matrix-table"><thead><tr><th>Объект / Свойство</th><th>Тег в <code>Form.xml</code> / Файл</th><th>Координата в <code>FormStream.bin</code></th><th>Статус</th><th>Комментарий / Что осталось</th></tr></thead><tbody>
+<tr data-status="rw"><td><strong>Модуль формы</strong> (BSL)</td><td><code>Forms/&lt;Имя&gt;/FormModule.bsl</code></td><td>Вложенный поток <code>module</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл с сохранением кодировки, BOM и переводов строк</td></tr>
+<tr data-status="rw"><td><strong>Модуль объекта</strong> (BSL)</td><td><code>ObjectModule.bsl</code></td><td>Поток <code>text</code> объекта</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл с верификацией</td></tr>
+<tr data-status="rw"><td><strong>Макеты</strong> (HTML, MXL, Бинарные)</td><td><code>Templates/&lt;Имя&gt;/Template.*</code></td><td>Потоки макетов верхнего уровня</td><td><span class="badge rw">🟢 R/W</span></td><td>HTML-обёртки base64 и табличные документы пакуются обратно без потерь</td></tr>
+<tr data-status="rw"><td><strong>Счётчик максимального ID элемента</strong></td><td>Атрибут <code>id</code> элементов</td><td><code>root[1][1][1]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Автоматически увеличивается при добавлении новых элементов из донора</td></tr>
+<tr data-status="ro"><td><strong>Заголовок формы</strong> (<code>Заголовок</code>)</td><td><code>&lt;Form&gt;&lt;Caption&gt;</code></td><td><code>root[1][1][0]</code> (localized)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code>; слот известен — легко добавить патч</td></tr>
+<tr data-status="ro"><td><strong>Ширина и Высота формы</strong></td><td><code>&lt;Form&gt;&lt;Width&gt;</code>, <code>&lt;Height&gt;</code></td><td><code>root[1][3]</code>, <code>root[1][4]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code>; при ресайзе нужно также обновлять границы корневой панели</td></tr>
+<tr data-status="ro"><td><strong>События самой формы</strong> (<code>ПриОткрытии</code>, <code>ПередОткрытием</code> и др.)</td><td><code>&lt;Form&gt;&lt;Events&gt;</code></td><td><code>root[4]</code>, <code>root[1][2][1]</code>, <code>root[3]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code> (включая события расширения документа/обработки)</td></tr>
+<tr data-status="ro"><td><strong>Реквизиты формы</strong> (<code>Attributes</code>)</td><td><code>&lt;Attributes&gt;&lt;Attribute&gt;</code></td><td><code>root[2][2]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются (<code>id</code>, <code>name</code>, <code>main</code>, <code>stored</code>, <code>ValueType</code>)</td></tr>
+<tr data-status="ro"><td><strong>Привязки данных к реквизитам</strong> (<code>DataPath</code>)</td><td><code>&lt;DataPath attributeId=&quot;...&quot;&gt;</code></td><td><code>root[2][3]</code> (таблица связей)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code>; при удалении элемента чистится из <code>root[2][3]</code>. Назначение нового <code>DataPath</code> пока не пакуется</td></tr>
+</tbody></table>
+</section><section>
+<h2>2. Все 27 типов элементов обычных форм 1С</h2>
+<table class="matrix-table"><thead><tr><th>Тип в <code>Form.xml</code></th><th>Имя в 1С (Рус.)</th><th>GUID класса в <code>FormStream.bin</code></th><th>Статус</th><th>Поддержка (<code>Extract</code> / <code>Preview</code> / <code>Patch</code> / <code>Add</code> / <code>Delete</code>)</th></tr></thead><tbody>
+<tr data-status="rw"><td><code>Button</code></td><td>Кнопка</td><td><code>09ccdc77-ea1a-4a6d-ab1c-3435e8243392</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>LabelDecoration</code></td><td>Надпись</td><td><code>369b8685-629c-456d-a892-c0bd2d7e5c5c</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td>Поле ввода</td><td><code>77129f61-5c0a-4784-8f32-ec8c61f49757</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>CheckBox</code></td><td>Флажок</td><td><code>f5c23b81-a15d-40b9-9c3d-f27a13920b93</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>RadioButton</code></td><td>Переключатель</td><td><code>f638004c-5a72-4773-96a5-6427e7f93f86</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>ListBox</code></td><td>Поле списка</td><td><code>512437f2-b571-4098-b559-f5ef3c336877</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>PictureDecoration</code></td><td>Поле картинки</td><td><code>a9f3b19b-28a2-4906-916a-2429c3a23a29</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>CommandBar</code></td><td>Командная панель</td><td><code>c92b0e7f-b6d4-4396-a09e-297c56b779b2</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение (с деревом кнопок), превью, патч геометрии/видимости, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>Panel</code></td><td>Панель (с вкладками)</td><td><code>a1f74f93-b23e-4636-88f6-54c324a72f56</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение (со страницами и детьми), превью, ресайз вместе с границами страниц, добавление детей на нужную страницу</td></tr>
+<tr data-status="rw"><td><code>Splitter</code></td><td>Разделитель</td><td><code>421ef97d-d157-48d8-8f1d-a074b2b7d018</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>Table</code></td><td>Табличное поле</td><td><code>f6722d04-f658-493e-9737-d462338b7f55</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение (с колонками), превью, патч геометрии/видимости/порядка, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>SpreadsheetDocumentField</code></td><td>Поле табличного документа</td><td><code>d8a1a1d6-c902-4920-8941-29a61398e333</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>CalendarField</code></td><td>Поле календаря</td><td><code>6d294d40-3181-462c-b536-7873f3382277</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>TextDocumentField</code></td><td>Поле текстового документа</td><td><code>b72d5d1a-a671-4093-8133-9a863a970570</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>TrackBar</code></td><td>Полоса регулирования</td><td><code>f11f21d6-6d8d-4191-9f31-9431215f988c</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>ProgressBar</code></td><td>Индикатор</td><td><code>a7b32964-1363-441b-8284-8f30f229f756</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>GeographicalSchemaField</code></td><td>Поле географической схемы</td><td><code>71f23214-292a-4361-b490-042817f28397</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>HTMLDocumentField</code></td><td>Поле HTML документа</td><td><code>158f31f0-2412-4037-9f25-3915a3f15a9a</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>GraphicalSchemaField</code></td><td>Поле графической схемы</td><td><code>9733827a-8144-4201-a00a-087279123a6c</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>ChartField</code></td><td>Поле диаграммы</td><td><code>a325c644-2722-4c92-8b3d-9f076c133059</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>GanttChartField</code></td><td>Поле диаграммы Ганта</td><td><code>89615072-7252-415d-9359-67a07814925a</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>PivotChartField</code></td><td>Поле сводной диаграммы</td><td><code>a272f823-0761-428d-8087-12f1325a5230</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>DendrogramField</code></td><td>Поле дендрограммы</td><td><code>d02a7290-3773-4f88-a719-74a7a5c01007</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="rw"><td><code>PDFDocumentField</code></td><td>Поле PDF документа</td><td><code>1c94c817-c203-4c14-a12f-5c9b64479263</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Чтение, превью, патч свойств, создание из донора, удаление</td></tr>
+<tr data-status="ro"><td><code>UsualGroup</code></td><td>Рамка группы</td><td><code>0955a5e0-a287-409e-9592-8c9c1a6760c3</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читается (с <code>BorderStyle</code>), рендерится в превью, патчится если уже есть на форме. Нет прототипа в <code>donor.epf</code></td></tr>
+<tr data-status="ro"><td><code>ChoiceField</code></td><td>Поле выбора</td><td><code>231929b4-2a46-4813-b935-09c405f9a823</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читается (со списком выбора <code>ChoiceList</code>), патчится если уже есть на форме. Нет прототипа в <code>donor.epf</code></td></tr>
+<tr data-status="ro"><td><code>ActiveXControl</code></td><td>Элемент управления ActiveX</td><td><code>b978d524-5c5c-4f2b-82b1-77a94865f40b</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читается и патчится если уже есть на форме. Нет прототипа в <code>donor.epf</code></td></tr>
+</tbody></table>
+</section><section>
+<h2>3. Общие свойства всех элементов</h2>
+<h3>3.1. Геометрия, видимость и порядок обхода</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td>Все элементы</td><td><code>Лево</code> (<code>Left</code>)</td><td><code>&lt;Left&gt;</code></td><td><code>geom[1]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Читается, рисуется в превью, патчится без потерь</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td><code>Верх</code> (<code>Top</code>)</td><td><code>&lt;Top&gt;</code></td><td><code>geom[2]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Читается, рисуется в превью, патчится без потерь</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td><code>Ширина</code> (<code>Width</code>)</td><td><code>&lt;Width&gt;</code></td><td><code>geom[3]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Для <code>Panel</code> также синхронно обновляет правую границу страниц</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td><code>Высота</code> (<code>Height</code>)</td><td><code>&lt;Height&gt;</code></td><td><code>geom[4]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Для <code>Panel</code> также синхронно обновляет нижнюю границу страниц</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td><code>Видимость</code> (<code>Visible</code>)</td><td><code>&lt;Visible&gt;</code></td><td><code>geom[5]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Опускается в XML когда <code>true</code>; записывается <code>0/1</code> при патче</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td>Порядок отрисовки (<code>ZOrder</code>)</td><td><code>&lt;ZOrder&gt;</code></td><td><code>geom[21]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полная поддержка чтения и записи</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td><code>ПорядокОбхода</code> (<code>TabOrder</code>)</td><td><code>&lt;TabOrder&gt;</code></td><td><code>geom[22]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полная поддержка чтения и записи</td></tr>
+<tr data-status="rw"><td>Дети <code>Panel</code></td><td>Индекс страницы панели</td><td>Вложенность в <code>&lt;Page&gt;</code></td><td><code>geom[19]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Новые контролы внутри <code>&lt;Page&gt;</code> получают правильный индекс страницы</td></tr>
+<tr data-status="unk"><td>Все элементы</td><td>Привязки границ (<code>Anchors</code>)</td><td><em>(не выводится)</em></td><td><code>geom[6..11]</code></td><td><span class="badge unk">⚪ Unk</span></td><td>4 узла привязки краёв элемента к форме или соседним контролам</td></tr>
+<tr data-status="unk"><td>Все элементы</td><td><code>АвтоПорядокОбхода</code> / <code>ПропускПриВводе</code></td><td><em>(не выводится)</em></td><td><code>geom[20..24]</code> / <code>info</code></td><td><span class="badge unk">⚪ Unk</span></td><td>Кандидаты в хвосте <code>geom</code> (<code>geom[20]</code>, <code>geom[23]</code>, <code>geom[24]</code>)</td></tr>
+</tbody></table>
+<h3>3.2. Идентификация, Заголовок и События</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td>Все элементы</td><td><code>Заголовок</code> (<code>Caption</code>)</td><td><code>&lt;Caption&gt;&lt;Item&gt;</code></td><td><code>info[1][2]</code> / <code>info[1][0][2]</code> / <code>info[2][0][2]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Работает и для существующих элементов, и при создании из донора</td></tr>
+<tr data-status="rw"><td>Новые элементы</td><td><code>Имя</code> (<code>Name</code>) и <code>&lt;Events&gt;</code></td><td>Атрибут <code>name</code>, <code>&lt;Events&gt;</code></td><td>Слот имени + таблица событий</td><td><span class="badge rw">🟢 R/W</span></td><td>При создании элемента из донора задаются имя и обработчики событий</td></tr>
+<tr data-status="ro"><td>Существующие элементы</td><td>Переименование <code>name</code></td><td>Атрибут <code>name</code></td><td>Зависит от типа контрола</td><td><span class="badge ro">🟡 R/O</span></td><td>Координаты известны (<code>src/donor.rs</code>), легко разрешить патч имени по <code>id</code></td></tr>
+<tr data-status="ro"><td>Существующие элементы</td><td>Изменение <code>&lt;Events&gt;</code></td><td><code>&lt;Events&gt;&lt;Click&gt;...</code></td><td>Списки событий в <code>info</code> / <code>control[3]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Шаблоны событий уже есть в <code>src/donor.rs</code>; осталось подключить патч на существующих контролах</td></tr>
+</tbody></table>
+<h3>3.3. Базовый блок состояния и оформления (<code>ControlBase</code> / <code>Appearance</code>)</h3>
+<p style='margin:10px 18px'>У каждого контрола есть 18-элементный узел <code>&lt;base&gt;</code> (<code>info[1][0]</code> у <code>Button</code>/<code>LabelDecoration</code>/<code>Panel</code>/<code>CommandBar</code>/<code>UsualGroup</code>, <code>info[2][0][0]</code> у <code>InputField</code>/<code>RadioButton</code>, <code>info[1][0][0]</code> у <code>CheckBox</code>, <code>info[2][0]</code> у <code>Table</code>):</p>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td>Все основные контролы</td><td><strong><code>Доступность</code> (<code>Enabled</code>)</strong></td><td><code>&lt;Enabled&gt;</code></td><td><strong><code>&lt;base&gt;[1]</code></strong> (<code>1</code>=Да, <code>0</code>=Нет)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (и при создании из донора)</td></tr>
+<tr data-status="rw"><td>Все основные контролы</td><td><strong><code>ПрозрачныйФон</code> (<code>TransparentBack</code>)</strong></td><td><code>&lt;TransparentBack&gt;</code></td><td><strong><code>&lt;base&gt;[5]</code></strong> (<code>0</code>=Нет, <code>1</code>=Да)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи</td></tr>
+<tr data-status="ro"><td>Все основные контролы</td><td><code>ЦветФона</code> (<code>BackColor</code>)</td><td><code>&lt;BackColor kind=&quot;...&quot; value=&quot;...&quot;/&gt;</code></td><td><code>&lt;base&gt;[2]</code> (<code>{3,kind,{rgb}}</code>)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью; запись в <code>pack</code> ещё не подключена</td></tr>
+<tr data-status="ro"><td>Все основные контролы</td><td><code>ЦветТекста</code> (<code>TextColor</code>)</td><td><code>&lt;TextColor kind=&quot;...&quot; value=&quot;...&quot;/&gt;</code></td><td><code>&lt;base&gt;[3]</code> (<code>{3,kind,{rgb}}</code>)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью; запись в <code>pack</code> ещё не подключена</td></tr>
+<tr data-status="ro"><td>Все основные контролы</td><td><code>ЦветРамки</code> (<code>BorderColor</code>)</td><td><code>&lt;BorderColor kind=&quot;...&quot; value=&quot;...&quot;/&gt;</code></td><td><code>&lt;base&gt;[6]</code> (<code>{3,kind,{rgb}}</code>)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью; запись в <code>pack</code> ещё не подключена</td></tr>
+<tr data-status="ro"><td>Все основные контролы</td><td><code>Шрифт</code> (<code>Font</code>: bold, face, size)</td><td><code>&lt;Font bold=&quot;...&quot; face=&quot;...&quot; size=&quot;...&quot;/&gt;</code></td><td><code>&lt;base&gt;[4]</code> (<code>{7,kind,mask,...}</code>)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью</td></tr>
+<tr data-status="rw"><td>Все основные контролы</td><td><strong><code>Подсказка</code> (<code>Tooltip</code>)</strong></td><td><code>&lt;Tooltip&gt;&lt;Item&gt;</code></td><td><code>&lt;base&gt;[12]</code> (localized)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи локализованной подсказки</td></tr>
+</tbody></table>
+</section><section>
+<h2>4. Специфические свойства по типам элементов</h2>
+<h3>4.1. Поле ввода (<code>InputField</code>)</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>ТолькоПросмотр</code> (<code>ReadOnly</code>)</strong></td><td><code>&lt;ReadOnly&gt;</code></td><td><strong><code>info[2][0][13]</code></strong> (<code>0</code>=Нет, <code>1</code>=Да)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-flag-11</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>КнопкаВыбора</code> (<code>ChoiceButton</code>)</strong></td><td><code>&lt;ChoiceButton&gt;</code></td><td><strong><code>info[2][0][7]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-flag-05</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>КнопкаОчистки</code> (<code>ClearButton</code>)</strong></td><td><code>&lt;ClearButton&gt;</code></td><td><strong><code>info[2][0][8]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-flag-06</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>КнопкаОткрытия</code> (<code>OpenButton</code>)</strong></td><td><code>&lt;OpenButton&gt;</code></td><td><strong><code>info[2][0][10]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-flag-08</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>КнопкаСпискаВыбора</code> (<code>DropListButton</code>)</strong></td><td><code>&lt;DropListButton&gt;</code></td><td><strong><code>info[2][0][6]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Патчится при указании в <code>Form.xml</code> (<code>inputfield-flag-04</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>КнопкаРегулирования</code> (<code>SpinButton</code>)</strong></td><td><code>&lt;SpinButton&gt;</code></td><td><strong><code>info[2][0][9]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Патчится при указании в <code>Form.xml</code> (<code>inputfield-flag-07</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>АвтоОтметкаНезаполненного</code> (<code>AutoMarkIncomplete</code>)</strong></td><td><code>&lt;AutoMarkIncomplete&gt;</code></td><td><strong><code>info[2][0][35]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-flag-25</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>АвтоВыборНезаполненного</code> (<code>AutoChoiceIncomplete</code>)</strong></td><td><code>&lt;AutoChoiceIncomplete&gt;</code></td><td><strong><code>info[2][0][36]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Патчится при указании в <code>Form.xml</code> (<code>inputfield-flag-26</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>ВыделятьОтрицательные</code> (<code>MarkNegatives</code>)</strong></td><td><code>&lt;MarkNegatives&gt;</code></td><td><strong><code>info[2][0][27]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-flag-21</code>)</td></tr>
+<tr data-status="bin"><td><code>InputField</code></td><td><strong><code>ГоризонтальнаяПолосаПрокрутки</code></strong></td><td><code>&lt;HorizontalScrollBar&gt;</code> <em>(предстоит)</em></td><td><strong><code>info[2][0][2]</code></strong></td><td><span class="badge bin">🔵 Bin</span></td><td>Доказано через <code>ENTERPRISE /Execute</code> (<code>inputfield-flag-00</code>)</td></tr>
+<tr data-status="bin"><td><code>InputField</code></td><td><strong><code>ВертикальнаяПолосаПрокрутки</code></strong></td><td><code>&lt;VerticalScrollBar&gt;</code> <em>(предстоит)</em></td><td><strong><code>info[2][0][3]</code></strong></td><td><span class="badge bin">🔵 Bin</span></td><td>Доказано через <code>ENTERPRISE /Execute</code> (<code>inputfield-flag-01</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>АвтоПереносСтрок</code> (<code>AutoCellHeight</code>)</strong></td><td><code>&lt;AutoCellHeight&gt;</code></td><td><strong><code>info[2][0][4]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Патчится при указании в <code>Form.xml</code> (<code>inputfield-flag-02</code>)</td></tr>
+<tr data-status="rw"><td><code>InputField</code></td><td><strong><code>РежимВыбораИзСписка</code> (<code>ChoiceListMode</code>)</strong></td><td><code>&lt;ChoiceListMode&gt;</code></td><td><strong><code>info[9]</code></strong> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>inputfield-tail-09</code>)</td></tr>
+<tr data-status="ro"><td><code>InputField</code></td><td>Тип значения (<code>ValueType</code>)</td><td><code>&lt;ValueType kind=&quot;...&quot;/&gt;</code></td><td><code>info[1]</code> (<code>{&quot;Pattern&quot;, ...}</code>)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code>; запись паттерна типа пока не реализована</td></tr>
+<tr data-status="unk"><td><code>InputField</code></td><td><code>РежимПароля</code>, <code>МногострочныйРежим</code>, <code>Маска</code></td><td><em>(не выводится)</em></td><td>Внутри <code>info[2][0][11..41]</code></td><td><span class="badge unk">⚪ Unk</span></td><td>Зависят от строкового типа значения; нужен прогон на строковом <code>ПолеВвода</code></td></tr>
+</tbody></table>
+<h3>4.2. Надпись (<code>LabelDecoration</code>), Флажок (<code>CheckBox</code>), Группа (<code>UsualGroup</code>), Поле выбора (<code>ChoiceField</code>)</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td><code>LabelDecoration</code></td><td><strong>Горизонтальное положение текста (<code>HorizontalAlign</code>)</strong></td><td><code>&lt;HorizontalAlign&gt;</code></td><td><code>info[1][3]</code> (<code>0</code>=Left, <code>1</code>=Center, <code>2</code>=Right)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи</td></tr>
+<tr data-status="rw"><td><code>LabelDecoration</code></td><td><strong><code>Гиперссылка</code> (<code>Hyperlink</code>)</strong></td><td><code>&lt;Hyperlink&gt;</code></td><td><code>info[1][5]</code> (<code>0/1</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи</td></tr>
+<tr data-status="ro"><td><code>LabelDecoration</code></td><td>Наличие картинки</td><td><code>&lt;Picture&gt;true&lt;/Picture&gt;</code></td><td><code>info[1][12]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code></td></tr>
+<tr data-status="rw"><td><code>CheckBox</code></td><td><strong><code>ПоложениеЗаголовка</code> (<code>TitleLocation</code>)</strong></td><td><code>&lt;TitleLocation&gt;</code></td><td><strong><code>info[1][0][3]</code></strong> (<code>1</code>=Справа, <code>0</code>=Слева)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>checkbox-flag-01</code>)</td></tr>
+<tr data-status="rw"><td><code>CheckBox</code></td><td><strong><code>ТриСостояния</code> (<code>ThreeState</code>)</strong></td><td><code>&lt;ThreeState&gt;</code></td><td><strong><code>info[1][2]</code></strong> (<code>0</code>=Нет, <code>1</code>=Да)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>checkbox-flag-06</code>)</td></tr>
+<tr data-status="ro"><td><code>UsualGroup</code></td><td>Вид рамки (<code>BorderStyle</code>)</td><td><code>&lt;BorderStyle code=&quot;...&quot;&gt;</code></td><td><code>info[1][3][3]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью</td></tr>
+<tr data-status="ro"><td><code>ChoiceField</code></td><td>Список выбора (<code>ChoiceList</code>)</td><td><code>&lt;ChoiceList&gt;&lt;ChoiceItem&gt;</code></td><td><code>info[1][26][2][6]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code></td></tr>
+</tbody></table>
+<h3>4.3. Панель (<code>Panel</code>) и страницы вкладок (<code>&lt;Page&gt;</code>)</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td><code>Panel</code></td><td><strong>Отображение закладок (<code>ShowTabs</code>)</strong></td><td><code>&lt;ShowTabs code=&quot;...&quot; member=&quot;...&quot;/&gt;</code></td><td><code>info[1][base+1]</code> (<code>0</code>=None, <code>1</code>=Top, ...)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи с пересчётом страниц</td></tr>
+<tr data-status="ro"><td><code>Panel / Page</code></td><td>Заголовок, Видимость, Доступность вкладки</td><td><code>&lt;Page name=&quot;...&quot;&gt;&lt;Title&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;Enabled&gt;</code></td><td><code>info[1][13]</code> (список страниц)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью; патч заголовков и добавление/удаление страниц пока не реализованы</td></tr>
+</tbody></table>
+<h3>4.4. Табличное поле (<code>Table</code>) и его колонки (<code>&lt;Columns&gt;&lt;Column&gt;</code>)</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td><code>Table</code></td><td><strong>Подвал таблицы (<code>Footer</code>)</strong></td><td><code>&lt;Footer&gt;</code></td><td><code>info[2][1][1]</code> (бит <code>2</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и побитовой записи без затирания других флагов</td></tr>
+<tr data-status="rw"><td><code>Table</code></td><td><strong><code>РежимВыделения</code> (<code>SelectionMode</code>)</strong></td><td><code>&lt;SelectionMode&gt;</code></td><td><strong><code>info[2][1][15]</code></strong> (<code>0</code>=Одиночный, <code>1</code>=Множественный)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>table-flag-04</code>)</td></tr>
+<tr data-status="bin"><td><code>Table</code></td><td><strong><code>НачальноеОтображениеДерева</code></strong></td><td><code>&lt;InitialTreeView&gt;</code> <em>(предстоит)</em></td><td><strong><code>info[2][1][21]</code></strong></td><td><span class="badge bin">🔵 Bin</span></td><td>Доказано через <code>ENTERPRISE /Execute</code> (<code>table-flag-07</code>)</td></tr>
+<tr data-status="unk"><td><code>Table</code></td><td><code>ТолькоПросмотр</code>, линии сетки, полосы прокрутки</td><td><em>(не выводится)</em></td><td><code>info[2][1][...]</code></td><td><span class="badge unk">⚪ Unk</span></td><td>Кандидаты в <code>info[2][1]</code></td></tr>
+<tr data-status="ro"><td><code>Table / Column</code></td><td>Имя, Заголовок, ТекстПодвала, Подсказка колонки</td><td><code>&lt;Column name=&quot;...&quot;&gt;&lt;Header&gt;</code>, <code>&lt;FooterText&gt;</code>, <code>&lt;Tooltip&gt;</code></td><td>Список колонок внутри <code>Table.info</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code> и рендерятся в превью</td></tr>
+<tr data-status="ro"><td><code>Table / Column</code></td><td>Ширина, Видимость, ТолькоПросмотр, Редактор колонки</td><td><code>&lt;Width&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;ReadOnly&gt;</code>, <code>&lt;Editor&gt;</code></td><td><code>col_props[4]</code>, <code>col_props[25]</code>, <code>col_props[38]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Слоты уже декодируются в <code>decode_column_props</code> (<code>src/oof_props.rs</code>)</td></tr>
+<tr data-status="ro"><td><code>Table / Column</code></td><td><code>DataPath</code> и события колонки</td><td><code>&lt;DataPath&gt;</code>, <code>&lt;Events&gt;</code></td><td>Привязка к полю ТЧ/ТЗ + список событий</td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code></td></tr>
+</tbody></table>
+<h3>4.5. Командная панель (<code>CommandBar</code>) и её кнопки (<code>&lt;Buttons&gt;&lt;Button&gt;</code>)</h3>
+<table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
+<tr data-status="rw"><td><code>CommandBar</code></td><td><strong>Автозаполнение и выравнивание</strong></td><td><code>&lt;AutoFill&gt;</code>, <code>&lt;HorizontalAlign&gt;</code></td><td><code>info[1][3]</code>, <code>info[1][4]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи</td></tr>
+<tr data-status="ro"><td><code>CommandBar / Button</code></td><td>Дерево кнопок, подменю, действия и обработчики</td><td><code>&lt;Buttons&gt;&lt;Button name=&quot;...&quot; action=&quot;...&quot;&gt;</code></td><td><code>info[1][7]</code> (таблица действий + группы кнопок)</td><td><span class="badge ro">🟡 R/O</span></td><td>Полностью декодируется и рендерится в превью</td></tr>
+</tbody></table>
+</section><section>
+<h2>5. Приоритетный план достижения 100% совместимости</h2>
+<ol class="roadmap-list">
+<li>✅ <strong>Шаг А — Перевод всех найденных флагов и простых свойств (🔵 + 🟡 -&gt; 🟢 R/W): ВЫПОЛНЕНО</strong> (<code>pack-discovered-control-properties</code>). Подключены <code>&lt;Enabled&gt;</code>, <code>&lt;TransparentBack&gt;</code>, <code>&lt;Tooltip&gt;</code>, <code>&lt;ReadOnly&gt;</code>, все 5 кнопок <code>InputField</code>, <code>&lt;AutoMarkIncomplete&gt;</code>, <code>&lt;AutoChoiceIncomplete&gt;</code>, <code>&lt;MarkNegatives&gt;</code>, <code>&lt;AutoCellHeight&gt;</code>, <code>&lt;ChoiceListMode&gt;</code>, <code>&lt;ThreeState&gt;</code>, <code>&lt;TitleLocation&gt;</code>, <code>&lt;Hyperlink&gt;</code>, <code>&lt;HorizontalAlign&gt;</code>, <code>&lt;ShowTabs&gt;</code>, <code>&lt;Footer&gt;</code>, <code>&lt;SelectionMode&gt;</code>, <code>&lt;AutoFill&gt;</code>.</li>
+<li><strong>Шаг Б — События и переименование существующих элементов:</strong> разрешить редактировать <code>&lt;Events&gt;</code> и переименовывать <code>name</code> (при сохранении <code>id</code>) у уже существующих элементов на форме, переиспользуя шаблоны из <code>src/donor.rs</code>.</li>
+<li><strong>Шаг В — Патч колонок <code>Table</code> и вкладок <code>Panel</code>:</strong> разрешить менять ширину, заголовок, видимость и <code>ReadOnly</code> существующих колонок <code>&lt;Column&gt;</code> табличного поля и заголовки вкладок <code>&lt;Page&gt;</code> у <code>Panel</code>, а затем — добавлять и удалять колонки и вкладки.</li>
+<li><strong>Шаг Г — Донор 27/27 и Реквизиты формы + <code>DataPath</code>:</strong> добавить в <code>donor.epf</code> недостающие 3 типа (<code>UsualGroup</code>, <code>ChoiceField</code>, <code>ActiveXControl</code>) и научить <code>form_patch.rs</code> добавлять реквизиты в <code>root[2][2]</code> и привязывать их к контролам в <code>root[2][3]</code> (<code>&lt;DataPath&gt;</code>).</li>
+</ol>
+</section>
+</div>
+<script>
+  const buttons = document.querySelectorAll('.filter-btn');
+  const searchInput = document.getElementById('searchInput');
+  const rows = document.querySelectorAll('.matrix-table tbody tr');
+  let activeFilter = 'all';
+  function applyFilters() {
+    const q = searchInput.value.trim().toLowerCase();
+    rows.forEach(row => {
+      const status = row.getAttribute('data-status');
+      const matchesStatus = activeFilter === 'all' || status === activeFilter;
+      const matchesText = !q || row.innerText.toLowerCase().includes(q);
+      row.classList.toggle('hidden', !(matchesStatus && matchesText));
+    });
+  }
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.getAttribute('data-filter');
+      applyFilters();
+    });
+  });
+  searchInput.addEventListener('input', applyFilters);
+</script>
+</body>
+</html>

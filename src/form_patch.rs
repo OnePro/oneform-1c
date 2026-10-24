@@ -31,12 +31,43 @@ use serde_json::Value;
 use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
 use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
-use crate::oof_props::{caption_path, localized};
+use crate::oof_props::{app_path, caption_path, localized};
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 8] = ["Caption", "Left", "Top", "Width", "Height", "Visible", "ZOrder", "TabOrder"];
+const SUPPORTED_TAGS: [&str; 30] = [
+    "Caption",
+    "Left",
+    "Top",
+    "Width",
+    "Height",
+    "Visible",
+    "ZOrder",
+    "TabOrder",
+    "Enabled",
+    "TransparentBack",
+    "Tooltip",
+    "ReadOnly",
+    "ChoiceButton",
+    "ClearButton",
+    "OpenButton",
+    "DropListButton",
+    "SpinButton",
+    "AutoMarkIncomplete",
+    "AutoChoiceIncomplete",
+    "MarkNegatives",
+    "AutoCellHeight",
+    "ChoiceListMode",
+    "HorizontalAlign",
+    "Hyperlink",
+    "ThreeState",
+    "TitleLocation",
+    "ShowTabs",
+    "Footer",
+    "SelectionMode",
+    "AutoFill",
+];
 const MAX_REPORTED: usize = 50;
 
 // ------------------------------------------------------------------ problems
@@ -98,11 +129,64 @@ pub struct ControlValues {
     pub visible: bool,
     pub z_order: i64,
     pub tab_order: i64,
+    pub enabled: bool,
+    pub transparent_back: bool,
+    pub tooltip: Vec<(String, String)>,
+    pub read_only: bool,
+    pub choice_button: Option<bool>,
+    pub clear_button: Option<bool>,
+    pub open_button: Option<bool>,
+    pub drop_list_button: Option<bool>,
+    pub spin_button: Option<bool>,
+    pub auto_mark_incomplete: bool,
+    pub auto_choice_incomplete: Option<bool>,
+    pub mark_negatives: bool,
+    pub auto_cell_height: Option<bool>,
+    pub choice_list_mode: bool,
+    pub horizontal_align: String,
+    pub hyperlink: bool,
+    pub three_state: bool,
+    pub title_location: String,
+    pub show_tabs: Option<i64>,
+    pub footer: Option<bool>,
+    pub selection_mode: String,
+    pub auto_fill: Option<bool>,
 }
 
 impl ControlValues {
     fn empty() -> ControlValues {
-        ControlValues { caption: Vec::new(), left: 0, top: 0, width: 0, height: 0, visible: true, z_order: 0, tab_order: 0 }
+        ControlValues {
+            caption: Vec::new(),
+            left: 0,
+            top: 0,
+            width: 0,
+            height: 0,
+            visible: true,
+            z_order: 0,
+            tab_order: 0,
+            enabled: true,
+            transparent_back: false,
+            tooltip: Vec::new(),
+            read_only: false,
+            choice_button: None,
+            clear_button: None,
+            open_button: None,
+            drop_list_button: None,
+            spin_button: None,
+            auto_mark_incomplete: false,
+            auto_choice_incomplete: None,
+            mark_negatives: false,
+            auto_cell_height: None,
+            choice_list_mode: false,
+            horizontal_align: String::new(),
+            hyperlink: false,
+            three_state: false,
+            title_location: String::new(),
+            show_tabs: None,
+            footer: None,
+            selection_mode: String::new(),
+            auto_fill: None,
+        }
     }
 }
 
@@ -116,6 +200,28 @@ pub enum Property {
     Visible,
     ZOrder,
     TabOrder,
+    Enabled,
+    TransparentBack,
+    Tooltip,
+    ReadOnly,
+    ChoiceButton,
+    ClearButton,
+    OpenButton,
+    DropListButton,
+    SpinButton,
+    AutoMarkIncomplete,
+    AutoChoiceIncomplete,
+    MarkNegatives,
+    AutoCellHeight,
+    ChoiceListMode,
+    HorizontalAlign,
+    Hyperlink,
+    ThreeState,
+    TitleLocation,
+    ShowTabs,
+    Footer,
+    SelectionMode,
+    AutoFill,
 }
 
 impl Property {
@@ -129,6 +235,28 @@ impl Property {
             Property::Visible => "Visible",
             Property::ZOrder => "ZOrder",
             Property::TabOrder => "TabOrder",
+            Property::Enabled => "Enabled",
+            Property::TransparentBack => "TransparentBack",
+            Property::Tooltip => "Tooltip",
+            Property::ReadOnly => "ReadOnly",
+            Property::ChoiceButton => "ChoiceButton",
+            Property::ClearButton => "ClearButton",
+            Property::OpenButton => "OpenButton",
+            Property::DropListButton => "DropListButton",
+            Property::SpinButton => "SpinButton",
+            Property::AutoMarkIncomplete => "AutoMarkIncomplete",
+            Property::AutoChoiceIncomplete => "AutoChoiceIncomplete",
+            Property::MarkNegatives => "MarkNegatives",
+            Property::AutoCellHeight => "AutoCellHeight",
+            Property::ChoiceListMode => "ChoiceListMode",
+            Property::HorizontalAlign => "HorizontalAlign",
+            Property::Hyperlink => "Hyperlink",
+            Property::ThreeState => "ThreeState",
+            Property::TitleLocation => "TitleLocation",
+            Property::ShowTabs => "ShowTabs",
+            Property::Footer => "Footer",
+            Property::SelectionMode => "SelectionMode",
+            Property::AutoFill => "AutoFill",
         }
     }
 }
@@ -145,6 +273,28 @@ impl ControlValues {
             (self.visible == other.visible, Property::Visible),
             (self.z_order == other.z_order, Property::ZOrder),
             (self.tab_order == other.tab_order, Property::TabOrder),
+            (self.enabled == other.enabled, Property::Enabled),
+            (self.transparent_back == other.transparent_back, Property::TransparentBack),
+            (self.tooltip == other.tooltip, Property::Tooltip),
+            (self.read_only == other.read_only, Property::ReadOnly),
+            (self.choice_button == other.choice_button, Property::ChoiceButton),
+            (self.clear_button == other.clear_button, Property::ClearButton),
+            (self.open_button == other.open_button, Property::OpenButton),
+            (self.drop_list_button == other.drop_list_button, Property::DropListButton),
+            (self.spin_button == other.spin_button, Property::SpinButton),
+            (self.auto_mark_incomplete == other.auto_mark_incomplete, Property::AutoMarkIncomplete),
+            (self.auto_choice_incomplete == other.auto_choice_incomplete, Property::AutoChoiceIncomplete),
+            (self.mark_negatives == other.mark_negatives, Property::MarkNegatives),
+            (self.auto_cell_height == other.auto_cell_height, Property::AutoCellHeight),
+            (self.choice_list_mode == other.choice_list_mode, Property::ChoiceListMode),
+            (self.horizontal_align == other.horizontal_align, Property::HorizontalAlign),
+            (self.hyperlink == other.hyperlink, Property::Hyperlink),
+            (self.three_state == other.three_state, Property::ThreeState),
+            (self.title_location == other.title_location, Property::TitleLocation),
+            (self.show_tabs == other.show_tabs, Property::ShowTabs),
+            (self.footer == other.footer, Property::Footer),
+            (self.selection_mode == other.selection_mode, Property::SelectionMode),
+            (self.auto_fill == other.auto_fill, Property::AutoFill),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -269,8 +419,32 @@ impl FormXml {
         reorder(&mut out.shell, &z);
         for c in &mut out.controls {
             reorder(&mut c.rest, &z);
+            // Write-only InputField flags (verified in binary by read_back, not emitted by render_form_xml
+            // so existing golden Form.xml files stay byte-identical) are cleared before XML comparison.
+            c.values.drop_list_button = None;
+            c.values.spin_button = None;
+            c.values.auto_choice_incomplete = None;
+            c.values.auto_cell_height = None;
         }
         out
+    }
+}
+
+fn tag_supported_for(type_name: &str, tag: &str) -> bool {
+    match tag {
+        "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" => true,
+        "Enabled" | "TransparentBack" | "Tooltip" => app_path(type_name).is_some(),
+        "ReadOnly" | "ChoiceButton" | "ClearButton" | "OpenButton" | "DropListButton" | "SpinButton"
+        | "AutoMarkIncomplete" | "AutoChoiceIncomplete" | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => {
+            type_name == "InputField"
+        }
+        "HorizontalAlign" => matches!(type_name, "LabelDecoration" | "CommandBar"),
+        "Hyperlink" => type_name == "LabelDecoration",
+        "ThreeState" | "TitleLocation" => type_name == "CheckBox",
+        "ShowTabs" => type_name == "Panel",
+        "Footer" | "SelectionMode" => type_name == "Table",
+        "AutoFill" => type_name == "CommandBar",
+        _ => false,
     }
 }
 
@@ -368,10 +542,11 @@ impl Parser<'_> {
 
     fn split_values(&self, slot: usize, inner: &XmlElement) -> Result<(ControlValues, XmlElement)> {
         let who = self.controls[slot].describe();
+        let type_name = self.controls[slot].type_name.clone();
         let mut rest = XmlElement { children: Vec::new(), ..inner.clone() };
         let mut found: HashMap<&str, &XmlElement> = HashMap::new();
         for c in &inner.children {
-            if let Some(tag) = SUPPORTED_TAGS.iter().find(|t| **t == c.tag) {
+            if let Some(tag) = SUPPORTED_TAGS.iter().find(|t| **t == c.tag && tag_supported_for(&type_name, t)) {
                 if found.insert(tag, c).is_some() {
                     return Err(self.bad(c.line, format!("{who}: duplicate <{tag}> element")));
                 }
@@ -394,40 +569,101 @@ impl Parser<'_> {
                 }
             }
         };
-        let visible = match found.get("Visible") {
-            None => true,
-            Some(e) => match e.text.trim() {
-                "true" if e.children.is_empty() && e.attrs.is_empty() => true,
-                "false" if e.children.is_empty() && e.attrs.is_empty() => false,
-                other => return Err(self.bad(e.line, format!("{who}: <Visible> must be true or false, got '{other}'"))),
-            },
+        let opt_bool_of = |tag: &str| -> Result<Option<bool>> {
+            let Some(e) = found.get(tag) else { return Ok(None) };
+            match e.text.trim() {
+                "true" if e.children.is_empty() && e.attrs.is_empty() => Ok(Some(true)),
+                "false" if e.children.is_empty() && e.attrs.is_empty() => Ok(Some(false)),
+                other => Err(self.bad(e.line, format!("{who}: <{tag}> must be true or false, got '{other}'"))),
+            }
         };
-        let mut caption: Vec<(String, String)> = Vec::new();
-        if let Some(e) = found.get("Caption") {
-            if !e.attrs.is_empty() || !e.text.is_empty() {
-                return Err(self.bad(e.line, format!("{who}: <Caption> must contain only <Item language=\"..\"> elements")));
-            }
-            for it in &e.children {
-                let lang = it.attrs.get("language");
-                if it.tag != "Item" || it.attrs.len() != 1 || lang.is_none() || !it.children.is_empty() {
-                    return Err(self.bad(it.line, format!("{who}: unsupported <Caption> structure (<{}>)", it.tag)));
+        let bool_of = |tag: &str, default: bool| -> Result<bool> { Ok(opt_bool_of(tag)?.unwrap_or(default)) };
+        let loc_of = |tag: &str| -> Result<Vec<(String, String)>> {
+            let mut items: Vec<(String, String)> = Vec::new();
+            if let Some(e) = found.get(tag) {
+                if !e.attrs.is_empty() || !e.text.is_empty() {
+                    return Err(self.bad(e.line, format!("{who}: <{tag}> must contain only <Item language=\"..\"> elements")));
                 }
-                let lang = lang.cloned().unwrap_or_default();
-                if caption.iter().any(|(l, _)| *l == lang) {
-                    return Err(self.bad(it.line, format!("{who}: duplicate Caption language '{lang}'")));
+                for it in &e.children {
+                    let lang = it.attrs.get("language");
+                    if it.tag != "Item" || it.attrs.len() != 1 || lang.is_none() || !it.children.is_empty() {
+                        return Err(self.bad(it.line, format!("{who}: unsupported <{tag}> structure (<{}>)", it.tag)));
+                    }
+                    let lang = lang.cloned().unwrap_or_default();
+                    if items.iter().any(|(l, _)| *l == lang) {
+                        return Err(self.bad(it.line, format!("{who}: duplicate {tag} language '{lang}'")));
+                    }
+                    items.push((lang, it.text.clone()));
                 }
-                caption.push((lang, it.text.clone()));
             }
-        }
+            Ok(items)
+        };
+        let enum_of = |tag: &str, allowed: &[&str], default: &str| -> Result<String> {
+            let Some(e) = found.get(tag) else { return Ok(String::new()) };
+            if !e.children.is_empty() || !e.attrs.is_empty() {
+                return Err(self.bad(e.line, format!("{who}: <{tag}> must be a plain text value")));
+            }
+            let v = e.text.trim();
+            if !allowed.contains(&v) {
+                return Err(self.bad(e.line, format!("{who}: <{tag}> must be one of {allowed:?}, got '{v}'")));
+            }
+            Ok(if v == default { String::new() } else { v.to_string() })
+        };
+        let is_inp = type_name == "InputField";
+        let horizontal_align = match type_name.as_str() {
+            "LabelDecoration" => enum_of("HorizontalAlign", &["Left", "Center", "Right"], "Left")?,
+            "CommandBar" => enum_of("HorizontalAlign", &["Left", "Right"], "Left")?,
+            _ => String::new(),
+        };
+        let show_tabs = if type_name == "Panel" {
+            match found.get("ShowTabs") {
+                None => Some(2),
+                Some(e) => {
+                    if !e.children.is_empty() || !e.text.is_empty() {
+                        return Err(self.bad(e.line, format!("{who}: <ShowTabs> must be an empty element with a 'code' attribute")));
+                    }
+                    let code = e
+                        .attrs
+                        .get("code")
+                        .and_then(|v| v.trim().parse::<i64>().ok())
+                        .ok_or_else(|| self.bad(e.line, format!("{who}: <ShowTabs> has a missing or non-integer 'code' attribute")))?;
+                    Some(code)
+                }
+            }
+        } else {
+            None
+        };
         let values = ControlValues {
-            caption,
+            caption: loc_of("Caption")?,
             left: int_of("Left", true)?,
             top: int_of("Top", true)?,
             width: int_of("Width", true)?,
             height: int_of("Height", true)?,
-            visible,
+            visible: bool_of("Visible", true)?,
             z_order: int_of("ZOrder", true)?,
             tab_order: int_of("TabOrder", false)?,
+            enabled: bool_of("Enabled", true)?,
+            transparent_back: bool_of("TransparentBack", false)?,
+            tooltip: loc_of("Tooltip")?,
+            read_only: bool_of("ReadOnly", false)?,
+            choice_button: if is_inp { Some(opt_bool_of("ChoiceButton")?.unwrap_or(false)) } else { None },
+            clear_button: if is_inp { Some(opt_bool_of("ClearButton")?.unwrap_or(false)) } else { None },
+            open_button: if is_inp { Some(opt_bool_of("OpenButton")?.unwrap_or(false)) } else { None },
+            drop_list_button: opt_bool_of("DropListButton")?,
+            spin_button: opt_bool_of("SpinButton")?,
+            auto_mark_incomplete: bool_of("AutoMarkIncomplete", false)?,
+            auto_choice_incomplete: opt_bool_of("AutoChoiceIncomplete")?,
+            mark_negatives: bool_of("MarkNegatives", false)?,
+            auto_cell_height: opt_bool_of("AutoCellHeight")?,
+            choice_list_mode: bool_of("ChoiceListMode", false)?,
+            horizontal_align,
+            hyperlink: bool_of("Hyperlink", false)?,
+            three_state: bool_of("ThreeState", false)?,
+            title_location: enum_of("TitleLocation", &["Left", "Right"], "Right")?,
+            show_tabs,
+            footer: if type_name == "Table" { Some(opt_bool_of("Footer")?.unwrap_or(false)) } else { None },
+            selection_mode: enum_of("SelectionMode", &["Single", "Multi"], "Single")?,
+            auto_fill: if type_name == "CommandBar" { Some(opt_bool_of("AutoFill")?.unwrap_or(true)) } else { None },
         };
         Ok((values, rest))
     }
@@ -1220,6 +1456,128 @@ fn set_clone_caption(n: &mut Node, type_name: &str, caption: &[(String, String)]
     }
 }
 
+fn clone_info_mut(n: &mut Node) -> Result<&mut Node> {
+    let owned = Item::Node(Node { children: n.children.clone() });
+    let info_index = {
+        let parts = control_parts(&owned).map_err(|e| layout_err(e.to_string()))?;
+        let on = owned.as_node().unwrap();
+        on.children
+            .iter()
+            .position(|c| matches!(c, Item::Node(x) if std::ptr::eq(x, parts.info)))
+            .ok_or_else(|| layout_err("prototype: info node not found"))?
+    };
+    n.children[info_index]
+        .as_node_mut()
+        .ok_or_else(|| layout_err("prototype: info is not a node"))
+}
+
+fn nav_mut<'a>(mut cur: &'a mut Node, path: &[usize]) -> Result<&'a mut Node> {
+    for &i in path {
+        cur = cur
+            .children
+            .get_mut(i)
+            .and_then(Item::as_node_mut)
+            .ok_or_else(|| layout_err(format!("prototype: path {path:?} missing")))?;
+    }
+    Ok(cur)
+}
+
+/// Apply all non-geometry, non-caption `ControlValues` properties to a donor-cloned control node.
+fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
+    let info = clone_info_mut(n)?;
+    if let Some(ap) = app_path(type_name) {
+        let path: Vec<usize> = ap.iter().map(|&i| i as usize).collect();
+        let app = nav_mut(info, &path)?;
+        app.children[1] = bare(i64::from(v.enabled));
+        app.children[5] = bare(i64::from(v.transparent_back));
+        if app.len() > 12 {
+            app.children[12] = Item::Node(localized_node(&v.tooltip));
+        }
+    }
+    match type_name {
+        "InputField" => {
+            let q = nav_mut(info, &[2, 0])?;
+            if let Some(b) = v.auto_cell_height {
+                q.children[4] = bare(i64::from(b));
+            }
+            if let Some(b) = v.drop_list_button {
+                q.children[6] = bare(i64::from(b));
+            }
+            if let Some(b) = v.choice_button {
+                q.children[7] = bare(i64::from(b));
+            }
+            if let Some(b) = v.clear_button {
+                q.children[8] = bare(i64::from(b));
+            }
+            if let Some(b) = v.spin_button {
+                q.children[9] = bare(i64::from(b));
+            }
+            if let Some(b) = v.open_button {
+                q.children[10] = bare(i64::from(b));
+            }
+            q.children[13] = bare(i64::from(v.read_only));
+            q.children[27] = bare(i64::from(v.mark_negatives));
+            q.children[35] = bare(i64::from(v.auto_mark_incomplete));
+            if let Some(b) = v.auto_choice_incomplete {
+                q.children[36] = bare(i64::from(b));
+            }
+            if info.len() > 9 {
+                info.children[9] = bare(i64::from(v.choice_list_mode));
+            }
+        }
+        "LabelDecoration" => {
+            let p = nav_mut(info, &[1])?;
+            let align = match v.horizontal_align.as_str() {
+                "Center" => 1,
+                "Right" => 2,
+                _ => 0,
+            };
+            p.children[3] = bare(align);
+            p.children[5] = bare(i64::from(v.hyperlink));
+        }
+        "CheckBox" => {
+            let p = nav_mut(info, &[1])?;
+            p.children[2] = bare(i64::from(v.three_state));
+            let sub = nav_mut(p, &[0])?;
+            sub.children[3] = bare(if v.title_location == "Left" { 0 } else { 1 });
+        }
+        "Panel" => {
+            if let Some(code) = v.show_tabs {
+                let p = nav_mut(info, &[1])?;
+                let mut idx = 2usize;
+                for _ in 0..6 {
+                    let sz: usize = p.children[idx]
+                        .as_atom()
+                        .and_then(|a| a.value.parse().ok())
+                        .ok_or_else(|| layout_err("prototype: panel list size"))?;
+                    idx += 1 + sz;
+                }
+                p.children[idx + 1] = bare(code);
+            }
+        }
+        "Table" => {
+            let t = nav_mut(info, &[2, 1])?;
+            if let Some(footer) = v.footer {
+                let cur: i64 = t.children[1]
+                    .as_atom()
+                    .and_then(|a| a.value.parse().ok())
+                    .unwrap_or(0);
+                t.children[1] = bare(if footer { cur | 2 } else { cur & !2 });
+            }
+            t.children[15] = bare(if v.selection_mode == "Multi" { 1 } else { 0 });
+        }
+        "CommandBar" => {
+            let x = nav_mut(info, &[1])?;
+            if let Some(af) = v.auto_fill {
+                x.children[3] = bare(i64::from(af));
+            }
+            x.children[4] = bare(if v.horizontal_align == "Right" { 2 } else { 0 });
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 /// Write events into a cloned prototype: exactly one event list must exist; its entries are built
 /// from the donor event template with tag and handler replaced.
 fn set_clone_events(n: &mut Node, events: &[(i64, String)], who: &str) -> Result<()> {
@@ -1581,6 +1939,7 @@ struct PageEdges {
 /// `base`: `showTabs` at `base+1`, the page table at `base+3`, the boundary-row count at `base+7` and the rows
 /// (`{2,coord,_,_,edge,page,_,margin,_}`) from `base+8`.
 struct PanelLayout {
+    show_tabs: (i64, Span),
     /// Pages with both an edge-3 and an edge-4 row; every other page is derived from the panel size alone.
     edged: Vec<PageEdges>,
 }
@@ -1615,7 +1974,7 @@ fn read_panel(site: &Site) -> Result<PanelLayout> {
             .ok_or_else(|| shape("a counted list runs past the end of the panel record"))?;
     }
     let base = idx;
-    let (show_tabs, _) = panel_int(site, p, base + 1, "ShowTabs code")?;
+    let show_tabs = panel_int(site, p, base + 1, "ShowTabs code")?;
     let table = p.child(base + 3).filter(|t| t.node.len() >= 2).ok_or_else(|| shape("the page table is missing"))?;
     let page_count = panel_count(site, table, 1, "page count", table.node.len())?;
     if table.node.len() != page_count + 2 || (0..page_count).any(|i| table.child(2 + i).is_none_or(|r| r.node.len() < 7)) {
@@ -1649,10 +2008,10 @@ fn read_panel(site: &Site) -> Result<PanelLayout> {
     }
     // The strict reading must agree with the decoder's.
     let decoded = panel_pages(info.node, site.edit.old.width, site.edit.old.height);
-    if decoded.0 != show_tabs || decoded.1.len() != page_count {
+    if decoded.0 != show_tabs.0 || decoded.1.len() != page_count {
         return Err(shape("the panel layout disagrees with the decoder's reading"));
     }
-    Ok(PanelLayout { edged })
+    Ok(PanelLayout { show_tabs, edged })
 }
 
 /// Records the decoder needs to see after a panel resize. A page with edge records keeps its position and
@@ -1889,37 +2248,33 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
     haystack.windows(needle.len()).any(|w| w == needle)
 }
 
-fn caption_pieces(site: &Site) -> Result<Vec<Piece>> {
-    let (old, new) = (&site.edit.old.caption, &site.edit.new.caption);
+fn localized_pieces(
+    site: &Site,
+    node: NodeRef,
+    items: &[LocItem],
+    old: &[(String, String)],
+    new: &[(String, String)],
+    prop: Property,
+) -> Result<Vec<Piece>> {
+    let name = prop.xml_name();
     if new.iter().any(|(lang, _)| lang.is_empty()) {
-        return Err(site.invalid("invalid-caption", "Caption", "a Caption <Item> has an empty language".to_string()));
+        return Err(site.invalid("invalid-caption", name, format!("a {name} <Item> has an empty language")));
     }
-    let slot = caption_slot(site)?.ok_or_else(|| {
-        site.layout(
-            "caption-unmappable",
-            "Caption",
-            "the stream has no caption node for this control type, so a caption cannot be added or changed safely".to_string(),
-        )
-    })?;
-    let stream: Vec<(String, String)> = slot.items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
-    if &stream != old {
-        return Err(site.mismatch("Caption", &format!("{old:?}"), &format!("{stream:?}")));
+    let stream: Vec<(String, String)> = items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
+    if stream != old {
+        return Err(site.mismatch(name, &format!("{old:?}"), &format!("{stream:?}")));
     }
-    let props = [Property::Caption];
-    // Same languages in the same order: replace only the changed text atoms.
-    if slot.items.len() == new.len() && slot.items.iter().zip(new).all(|(i, (l, _))| i.lang == *l) {
-        return Ok(slot
-            .items
+    let props = [prop];
+    if items.len() == new.len() && items.iter().zip(new).all(|(i, (l, _))| i.lang == *l) {
+        return Ok(items
             .iter()
             .zip(new)
             .filter(|(i, (_, t))| i.text != *t)
             .map(|(i, (_, t))| piece(i.text_span, quote(t), &props))
             .collect());
     }
-    // Languages added, removed or reordered: rewrite the localized node, keeping unchanged items verbatim and
-    // the node's own line-break style (an empty node takes the stream's).
-    let own = site.source.slice(slot.node.span.span).unwrap_or_default();
-    let reference = if slot.items.is_empty() { site.source.source() } else { own };
+    let own = site.source.slice(node.span.span).unwrap_or_default();
+    let reference = if items.is_empty() { site.source.source() } else { own };
     let nl = if contains(reference, b"\r\n") {
         "\r\n"
     } else if contains(reference, b"\n") {
@@ -1929,8 +2284,7 @@ fn caption_pieces(site: &Site) -> Result<Vec<Piece>> {
     };
     let mut text = format!("{{1,{}", new.len());
     for (lang, t) in new {
-        let kept = slot
-            .items
+        let kept = items
             .iter()
             .find(|i| i.lang == *lang && i.text == *t)
             .and_then(|i| site.source.slice(i.item))
@@ -1946,7 +2300,217 @@ fn caption_pieces(site: &Site) -> Result<Vec<Piece>> {
         text.push_str(nl);
     }
     text.push('}');
-    Ok(vec![piece(slot.node.span.span, text, &props)])
+    Ok(vec![piece(node.span.span, text, &props)])
+}
+
+fn caption_pieces(site: &Site) -> Result<Vec<Piece>> {
+    let (old, new) = (&site.edit.old.caption, &site.edit.new.caption);
+    if new.iter().any(|(lang, _)| lang.is_empty()) {
+        return Err(site.invalid("invalid-caption", "Caption", "a Caption <Item> has an empty language".to_string()));
+    }
+    let slot = caption_slot(site)?.ok_or_else(|| {
+        site.layout(
+            "caption-unmappable",
+            "Caption",
+            "the stream has no caption node for this control type, so a caption cannot be added or changed safely".to_string(),
+        )
+    })?;
+    localized_pieces(site, slot.node, &slot.items, old, new, Property::Caption)
+}
+
+fn info_node_at<'a>(site: &Site<'_, 'a>, path: &[usize], prop: Property) -> Result<NodeRef<'a>> {
+    let mut cur = site
+        .entry
+        .info()
+        .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), "the control info node is missing".into()))?;
+    for &i in path {
+        cur = cur
+            .child(i)
+            .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), format!("info path {path:?} does not exist")))?;
+    }
+    Ok(cur)
+}
+
+fn info_int_slot(site: &Site, path: &[usize], idx: usize, prop: Property) -> Result<(i64, Span)> {
+    let n = info_node_at(site, path, prop)?;
+    int_slot(site, n, idx, prop.xml_name(), prop.xml_name())
+}
+
+fn info_bool_piece(site: &Site, path: &[usize], idx: usize, old: Option<bool>, new: bool, prop: Property) -> Result<Piece> {
+    let (cur, span) = info_int_slot(site, path, idx, prop)?;
+    if let Some(expected) = old {
+        if (cur != 0) != expected {
+            return Err(site.mismatch(prop.xml_name(), &expected.to_string(), &(cur != 0).to_string()));
+        }
+    }
+    Ok(piece(span, i32::from(new), &[prop]))
+}
+
+fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
+    let (old, new) = (&site.edit.old, &site.edit.new);
+    let mut out = Vec::new();
+    let app_vec: Option<Vec<usize>> = app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
+    for &prop in &site.edit.changed {
+        match prop {
+            Property::Caption
+            | Property::Left
+            | Property::Top
+            | Property::Width
+            | Property::Height
+            | Property::Visible
+            | Property::ZOrder
+            | Property::TabOrder => {}
+            Property::Enabled => {
+                let ap = app_vec
+                    .as_deref()
+                    .ok_or_else(|| site.layout("unexpected-shape", "Enabled", "control has no appearance block".into()))?;
+                out.push(info_bool_piece(site, ap, 1, Some(old.enabled), new.enabled, prop)?);
+            }
+            Property::TransparentBack => {
+                let ap = app_vec
+                    .as_deref()
+                    .ok_or_else(|| site.layout("unexpected-shape", "TransparentBack", "control has no appearance block".into()))?;
+                out.push(info_bool_piece(site, ap, 5, Some(old.transparent_back), new.transparent_back, prop)?);
+            }
+            Property::Tooltip => {
+                let ap = app_vec
+                    .as_deref()
+                    .ok_or_else(|| site.layout("unexpected-shape", "Tooltip", "control has no appearance block".into()))?;
+                let tip_node = info_node_at(site, ap, prop)?
+                    .child(12)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Tooltip", "appearance block has no Tooltip node".into()))?;
+                let items = strict_localized(tip_node)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Tooltip", "Tooltip node is not a plain localized string".into()))?;
+                out.extend(localized_pieces(site, tip_node, &items, &old.tooltip, &new.tooltip, prop)?);
+            }
+            Property::AutoCellHeight => {
+                let want = new.auto_cell_height.ok_or_else(|| site.invalid("invalid-xml", "AutoCellHeight", "cannot remove AutoCellHeight".into()))?;
+                out.push(info_bool_piece(site, &[2, 0], 4, old.auto_cell_height, want, prop)?);
+            }
+            Property::DropListButton => {
+                let want = new.drop_list_button.ok_or_else(|| site.invalid("invalid-xml", "DropListButton", "cannot remove DropListButton".into()))?;
+                out.push(info_bool_piece(site, &[2, 0], 6, old.drop_list_button, want, prop)?);
+            }
+            Property::ChoiceButton => {
+                let want = new.choice_button.unwrap_or(false);
+                out.push(info_bool_piece(site, &[2, 0], 7, old.choice_button, want, prop)?);
+            }
+            Property::ClearButton => {
+                let want = new.clear_button.unwrap_or(false);
+                out.push(info_bool_piece(site, &[2, 0], 8, old.clear_button, want, prop)?);
+            }
+            Property::SpinButton => {
+                let want = new.spin_button.ok_or_else(|| site.invalid("invalid-xml", "SpinButton", "cannot remove SpinButton".into()))?;
+                out.push(info_bool_piece(site, &[2, 0], 9, old.spin_button, want, prop)?);
+            }
+            Property::OpenButton => {
+                let want = new.open_button.unwrap_or(false);
+                out.push(info_bool_piece(site, &[2, 0], 10, old.open_button, want, prop)?);
+            }
+            Property::ReadOnly => {
+                out.push(info_bool_piece(site, &[2, 0], 13, Some(old.read_only), new.read_only, prop)?);
+            }
+            Property::MarkNegatives => {
+                out.push(info_bool_piece(site, &[2, 0], 27, Some(old.mark_negatives), new.mark_negatives, prop)?);
+            }
+            Property::AutoMarkIncomplete => {
+                out.push(info_bool_piece(site, &[2, 0], 35, Some(old.auto_mark_incomplete), new.auto_mark_incomplete, prop)?);
+            }
+            Property::AutoChoiceIncomplete => {
+                let want = new.auto_choice_incomplete.ok_or_else(|| site.invalid("invalid-xml", "AutoChoiceIncomplete", "cannot remove AutoChoiceIncomplete".into()))?;
+                out.push(info_bool_piece(site, &[2, 0], 36, old.auto_choice_incomplete, want, prop)?);
+            }
+            Property::ChoiceListMode => {
+                out.push(info_bool_piece(site, &[], 9, Some(old.choice_list_mode), new.choice_list_mode, prop)?);
+            }
+            Property::HorizontalAlign => {
+                if site.entry.type_name == "CommandBar" {
+                    let (cur, span) = info_int_slot(site, &[1], 4, prop)?;
+                    let cur_s = if cur == 2 { "Right" } else { "" };
+                    if cur_s != old.horizontal_align {
+                        return Err(site.mismatch("HorizontalAlign", &old.horizontal_align, cur_s));
+                    }
+                    let want = if new.horizontal_align == "Right" { 2 } else { 0 };
+                    out.push(piece(span, want, &[prop]));
+                } else {
+                    let (cur, span) = info_int_slot(site, &[1], 3, prop)?;
+                    let cur_s = match cur {
+                        1 => "Center",
+                        2 => "Right",
+                        _ => "",
+                    };
+                    if cur_s != old.horizontal_align {
+                        return Err(site.mismatch("HorizontalAlign", &old.horizontal_align, cur_s));
+                    }
+                    let want = match new.horizontal_align.as_str() {
+                        "Center" => 1,
+                        "Right" => 2,
+                        _ => 0,
+                    };
+                    out.push(piece(span, want, &[prop]));
+                }
+            }
+            Property::Hyperlink => {
+                out.push(info_bool_piece(site, &[1], 5, Some(old.hyperlink), new.hyperlink, prop)?);
+            }
+            Property::ThreeState => {
+                out.push(info_bool_piece(site, &[1], 2, Some(old.three_state), new.three_state, prop)?);
+            }
+            Property::TitleLocation => {
+                let (cur, span) = info_int_slot(site, &[1, 0], 3, prop)?;
+                let cur_s = if cur == 0 { "Left" } else { "" };
+                if cur_s != old.title_location {
+                    return Err(site.mismatch("TitleLocation", &old.title_location, cur_s));
+                }
+                let want = if new.title_location == "Left" { 0 } else { 1 };
+                out.push(piece(span, want, &[prop]));
+            }
+            Property::ShowTabs => {
+                let layout = read_panel(site)?;
+                if Some(layout.show_tabs.0) != old.show_tabs {
+                    return Err(site.mismatch("ShowTabs", &format!("{:?}", old.show_tabs), &layout.show_tabs.0.to_string()));
+                }
+                let want = new.show_tabs.unwrap_or(0);
+                out.push(piece(layout.show_tabs.1, in_i32(site, prop, want)?, &[prop]));
+            }
+            Property::Footer => {
+                let (flags, span) = info_int_slot(site, &[2, 1], 1, prop)?;
+                let cur = (flags & 2) != 0;
+                if Some(cur) != old.footer {
+                    return Err(site.mismatch("Footer", &format!("{:?}", old.footer), &cur.to_string()));
+                }
+                let want = if new.footer.unwrap_or(false) { flags | 2 } else { flags & !2 };
+                out.push(piece(span, want, &[prop]));
+            }
+            Property::SelectionMode => {
+                let (cur, span) = info_int_slot(site, &[2, 1], 15, prop)?;
+                let cur_s = if cur == 1 { "Multi" } else { "" };
+                if cur_s != old.selection_mode {
+                    return Err(site.mismatch("SelectionMode", &old.selection_mode, cur_s));
+                }
+                let want = if new.selection_mode == "Multi" { 1 } else { 0 };
+                out.push(piece(span, want, &[prop]));
+            }
+            Property::AutoFill => {
+                let want = new.auto_fill.unwrap_or(false);
+                out.push(info_bool_piece(site, &[1], 3, old.auto_fill, want, prop)?);
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn is_geom_prop(p: Property) -> bool {
+    matches!(
+        p,
+        Property::Left
+            | Property::Top
+            | Property::Width
+            | Property::Height
+            | Property::Visible
+            | Property::ZOrder
+            | Property::TabOrder
+    )
 }
 
 // ---- orchestration
@@ -1956,12 +2520,13 @@ fn control_pieces(site: &Site) -> Result<Vec<Piece>> {
     if site.edit.changed.contains(&Property::Caption) {
         out.extend(caption_pieces(site)?);
     }
-    if site.edit.changed.iter().any(|p| *p != Property::Caption) {
+    if site.edit.changed.iter().copied().any(is_geom_prop) {
         let g = read_geom(site)?;
         out.extend(geometry_pieces(site, &g)?);
         out.extend(visible_pieces(site, &g)?);
         out.extend(order_pieces(site, &g)?);
     }
+    out.extend(info_pieces(site)?);
     Ok(out)
 }
 
@@ -1972,14 +2537,13 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
     let wrong = |p: Property| {
         site.layout("verification-failed", p.xml_name(), "the patched stream does not hold the requested value".to_string())
     };
-    if site.edit.changed.iter().any(|p| *p != Property::Caption) {
+    if site.edit.changed.iter().copied().any(is_geom_prop) {
         let g = read_geom(site)?;
         if g.page != original_page {
             return Err(site.layout("verification-failed", "page", "the page slot changed".to_string()));
         }
         for p in &site.edit.changed {
             let ok = match p {
-                Property::Caption => true,
                 Property::Left => g.left.0 == new.left,
                 Property::Top => g.top.0 == new.top,
                 Property::Width => g.right.0.checked_sub(g.left.0) == Some(new.width),
@@ -1987,6 +2551,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 Property::Visible => (g.visible.0 != 0) == new.visible,
                 Property::ZOrder => g.z_order.0 == new.z_order,
                 Property::TabOrder => g.tab_order.0 == new.tab_order,
+                _ => true,
             };
             if !ok {
                 return Err(wrong(*p));
@@ -2002,16 +2567,83 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             return Err(wrong(Property::Caption));
         }
     }
+    let app_vec: Option<Vec<usize>> = app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
+    for &p in &site.edit.changed {
+        let ok = match p {
+            Property::Enabled => (info_int_slot(site, app_vec.as_deref().unwrap(), 1, p)?.0 != 0) == new.enabled,
+            Property::TransparentBack => (info_int_slot(site, app_vec.as_deref().unwrap(), 5, p)?.0 != 0) == new.transparent_back,
+            Property::Tooltip => {
+                let tip_node = info_node_at(site, app_vec.as_deref().unwrap(), p)?.child(12).ok_or_else(|| wrong(p))?;
+                let items: Vec<(String, String)> = strict_localized(tip_node)
+                    .ok_or_else(|| wrong(p))?
+                    .into_iter()
+                    .map(|i| (i.lang, i.text))
+                    .collect();
+                items == new.tooltip
+            }
+            Property::AutoCellHeight => Some(info_int_slot(site, &[2, 0], 4, p)?.0 != 0) == new.auto_cell_height,
+            Property::DropListButton => Some(info_int_slot(site, &[2, 0], 6, p)?.0 != 0) == new.drop_list_button,
+            Property::ChoiceButton => Some(info_int_slot(site, &[2, 0], 7, p)?.0 != 0) == new.choice_button,
+            Property::ClearButton => Some(info_int_slot(site, &[2, 0], 8, p)?.0 != 0) == new.clear_button,
+            Property::SpinButton => Some(info_int_slot(site, &[2, 0], 9, p)?.0 != 0) == new.spin_button,
+            Property::OpenButton => Some(info_int_slot(site, &[2, 0], 10, p)?.0 != 0) == new.open_button,
+            Property::ReadOnly => (info_int_slot(site, &[2, 0], 13, p)?.0 != 0) == new.read_only,
+            Property::MarkNegatives => (info_int_slot(site, &[2, 0], 27, p)?.0 != 0) == new.mark_negatives,
+            Property::AutoMarkIncomplete => (info_int_slot(site, &[2, 0], 35, p)?.0 != 0) == new.auto_mark_incomplete,
+            Property::AutoChoiceIncomplete => Some(info_int_slot(site, &[2, 0], 36, p)?.0 != 0) == new.auto_choice_incomplete,
+            Property::ChoiceListMode => (info_int_slot(site, &[], 9, p)?.0 != 0) == new.choice_list_mode,
+            Property::HorizontalAlign => {
+                if site.entry.type_name == "CommandBar" {
+                    let cur = if info_int_slot(site, &[1], 4, p)?.0 == 2 { "Right" } else { "" };
+                    cur == new.horizontal_align
+                } else {
+                    let cur = match info_int_slot(site, &[1], 3, p)?.0 {
+                        1 => "Center",
+                        2 => "Right",
+                        _ => "",
+                    };
+                    cur == new.horizontal_align
+                }
+            }
+            Property::Hyperlink => (info_int_slot(site, &[1], 5, p)?.0 != 0) == new.hyperlink,
+            Property::ThreeState => (info_int_slot(site, &[1], 2, p)?.0 != 0) == new.three_state,
+            Property::TitleLocation => {
+                let cur = if info_int_slot(site, &[1, 0], 3, p)?.0 == 0 { "Left" } else { "" };
+                cur == new.title_location
+            }
+            Property::ShowTabs => Some(read_panel(site)?.show_tabs.0) == new.show_tabs,
+            Property::Footer => Some((info_int_slot(site, &[2, 1], 1, p)?.0 & 2) != 0) == new.footer,
+            Property::SelectionMode => {
+                let cur = if info_int_slot(site, &[2, 1], 15, p)?.0 == 1 { "Multi" } else { "" };
+                cur == new.selection_mode
+            }
+            Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
+            _ => true,
+        };
+        if !ok {
+            return Err(wrong(p));
+        }
+    }
     if is_panel_resize(site.edit) {
-        let expected = expected_panel(original)?;
-        if panel_pages(panel_info(site)?.node, new.width, new.height) != expected {
+        let mut expected = expected_panel(original)?;
+        if site.edit.changed.contains(&Property::ShowTabs) {
+            if let Some(st) = new.show_tabs {
+                expected.0 = st;
+            }
+        }
+        let actual = panel_pages(panel_info(site)?.node, new.width, new.height);
+        if actual.0 != expected.0 || (!site.edit.changed.contains(&Property::ShowTabs) && actual != expected) {
             return Err(site.layout(
                 "verification-failed",
                 "panel",
                 "the patched panel does not decode to the requested size with the derived page geometry".to_string(),
             ));
         }
-        return Ok(derived_pages(site.edit.id, &expected.1));
+        return Ok(derived_pages(site.edit.id, &actual.1));
+    }
+    if site.edit.type_name == "Panel" && site.edit.changed.contains(&Property::ShowTabs) {
+        let actual = panel_pages(panel_info(site)?.node, new.width, new.height);
+        return Ok(derived_pages(site.edit.id, &actual.1));
     }
     Ok(Vec::new())
 }
@@ -2086,6 +2718,7 @@ impl FormPatchPlan<'_> {
             let mut clone = crate::donor::clone_prototype_raw(&c.type_name, max_id, &c.name)?;
             set_clone_geometry(&mut clone, &c.values, page)?;
             set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
+            set_clone_props(&mut clone, &c.type_name, &c.values)?;
             set_clone_events(&mut clone, &xml_events(c)?, &c.describe())?;
             let mut buf = Vec::new();
             crate::donor::write_node(&clone, &mut buf);

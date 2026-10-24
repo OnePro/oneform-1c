@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "path": "ПолеВвода1.props.readOnly",
+    "from": "<missing>",
+    "to": "true"
+  }
+]

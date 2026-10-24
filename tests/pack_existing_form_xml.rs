@@ -820,3 +820,99 @@ fn epf_structural_add_remove_packs() {
 fn config_structural_add_remove_packs() {
     assert_structural_pack(Target::Config);
 }
+
+fn assert_discovered_properties_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    // Patch ПолеВвода1: Enabled=false, ReadOnly=true, ChoiceButton=false, ClearButton=false, MarkNegatives=true
+    let inp_at = xml.find("<InputField name=\"ПолеВвода1\"").expect("input");
+    let inp_end = inp_at + xml[inp_at..].find("</InputField>").unwrap();
+    let inp_block = xml[inp_at..inp_end]
+        .replacen(
+            "<ChoiceButton>true</ChoiceButton>",
+            "<Enabled>false</Enabled>\n          <ChoiceButton>false</ChoiceButton>",
+            1,
+        )
+        .replacen("<ClearButton>true</ClearButton>", "<ClearButton>false</ClearButton>", 1)
+        .replacen(
+            "<OpenButton>true</OpenButton>",
+            "<OpenButton>true</OpenButton>\n          <ReadOnly>true</ReadOnly>\n          <MarkNegatives>true</MarkNegatives>",
+            1,
+        );
+    xml.replace_range(inp_at..inp_end, &inp_block);
+
+    // Patch Флажок1: ThreeState=true, TitleLocation=Left
+    let chk_at = xml.find("<CheckBox name=\"Флажок1\"").expect("checkbox");
+    let chk_end = chk_at + xml[chk_at..].find("</CheckBox>").unwrap();
+    let chk_block = xml[chk_at..chk_end].replacen(
+        "<TabOrder>5</TabOrder>",
+        "<TabOrder>5</TabOrder>\n          <TitleLocation>Left</TitleLocation>\n          <ThreeState>true</ThreeState>",
+        1,
+    );
+    xml.replace_range(chk_at..chk_end, &chk_block);
+
+    // Patch Надпись1: Hyperlink=true, HorizontalAlign=Center
+    let lbl_at = xml.find(LABEL).expect("label");
+    let lbl_end = lbl_at + xml[lbl_at..].find("</LabelDecoration>").unwrap();
+    let lbl_block = xml[lbl_at..lbl_end].replacen(
+        "<TabOrder>3</TabOrder>",
+        "<TabOrder>3</TabOrder>\n          <HorizontalAlign>Center</HorizontalAlign>\n          <Hyperlink>true</Hyperlink>",
+        1,
+    );
+    xml.replace_range(lbl_at..lbl_end, &lbl_block);
+
+    // Patch ТабличноеПоле1: Footer=true, SelectionMode=Multi
+    let tbl_at = xml.find("<Table name=\"ТабличноеПоле1\"").expect("table");
+    let tbl_end = tbl_at + xml[tbl_at..].find("</Table>").unwrap();
+    let tbl_block = xml[tbl_at..tbl_end].replacen(
+        "<Footer>false</Footer>",
+        "<Footer>true</Footer>\n          <SelectionMode>Multi</SelectionMode>",
+        1,
+    );
+    xml.replace_range(tbl_at..tbl_end, &tbl_block);
+
+    // Patch Панель1: ShowTabs code=1 (Top)
+    let pnl_at = xml.find("<Panel name=\"Панель1\"").expect("panel");
+    let pnl_end = pnl_at + xml[pnl_at..].find("<ChildItems>").unwrap();
+    let pnl_block = xml[pnl_at..pnl_end].replacen(
+        "<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>",
+        "<ShowTabs type=\"ShowTabs\" member=\"Top\" code=\"1\"/>",
+        1,
+    );
+    xml.replace_range(pnl_at..pnl_end, &pnl_block);
+
+    fs::write(&xml_file, &xml).unwrap();
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    for needle in [
+        "<Enabled>false</Enabled>",
+        "<ReadOnly>true</ReadOnly>",
+        "<MarkNegatives>true</MarkNegatives>",
+        "<TitleLocation>Left</TitleLocation>",
+        "<ThreeState>true</ThreeState>",
+        "<HorizontalAlign>Center</HorizontalAlign>",
+        "<Hyperlink>true</Hyperlink>",
+        "<Footer>true</Footer>",
+        "<SelectionMode>Multi</SelectionMode>",
+        "<ShowTabs type=\"ShowTabs\" member=\"Top\" code=\"1\"/>",
+    ] {
+        assert!(packed_xml.contains(needle), "{target:?}: missing {needle} in:\n{packed_xml}");
+    }
+}
+
+#[test]
+fn epf_discovered_control_properties_pack() {
+    assert_discovered_properties_pack(Target::Epf);
+}
+
+#[test]
+fn config_discovered_control_properties_pack() {
+    assert_discovered_properties_pack(Target::Config);
+}

@@ -934,6 +934,12 @@ impl Writer {
     }
 
     fn props(&mut self, p: &Value) {
+        if p.get("enabled") == Some(&Value::Bool(false)) {
+            self.leaf("Enabled", Some("false"), &[]);
+        }
+        if truthy(p.get("transparentBack")) {
+            self.leaf("TransparentBack", Some("true"), &[]);
+        }
         for (tag, key) in [("TextColor", "textColor"), ("BackColor", "backColor"), ("BorderColor", "borderColor")] {
             if let Some(color) = p.get(key) {
                 let attrs: Attrs = ["kind", "value", "name", "ref"]
@@ -971,8 +977,23 @@ impl Writer {
                 self.leaf(tag, Some(&pystr(v).to_lowercase()), &[]);
             }
         }
+        if truthy(p.get("readOnly")) {
+            self.leaf("ReadOnly", Some("true"), &[]);
+        }
+        if truthy(p.get("markNegatives")) {
+            self.leaf("MarkNegatives", Some("true"), &[]);
+        }
         if truthy(p.get("autoMarkIncomplete")) {
             self.leaf("AutoMarkIncomplete", Some("true"), &[]);
+        }
+        if truthy(p.get("choiceListMode")) {
+            self.leaf("ChoiceListMode", Some("true"), &[]);
+        }
+        if let Some(v) = p.get("titleLocation") {
+            self.leaf("TitleLocation", Some(&pystr(v)), &[]);
+        }
+        if truthy(p.get("threeState")) {
+            self.leaf("ThreeState", Some("true"), &[]);
         }
         if truthy(p.get("choiceList")) {
             self.open("ChoiceList", &[]);
@@ -991,6 +1012,9 @@ impl Writer {
         }
         if let Some(v) = p.get("footer") {
             self.leaf("Footer", Some(&pystr(v).to_lowercase()), &[]);
+        }
+        if let Some(v) = p.get("selectionMode") {
+            self.leaf("SelectionMode", Some(&pystr(v)), &[]);
         }
         if let Some(v) = p.get("autoFill") {
             self.leaf("AutoFill", Some(&pystr(v).to_lowercase()), &[]);

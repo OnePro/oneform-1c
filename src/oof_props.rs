@@ -308,7 +308,7 @@ fn is_bold_style_font(guid: &str) -> bool {
 const FONT_WEIGHT_BOLD: &str = "700";
 const FONT_MASK_WEIGHT: i64 = 4;
 
-fn app_path(type_name: &str) -> Option<&'static [i64]> {
+pub fn app_path(type_name: &str) -> Option<&'static [i64]> {
     Some(match type_name {
         "LabelDecoration" | "UsualGroup" | "Button" | "Panel" | "CommandBar" => &[1, 0],
         "InputField" | "RadioButton" => &[2, 0, 0],
@@ -506,6 +506,9 @@ pub fn control_caption(type_name: Option<&str>, info: &Node) -> Result<Option<Ve
 }
 
 fn appearance(props: &mut Map<String, Value>, app: &Node) -> Result<(), OofError> {
+    if is_bare(at_n(app, &[1])?, "0") {
+        props.insert("enabled".into(), false.into());
+    }
     for (key, idx) in [("backColor", 2), ("textColor", 3), ("borderColor", 6)] {
         if let Some(color) = decode_color(at_n(app, &[idx])?)? {
             props.insert(key.into(), Value::Object(color));
@@ -513,6 +516,9 @@ fn appearance(props: &mut Map<String, Value>, app: &Node) -> Result<(), OofError
     }
     if let Some(font) = decode_font(at_n(app, &[4])?)? {
         props.insert("font".into(), Value::Object(font));
+    }
+    if is_bare(at_n(app, &[5])?, "1") {
+        props.insert("transparentBack".into(), true.into());
     }
     let tip = if app.len() > 12 { localized(&app.children[12]) } else { None };
     if let Some(tip) = tip {
@@ -577,8 +583,29 @@ fn input_field(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofErr
     props.insert("choiceButton".into(), (int(&q.children[7], "choice button")? != 0).into());
     props.insert("clearButton".into(), (int(&q.children[8], "clear button")? != 0).into());
     props.insert("openButton".into(), (int(&q.children[10], "open button")? != 0).into());
+    if is_bare(&q.children[13], "1") {
+        props.insert("readOnly".into(), true.into());
+    }
+    if is_bare(&q.children[27], "1") {
+        props.insert("markNegatives".into(), true.into());
+    }
     if is_bare(&q.children[35], "1") {
         props.insert("autoMarkIncomplete".into(), true.into());
+    }
+    if info.len() > 9 && is_bare(&info.children[9], "1") {
+        props.insert("choiceListMode".into(), true.into());
+    }
+    Ok(())
+}
+
+fn check_box(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofError> {
+    let p = node(at_n(info, &[1])?, "checkbox", 3)?;
+    let sub = node(at_n(p, &[0])?, "checkbox sub", 4)?;
+    if is_bare(&sub.children[3], "0") {
+        props.insert("titleLocation".into(), "Left".into());
+    }
+    if is_bare(&p.children[2], "1") {
+        props.insert("threeState".into(), true.into());
     }
     Ok(())
 }
@@ -756,8 +783,12 @@ fn at_i(t: &Node, i: i64) -> Result<&Item, OofError> {
 
 /// `info[2][1][1]` is a bit mask: 1 = header (`Шапка`), 2 = footer (`Подвал`).
 fn table(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofError> {
-    let flags = int(at_n(info, &[2, 1, 1])?, "table flags")?;
+    let t = node(at_n(info, &[2, 1])?, "table", 16)?;
+    let flags = int(&t.children[1], "table flags")?;
     props.insert("footer".into(), (flags & 2 != 0).into());
+    if is_bare(&t.children[15], "1") {
+        props.insert("selectionMode".into(), "Multi".into());
+    }
     Ok(())
 }
 
@@ -870,6 +901,7 @@ pub fn decode_props(type_name: &str, info: &Node, warn: &mut dyn FnMut(&str)) ->
         "LabelDecoration" => (label(&mut props, info), "LabelDecoration"),
         "UsualGroup" => (group(&mut props, info), "BorderStyle"),
         "InputField" => (input_field(&mut props, info), "InputField"),
+        "CheckBox" => (check_box(&mut props, info), "CheckBox"),
         "ChoiceField" => (choice_field(&mut props, info), "ChoiceField"),
         "Table" => (table(&mut props, info), "Table"),
         "CommandBar" => (command_bar(&mut props, info, warn), "CommandBar"),

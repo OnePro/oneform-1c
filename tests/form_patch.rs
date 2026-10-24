@@ -274,7 +274,6 @@ fn event_differences_are_rejected() {
 
 #[test]
 fn panel_table_and_command_bar_differences_are_rejected() {
-    assert_unsupported(mutate("member=\"Unknown\" code=\"2\"", "member=\"Top\" code=\"1\""), "unsupported-panel", &["Панель1", "ShowTabs"]);
     assert_unsupported(
         mutate(
             "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Страница2</Item>",
@@ -292,7 +291,6 @@ fn panel_table_and_command_bar_differences_are_rejected() {
         &["Панель1"],
     );
     assert_unsupported(mutate("              <Visible>false</Visible>\n", ""), "unsupported-panel", &["Visible"]);
-    assert_unsupported(mutate_in("<Table name=\"ТабличноеПоле1\"", "<Footer>false</Footer>", "<Footer>true</Footer>"), "unsupported-property", &["Table", "Footer"]);
     assert_unsupported(mutate_in("<Table name=\"ТабличноеПоле1\"", "<Editor>InputField</Editor>", "<Editor>Other</Editor>"), "unsupported-table", &["ТабличноеПоле1", "Columns"]);
     assert_unsupported(
         mutate("<Item language=\"ru\">Колонка1</Item>\n              </Header>", "<Item language=\"ru\">К</Item>\n              </Header>"),
@@ -307,7 +305,6 @@ fn panel_table_and_command_bar_differences_are_rejected() {
         "unsupported-command-bar",
         &["ОсновныеДействияФормы", "Buttons"],
     );
-    assert_unsupported(mutate("<HorizontalAlign>Right</HorizontalAlign>", "<HorizontalAlign>Left</HorizontalAlign>"), "unsupported-command-bar", &["HorizontalAlign"]);
 }
 
 #[test]
@@ -317,7 +314,6 @@ fn property_attribute_and_unknown_element_differences_are_rejected() {
         "unsupported-property",
         &["ПолеВвода1", "DataPath"],
     );
-    assert_unsupported(mutate_in(r#"<InputField name="ПолеВвода1" id="7">"#, "<ChoiceButton>true</ChoiceButton>", "<ChoiceButton>false</ChoiceButton>"), "unsupported-property", &["ChoiceButton"]);
     assert_unsupported(
         mutate_in(
             r#"<InputField name="ПолеВвода1" id="7">"#,
@@ -349,8 +345,16 @@ fn property_attribute_and_unknown_element_differences_are_rejected() {
         &["text changed"],
     );
     // Supported + unsupported combined: still rejected.
-    let combined = replace_once(&mutate_in(r#"<InputField name="ПолеВвода1" id="7">"#, "<ChoiceButton>true</ChoiceButton>", "<ChoiceButton>false</ChoiceButton>"), "<Left>79</Left>", "<Left>80</Left>");
-    assert_unsupported(combined, "unsupported-property", &["ChoiceButton"]);
+    let combined = replace_once(
+        &mutate_in(
+            r#"<InputField name="ПолеВвода1" id="7">"#,
+            "<ValueType kind=\"ValueList\" composite=\"false\"/>",
+            "<ValueType kind=\"String\" composite=\"false\"/>",
+        ),
+        "<Left>79</Left>",
+        "<Left>80</Left>",
+    );
+    assert_unsupported(combined, "unsupported-property", &["ValueType"]);
 }
 
 #[test]
@@ -927,7 +931,7 @@ fn unsupported_or_partially_applicable_edits_produce_no_stream() {
     // A supported edit next to an unsupported one: nothing is produced.
     let base = baseline("DonorForm");
     let xml = edit_ctl(&base, "Надпись1", &[("<Left>79</Left>", "<Left>80</Left>")]);
-    let xml = xml.replace("<ChoiceButton>true</ChoiceButton>", "<ChoiceButton>false</ChoiceButton>");
+    let xml = xml.replace("<DataPath attributeId=\"3\">ПолеВвода1</DataPath>", "<DataPath attributeId=\"4\">ПолеВвода1</DataPath>");
     let e = patch("DonorForm", &xml).unwrap_err();
     assert_eq!(e.code, GENERATED_FILE_MODIFIED);
     // A good edit on one control and an impossible one on another: no partial result.
@@ -1429,5 +1433,98 @@ fn two_additions_get_monotonic_ids() {
     assert_eq!(pf.allocated, vec![(999, 37), (1000, 38)]); // XML document order
     assert!(got.control(37).is_some() && got.control(38).is_some());
     assert_eq!(oneform::donor::max_control_id(&parse_spanned(&pf.bytes).unwrap()).unwrap(), 38);
+}
+
+#[test]
+fn discovered_appearance_and_inputfield_properties_round_trip() {
+    let base = baseline("DonorForm");
+    let edited = edit_ctl(
+        &base,
+        "ПолеВвода1",
+        &[
+            ("<ChoiceButton>true</ChoiceButton>", "<Enabled>false</Enabled><TransparentBack>true</TransparentBack><Tooltip><Item language=\"ru\">Новая подсказка</Item></Tooltip><ChoiceButton>false</ChoiceButton>"),
+            ("<ClearButton>true</ClearButton>", "<ClearButton>false</ClearButton>"),
+            ("<OpenButton>true</OpenButton>", "<OpenButton>false</OpenButton><DropListButton>false</DropListButton><SpinButton>false</SpinButton><ReadOnly>true</ReadOnly><MarkNegatives>true</MarkNegatives><AutoCellHeight>false</AutoCellHeight><AutoChoiceIncomplete>false</AutoChoiceIncomplete><ChoiceListMode>true</ChoiceListMode>"),
+            ("<AutoMarkIncomplete>true</AutoMarkIncomplete>", "<AutoMarkIncomplete>false</AutoMarkIncomplete>"),
+        ],
+    );
+    let pf = round_trip("DonorForm", &edited);
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    let c = got.control(7).unwrap();
+    assert!(!c.values.enabled);
+    assert!(c.values.transparent_back);
+    assert!(c.values.read_only);
+    assert_eq!(c.values.choice_button, Some(false));
+    assert_eq!(c.values.clear_button, Some(false));
+    assert_eq!(c.values.open_button, Some(false));
+    assert!(!c.values.auto_mark_incomplete);
+    assert!(c.values.mark_negatives);
+    assert!(c.values.choice_list_mode);
+}
+
+#[test]
+fn discovered_label_checkbox_table_panel_and_commandbar_properties_round_trip() {
+    let base = baseline("DonorForm");
+    let mut edited = edit_ctl(
+        &base,
+        "Надпись1",
+        &[("<TabOrder>3</TabOrder>", "<TabOrder>3</TabOrder><Enabled>false</Enabled><HorizontalAlign>Center</HorizontalAlign><Hyperlink>true</Hyperlink>")],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Флажок1",
+        &[("<TabOrder>5</TabOrder>", "<TabOrder>5</TabOrder><Enabled>false</Enabled><TitleLocation>Left</TitleLocation><ThreeState>true</ThreeState>")],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ТабличноеПоле1",
+        &[("<Footer>false</Footer>", "<Footer>true</Footer><SelectionMode>Multi</SelectionMode>")],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ОсновныеДействияФормы",
+        &[
+            ("<AutoFill>false</AutoFill>", "<AutoFill>true</AutoFill>"),
+            ("<HorizontalAlign>Right</HorizontalAlign>", "<HorizontalAlign>Left</HorizontalAlign>"),
+        ],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Панель1",
+        &[("<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>", "<ShowTabs type=\"ShowTabs\" member=\"Top\" code=\"1\"/>")],
+    );
+    let pf = round_trip("DonorForm", &edited);
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    let lbl = got.control(5).unwrap();
+    assert!(!lbl.values.enabled);
+    assert_eq!(lbl.values.horizontal_align, "Center");
+    assert!(lbl.values.hyperlink);
+    let chk = got.control(8).unwrap();
+    assert!(!chk.values.enabled);
+    assert_eq!(chk.values.title_location, "Left");
+    assert!(chk.values.three_state);
+    let tbl = got.control(6).unwrap();
+    assert_eq!(tbl.values.footer, Some(true));
+    assert_eq!(tbl.values.selection_mode, "Multi");
+    let bar = got.control(2).unwrap();
+    assert_eq!(bar.values.auto_fill, Some(true));
+    assert_eq!(bar.values.horizontal_align, "");
+    let pnl = got.control(13).unwrap();
+    assert_eq!(pnl.values.show_tabs, Some(1));
+}
+
+#[test]
+fn donor_added_controls_accept_discovered_properties() {
+    let mut edited = baseline("DonorForm");
+    let new_inp = "<InputField name=\"НовоеПоле\" id=\"999\">\n          <Left>500</Left><Top>500</Top><Width>120</Width><Height>20</Height>\n          <ZOrder>50</ZOrder><TabOrder>50</TabOrder>\n          <Enabled>false</Enabled><ReadOnly>true</ReadOnly><ChoiceButton>true</ChoiceButton><MarkNegatives>true</MarkNegatives>\n        </InputField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(new_inp.to_string() + anchor), 1);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let c = got.control(pf.allocated[0].1).unwrap();
+    assert!(!c.values.enabled);
+    assert!(c.values.read_only);
+    assert_eq!(c.values.choice_button, Some(true));
+    assert_eq!(c.values.clear_button, Some(false));
+    assert!(c.values.mark_negatives);
 }
 
