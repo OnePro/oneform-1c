@@ -2274,3 +2274,109 @@ fn remaining_table_column_page_button_and_form_root_properties_round_trip() {
     assert!(text.contains(&format!("{{19,{expected_tbl_flags},")));
     assert!(text.contains(&format!(",{expected_col_flags},")));
 }
+
+#[test]
+fn final_catalog_extensions_choiceitem_and_spreadsheet_doc_round_trip() {
+    const STYLE: &str = "6b2c1a56-4e1f-4f27-8d93-2f0b5f4e9a10";
+    let mut edited = baseline("DonorForm");
+    edited = replace_once(
+        &edited,
+        "reconstructionComplete=\"false\">",
+        &format!("reconstructionComplete=\"false\">\n  <Style ref=\"{STYLE}\"/>\n  <DefaultControlId>4</DefaultControlId>"),
+    );
+    edited = edit_ctl(
+        &edited,
+        "Кнопка1",
+        &[("<TabOrder>2</TabOrder>", "<TabOrder>2</TabOrder>\n          <DefaultButton>true</DefaultButton>\n          <ContextMenu>12</ContextMenu>")],
+    );
+    edited = edit_ctl(
+        &edited,
+        "КоманднаяПанель1",
+        &[("<TabOrder>1</TabOrder>", "<TabOrder>1</TabOrder>\n          <ActionSource controlId=\"6\"/>")],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Надпись1",
+        &[(
+            "<TabOrder>3</TabOrder>",
+            "<TabOrder>3</TabOrder>\n          <ContextMenu controlId=\"7\"/>\n          <AutoContextMenu>false</AutoContextMenu>\n          <Collapse>Left</Collapse>\n          <EmbeddedIntoCell>true</EmbeddedIntoCell>\n          <Print>false</Print>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеТабличногоДокумента1",
+        &[(
+            "<TabOrder>19</TabOrder>",
+            "<TabOrder>19</TabOrder>\n          <ReadOnly>true</ReadOnly>\n          <Protection>true</Protection>\n          <ShowGrid>false</ShowGrid>\n          <ShowHeaders>false</ShowHeaders>\n          <ShowGroups>false</ShowGroups>\n          <BlackAndWhiteView>true</BlackAndWhiteView>\n          <TotalsRight>true</TotalsRight>\n          <TotalsBelow>true</TotalsBelow>\n          <PrintScale>90</PrintScale>\n          <FitToPage>true</FitToPage>\n          <BlackAndWhite>true</BlackAndWhite>\n          <Collate>true</Collate>\n          <Copies>3</Copies>\n          <PerPage>2</PerPage>\n          <PageOrientation>Landscape</PageOrientation>\n          <BottomMargin>11</BottomMargin>\n          <TopMargin>12</TopMargin>\n          <LeftMargin>13</LeftMargin>\n          <RightMargin>14</RightMargin>\n          <HeaderSize>15</HeaderSize>\n          <FooterSize>16</FooterSize>\n          <DuplexPrinting>1</DuplexPrinting>\n          <PrintAccuracy>300</PrintAccuracy>\n          <StepDirection>1</StepDirection>\n          <SaveViewProperties>true</SaveViewProperties>\n          <FixedBackground>true</FixedBackground>",
+        )],
+    );
+    let added = "<ChoiceField name=\"ПолеВыбораСПометкой\" id=\"999\">\n          <Left>520</Left><Top>520</Top><Width>140</Width><Height>20</Height>\n          <ZOrder>58</ZOrder><TabOrder>58</TabOrder>\n          <ChoiceList>\n            <ChoiceItem value=\"Зн1\" checked=\"true\" pictureId=\"7\"/>\n            <ChoiceItem value=\"Зн2\" checked=\"false\"/>\n          </ChoiceList>\n        </ChoiceField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(added.to_string() + anchor), 1);
+
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let s = parse_spanned(&pf.bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    let int = |n: &oneform::brace::Node, path: &[usize]| -> i64 {
+        let (last, parents) = path.split_last().unwrap();
+        let mut cur = n;
+        for &i in parents {
+            cur = cur.node(i).unwrap();
+        }
+        cur.atom(*last).unwrap().value.parse().unwrap()
+    };
+    let info = |id: i64| idx.get(id).unwrap().info().unwrap().node;
+    let meta = |id: i64| idx.get(id).unwrap().meta().unwrap().node;
+    // DefaultButton: the button flag and the coupled form header slot.
+    assert_eq!(int(info(4), &[1, 5]), 1);
+    assert_eq!(int(&s.root, &[1, 1, 2]), 4);
+    assert_eq!(int(meta(4), &[2]), 12);
+    assert_eq!(int(meta(2), &[2]), 6);
+    assert_eq!(int(meta(5), &[2]), 7);
+    // AutoContextMenu / Collapse / EmbeddedIntoCell / Print live in the appearance block.
+    assert_eq!(int(info(5), &[1, 0, 16]), 2);
+    assert_eq!(int(info(5), &[1, 0, 14]), 3);
+    assert_eq!(int(info(5), &[1, 0, 13]), 1);
+    assert_eq!(int(info(5), &[1, 0, 17]), 0);
+    // Form style and default control.
+    let text = String::from_utf8(pf.bytes.clone()).unwrap();
+    assert_eq!(s.root.node(12).unwrap().atom(1).unwrap().value, STYLE);
+    let panel = s.root.node(1).unwrap().node(2).unwrap().node(1).unwrap().node(1).unwrap();
+    assert!(panel.children.iter().any(|c| c.as_atom().is_some_and(|a| a.value == "4")));
+    // SpreadsheetDocumentField view and print properties.
+    let sheet = info(15);
+    for (path, want) in [
+        (&[12usize][..], 1),
+        (&[13], 1),
+        (&[18], 0),
+        (&[19], 0),
+        (&[20], 0),
+        (&[21], 1),
+        (&[22], 1),
+        (&[23], 1),
+        (&[14, 3], 90),
+        (&[14, 4], 1),
+        (&[14, 5], 1),
+        (&[14, 6], 1),
+        (&[14, 7], 3),
+        (&[14, 8], 2),
+        (&[14, 9], 1),
+        (&[14, 10], 11),
+        (&[14, 11], 12),
+        (&[14, 12], 13),
+        (&[14, 13], 14),
+        (&[14, 14], 15),
+        (&[14, 15], 16),
+        (&[14, 16], 1),
+        (&[14, 17], 300),
+        (&[14, 18], 1),
+        (&[14, 19], 1),
+        (&[14, 20], 1),
+    ] {
+        assert_eq!(int(sheet, path), want, "SpreadsheetDocumentField info{path:?}");
+    }
+    // ChoiceItem checked / pictureId.
+    assert!(text.contains("{0,7,1,{\"S\",\"Зн1\"}"));
+    assert!(text.contains("{0,0,0,{\"S\",\"Зн2\"}"));
+    assert_eq!(got.control(pf.allocated[0].1).unwrap().values.choice_list.len(), 2);
+}

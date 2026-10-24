@@ -42,7 +42,7 @@ pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 pub const CONTROL_STUB: &str = "#control";
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
-const SUPPORTED_TAGS: [&str; 124] = [
+const SUPPORTED_TAGS: [&str; 156] = [
     "DataPath",
     "Caption",
     "Left",
@@ -167,6 +167,38 @@ const SUPPORTED_TAGS: [&str; 124] = [
     "ShowSelection",
     "BeginOfDisplayPeriod",
     "EndOfDisplayPeriod",
+    "DefaultButton",
+    "ContextMenu",
+    "ActionSource",
+    "AutoContextMenu",
+    "Collapse",
+    "EmbeddedIntoCell",
+    "Print",
+    "Protection",
+    "ShowGrid",
+    "ShowHeaders",
+    "ShowGroups",
+    "BlackAndWhiteView",
+    "TotalsRight",
+    "TotalsBelow",
+    "PrintScale",
+    "FitToPage",
+    "BlackAndWhite",
+    "Collate",
+    "Copies",
+    "PerPage",
+    "PageOrientation",
+    "BottomMargin",
+    "TopMargin",
+    "LeftMargin",
+    "RightMargin",
+    "HeaderSize",
+    "FooterSize",
+    "DuplexPrinting",
+    "PrintAccuracy",
+    "StepDirection",
+    "SaveViewProperties",
+    "FixedBackground",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -779,6 +811,8 @@ fn parse_anchors_elem(e: &XmlElement) -> Option<AnchorsSpec> {
 pub struct ChoiceItemSpec {
     pub value: String,
     pub presentation: Vec<(String, String)>,
+    pub checked: Option<bool>,
+    pub picture_id: Option<i64>,
 }
 
 fn format_choice_list_node(items: &[ChoiceItemSpec]) -> String {
@@ -793,8 +827,10 @@ fn format_choice_list_node(items: &[ChoiceItemSpec]) -> String {
             pres_parts.push(quote(l));
             pres_parts.push(quote(t));
         }
+        let pic = it.picture_id.unwrap_or(0);
+        let chk = i32::from(it.checked.unwrap_or(false));
         parts.push(format!(
-            "{{0,0,0,{{\"S\",{}}},{{0,0,{{{}}}}}}}",
+            "{{0,{pic},{chk},{{\"S\",{}}},{{0,0,{{{}}}}}}}",
             quote(&it.value),
             pres_parts.join(",")
         ));
@@ -1013,6 +1049,38 @@ pub struct ControlValues {
     pub show_selection: Option<String>,
     pub begin_of_display_period: Option<i64>,
     pub end_of_display_period: Option<i64>,
+    pub default_button: Option<bool>,
+    pub context_menu: Option<i64>,
+    pub action_source: Option<i64>,
+    pub auto_context_menu: Option<bool>,
+    pub collapse: Option<String>,
+    pub embedded_into_cell: Option<bool>,
+    pub print: Option<bool>,
+    pub protection: Option<bool>,
+    pub show_grid: Option<bool>,
+    pub show_headers: Option<bool>,
+    pub show_groups: Option<bool>,
+    pub black_and_white_view: Option<bool>,
+    pub totals_right: Option<bool>,
+    pub totals_below: Option<bool>,
+    pub print_scale: Option<i64>,
+    pub fit_to_page: Option<bool>,
+    pub black_and_white: Option<bool>,
+    pub collate: Option<bool>,
+    pub copies: Option<i64>,
+    pub per_page: Option<i64>,
+    pub page_orientation: Option<String>,
+    pub bottom_margin: Option<i64>,
+    pub top_margin: Option<i64>,
+    pub left_margin: Option<i64>,
+    pub right_margin: Option<i64>,
+    pub header_size: Option<i64>,
+    pub footer_size: Option<i64>,
+    pub duplex_printing: Option<i64>,
+    pub print_accuracy: Option<i64>,
+    pub step_direction: Option<i64>,
+    pub save_view_properties: Option<bool>,
+    pub fixed_background: Option<bool>,
 }
 
 /// `<TypeLink>` of an `InputField`: the attribute (and optional field GUID) whose type the field follows.
@@ -1154,6 +1222,38 @@ impl ControlValues {
             show_selection: None,
             begin_of_display_period: None,
             end_of_display_period: None,
+            default_button: None,
+            context_menu: None,
+            action_source: None,
+            auto_context_menu: None,
+            collapse: None,
+            embedded_into_cell: None,
+            print: None,
+            protection: None,
+            show_grid: None,
+            show_headers: None,
+            show_groups: None,
+            black_and_white_view: None,
+            totals_right: None,
+            totals_below: None,
+            print_scale: None,
+            fit_to_page: None,
+            black_and_white: None,
+            collate: None,
+            copies: None,
+            per_page: None,
+            page_orientation: None,
+            bottom_margin: None,
+            top_margin: None,
+            left_margin: None,
+            right_margin: None,
+            header_size: None,
+            footer_size: None,
+            duplex_printing: None,
+            print_accuracy: None,
+            step_direction: None,
+            save_view_properties: None,
+            fixed_background: None,
         }
     }
 }
@@ -1287,6 +1387,38 @@ pub enum Property {
     ShowSelection,
     BeginOfDisplayPeriod,
     EndOfDisplayPeriod,
+    DefaultButton,
+    ContextMenu,
+    ActionSource,
+    AutoContextMenu,
+    Collapse,
+    EmbeddedIntoCell,
+    Print,
+    Protection,
+    ShowGrid,
+    ShowHeaders,
+    ShowGroups,
+    BlackAndWhiteView,
+    TotalsRight,
+    TotalsBelow,
+    PrintScale,
+    FitToPage,
+    BlackAndWhite,
+    Collate,
+    Copies,
+    PerPage,
+    PageOrientation,
+    BottomMargin,
+    TopMargin,
+    LeftMargin,
+    RightMargin,
+    HeaderSize,
+    FooterSize,
+    DuplexPrinting,
+    PrintAccuracy,
+    StepDirection,
+    SaveViewProperties,
+    FixedBackground,
 }
 
 impl Property {
@@ -1419,6 +1551,38 @@ impl Property {
             Property::ShowSelection => "ShowSelection",
             Property::BeginOfDisplayPeriod => "BeginOfDisplayPeriod",
             Property::EndOfDisplayPeriod => "EndOfDisplayPeriod",
+            Property::DefaultButton => "DefaultButton",
+            Property::ContextMenu => "ContextMenu",
+            Property::ActionSource => "ActionSource",
+            Property::AutoContextMenu => "AutoContextMenu",
+            Property::Collapse => "Collapse",
+            Property::EmbeddedIntoCell => "EmbeddedIntoCell",
+            Property::Print => "Print",
+            Property::Protection => "Protection",
+            Property::ShowGrid => "ShowGrid",
+            Property::ShowHeaders => "ShowHeaders",
+            Property::ShowGroups => "ShowGroups",
+            Property::BlackAndWhiteView => "BlackAndWhiteView",
+            Property::TotalsRight => "TotalsRight",
+            Property::TotalsBelow => "TotalsBelow",
+            Property::PrintScale => "PrintScale",
+            Property::FitToPage => "FitToPage",
+            Property::BlackAndWhite => "BlackAndWhite",
+            Property::Collate => "Collate",
+            Property::Copies => "Copies",
+            Property::PerPage => "PerPage",
+            Property::PageOrientation => "PageOrientation",
+            Property::BottomMargin => "BottomMargin",
+            Property::TopMargin => "TopMargin",
+            Property::LeftMargin => "LeftMargin",
+            Property::RightMargin => "RightMargin",
+            Property::HeaderSize => "HeaderSize",
+            Property::FooterSize => "FooterSize",
+            Property::DuplexPrinting => "DuplexPrinting",
+            Property::PrintAccuracy => "PrintAccuracy",
+            Property::StepDirection => "StepDirection",
+            Property::SaveViewProperties => "SaveViewProperties",
+            Property::FixedBackground => "FixedBackground",
         }
     }
 }
@@ -1557,6 +1721,38 @@ impl ControlValues {
             (self.show_selection == other.show_selection, Property::ShowSelection),
             (self.begin_of_display_period == other.begin_of_display_period, Property::BeginOfDisplayPeriod),
             (self.end_of_display_period == other.end_of_display_period, Property::EndOfDisplayPeriod),
+            (self.default_button == other.default_button, Property::DefaultButton),
+            (self.context_menu == other.context_menu, Property::ContextMenu),
+            (self.action_source == other.action_source, Property::ActionSource),
+            (self.auto_context_menu == other.auto_context_menu, Property::AutoContextMenu),
+            (self.collapse == other.collapse, Property::Collapse),
+            (self.embedded_into_cell == other.embedded_into_cell, Property::EmbeddedIntoCell),
+            (self.print == other.print, Property::Print),
+            (self.protection == other.protection, Property::Protection),
+            (self.show_grid == other.show_grid, Property::ShowGrid),
+            (self.show_headers == other.show_headers, Property::ShowHeaders),
+            (self.show_groups == other.show_groups, Property::ShowGroups),
+            (self.black_and_white_view == other.black_and_white_view, Property::BlackAndWhiteView),
+            (self.totals_right == other.totals_right, Property::TotalsRight),
+            (self.totals_below == other.totals_below, Property::TotalsBelow),
+            (self.print_scale == other.print_scale, Property::PrintScale),
+            (self.fit_to_page == other.fit_to_page, Property::FitToPage),
+            (self.black_and_white == other.black_and_white, Property::BlackAndWhite),
+            (self.collate == other.collate, Property::Collate),
+            (self.copies == other.copies, Property::Copies),
+            (self.per_page == other.per_page, Property::PerPage),
+            (self.page_orientation == other.page_orientation, Property::PageOrientation),
+            (self.bottom_margin == other.bottom_margin, Property::BottomMargin),
+            (self.top_margin == other.top_margin, Property::TopMargin),
+            (self.left_margin == other.left_margin, Property::LeftMargin),
+            (self.right_margin == other.right_margin, Property::RightMargin),
+            (self.header_size == other.header_size, Property::HeaderSize),
+            (self.footer_size == other.footer_size, Property::FooterSize),
+            (self.duplex_printing == other.duplex_printing, Property::DuplexPrinting),
+            (self.print_accuracy == other.print_accuracy, Property::PrintAccuracy),
+            (self.step_direction == other.step_direction, Property::StepDirection),
+            (self.save_view_properties == other.save_view_properties, Property::SaveViewProperties),
+            (self.fixed_background == other.fixed_background, Property::FixedBackground),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -1612,6 +1808,9 @@ pub struct FormRootProps {
     pub allow_autohide_state: Option<bool>,
     pub allow_float_state: Option<bool>,
     pub window_dock_location: Option<i64>,
+    /// `<Style ref="uuid"/>`: the style UUID, empty for `<Style/>` (no style).
+    pub style_ref: Option<String>,
+    pub default_control_id: Option<i64>,
 }
 
 /// Comparable semantic model of one `Form.xml`.
@@ -1801,6 +2000,42 @@ impl FormXml {
             c.values.show_selection = None;
             c.values.begin_of_display_period = None;
             c.values.end_of_display_period = None;
+            for it in &mut c.values.choice_list {
+                it.checked = None;
+                it.picture_id = None;
+            }
+            c.values.default_button = None;
+            c.values.context_menu = None;
+            c.values.action_source = None;
+            c.values.auto_context_menu = None;
+            c.values.collapse = None;
+            c.values.embedded_into_cell = None;
+            c.values.print = None;
+            c.values.protection = None;
+            c.values.show_grid = None;
+            c.values.show_headers = None;
+            c.values.show_groups = None;
+            c.values.black_and_white_view = None;
+            c.values.totals_right = None;
+            c.values.totals_below = None;
+            c.values.print_scale = None;
+            c.values.fit_to_page = None;
+            c.values.black_and_white = None;
+            c.values.collate = None;
+            c.values.copies = None;
+            c.values.per_page = None;
+            c.values.page_orientation = None;
+            c.values.bottom_margin = None;
+            c.values.top_margin = None;
+            c.values.left_margin = None;
+            c.values.right_margin = None;
+            c.values.header_size = None;
+            c.values.footer_size = None;
+            c.values.duplex_printing = None;
+            c.values.print_accuracy = None;
+            c.values.step_direction = None;
+            c.values.save_view_properties = None;
+            c.values.fixed_background = None;
             for page in &mut c.values.pages {
                 page.title_picture = None;
             }
@@ -1850,6 +2085,7 @@ impl FormXml {
                     c.values.read_only = false;
                 }
                 "SpreadsheetDocumentField" => {
+                    c.values.read_only = false;
                     c.values.horizontal_scroll_bar.clear();
                     c.values.vertical_scroll_bar.clear();
                 }
@@ -1918,7 +2154,11 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
                 || (tag == "BorderColor" && matches!(type_name, "SpreadsheetDocumentField" | "HTMLDocumentField"))
         }
         "HorizontalScrollBar" | "VerticalScrollBar" if matches!(type_name, "Table" | "SpreadsheetDocumentField") => true,
-        "ReadOnly" if matches!(type_name, "Table" | "ListBox" | "GraphicalSchemaField" | "TextDocumentField") => true,
+        "ReadOnly"
+            if matches!(type_name, "Table" | "ListBox" | "GraphicalSchemaField" | "TextDocumentField" | "SpreadsheetDocumentField") =>
+        {
+            true
+        }
         "Output"
             if matches!(
                 type_name,
@@ -1991,6 +2231,14 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "PanelPictureLocation" => type_name == "Panel",
         "ShowSelection" => type_name == "SpreadsheetDocumentField",
         "BeginOfDisplayPeriod" | "EndOfDisplayPeriod" => type_name == "CalendarField",
+        "DefaultButton" => type_name == "Button",
+        "ContextMenu" => type_name != "CommandBar",
+        "ActionSource" => type_name == "CommandBar",
+        "AutoContextMenu" | "Collapse" | "EmbeddedIntoCell" | "Print" => patch_app_path(type_name).is_some(),
+        "Protection" | "ShowGrid" | "ShowHeaders" | "ShowGroups" | "BlackAndWhiteView" | "TotalsRight" | "TotalsBelow"
+        | "PrintScale" | "FitToPage" | "BlackAndWhite" | "Collate" | "Copies" | "PerPage" | "PageOrientation"
+        | "BottomMargin" | "TopMargin" | "LeftMargin" | "RightMargin" | "HeaderSize" | "FooterSize" | "DuplexPrinting"
+        | "PrintAccuracy" | "StepDirection" | "SaveViewProperties" | "FixedBackground" => type_name == "SpreadsheetDocumentField",
         _ => false,
     }
 }
@@ -2831,10 +3079,30 @@ impl Parser<'_> {
             let mut valid = e.attrs.is_empty() && e.text.trim().is_empty();
             if valid {
                 for ci in &e.children {
-                    if ci.tag != "ChoiceItem" || ci.attrs.len() != 1 || !ci.text.trim().is_empty() {
+                    if ci.tag != "ChoiceItem"
+                        || !ci.text.trim().is_empty()
+                        || ci.attrs.keys().any(|k| !matches!(k.as_str(), "value" | "checked" | "pictureId"))
+                    {
                         valid = false;
                         break;
                     }
+                    let checked = match ci.attrs.get("checked").map(|v| v.trim()) {
+                        None => None,
+                        Some("true") => Some(true),
+                        Some("false") => Some(false),
+                        Some(_) => {
+                            valid = false;
+                            break;
+                        }
+                    };
+                    let picture_id = match ci.attrs.get("pictureId").map(|v| v.trim().parse::<i64>()) {
+                        None => None,
+                        Some(Ok(v)) => Some(v),
+                        Some(Err(_)) => {
+                            valid = false;
+                            break;
+                        }
+                    };
                     let Some(val) = ci.attrs.get("value").cloned() else {
                         valid = false;
                         break;
@@ -2855,7 +3123,7 @@ impl Parser<'_> {
                         };
                         pres = loc;
                     }
-                    choice_list.push(ChoiceItemSpec { value: val, presentation: pres });
+                    choice_list.push(ChoiceItemSpec { value: val, presentation: pres, checked, picture_id });
                 }
             }
             if !valid {
@@ -2989,6 +3257,20 @@ impl Parser<'_> {
             Some(e) if e.children.is_empty() && e.attrs.is_empty() => Some(e.text.clone()),
             Some(e) => return Err(self.bad(e.line, format!("{who}: <SelectionValue> must be a plain text value"))),
         };
+        let control_ref_of = |tag: &str| -> Result<Option<i64>> {
+            let Some(e) = found.get(tag) else { return Ok(None) };
+            let text = e.text.trim();
+            let id = match e.attrs.get("controlId") {
+                Some(v) if e.attrs.len() == 1 && text.is_empty() => v.trim().parse::<i64>().ok(),
+                None if e.attrs.is_empty() => text.parse::<i64>().ok(),
+                _ => None,
+            };
+            id.filter(|_| e.children.is_empty())
+                .map(Some)
+                .ok_or_else(|| self.bad(e.line, format!("{who}: <{tag}> must be an integer or have a 'controlId' attribute")))
+        };
+        let context_menu_id = control_ref_of("ContextMenu")?;
+        let action_source_id = control_ref_of("ActionSource")?;
         let values = ControlValues {
             name: ctrl_name,
             data_path,
@@ -3144,6 +3426,38 @@ impl Parser<'_> {
             show_selection: opt_enum_of("ShowSelection", &["WhenActive", "Always"])?,
             begin_of_display_period: opt_int_of("BeginOfDisplayPeriod")?,
             end_of_display_period: opt_int_of("EndOfDisplayPeriod")?,
+            default_button: opt_bool_of("DefaultButton")?,
+            context_menu: context_menu_id,
+            action_source: action_source_id,
+            auto_context_menu: opt_bool_of("AutoContextMenu")?,
+            collapse: opt_enum_of("Collapse", &["None", "Top", "Bottom", "Left", "Right"])?,
+            embedded_into_cell: opt_bool_of("EmbeddedIntoCell")?,
+            print: opt_bool_of("Print")?,
+            protection: opt_bool_of("Protection")?,
+            show_grid: opt_bool_of("ShowGrid")?,
+            show_headers: opt_bool_of("ShowHeaders")?,
+            show_groups: opt_bool_of("ShowGroups")?,
+            black_and_white_view: opt_bool_of("BlackAndWhiteView")?,
+            totals_right: opt_bool_of("TotalsRight")?,
+            totals_below: opt_bool_of("TotalsBelow")?,
+            print_scale: opt_int_of("PrintScale")?,
+            fit_to_page: opt_bool_of("FitToPage")?,
+            black_and_white: opt_bool_of("BlackAndWhite")?,
+            collate: opt_bool_of("Collate")?,
+            copies: opt_int_of("Copies")?,
+            per_page: opt_int_of("PerPage")?,
+            page_orientation: opt_enum_of("PageOrientation", &["Portrait", "Landscape"])?,
+            bottom_margin: opt_int_of("BottomMargin")?,
+            top_margin: opt_int_of("TopMargin")?,
+            left_margin: opt_int_of("LeftMargin")?,
+            right_margin: opt_int_of("RightMargin")?,
+            header_size: opt_int_of("HeaderSize")?,
+            footer_size: opt_int_of("FooterSize")?,
+            duplex_printing: opt_int_of("DuplexPrinting")?,
+            print_accuracy: opt_int_of("PrintAccuracy")?,
+            step_direction: opt_int_of("StepDirection")?,
+            save_view_properties: opt_bool_of("SaveViewProperties")?,
+            fixed_background: opt_bool_of("FixedBackground")?,
         };
         Ok((values, rest))
     }
@@ -3394,6 +3708,22 @@ fn extract_form_root_props(root: &mut XmlElement) -> FormRootProps {
                 .is_some(),
             "WindowDockLocation" => parse_code(e, &[("Left", 0), ("Top", 1), ("Right", 2), ("Bottom", 3), ("Auto", 4)])
                 .map(|v| fp.window_dock_location = Some(v))
+                .is_some(),
+            "Style" => {
+                let reference = match (e.attrs.len(), e.attrs.get("ref")) {
+                    (0, _) => Some(String::new()),
+                    (1, Some(g)) if is_uuid(g.trim()) => Some(g.trim().to_lowercase()),
+                    _ => None,
+                };
+                reference
+                    .filter(|_| e.children.is_empty() && e.text.trim().is_empty())
+                    .map(|v| fp.style_ref = Some(v))
+                    .is_some()
+            }
+            "DefaultControlId" => (e.children.is_empty() && e.attrs.is_empty())
+                .then(|| e.text.trim().parse::<i64>().ok())
+                .flatten()
+                .map(|v| fp.default_control_id = Some(v))
                 .is_some(),
             _ => false,
         };
@@ -4430,6 +4760,8 @@ const SCROLLING_TEXT: CodeTable = &[
 ];
 const PANEL_PICTURE_LOCATION: CodeTable = &[("TopLeft", 0), ("Center", 1)];
 const SHOW_SELECTION: CodeTable = &[("WhenActive", 0), ("Always", 1)];
+const COLLAPSE_MODE: CodeTable = &[("None", 0), ("Top", 1), ("Bottom", 2), ("Left", 3), ("Right", 4)];
+const PAGE_ORIENTATION: CodeTable = &[("Portrait", 0), ("Landscape", 1)];
 
 /// Properties that live in a fixed `info` slot (`ext_slot`); the others keep their dedicated mapping.
 const EXT_PROPS: &[Property] = &[
@@ -4508,6 +4840,36 @@ const EXT_PROPS: &[Property] = &[
     Property::ShowSelection,
     Property::BeginOfDisplayPeriod,
     Property::EndOfDisplayPeriod,
+    Property::DefaultButton,
+    Property::AutoContextMenu,
+    Property::Collapse,
+    Property::EmbeddedIntoCell,
+    Property::Print,
+    Property::Protection,
+    Property::ShowGrid,
+    Property::ShowHeaders,
+    Property::ShowGroups,
+    Property::BlackAndWhiteView,
+    Property::TotalsRight,
+    Property::TotalsBelow,
+    Property::PrintScale,
+    Property::FitToPage,
+    Property::BlackAndWhite,
+    Property::Collate,
+    Property::Copies,
+    Property::PerPage,
+    Property::PageOrientation,
+    Property::BottomMargin,
+    Property::TopMargin,
+    Property::LeftMargin,
+    Property::RightMargin,
+    Property::HeaderSize,
+    Property::FooterSize,
+    Property::DuplexPrinting,
+    Property::PrintAccuracy,
+    Property::StepDirection,
+    Property::SaveViewProperties,
+    Property::FixedBackground,
 ];
 
 struct ExtSlot {
@@ -4537,6 +4899,23 @@ fn panel_page_list_idx(p: &Node) -> Option<usize> {
     Some(idx + 3)
 }
 
+/// Index of the default control slot (`tail[1]`) in the root panel parameters: after the page list, the three
+/// panel flags and the counted rows list comes the tail whose second item holds the default control id.
+fn default_control_slot(p: &Node) -> Option<usize> {
+    let rows_idx = panel_page_list_idx(p)? + 4;
+    let rows = p.children.get(rows_idx)?.as_atom()?.value.parse::<usize>().ok()?;
+    Some(rows_idx + 1 + rows + 1)
+}
+
+/// Form style node: `{0}` without a style, `{0,<uuid>}` with one.
+fn format_style_node(style: &str) -> String {
+    if style.is_empty() {
+        "{0}".to_string()
+    } else {
+        format!("{{0,{}}}", style.to_lowercase())
+    }
+}
+
 fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
     use Property as P;
     let color_idx = match prop {
@@ -4549,6 +4928,17 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
     if let Some(idx) = color_idx {
         let path = patch_app_path(type_name)?.iter().map(|&i| i as usize).collect();
         return Some(ExtSlot { path, idx, table: &[] });
+    }
+    let base_idx: Option<(usize, CodeTable)> = match prop {
+        P::EmbeddedIntoCell => Some((13, &[])),
+        P::Collapse => Some((14, COLLAPSE_MODE)),
+        P::AutoContextMenu => Some((16, &[])),
+        P::Print => Some((17, &[])),
+        _ => None,
+    };
+    if let Some((idx, table)) = base_idx {
+        let path = patch_app_path(type_name)?.iter().map(|&i| i as usize).collect();
+        return Some(ExtSlot { path, idx, table });
     }
     if prop == P::BorderStyle && type_name != "UsualGroup" {
         let path = match type_name {
@@ -4571,6 +4961,33 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
         ("SpreadsheetDocumentField", P::Output) => (&[], 28, &[]),
         ("SpreadsheetDocumentField", P::HorizontalScrollBar) => (&[], 31, &[]),
         ("SpreadsheetDocumentField", P::VerticalScrollBar) => (&[], 32, &[]),
+        ("SpreadsheetDocumentField", P::ReadOnly) => (&[], 12, &[]),
+        ("SpreadsheetDocumentField", P::Protection) => (&[], 13, &[]),
+        ("SpreadsheetDocumentField", P::ShowGrid) => (&[], 18, &[]),
+        ("SpreadsheetDocumentField", P::ShowHeaders) => (&[], 19, &[]),
+        ("SpreadsheetDocumentField", P::ShowGroups) => (&[], 20, &[]),
+        ("SpreadsheetDocumentField", P::BlackAndWhiteView) => (&[], 21, &[]),
+        ("SpreadsheetDocumentField", P::TotalsRight) => (&[], 22, &[]),
+        ("SpreadsheetDocumentField", P::TotalsBelow) => (&[], 23, &[]),
+        ("SpreadsheetDocumentField", P::PrintScale) => (&[14], 3, &[]),
+        ("SpreadsheetDocumentField", P::FitToPage) => (&[14], 4, &[]),
+        ("SpreadsheetDocumentField", P::BlackAndWhite) => (&[14], 5, &[]),
+        ("SpreadsheetDocumentField", P::Collate) => (&[14], 6, &[]),
+        ("SpreadsheetDocumentField", P::Copies) => (&[14], 7, &[]),
+        ("SpreadsheetDocumentField", P::PerPage) => (&[14], 8, &[]),
+        ("SpreadsheetDocumentField", P::PageOrientation) => (&[14], 9, PAGE_ORIENTATION),
+        ("SpreadsheetDocumentField", P::BottomMargin) => (&[14], 10, &[]),
+        ("SpreadsheetDocumentField", P::TopMargin) => (&[14], 11, &[]),
+        ("SpreadsheetDocumentField", P::LeftMargin) => (&[14], 12, &[]),
+        ("SpreadsheetDocumentField", P::RightMargin) => (&[14], 13, &[]),
+        ("SpreadsheetDocumentField", P::HeaderSize) => (&[14], 14, &[]),
+        ("SpreadsheetDocumentField", P::FooterSize) => (&[14], 15, &[]),
+        ("SpreadsheetDocumentField", P::DuplexPrinting) => (&[14], 16, &[]),
+        ("SpreadsheetDocumentField", P::PrintAccuracy) => (&[14], 17, &[]),
+        ("SpreadsheetDocumentField", P::StepDirection) => (&[14], 18, &[]),
+        ("SpreadsheetDocumentField", P::SaveViewProperties) => (&[14], 19, &[]),
+        ("SpreadsheetDocumentField", P::FixedBackground) => (&[14], 20, &[]),
+        ("Button", P::DefaultButton) => (&[1], 5, &[]),
         ("ListBox", P::ReadOnly) => (&[1], 6, &[]),
         ("GraphicalSchemaField", P::ReadOnly) => (&[], 4, &[]),
         ("GraphicalSchemaField", P::Output) => (&[], 5, &[]),
@@ -4797,6 +5214,36 @@ fn ext_want(v: &ControlValues, prop: Property, slot: &ExtSlot) -> Option<Want> {
         P::ShowSelection => code(v.show_selection.as_deref()),
         P::BeginOfDisplayPeriod => int(v.begin_of_display_period),
         P::EndOfDisplayPeriod => int(v.end_of_display_period),
+        P::DefaultButton => flag(v.default_button),
+        P::AutoContextMenu => v.auto_context_menu.map(|b| Want::Atom(if b { 0 } else { 2 })),
+        P::Collapse => code(v.collapse.as_deref()),
+        P::EmbeddedIntoCell => flag(v.embedded_into_cell),
+        P::Print => flag(v.print),
+        P::Protection => flag(v.protection),
+        P::ShowGrid => flag(v.show_grid),
+        P::ShowHeaders => flag(v.show_headers),
+        P::ShowGroups => flag(v.show_groups),
+        P::BlackAndWhiteView => flag(v.black_and_white_view),
+        P::TotalsRight => flag(v.totals_right),
+        P::TotalsBelow => flag(v.totals_below),
+        P::PrintScale => int(v.print_scale),
+        P::FitToPage => flag(v.fit_to_page),
+        P::BlackAndWhite => flag(v.black_and_white),
+        P::Collate => flag(v.collate),
+        P::Copies => int(v.copies),
+        P::PerPage => int(v.per_page),
+        P::PageOrientation => code(v.page_orientation.as_deref()),
+        P::BottomMargin => int(v.bottom_margin),
+        P::TopMargin => int(v.top_margin),
+        P::LeftMargin => int(v.left_margin),
+        P::RightMargin => int(v.right_margin),
+        P::HeaderSize => int(v.header_size),
+        P::FooterSize => int(v.footer_size),
+        P::DuplexPrinting => int(v.duplex_printing),
+        P::PrintAccuracy => int(v.print_accuracy),
+        P::StepDirection => int(v.step_direction),
+        P::SaveViewProperties => flag(v.save_view_properties),
+        P::FixedBackground => flag(v.fixed_background),
         _ => None,
     }
 }
@@ -6186,6 +6633,23 @@ fn patch_column_editor_events(site: &Site, cp: NodeRef, ed_type: &str, new_event
     Ok(piece(span, format!("{{#base64:{b64}}}"), &[prop]))
 }
 
+/// `checked` / `picture_id` of the items (`info[1][26][2][6]`, items from child 2) wherever the model sets them.
+fn choice_list_extras_match(info: &Node, items: &[ChoiceItemSpec]) -> bool {
+    let Some(list) = info
+        .node(1)
+        .and_then(|p| p.node(26))
+        .and_then(|c| c.node(2))
+        .and_then(|c| c.node(6))
+    else {
+        return items.iter().all(|it| it.checked.is_none() && it.picture_id.is_none());
+    };
+    let atom = |it: &Node, i: usize| it.children.get(i)?.as_atom()?.value.trim().parse::<i64>().ok();
+    items.iter().enumerate().all(|(n, want)| {
+        let Some(rec) = list.node(2 + n) else { return false };
+        want.picture_id.is_none_or(|v| atom(rec, 1) == Some(v)) && want.checked.is_none_or(|v| atom(rec, 2) == Some(i64::from(v)))
+    })
+}
+
 fn read_choice_list_values(info: &Node) -> Vec<ChoiceItemSpec> {
     let mut props = serde_json::Map::new();
     let _ = crate::oof_props::decode_props("ChoiceField", info, &mut |_| {});
@@ -6206,7 +6670,7 @@ fn read_choice_list_values(info: &Node) -> Vec<ChoiceItemSpec> {
                 }
             }
         }
-        out.push(ChoiceItemSpec { value: val, presentation: pres });
+        out.push(ChoiceItemSpec { value: val, presentation: pres, checked: None, picture_id: None });
     }
     out
 }
@@ -7221,6 +7685,16 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             Property::Buttons => {
                 out.extend(patch_cb_buttons(site, &old.buttons, &new.buttons, prop)?);
             }
+            Property::ContextMenu | Property::ActionSource => {
+                let name = prop.xml_name();
+                let want = if prop == Property::ContextMenu { new.context_menu } else { new.action_source }
+                    .ok_or_else(|| site.invalid("invalid-xml", name, format!("cannot remove {name}")))?;
+                let meta = site
+                    .entry
+                    .meta()
+                    .ok_or_else(|| site.layout("unexpected-shape", name, "control meta node is missing".into()))?;
+                out.push(piece(int_slot(site, meta, 2, name, name)?.1, want, &[prop]));
+            }
             Property::BorderStyle => {
                 let (cur, span) = info_int_slot(site, &[1, 3], 3, prop)?;
                 if Some(cur) != old.border_style {
@@ -7345,7 +7819,17 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
     for &p in &site.edit.changed {
         let ext = site.entry.info().and_then(|i| ext_slot(site.entry.type_name, p, i.node));
         let ok = match p {
-            _ if ext.is_some() => ext_matches(site, p, ext.as_ref().ok_or_else(|| wrong(p))?)?,
+            _ if ext.is_some() => {
+                ext_matches(site, p, ext.as_ref().ok_or_else(|| wrong(p))?)?
+                    && (p != Property::DefaultButton
+                        || new.default_button != Some(true)
+                        || read_default_button_id(site.source) == Some(site.edit.id))
+            }
+            Property::ContextMenu | Property::ActionSource => {
+                let meta = site.entry.meta().ok_or_else(|| wrong(p))?;
+                let want = if p == Property::ContextMenu { new.context_menu } else { new.action_source };
+                Some(int_slot(site, meta, 2, p.xml_name(), p.xml_name())?.0) == want
+            }
             Property::Name => site.entry.name == new.name,
             Property::DataPath => read_control_data_path(site.source, site.edit.id) == new.data_path.as_ref().map(|(id, _)| *id),
             Property::Events => read_control_events(site.entry)? == new.events,
@@ -7515,7 +7999,15 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 let cur = if info_int_slot(site, &[1, 0], 3, p)?.0 == 0 { "Left" } else { "" };
                 cur == new.title_location
             }
-            Property::ChoiceList => read_choice_list_values(site.entry.info().unwrap().node) == new.choice_list,
+            Property::ChoiceList => {
+                let info = site.entry.info().unwrap().node;
+                let plain: Vec<ChoiceItemSpec> = new
+                    .choice_list
+                    .iter()
+                    .map(|it| ChoiceItemSpec { checked: None, picture_id: None, ..it.clone() })
+                    .collect();
+                read_choice_list_values(info) == plain && choice_list_extras_match(info, &new.choice_list)
+            }
             Property::ShowTabs => Some(read_panel(site)?.show_tabs.0) == new.show_tabs,
             Property::Pages => {
                 read_panel_page_values(site)? == pages_without_pictures(&new.pages)
@@ -7581,6 +8073,11 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
 
 type ZMember<'e, 'a> = (&'e ControlEntry<'a>, i64, i64);
 
+/// The default button id held by the form header (`root[1][1][2]`).
+fn read_default_button_id(source: &SpannedMetadata) -> Option<i64> {
+    source.root.node(1)?.node(1)?.children.get(2)?.as_atom()?.value.trim().parse().ok()
+}
+
 fn read_control_data_path(source: &SpannedMetadata, control_id: i64) -> Option<i64> {
     let links = source.root.node(2)?.node(3)?;
     for item in links.children.iter().skip(1) {
@@ -7601,6 +8098,13 @@ impl FormPatchPlan<'_> {
     fn structural_pieces(&self, out: &mut Vec<AppliedReplacement>) -> Result<Vec<(i64, i64)>> {
         let mut allocated: Vec<(i64, i64)> = Vec::new();
         let has_dp_edits = self.diff.edits.iter().any(|e| e.changed.contains(&Property::DataPath));
+        let default_buttons: Vec<i64> = self
+            .diff
+            .edits
+            .iter()
+            .filter(|e| e.changed.contains(&Property::DefaultButton) && e.new.default_button == Some(true))
+            .map(|e| e.id)
+            .collect();
         if self.diff.additions.is_empty()
             && self.diff.deletions.is_empty()
             && !self.diff.form_caption_changed
@@ -7608,8 +8112,27 @@ impl FormPatchPlan<'_> {
             && !self.diff.attributes_changed
             && !self.diff.form_props_changed
             && !has_dp_edits
+            && default_buttons.is_empty()
         {
             return Ok(allocated);
+        }
+
+        // ---- default button (root[1][1][2])
+        if let Some(&id) = default_buttons.first() {
+            if default_buttons.len() > 1 {
+                return Err(layout_err("form stream: only one button can be the default button"));
+            }
+            let (_, span) = self
+                .index
+                .at_path(&[1, 1])?
+                .atom(2)
+                .ok_or_else(|| layout_err("form stream: default button slot missing at root[1][1][2]"))?;
+            out.push(AppliedReplacement {
+                control_id: id,
+                properties: vec![Property::DefaultButton],
+                range: span,
+                bytes: id.to_string().into_bytes(),
+            });
         }
 
         // ---- form root properties
@@ -7660,6 +8183,27 @@ impl FormPatchPlan<'_> {
                         bytes: v.to_string().into_bytes(),
                     });
                 }
+            }
+            if let Some(style) = &fp.style_ref {
+                let node = self.index.at_path(&[12]).map_err(|_| layout_err("form stream: root[12] style node missing"))?;
+                out.push(AppliedReplacement {
+                    control_id: 0,
+                    properties: Vec::new(),
+                    range: node.span.span,
+                    bytes: format_style_node(style).into_bytes(),
+                });
+            }
+            if let Some(id) = fp.default_control_id {
+                let p = self.index.at_path(&[1, 2, 1, 1]).map_err(|_| layout_err("form stream: root panel parameters missing"))?;
+                let (_, span) = default_control_slot(p.node)
+                    .and_then(|i| p.atom(i))
+                    .ok_or_else(|| layout_err("form stream: root panel default control slot missing"))?;
+                out.push(AppliedReplacement {
+                    control_id: 0,
+                    properties: Vec::new(),
+                    range: span,
+                    bytes: id.to_string().into_bytes(),
+                });
             }
             if let Some(pic) = &fp.caption_picture {
                 let pnode = self
@@ -8164,6 +8708,22 @@ impl FormPatchPlan<'_> {
                 if got != Some(v) {
                     return Err(bad(format!("form stream: root[1][{idx}] did not read back as {v}")));
                 }
+            }
+        }
+        if let Some(style) = &fp.style_ref {
+            let want = crate::brace::parse_metadata(format_style_node(style).as_bytes()).ok();
+            if want.is_none() || Some(index.at_path(&[12])?.node) != want.as_ref() {
+                return Err(bad("form stream: root[12] style did not read back".to_string()));
+            }
+        }
+        if let Some(id) = fp.default_control_id {
+            let p = index.at_path(&[1, 2, 1, 1])?;
+            let got = default_control_slot(p.node)
+                .and_then(|i| p.node.children.get(i))
+                .and_then(|a| a.as_atom())
+                .and_then(|a| strict_int(&a.value));
+            if got != Some(id) {
+                return Err(bad(format!("form stream: root panel default control did not read back as {id}")));
             }
         }
         if let Some(pic) = &fp.caption_picture {
