@@ -1398,3 +1398,44 @@ fn epf_extended_catalog_properties_pack() {
 fn config_extended_catalog_properties_pack() {
     assert_extended_catalog_properties_pack(Target::Config);
 }
+
+fn assert_table_and_column_catalog_properties_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let stream_file = w.src_file("FormStream.bin");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    xml = xml.replacen(
+        "<Footer>false</Footer>",
+        "<Footer>false</Footer>\n          <UseAlternationRowColor>true</UseAlternationRowColor>\n          <EnableStartDrag>true</EnableStartDrag>\n          <FixedLeft>1</FixedLeft>\n          <FixedRight>2</FixedRight>\n          <RowInputMode>AtWindowBottom</RowInputMode>\n          <RowSelectionMode>Row</RowSelectionMode>\n          <HeaderHeight>2</HeaderHeight>\n          <FooterHeight>3</FooterHeight>",
+        1,
+    );
+    xml = xml.replacen(
+        "<Editor>InputField</Editor>\n              <Events>",
+        "<Editor>InputField</Editor>\n              <ShowHierarchy>true</ShowHierarchy>\n              <ShowInHeader>false</ShowInHeader>\n              <ShowInFooter>false</ShowInFooter>\n              <ChangeSetting>false</ChangeSetting>\n              <ChangePosition>false</ChangePosition>\n              <HeaderHorizontalAlign>Center</HeaderHorizontalAlign>\n              <HorizontalAlignInColumn>Right</HorizontalAlignInColumn>\n              <FooterHorizontalAlign>Center</FooterHorizontalAlign>\n              <CellHeight>4</CellHeight>\n              <Events>",
+        1,
+    );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let stream_after = String::from_utf8_lossy(&after[&rel(&w, &stream_file)]);
+    let expected_tbl_flags = 117644301i64 | 16 | 16384;
+    let expected_col_flags = (12590592i64 | 1) & !2048 & !4096 & !4194304 & !8388608;
+    assert!(stream_after.contains(&format!("{{19,{expected_tbl_flags},")), "{target:?}: Table bitmask missing");
+    assert!(stream_after.contains(&format!(",{expected_col_flags},")), "{target:?}: Column bitmask missing");
+}
+
+#[test]
+fn epf_table_and_column_catalog_properties_pack() {
+    assert_table_and_column_catalog_properties_pack(Target::Epf);
+}
+
+#[test]
+fn config_table_and_column_catalog_properties_pack() {
+    assert_table_and_column_catalog_properties_pack(Target::Config);
+}

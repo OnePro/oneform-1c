@@ -42,7 +42,7 @@ pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 pub const CONTROL_STUB: &str = "#control";
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
-const SUPPORTED_TAGS: [&str; 98] = [
+const SUPPORTED_TAGS: [&str; 112] = [
     "DataPath",
     "Caption",
     "Left",
@@ -141,6 +141,20 @@ const SUPPORTED_TAGS: [&str; 98] = [
     "HolidayColor",
     "ShowCurrentDate",
     "CalendarNavigation",
+    "UseAlternationRowColor",
+    "HeaderBackColor",
+    "HeaderTextColor",
+    "FooterBackColor",
+    "FooterTextColor",
+    "AlternationRowBackColor",
+    "FixedLeft",
+    "FixedRight",
+    "RowInputMode",
+    "RowSelectionMode",
+    "HeaderHeight",
+    "FooterHeight",
+    "HeaderFont",
+    "FooterFont",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -664,6 +678,32 @@ pub struct ColumnValues {
     pub read_only: bool,
     pub editor: Option<String>,
     pub events: Vec<(i64, String)>,
+    pub ext: ColumnExt,
+}
+
+/// Write-only extended catalog properties of a table column (verified in binary, not emitted to `Form.xml`).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ColumnExt {
+    pub show_hierarchy: Option<bool>,
+    pub check_box_three_state: Option<bool>,
+    pub show_in_header: Option<bool>,
+    pub show_in_footer: Option<bool>,
+    pub change_setting: Option<bool>,
+    pub change_position: Option<bool>,
+    pub field_back_color: Option<ColorSpec>,
+    pub field_text_color: Option<ColorSpec>,
+    pub header_back_color: Option<ColorSpec>,
+    pub header_text_color: Option<ColorSpec>,
+    pub footer_back_color: Option<ColorSpec>,
+    pub footer_text_color: Option<ColorSpec>,
+    pub text_font: Option<FontSpec>,
+    pub header_font: Option<FontSpec>,
+    pub footer_font: Option<FontSpec>,
+    pub header_horizontal_align: Option<String>,
+    pub horizontal_align_in_column: Option<String>,
+    pub footer_horizontal_align: Option<String>,
+    pub format: LocItems,
+    pub cell_height: Option<i64>,
 }
 
 /// Values of the supported property set, with the projection defaults applied
@@ -773,6 +813,20 @@ pub struct ControlValues {
     pub holiday_color: Option<ColorSpec>,
     pub show_current_date: Option<bool>,
     pub calendar_navigation: Option<bool>,
+    pub use_alternation_row_color: Option<bool>,
+    pub header_back_color: Option<ColorSpec>,
+    pub header_text_color: Option<ColorSpec>,
+    pub footer_back_color: Option<ColorSpec>,
+    pub footer_text_color: Option<ColorSpec>,
+    pub alternation_row_back_color: Option<ColorSpec>,
+    pub fixed_left: Option<i64>,
+    pub fixed_right: Option<i64>,
+    pub row_input_mode: Option<String>,
+    pub row_selection_mode: Option<String>,
+    pub header_height: Option<i64>,
+    pub footer_height: Option<i64>,
+    pub header_font: Option<FontSpec>,
+    pub footer_font: Option<FontSpec>,
 }
 
 /// `<TypeLink>` of an `InputField`: the attribute (and optional field GUID) whose type the field follows.
@@ -888,6 +942,20 @@ impl ControlValues {
             holiday_color: None,
             show_current_date: None,
             calendar_navigation: None,
+            use_alternation_row_color: None,
+            header_back_color: None,
+            header_text_color: None,
+            footer_back_color: None,
+            footer_text_color: None,
+            alternation_row_back_color: None,
+            fixed_left: None,
+            fixed_right: None,
+            row_input_mode: None,
+            row_selection_mode: None,
+            header_height: None,
+            footer_height: None,
+            header_font: None,
+            footer_font: None,
         }
     }
 }
@@ -995,6 +1063,20 @@ pub enum Property {
     HolidayColor,
     ShowCurrentDate,
     CalendarNavigation,
+    UseAlternationRowColor,
+    HeaderBackColor,
+    HeaderTextColor,
+    FooterBackColor,
+    FooterTextColor,
+    AlternationRowBackColor,
+    FixedLeft,
+    FixedRight,
+    RowInputMode,
+    RowSelectionMode,
+    HeaderHeight,
+    FooterHeight,
+    HeaderFont,
+    FooterFont,
 }
 
 impl Property {
@@ -1101,6 +1183,20 @@ impl Property {
             Property::HolidayColor => "HolidayColor",
             Property::ShowCurrentDate => "ShowCurrentDate",
             Property::CalendarNavigation => "CalendarNavigation",
+            Property::UseAlternationRowColor => "UseAlternationRowColor",
+            Property::HeaderBackColor => "HeaderBackColor",
+            Property::HeaderTextColor => "HeaderTextColor",
+            Property::FooterBackColor => "FooterBackColor",
+            Property::FooterTextColor => "FooterTextColor",
+            Property::AlternationRowBackColor => "AlternationRowBackColor",
+            Property::FixedLeft => "FixedLeft",
+            Property::FixedRight => "FixedRight",
+            Property::RowInputMode => "RowInputMode",
+            Property::RowSelectionMode => "RowSelectionMode",
+            Property::HeaderHeight => "HeaderHeight",
+            Property::FooterHeight => "FooterHeight",
+            Property::HeaderFont => "HeaderFont",
+            Property::FooterFont => "FooterFont",
         }
     }
 }
@@ -1213,6 +1309,20 @@ impl ControlValues {
             (self.holiday_color == other.holiday_color, Property::HolidayColor),
             (self.show_current_date == other.show_current_date, Property::ShowCurrentDate),
             (self.calendar_navigation == other.calendar_navigation, Property::CalendarNavigation),
+            (self.use_alternation_row_color == other.use_alternation_row_color, Property::UseAlternationRowColor),
+            (self.header_back_color == other.header_back_color, Property::HeaderBackColor),
+            (self.header_text_color == other.header_text_color, Property::HeaderTextColor),
+            (self.footer_back_color == other.footer_back_color, Property::FooterBackColor),
+            (self.footer_text_color == other.footer_text_color, Property::FooterTextColor),
+            (self.alternation_row_back_color == other.alternation_row_back_color, Property::AlternationRowBackColor),
+            (self.fixed_left == other.fixed_left, Property::FixedLeft),
+            (self.fixed_right == other.fixed_right, Property::FixedRight),
+            (self.row_input_mode == other.row_input_mode, Property::RowInputMode),
+            (self.row_selection_mode == other.row_selection_mode, Property::RowSelectionMode),
+            (self.header_height == other.header_height, Property::HeaderHeight),
+            (self.footer_height == other.footer_height, Property::FooterHeight),
+            (self.header_font == other.header_font, Property::HeaderFont),
+            (self.footer_font == other.footer_font, Property::FooterFont),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -1393,6 +1503,23 @@ impl FormXml {
             c.values.holiday_color = None;
             c.values.show_current_date = None;
             c.values.calendar_navigation = None;
+            c.values.use_alternation_row_color = None;
+            c.values.header_back_color = None;
+            c.values.header_text_color = None;
+            c.values.footer_back_color = None;
+            c.values.footer_text_color = None;
+            c.values.alternation_row_back_color = None;
+            c.values.fixed_left = None;
+            c.values.fixed_right = None;
+            c.values.row_input_mode = None;
+            c.values.row_selection_mode = None;
+            c.values.header_height = None;
+            c.values.footer_height = None;
+            c.values.header_font = None;
+            c.values.footer_font = None;
+            for col in &mut c.values.columns {
+                col.ext = ColumnExt::default();
+            }
             if crate::oof_props::app_path(&c.type_name).is_none() && patch_app_path(&c.type_name).is_some() {
                 c.values.enabled = true;
                 c.values.transparent_back = false;
@@ -1495,14 +1622,16 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "Orientation" => matches!(type_name, "CommandBar" | "Splitter" | "TrackBar" | "ProgressBar"),
         "Secondary" => type_name == "CommandBar",
         "Zoomable" | "UseContextMenu" | "NonselectedPictureText" => matches!(type_name, "PictureDecoration" | "PictureField"),
-        "EnableStartDrag" | "EnableDrag" => matches!(type_name, "PictureDecoration" | "PictureField" | "CalendarField"),
+        "EnableStartDrag" | "EnableDrag" => matches!(type_name, "PictureDecoration" | "PictureField" | "CalendarField" | "Table"),
+        "UseAlternationRowColor" | "HeaderBackColor" | "HeaderTextColor" | "FooterBackColor" | "FooterTextColor"
+        | "AlternationRowBackColor" | "FixedLeft" | "FixedRight" | "RowInputMode" | "RowSelectionMode" | "HeaderHeight"
+        | "FooterHeight" | "HeaderFont" | "FooterFont" => type_name == "Table",
         "ShowPicture" | "ShowCheckBox" => type_name == "ListBox",
         "Step" => matches!(type_name, "TrackBar" | "ProgressBar"),
         "LargeStep" | "MarkingStep" | "MarkingAppearance" => type_name == "TrackBar",
         "ShowStyle" | "ShowPercent" => type_name == "ProgressBar",
-        "SelectionBackColor" | "SelectionTextColor" | "HolidayColor" | "ShowCurrentDate" | "CalendarNavigation" => {
-            type_name == "CalendarField"
-        }
+        "SelectionBackColor" | "SelectionTextColor" => matches!(type_name, "CalendarField" | "Table"),
+        "HolidayColor" | "ShowCurrentDate" | "CalendarNavigation" => type_name == "CalendarField",
         _ => false,
     }
 }
@@ -1913,6 +2042,7 @@ impl Parser<'_> {
                         let mut read_only = false;
                         let mut editor: Option<String> = None;
                         let mut col_events: Vec<(i64, String)> = Vec::new();
+                        let mut ext = ColumnExt::default();
                         let mut seen_tags = std::collections::HashSet::new();
                         for ch in &col_el.children {
                             match ch.tag.as_str() {
@@ -2023,6 +2153,88 @@ impl Parser<'_> {
                                         break;
                                     }
                                 }
+                                "ShowHierarchy" | "CheckBoxThreeState" | "ShowInHeader" | "ShowInFooter" | "ChangeSetting"
+                                | "ChangePosition" => {
+                                    let tag = ch.tag.as_str();
+                                    let Some(v) = seen_tags.insert(tag).then(|| parse_bool_elem(ch)).flatten() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    match tag {
+                                        "ShowHierarchy" => ext.show_hierarchy = Some(v),
+                                        "CheckBoxThreeState" => ext.check_box_three_state = Some(v),
+                                        "ShowInHeader" => ext.show_in_header = Some(v),
+                                        "ShowInFooter" => ext.show_in_footer = Some(v),
+                                        "ChangeSetting" => ext.change_setting = Some(v),
+                                        _ => ext.change_position = Some(v),
+                                    }
+                                }
+                                "FieldBackColor" | "FieldTextColor" | "HeaderBackColor" | "HeaderTextColor" | "FooterBackColor"
+                                | "FooterTextColor" => {
+                                    let tag = ch.tag.as_str();
+                                    let Some(c) = seen_tags.insert(tag).then(|| parse_color_elem(ch)).flatten() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    let slot = match tag {
+                                        "FieldBackColor" => &mut ext.field_back_color,
+                                        "FieldTextColor" => &mut ext.field_text_color,
+                                        "HeaderBackColor" => &mut ext.header_back_color,
+                                        "HeaderTextColor" => &mut ext.header_text_color,
+                                        "FooterBackColor" => &mut ext.footer_back_color,
+                                        _ => &mut ext.footer_text_color,
+                                    };
+                                    *slot = Some(c);
+                                }
+                                "TextFont" | "HeaderFont" | "FooterFont" => {
+                                    let tag = ch.tag.as_str();
+                                    let Some(f) = seen_tags.insert(tag).then(|| parse_font_elem(ch)).flatten() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    let slot = match tag {
+                                        "TextFont" => &mut ext.text_font,
+                                        "HeaderFont" => &mut ext.header_font,
+                                        _ => &mut ext.footer_font,
+                                    };
+                                    *slot = Some(f);
+                                }
+                                "HeaderHorizontalAlign" | "HorizontalAlignInColumn" | "FooterHorizontalAlign" => {
+                                    let tag = ch.tag.as_str();
+                                    let v = ch.text.trim();
+                                    if !seen_tags.insert(tag)
+                                        || !ch.children.is_empty()
+                                        || !ch.attrs.is_empty()
+                                        || !["Left", "Center", "Right", "Auto"].contains(&v)
+                                    {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let slot = match tag {
+                                        "HeaderHorizontalAlign" => &mut ext.header_horizontal_align,
+                                        "HorizontalAlignInColumn" => &mut ext.horizontal_align_in_column,
+                                        _ => &mut ext.footer_horizontal_align,
+                                    };
+                                    *slot = Some(v.to_string());
+                                }
+                                "Format" => {
+                                    let Some(t) = seen_tags.insert("Format").then(|| parse_loc_elem(ch)).flatten() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    ext.format = t;
+                                }
+                                "CellHeight" => {
+                                    if !seen_tags.insert("CellHeight") || !ch.children.is_empty() || !ch.attrs.is_empty() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Ok(h) = ch.text.trim().parse::<i64>() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    ext.cell_height = Some(h);
+                                }
                                 _ => {}
                             }
                         }
@@ -2045,6 +2257,7 @@ impl Parser<'_> {
                             read_only,
                             editor,
                             events: col_events,
+                            ext,
                         });
                     }
                 }
@@ -2055,7 +2268,35 @@ impl Parser<'_> {
                         col_el.children.retain(|ch| {
                             !matches!(
                                 ch.tag.as_str(),
-                                "DataPath" | "Header" | "FooterText" | "Tooltip" | "Width" | "Visible" | "ReadOnly" | "Editor" | "Events"
+                                "DataPath"
+                                    | "Header"
+                                    | "FooterText"
+                                    | "Tooltip"
+                                    | "Width"
+                                    | "Visible"
+                                    | "ReadOnly"
+                                    | "Editor"
+                                    | "Events"
+                                    | "ShowHierarchy"
+                                    | "CheckBoxThreeState"
+                                    | "ShowInHeader"
+                                    | "ShowInFooter"
+                                    | "ChangeSetting"
+                                    | "ChangePosition"
+                                    | "FieldBackColor"
+                                    | "FieldTextColor"
+                                    | "HeaderBackColor"
+                                    | "HeaderTextColor"
+                                    | "FooterBackColor"
+                                    | "FooterTextColor"
+                                    | "TextFont"
+                                    | "HeaderFont"
+                                    | "FooterFont"
+                                    | "HeaderHorizontalAlign"
+                                    | "HorizontalAlignInColumn"
+                                    | "FooterHorizontalAlign"
+                                    | "Format"
+                                    | "CellHeight"
                             )
                         });
                     }
@@ -2102,6 +2343,23 @@ impl Parser<'_> {
         let selection_back_color = color_of("SelectionBackColor", &mut rest);
         let selection_text_color = color_of("SelectionTextColor", &mut rest);
         let holiday_color = color_of("HolidayColor", &mut rest);
+        let header_back_color = color_of("HeaderBackColor", &mut rest);
+        let header_text_color = color_of("HeaderTextColor", &mut rest);
+        let footer_back_color = color_of("FooterBackColor", &mut rest);
+        let footer_text_color = color_of("FooterTextColor", &mut rest);
+        let alternation_row_back_color = color_of("AlternationRowBackColor", &mut rest);
+        let font_of = |tag: &str, rest: &mut XmlElement| -> Option<FontSpec> {
+            let e = found.get(tag)?;
+            match parse_font_elem(e) {
+                Some(f) => Some(f),
+                None => {
+                    rest.children.push((*e).clone());
+                    None
+                }
+            }
+        };
+        let header_font = font_of("HeaderFont", &mut rest);
+        let footer_font = font_of("FooterFont", &mut rest);
         let font = match found.get("Font") {
             None => None,
             Some(e) => match parse_font_elem(e) {
@@ -2380,6 +2638,20 @@ impl Parser<'_> {
             holiday_color,
             show_current_date: opt_bool_of("ShowCurrentDate")?,
             calendar_navigation: opt_bool_of("CalendarNavigation")?,
+            use_alternation_row_color: opt_bool_of("UseAlternationRowColor")?,
+            header_back_color,
+            header_text_color,
+            footer_back_color,
+            footer_text_color,
+            alternation_row_back_color,
+            fixed_left: opt_int_of("FixedLeft")?,
+            fixed_right: opt_int_of("FixedRight")?,
+            row_input_mode: opt_enum_of("RowInputMode", &["AtListEnd", "AtWindowBottom", "AfterCurrentRow", "BeforeCurrentRow"])?,
+            row_selection_mode: opt_enum_of("RowSelectionMode", &["Cell", "Row"])?,
+            header_height: opt_int_of("HeaderHeight")?,
+            footer_height: opt_int_of("FooterHeight")?,
+            header_font,
+            footer_font,
         };
         Ok((values, rest))
     }
@@ -3563,6 +3835,8 @@ const LABEL_PICTURE_SIZE: CodeTable = &[("RealSize", 0), ("Stretch", 1), ("Propo
 const ORIENTATION: CodeTable = &[("Vertical", 0), ("Horizontal", 1), ("Auto", 2)];
 const MARKING_APPEARANCE: CodeTable = &[("DontShow", 0), ("TopOrLeft", 1), ("BottomOrRight", 2), ("BothSides", 3)];
 const SHOW_STYLE: CodeTable = &[("Broken", 0), ("Smooth", 1)];
+const ROW_INPUT_MODE: CodeTable = &[("AtListEnd", 0), ("AtWindowBottom", 1), ("AfterCurrentRow", 2), ("BeforeCurrentRow", 3)];
+const ROW_SELECTION_MODE: CodeTable = &[("Cell", 0), ("Row", 1)];
 const CALENDAR_SELECTION: CodeTable = &[("Single", 0), ("Multi", 1), ("Interval", 2)];
 
 /// Properties that live in a fixed `info` slot (`ext_slot`); the others keep their dedicated mapping.
@@ -3612,6 +3886,19 @@ const EXT_PROPS: &[Property] = &[
     Property::HolidayColor,
     Property::ShowCurrentDate,
     Property::CalendarNavigation,
+    Property::HeaderBackColor,
+    Property::HeaderTextColor,
+    Property::FooterBackColor,
+    Property::FooterTextColor,
+    Property::AlternationRowBackColor,
+    Property::FixedLeft,
+    Property::FixedRight,
+    Property::RowInputMode,
+    Property::RowSelectionMode,
+    Property::HeaderHeight,
+    Property::FooterHeight,
+    Property::HeaderFont,
+    Property::FooterFont,
 ];
 
 struct ExtSlot {
@@ -3625,6 +3912,7 @@ enum Want {
     Atom(i64),
     Node(String),
     Color(Option<ColorSpec>),
+    Font(Option<FontSpec>),
     Loc(LocItems),
 }
 
@@ -3691,6 +3979,21 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
         ("CalendarField", P::EnableStartDrag) => (&[1], 10, &[]),
         ("CalendarField", P::EnableDrag) => (&[1], 11, &[]),
         ("CalendarField", P::SelectionBackColor) => (&[1], 2, &[]),
+        ("Table", P::HeaderBackColor) => (&[2, 1], 2, &[]),
+        ("Table", P::HeaderTextColor) => (&[2, 1], 3, &[]),
+        ("Table", P::FooterBackColor) => (&[2, 1], 4, &[]),
+        ("Table", P::FooterTextColor) => (&[2, 1], 5, &[]),
+        ("Table", P::AlternationRowBackColor) => (&[2, 1], 8, &[]),
+        ("Table", P::FixedLeft) => (&[2, 1], 11, &[]),
+        ("Table", P::FixedRight) => (&[2, 1], 12, &[]),
+        ("Table", P::RowInputMode) => (&[2, 1], 13, ROW_INPUT_MODE),
+        ("Table", P::RowSelectionMode) => (&[2, 1], 14, ROW_SELECTION_MODE),
+        ("Table", P::HeaderHeight) => (&[2, 1], 16, &[]),
+        ("Table", P::FooterHeight) => (&[2, 1], 17, &[]),
+        ("Table", P::HeaderFont) => (&[2, 1], 18, &[]),
+        ("Table", P::FooterFont) => (&[2, 1], 19, &[]),
+        ("Table", P::SelectionBackColor) => (&[2, 1], 6, &[]),
+        ("Table", P::SelectionTextColor) => (&[2, 1], 7, &[]),
         ("CalendarField", P::SelectionTextColor) => (&[1], 3, &[]),
         ("CalendarField", P::HolidayColor) => (&[1], 4, &[]),
         ("CalendarField", P::ShowCurrentDate) => (&[1], 7, &[]),
@@ -3754,6 +4057,19 @@ fn ext_want(v: &ControlValues, prop: Property, slot: &ExtSlot) -> Option<Want> {
         P::SelectionBackColor => v.selection_back_color.clone().map(|c| Want::Color(Some(c))),
         P::SelectionTextColor => v.selection_text_color.clone().map(|c| Want::Color(Some(c))),
         P::HolidayColor => v.holiday_color.clone().map(|c| Want::Color(Some(c))),
+        P::HeaderBackColor => v.header_back_color.clone().map(|c| Want::Color(Some(c))),
+        P::HeaderTextColor => v.header_text_color.clone().map(|c| Want::Color(Some(c))),
+        P::FooterBackColor => v.footer_back_color.clone().map(|c| Want::Color(Some(c))),
+        P::FooterTextColor => v.footer_text_color.clone().map(|c| Want::Color(Some(c))),
+        P::AlternationRowBackColor => v.alternation_row_back_color.clone().map(|c| Want::Color(Some(c))),
+        P::HeaderFont => v.header_font.clone().map(|f| Want::Font(Some(f))),
+        P::FooterFont => v.footer_font.clone().map(|f| Want::Font(Some(f))),
+        P::FixedLeft => int(v.fixed_left),
+        P::FixedRight => int(v.fixed_right),
+        P::HeaderHeight => int(v.header_height),
+        P::FooterHeight => int(v.footer_height),
+        P::RowInputMode => code(v.row_input_mode.as_deref()),
+        P::RowSelectionMode => code(v.row_selection_mode.as_deref()),
         P::HorizontalAlign => code(Some(&v.horizontal_align)),
         P::VerticalAlign => code(v.vertical_align.as_deref()),
         P::MultiLine => flag(v.multi_line),
@@ -3812,6 +4128,7 @@ fn ext_pieces(site: &Site, prop: Property, slot: &ExtSlot) -> Result<Vec<Piece>>
         Want::Atom(n) => vec![piece(info_int_slot(site, &slot.path, slot.idx, prop)?.1, n, &[prop])],
         Want::Node(text) => vec![piece(ext_child(site, slot, prop)?.span.span, text, &[prop])],
         Want::Color(c) => vec![piece(ext_child(site, slot, prop)?.span.span, format_color_node(c.as_ref()), &[prop])],
+        Want::Font(f) => vec![piece(ext_child(site, slot, prop)?.span.span, format_font_node(f.as_ref()), &[prop])],
         Want::Loc(new) => {
             let node = ext_child(site, slot, prop)?;
             let items = strict_localized(node)
@@ -3835,6 +4152,10 @@ fn ext_matches(site: &Site, prop: Property, slot: &ExtSlot) -> Result<bool> {
             let parent = info_node_at(site, &slot.path, prop)?;
             parent.node.children.get(slot.idx).is_some_and(|item| read_color_spec(item) == c)
         }
+        Want::Font(f) => {
+            let parent = info_node_at(site, &slot.path, prop)?;
+            parent.node.children.get(slot.idx).is_some_and(|item| read_font_spec(item) == f)
+        }
         Want::Loc(new) => {
             let node = ext_child(site, slot, prop)?;
             strict_localized(node)
@@ -3848,7 +4169,7 @@ fn set_clone_ext(info: &mut Node, type_name: &str, v: &ControlValues) -> Result<
     for &prop in EXT_PROPS {
         let Some(slot) = ext_slot(type_name, prop, info) else { continue };
         let item = match ext_want(v, prop, &slot) {
-            None | Some(Want::Color(None)) => continue,
+            None | Some(Want::Color(None) | Want::Font(None)) => continue,
             Some(Want::Loc(l)) if l.is_empty() => continue,
             Some(Want::Atom(n)) => bare(n),
             Some(Want::Node(text)) => {
@@ -3856,6 +4177,9 @@ fn set_clone_ext(info: &mut Node, type_name: &str, v: &ControlValues) -> Result<
             }
             Some(Want::Color(c)) => Item::Node(
                 crate::brace::parse_metadata(format_color_node(c.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+            ),
+            Some(Want::Font(f)) => Item::Node(
+                crate::brace::parse_metadata(format_font_node(f.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
             ),
             Some(Want::Loc(l)) => Item::Node(localized_node(&l)),
         };
@@ -4851,7 +5175,9 @@ fn info_atom_span(site: &Site, path: &[usize], idx: usize, prop: Property) -> Re
         .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), format!("info slot {idx} is not an atom")))
 }
 
-const TABLE_FLAGS: [Property; 8] = [
+const TABLE_FLAGS: [Property; 10] = [
+    Property::UseAlternationRowColor,
+    Property::EnableStartDrag,
     Property::Header,
     Property::Footer,
     Property::VerticalLines,
@@ -4869,6 +5195,8 @@ fn table_flag_bit(p: Property) -> Option<i64> {
         Property::Footer => 2,
         Property::VerticalLines => 4,
         Property::HorizontalLines => 8,
+        Property::UseAlternationRowColor => 1 << 4,
+        Property::EnableStartDrag => 1 << 14,
         Property::ReadOnly => 1 << 10,
         Property::AutoInsertNewRow => 1 << 15,
         Property::ChangeSettingOfColumns => 1 << 25,
@@ -4888,6 +5216,8 @@ fn table_flag_value(v: &ControlValues, p: Property) -> Option<bool> {
         Property::Footer => v.footer,
         Property::VerticalLines => v.vertical_lines,
         Property::HorizontalLines => v.horizontal_lines,
+        Property::UseAlternationRowColor => v.use_alternation_row_color,
+        Property::EnableStartDrag => v.enable_start_drag,
         Property::ReadOnly => v.table_read_only,
         Property::AutoInsertNewRow => v.auto_insert_new_row,
         Property::ChangeSettingOfColumns => v.change_setting_of_columns,
@@ -5375,9 +5705,85 @@ fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
             read_only,
             editor,
             events,
+            ext: ColumnExt::default(),
         });
     }
     Ok(out)
+}
+
+const COLUMN_FLAG_BITS: [i64; 6] = [1, 1 << 3, 1 << 11, 1 << 12, 1 << 22, 1 << 23];
+
+fn column_ext_flags(e: &ColumnExt) -> [Option<bool>; 6] {
+    [e.show_hierarchy, e.check_box_three_state, e.show_in_header, e.show_in_footer, e.change_setting, e.change_position]
+}
+
+fn column_ext_colors(e: &ColumnExt) -> [(usize, &Option<ColorSpec>); 6] {
+    [
+        (16, &e.field_back_color),
+        (17, &e.field_text_color),
+        (18, &e.header_back_color),
+        (19, &e.header_text_color),
+        (20, &e.footer_back_color),
+        (21, &e.footer_text_color),
+    ]
+}
+
+fn column_ext_fonts(e: &ColumnExt) -> [(usize, &Option<FontSpec>); 3] {
+    [(22, &e.text_font), (23, &e.header_font), (24, &e.footer_font)]
+}
+
+fn column_ext_aligns(e: &ColumnExt) -> [(usize, &Option<String>); 3] {
+    [(27, &e.header_horizontal_align), (28, &e.horizontal_align_in_column), (29, &e.footer_horizontal_align)]
+}
+
+/// Every write-only column property the model sets holds the requested value in the patched stream.
+fn column_ext_matches(site: &Site, want: &[ColumnValues]) -> Result<bool> {
+    let cols = table_column_props(site)?;
+    if cols.len() != want.len() {
+        return Ok(false);
+    }
+    for ((_, cp), w) in cols.into_iter().zip(want) {
+        let e = &w.ext;
+        let flags = column_ext_flags(e);
+        if flags.iter().any(Option::is_some) {
+            let cur = int_slot(site, cp, 9, "Columns", "Flags")?.0;
+            for (bit, f) in COLUMN_FLAG_BITS.iter().zip(flags) {
+                if f.is_some_and(|b| (cur & bit != 0) != b) {
+                    return Ok(false);
+                }
+            }
+        }
+        for (idx, c) in column_ext_colors(e) {
+            if c.as_ref().is_some_and(|c| cp.node.children.get(idx).and_then(read_color_spec).as_ref() != Some(c)) {
+                return Ok(false);
+            }
+        }
+        for (idx, f) in column_ext_fonts(e) {
+            if f.as_ref().is_some_and(|f| cp.node.children.get(idx).and_then(read_font_spec).as_ref() != Some(f)) {
+                return Ok(false);
+            }
+        }
+        for (idx, a) in column_ext_aligns(e) {
+            if let Some(a) = a {
+                if int_slot(site, cp, idx, "Columns", "Align")?.0 != horizontal_align_code(a) {
+                    return Ok(false);
+                }
+            }
+        }
+        if !e.format.is_empty() {
+            let got: Option<LocItems> =
+                cp.child(34).and_then(strict_localized).map(|items| items.into_iter().map(|i| (i.lang, i.text)).collect());
+            if got.as_ref() != Some(&e.format) {
+                return Ok(false);
+            }
+        }
+        if let Some(h) = e.cell_height {
+            if int_slot(site, cp, 37, "Columns", "CellHeight")?.0 != h {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
 }
 
 fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
@@ -5681,7 +6087,9 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     }
                 }
             }
-            Property::Header
+            Property::EnableStartDrag if site.entry.type_name == "Table" => table_flag_piece(site, prop, &mut out)?,
+            Property::UseAlternationRowColor
+            | Property::Header
             | Property::Footer
             | Property::VerticalLines
             | Property::HorizontalLines
@@ -5723,8 +6131,10 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             Property::Columns => {
                 let cols = table_column_props(site)?;
                 let cur_cols = read_table_column_values(site)?;
-                if cur_cols != old.columns {
-                    return Err(site.mismatch("Columns", &format!("{:?}", old.columns), &format!("{cur_cols:?}")));
+                let old_cols: Vec<ColumnValues> =
+                    old.columns.iter().cloned().map(|c| ColumnValues { ext: ColumnExt::default(), ..c }).collect();
+                if cur_cols != old_cols {
+                    return Err(site.mismatch("Columns", &format!("{old_cols:?}"), &format!("{cur_cols:?}")));
                 }
                 if cols.len() != new.columns.len() {
                     return Err(site.layout("unexpected-shape", "Columns", "column count mismatch".into()));
@@ -5792,6 +6202,60 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     if oc.events != nc.events {
                         let ed_type = nc.editor.as_deref().unwrap_or("InputField");
                         out.push(patch_column_editor_events(site, cp, ed_type, &nc.events, prop)?);
+                    }
+                    if oc.ext != nc.ext {
+                        let ne = &nc.ext;
+                        let flags = column_ext_flags(ne);
+                        if flags.iter().any(Option::is_some) {
+                            let (mut cur, span) = int_slot(site, cp, 9, "Columns", "Flags")?;
+                            for (bit, f) in COLUMN_FLAG_BITS.iter().zip(flags) {
+                                match f {
+                                    Some(true) => cur |= bit,
+                                    Some(false) => cur &= !bit,
+                                    None => {}
+                                }
+                            }
+                            out.push(piece(span, cur, &[prop]));
+                        }
+                        for (idx, c) in column_ext_colors(ne) {
+                            if let Some(c) = c {
+                                let span = cp
+                                    .child(idx)
+                                    .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column color node missing".into()))?
+                                    .span
+                                    .span;
+                                out.push(piece(span, format_color_node(Some(c)), &[prop]));
+                            }
+                        }
+                        for (idx, f) in column_ext_fonts(ne) {
+                            if let Some(f) = f {
+                                let span = cp
+                                    .child(idx)
+                                    .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column font node missing".into()))?
+                                    .span
+                                    .span;
+                                out.push(piece(span, format_font_node(Some(f)), &[prop]));
+                            }
+                        }
+                        for (idx, a) in column_ext_aligns(ne) {
+                            if let Some(a) = a {
+                                let (_, span) = int_slot(site, cp, idx, "Columns", "Align")?;
+                                out.push(piece(span, horizontal_align_code(a), &[prop]));
+                            }
+                        }
+                        if !ne.format.is_empty() {
+                            let n = cp
+                                .child(34)
+                                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column format node missing".into()))?;
+                            let items = strict_localized(n)
+                                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column format node malformed".into()))?;
+                            let current: LocItems = items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
+                            out.extend(localized_pieces(site, n, &items, &current, &ne.format, prop)?);
+                        }
+                        if let Some(h) = ne.cell_height {
+                            let (_, span) = int_slot(site, cp, 37, "Columns", "CellHeight")?;
+                            out.push(piece(span, h, &[prop]));
+                        }
                     }
                 }
             }
@@ -5971,7 +6435,9 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             Property::ReadOnly if site.entry.type_name == "Table" => {
                 Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == table_flag_value(new, p)
             }
-            Property::Header
+            Property::UseAlternationRowColor
+            | Property::Header
+            | Property::EnableStartDrag
             | Property::VerticalLines
             | Property::HorizontalLines
             | Property::AutoInsertNewRow
@@ -6099,7 +6565,11 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 };
                 cur == new.initial_tree_view
             }
-            Property::Columns => read_table_column_values(site)? == new.columns,
+            Property::Columns => {
+                let plain: Vec<ColumnValues> =
+                    new.columns.iter().cloned().map(|c| ColumnValues { ext: ColumnExt::default(), ..c }).collect();
+                read_table_column_values(site)? == plain && column_ext_matches(site, &new.columns)?
+            }
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
             Property::Buttons => read_cb_buttons(site.entry.info().unwrap().node) == new.buttons,
             Property::BorderStyle => Some(info_int_slot(site, &[1, 3], 3, p)?.0) == new.border_style,

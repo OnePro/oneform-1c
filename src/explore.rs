@@ -943,13 +943,13 @@ impl PlatformGate {
             cmd.args(&args);
         }
         cmd.stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
         let mut child = cmd
             .spawn()
             .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot start 1cv8: {e}")))?;
         let mut status = None;
-        for _ in 0..60 {
+        for _ in 0..180 {
             if let Some(st) = child
                 .try_wait()
                 .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot wait for 1cv8: {e}")))?

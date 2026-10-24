@@ -98,6 +98,7 @@
 | Все основные контролы | **`ЦветФона` (`BackColor`)** | `<BackColor kind="..." value="..."/>` | `<base>[2]` (`{3,kind,{rgb}}`) | 🟢 R/W | Полный цикл чтения, превью и записи (`rgb` `#RRGGBB` и `style` `ref`) |
 | Все основные контролы | **`ЦветТекста` (`TextColor`)** | `<TextColor kind="..." value="..."/>` | `<base>[3]` (`{3,kind,{rgb}}`) | 🟢 R/W | Полный цикл чтения, превью и записи (`rgb` `#RRGGBB` и `style` `ref`) |
 | Все основные контролы | **`ЦветРамки` (`BorderColor`)** | `<BorderColor kind="..." value="..."/>` | `<base>[6]` (`{3,kind,{rgb}}`) | 🟢 R/W | Полный цикл чтения, превью и записи (`rgb` `#RRGGBB` и `style` `ref`) |
+| Все основные контролы | **`ЦветФонаПоля`, `ЦветТекстаПоля`, `ЦветФонаКнопки`, `ЦветТекстаКнопки`** | `<FieldBackColor>`, `<FieldTextColor>`, `<ButtonBackColor>`, `<ButtonTextColor>` | `<base>[7..=10]` (`{3,kind,{rgb}}`) | 🟢 R/W | Универсальные цвета поля и кнопки на всех 21 типах контролов с блоком `<base>` |
 | Все основные контролы | **`Шрифт` (`Font`: bold, face, size)** | `<Font bold="..." face="..." size="..."/>` | `<base>[4]` (`{7,kind,mask,...}`) | 🟢 R/W | Полный цикл чтения, превью и записи (`bold`, `source`, `face`, `size`) |
 | Все основные контролы | **`Подсказка` (`Tooltip`)** | `<Tooltip><Item>` | `<base>[12]` (localized) | 🟢 R/W | Полный цикл чтения и записи локализованной подсказки |
 
@@ -127,25 +128,28 @@
 | `InputField` | **`ВыбиратьТип` (`ChooseType`), `РедактированиеТекста` (`TextEdit`)** | `<ChooseType>`, `<TextEdit>` | `info[6]` (`1/0`), `info[5]` + `info[2][0][12]` (`0/1` инверт.) | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` (`inp7-i06`, `inp7-i05`) |
 | `InputField` | **Выравнивание текста (`HorizontalAlign`, `VerticalAlign`)** | `<HorizontalAlign>`, `<VerticalAlign>` | `info[2][0][17]` (`0,1,2,4`), `info[2][0][18]` (`0,1,2`) | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` (`inp1-q17`, `inp7-q18`) |
 | `InputField` | **`СвязьПоТипу` (`TypeLink`)** | `<TypeLink attributeId="..." [fieldGuid="..."]>` | `info[8]` (`{1,1,{0,c866d8e7-...,{2,1..2,...}}}`) | 🟢 R/W | Каноническая привязка по `attributeId` и `fieldGuid` |
+| `InputField` | **`МинимальноеЗначение`, `МаксимальноеЗначение`, `ШиринаСпискаВыбора`, `Формат`** | `<MinValue>`, `<MaxValue>`, `<ChoiceListWidth>`, `<Format>` | `info[2][0][19, 20, 32, 34]` | 🟢 R/W | Границы значений, ширина выпадающего списка и локализованный формат |
 
-### 4.2. Надпись (`LabelDecoration`), Флажок (`CheckBox`), Группа (`UsualGroup`), Поле выбора (`ChoiceField`)
+### 4.2. Кнопка (`Button`), Надпись (`LabelDecoration`), Флажок (`CheckBox`), Переключатель (`RadioButton`), Группа (`UsualGroup`), Поле выбора (`ChoiceField`)
 
 | Контрол / Блок | Свойство в 1С | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус | Детали |
 |---|---|---|---|---|---|
-| `LabelDecoration` | **Горизонтальное положение текста (`HorizontalAlign`)** | `<HorizontalAlign>` | `info[1][3]` (`0`=Left, `1`=Center, `2`=Right) | 🟢 R/W | Полный цикл чтения, превью и записи |
-| `LabelDecoration` | **`Гиперссылка` (`Hyperlink`)** | `<Hyperlink>` | `info[1][5]` (`0/1`) | 🟢 R/W | Полный цикл чтения, превью и записи |
+| `Button` | **Выравнивание, картинка и многострочный режим** | `<HorizontalAlign>`, `<VerticalAlign>`, `<PictureLocation>`, `<PictureSize>`, `<MultiLine>` | `info[1][3, 4, 6, 7, 10]` | 🟢 R/W | Полная поддержка свойств кнопки |
+| `LabelDecoration` | **Горизонтальное и вертикальное положение (`HorizontalAlign`, `VerticalAlign`)** | `<HorizontalAlign>`, `<VerticalAlign>` | `info[1][3]`, `info[1][4]` | 🟢 R/W | Полный цикл чтения, превью и записи |
+| `LabelDecoration` | **`Гиперссылка`, `ВыделятьОтрицательные`, `Формат`, `РазмерКартинки`** | `<Hyperlink>`, `<MarkNegatives>`, `<Format>`, `<PictureSize>` | `info[1][5, 6, 10, 13]` | 🟢 R/W | Полная поддержка свойств надписи |
 | `LabelDecoration` | Наличие картинки | `<Picture>true</Picture>` | `info[1][12]` | 🟡 R/O | Читается в `Form.xml` |
-| `CheckBox` | **`ПоложениеЗаголовка` (`TitleLocation`)** | `<TitleLocation>` | **`info[1][0][3]`** (`1`=Справа, `0`=Слева) | 🟢 R/W | Полный цикл чтения и записи (`checkbox-flag-01`) |
-| `CheckBox` | **`ТриСостояния` (`ThreeState`)** | `<ThreeState>` | **`info[1][2]`** (`0`=Нет, `1`=Да) | 🟢 R/W | Полный цикл чтения и записи (`checkbox-flag-06`) |
+| `CheckBox` | **`ПоложениеЗаголовка`, `ТриСостояния`, выравнивание** | `<TitleLocation>`, `<ThreeState>`, `<HorizontalAlign>`, `<VerticalAlign>` | `info[1][0][3..=5]`, `info[1][2]` | 🟢 R/W | Полный цикл свойств флажка |
+| `RadioButton` | **`ВыбираемоеЗначение`, `ТипЗначения`, `ПоложениеЗаголовка`, выравнивание** | `<SelectionValue>`, `<ValueType>`, `<TitleLocation>`, `<HorizontalAlign>`, `<VerticalAlign>` | `info[4]`, `info[1]`, `info[2][0][3..=5]` | 🟢 R/W | Полный цикл свойств переключателя |
 | `UsualGroup` | **Вид рамки (`BorderStyle`)** | `<BorderStyle code="...">` | `info[1][3][3]` | 🟢 R/W | Полный цикл чтения, превью и записи (`Frame`=`6`, `SingleLine`=`4`, `None`=`0`) |
-| `ChoiceField` | **Список выбора (`ChoiceList`)** | `<ChoiceList><ChoiceItem>` | `info[1][26][2][6]` | 🟢 R/W | Полный цикл чтения и записи элементов списка выбора |
+| `ChoiceField` | **Список выбора (`ChoiceList`), кнопки, `ReadOnly`, `ChoiceListWidth`** | `<ChoiceList>`, `<ReadOnly>`, `<ChoiceButton>`, `<ClearButton>`, `<SpinButton>`, `<OpenButton>`, `<ChoiceListWidth>` | `info[1][26, 13, 7..=10, 32]` | 🟢 R/W | Полный цикл чтения и записи свойств поля выбора |
 
-### 4.3. Панель (`Panel`) и страницы вкладок (`<Page>`)
+### 4.3. Панель (`Panel`), страницы (`<Page>`) и второстепенные контролы
 
 | Контрол / Блок | Свойство в 1С | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус | Детали |
 |---|---|---|---|---|---|
-| `Panel` | **Отображение закладок (`ShowTabs`)** | `<ShowTabs code="..." member="..."/>` | `info[1][base+1]` (`0`=None, `1`=Top, ...) | 🟢 R/W | Полный цикл чтения, превью и записи с пересчётом страниц |
+| `Panel` | **Отображение закладок (`ShowTabs`) и режимы страниц** | `<ShowTabs>`, `<SeparateByPage>`, `<AutoTabOrder>`, `<ScrollPageMode>` | `info[1][base+1]`, `info[1][base+4..=6]` | 🟢 R/W | Полный цикл чтения, превью и записи с пересчётом страниц |
 | `Panel / Page` | **Заголовок, Видимость, Доступность вкладки** | `<Page name="..."><Title>`, `<Visible>`, `<Enabled>` | `info[1][base+3]` (`rec[1]`, `rec[4]`, `rec[5]`) | 🟢 R/W | Полный цикл чтения, превью и записи заголовков, видимости и доступности вкладок |
+| `PictureDecoration`, `ListBox`, `TrackBar`, `ProgressBar`, `Splitter`, `CalendarField` | **Каталожные свойства второстепенных контролов** | `<Zoomable>`, `<UseContextMenu>`, `<NonselectedPictureText>`, `<ShowPicture>`, `<ShowCheckBox>`, `<MinValue>`, `<MaxValue>`, `<Step>`, `<LargeStep>`, `<Orientation>`, `<MarkingAppearance>`, `<MarkingStep>`, `<ShowStyle>`, `<ShowPercent>`, `<SelectionBackColor>`, `<SelectionTextColor>`, `<HolidayColor>`, `<ShowCurrentDate>`, `<CalendarNavigation>`, `<SelectionMode>`, `<EnableStartDrag>`, `<EnableDrag>` | `info[1][2..=12]` | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` |
 
 ### 4.4. Табличное поле (`Table`) и его колонки (`<Columns><Column>`)
 
@@ -154,17 +158,18 @@
 | `Table` | **Подвал таблицы (`Footer`)** | `<Footer>` | `info[2][1][1]` (бит `2`) | 🟢 R/W | Полный цикл чтения и побитовой записи без затирания других флагов |
 | `Table` | **`РежимВыделения` (`SelectionMode`)** | `<SelectionMode>` | **`info[2][1][15]`** (`0`=Одиночный, `1`=Множественный) | 🟢 R/W | Полный цикл чтения и записи (`table-flag-04`) |
 | `Table` | **`НачальноеОтображениеДерева`** | `<InitialTreeView>` | **`info[2][1][21]`** (`0`=NoExpand, `1`=ExpandTopLevel, `2`=ExpandAllLevels) | 🟢 R/W | Полный цикл чтения и записи (`table-flag-07`) |
-| `Table` | **Шапка, линии сетки, `ТолькоПросмотр`, авто-ввод, колонки** | `<Header>`, `<VerticalLines>`, `<HorizontalLines>`, `<ReadOnly>`, `<AutoInsertNewRow>`, `<ChangeSettingOfColumns>`, `<ChangePositionOfColumns>` | `info[2][1][1]` (биты `0, 2, 3, 10(инв.), 15, 25, 26`) | 🟢 R/W | Коалесцированный патч 32-битной маски флагов таблицы (`tbl-bit0..26`) |
-| `Table` | **Полосы прокрутки, `InitialListView`, `ChangeRowSet`, `Output`** | `<HorizontalScrollBar>`, `<VerticalScrollBar>`, `<InitialListView>`, `<ChangeRowSet>`, `<Output>` | `info[2][1][9, 10, 20, 22, 24]` | 🟢 R/W | Подтверждены через `ENTERPRISE /Execute` (`tbl-t09/10/20/22/24`) |
+| `Table` | **Шапка, линии сетки, `ТолькоПросмотр`, авто-ввод, колонки, чередование, перетаскивание** | `<Header>`, `<VerticalLines>`, `<HorizontalLines>`, `<ReadOnly>`, `<UseAlternationRowColor>`, `<EnableStartDrag>`, `<AutoInsertNewRow>`, `<ChangeSettingOfColumns>`, `<ChangePositionOfColumns>` | `info[2][1][1]` (биты `0, 2, 3, 4, 10(инв.), 14, 15, 25, 26`) | 🟢 R/W | Коалесцированный патч 32-битной маски флагов таблицы |
+| `Table` | **Полосы прокрутки, `InitialListView`, `ChangeRowSet`, `Output`, фиксация, режимы строк, высоты, цвета и шрифты** | `<HorizontalScrollBar>`, `<VerticalScrollBar>`, `<InitialListView>`, `<ChangeRowSet>`, `<Output>`, `<FixedLeft>`, `<FixedRight>`, `<RowInputMode>`, `<RowSelectionMode>`, `<HeaderHeight>`, `<FooterHeight>`, `<HeaderBackColor>`, `<HeaderTextColor>`, `<FooterBackColor>`, `<FooterTextColor>`, `<SelectionBackColor>`, `<SelectionTextColor>`, `<AlternationRowBackColor>`, `<HeaderFont>`, `<FooterFont>` | `info[2][1][2..=24]` | 🟢 R/W | Полная поддержка оформления и поведения таблицы |
 | `Table / Column` | **Имя, Заголовок, ТекстПодвала, Подсказка колонки** | `<Column name="..."><Header>`, `<FooterText>`, `<Tooltip>` | `col_props[30]`, `col_props[1..=3]` | 🟢 R/W | Полный цикл чтения, превью и записи |
 | `Table / Column` | **Ширина, Видимость, ТолькоПросмотр, Редактор колонки** | `<Width>`, `<Visible>`, `<ReadOnly>`, `<Editor>` | `col_props[4]`, `col_props[25]`, `col_props[38]` | 🟢 R/W | Полный цикл чтения, превью и записи (`decode_column_props` + `form_patch`) |
 | `Table / Column` | **`DataPath` и события колонки** | `<DataPath>`, `<Events>` | `wrapper[2]` + base64+deflate `col_props[39]` | 🟢 R/W | Полный цикл чтения и записи привязки к полю ТЗ и событий редактора колонки |
+| `Table / Column` | **Битовая маска, цвета, шрифты, выравнивание, `Format` и `CellHeight` колонки** | `<ShowHierarchy>`, `<CheckBoxThreeState>`, `<ShowInHeader>`, `<ShowInFooter>`, `<ChangeSetting>`, `<ChangePosition>`, `<FieldBackColor>`, `<FieldTextColor>`, `<HeaderBackColor>`, `<HeaderTextColor>`, `<FooterBackColor>`, `<FooterTextColor>`, `<TextFont>`, `<HeaderFont>`, `<FooterFont>`, `<HeaderHorizontalAlign>`, `<HorizontalAlignInColumn>`, `<FooterHorizontalAlign>`, `<Format>`, `<CellHeight>` | `col_props[9, 16..=24, 27..=29, 34, 37]` | 🟢 R/W | Полная поддержка каталожных свойств колонок табличного поля |
 
 ### 4.5. Командная панель (`CommandBar`) и её кнопки (`<Buttons><Button>`)
 
 | Контрол / Блок | Свойство в 1С | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус | Детали |
 |---|---|---|---|---|---|
-| `CommandBar` | **Автозаполнение и выравнивание** | `<AutoFill>`, `<HorizontalAlign>` | `info[1][3]`, `info[1][4]` | 🟢 R/W | Полный цикл чтения и записи |
+| `CommandBar` | **Автозаполнение, выравнивание, ориентация и `Secondary`** | `<AutoFill>`, `<HorizontalAlign>`, `<Orientation>`, `<Secondary>` | `info[1][2..=5]` | 🟢 R/W | Полный цикл чтения и записи |
 | `CommandBar / Button` | **Дерево кнопок, действия и обработчики** | `<Buttons><Button name="..." action="...">` | `info[1][7]` (таблица действий + группы кнопок) | 🟢 R/W | Полный цикл чтения, превью и записи (`name`, `Caption`, `action`, `representation`, `checked`) |
 
 ---

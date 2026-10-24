@@ -2074,3 +2074,30 @@ fn extended_catalog_properties_across_priority_and_secondary_controls_round_trip
     assert!(compact.contains("{\"N\",5},{\"N\",95}"), "InputField MinValue/MaxValue not patched");
     assert!(text.contains("\"Нет картинки\""), "PictureDecoration NonselectedPictureText not patched");
 }
+
+#[test]
+fn table_and_column_catalog_properties_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // Patch Table (ТабличноеПоле1) and its Column (Колонка1 & Колонка2)
+    edited = edit_ctl(
+        &edited,
+        "ТабличноеПоле1",
+        &[
+            (
+                "<Footer>false</Footer>",
+                "<Footer>false</Footer>\n          <UseAlternationRowColor>true</UseAlternationRowColor>\n          <EnableStartDrag>true</EnableStartDrag>\n          <HeaderBackColor kind=\"rgb\" value=\"#112233\"/>\n          <HeaderTextColor kind=\"rgb\" value=\"#223344\"/>\n          <FooterBackColor kind=\"rgb\" value=\"#334455\"/>\n          <FooterTextColor kind=\"rgb\" value=\"#445566\"/>\n          <SelectionBackColor kind=\"rgb\" value=\"#556677\"/>\n          <SelectionTextColor kind=\"rgb\" value=\"#667788\"/>\n          <AlternationRowBackColor kind=\"rgb\" value=\"#778899\"/>\n          <FixedLeft>1</FixedLeft>\n          <FixedRight>2</FixedRight>\n          <RowInputMode>AtWindowBottom</RowInputMode>\n          <RowSelectionMode>Row</RowSelectionMode>\n          <HeaderHeight>2</HeaderHeight>\n          <FooterHeight>3</FooterHeight>\n          <HeaderFont bold=\"true\" source=\"bin\" face=\"Arial\" size=\"10\"/>\n          <FooterFont bold=\"true\" source=\"bin\" face=\"Tahoma\" size=\"9\"/>",
+            ),
+            (
+                "<Editor>InputField</Editor>\n              <Events>",
+                "<Editor>InputField</Editor>\n              <ShowHierarchy>true</ShowHierarchy>\n              <CheckBoxThreeState>true</CheckBoxThreeState>\n              <ShowInHeader>false</ShowInHeader>\n              <ShowInFooter>false</ShowInFooter>\n              <ChangeSetting>false</ChangeSetting>\n              <ChangePosition>false</ChangePosition>\n              <FieldBackColor kind=\"rgb\" value=\"#AABBCC\"/>\n              <FieldTextColor kind=\"rgb\" value=\"#BBCCDD\"/>\n              <HeaderBackColor kind=\"rgb\" value=\"#CCDDEE\"/>\n              <HeaderTextColor kind=\"rgb\" value=\"#DDEEFF\"/>\n              <FooterBackColor kind=\"rgb\" value=\"#EEFF00\"/>\n              <FooterTextColor kind=\"rgb\" value=\"#FF0011\"/>\n              <TextFont bold=\"true\" source=\"bin\" face=\"Verdana\" size=\"8\"/>\n              <HeaderFont bold=\"true\" source=\"bin\" face=\"Courier\" size=\"10\"/>\n              <FooterFont bold=\"true\" source=\"bin\" face=\"Georgia\" size=\"9\"/>\n              <HeaderHorizontalAlign>Center</HeaderHorizontalAlign>\n              <HorizontalAlignInColumn>Right</HorizontalAlignInColumn>\n              <FooterHorizontalAlign>Center</FooterHorizontalAlign>\n              <CellHeight>4</CellHeight>\n              <Format>\n                <Item language=\"ru\">ЧДЦ=2</Item>\n              </Format>\n              <Events>",
+            ),
+        ],
+    );
+
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    let expected_tbl_flags = 117644301i64 | 16 | 16384;
+    let expected_col_flags = (12590592i64 | 1 | 8) & !2048 & !4096 & !4194304 & !8388608;
+    assert!(text.contains(&format!("{{19,{expected_tbl_flags},")), "Table bitmask not patched: {expected_tbl_flags}");
+    assert!(text.contains(&format!(",{expected_col_flags},")), "Column bitmask not patched: {expected_col_flags}");
+}

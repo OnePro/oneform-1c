@@ -172,21 +172,27 @@ KNOWN_PROPERTIES_STATUS = {
     ("Form", "WindowOptionsKey"): {"xml": "WindowOptionsKey", "status": "unk", "priority": "P2"},
 
     # Universal Control (<base> and geom)
-    ("*", "Left"): {"xml": "Left", "status": "rw", "priority": "P0", "slot": "geom[0]"},
-    ("*", "Top"): {"xml": "Top", "status": "rw", "priority": "P0", "slot": "geom[1]"},
-    ("*", "Width"): {"xml": "Width", "status": "rw", "priority": "P0", "slot": "geom[2]"},
-    ("*", "Height"): {"xml": "Height", "status": "rw", "priority": "P0", "slot": "geom[3]"},
+    ("*", "Name"): {"xml": "@name", "status": "rw", "priority": "P0", "slot": "meta[1]"},
+    ("*", "Left"): {"xml": "Left", "status": "rw", "priority": "P0", "slot": "geom[1]"},
+    ("*", "Top"): {"xml": "Top", "status": "rw", "priority": "P0", "slot": "geom[2]"},
+    ("*", "Width"): {"xml": "Width", "status": "rw", "priority": "P0", "slot": "geom[3] - geom[1]"},
+    ("*", "Height"): {"xml": "Height", "status": "rw", "priority": "P0", "slot": "geom[4] - geom[2]"},
     ("*", "Visible"): {"xml": "Visible", "status": "rw", "priority": "P0", "slot": "geom[5]"},
-    ("*", "ZOrder"): {"xml": "ZOrder", "status": "rw", "priority": "P0", "slot": "root[1][2] index"},
-    ("*", "TabOrder"): {"xml": "TabOrder", "status": "rw", "priority": "P0", "slot": "geom[4]"},
+    ("*", "ZOrder"): {"xml": "ZOrder", "status": "rw", "priority": "P0", "slot": "geom[21]"},
+    ("*", "TabOrder"): {"xml": "TabOrder", "status": "rw", "priority": "P0", "slot": "geom[22]"},
     ("*", "Enabled"): {"xml": "Enabled", "status": "rw", "priority": "P0", "slot": "<base>[1]"},
     ("*", "Transparent"): {"xml": "TransparentBack", "status": "rw", "priority": "P0", "slot": "<base>[5]"},
     ("*", "ToolTip"): {"xml": "Tooltip", "status": "rw", "priority": "P0", "slot": "<base>[12]"},
     ("*", "BackColor"): {"xml": "BackColor", "status": "rw", "priority": "P1", "slot": "<base>[2]"},
     ("*", "TextColor"): {"xml": "TextColor", "status": "rw", "priority": "P1", "slot": "<base>[3]"},
     ("*", "BorderColor"): {"xml": "BorderColor", "status": "rw", "priority": "P1", "slot": "<base>[6]"},
+    ("*", "FieldBackColor"): {"xml": "FieldBackColor", "status": "rw", "priority": "P1", "slot": "<base>[7]"},
+    ("*", "FieldTextColor"): {"xml": "FieldTextColor", "status": "rw", "priority": "P1", "slot": "<base>[8]"},
+    ("*", "ButtonBackColor"): {"xml": "ButtonBackColor", "status": "rw", "priority": "P1", "slot": "<base>[9]"},
+    ("*", "ButtonTextColor"): {"xml": "ButtonTextColor", "status": "rw", "priority": "P1", "slot": "<base>[10]"},
     ("*", "Font"): {"xml": "Font", "status": "rw", "priority": "P1", "slot": "<base>[4]"},
     ("*", "Data"): {"xml": "DataPath", "status": "rw", "priority": "P0", "slot": "root[2][3]"},
+    ("*", "ValueType"): {"xml": "ValueType", "status": "rw", "priority": "P0", "slot": "info[1]"},
     ("*", "Events"): {"xml": "Events", "status": "rw", "priority": "P0", "slot": "event list node"},
 
     # Anchors / Placement (P0 for 90% real-world forms)
@@ -194,7 +200,7 @@ KNOWN_PROPERTIES_STATUS = {
     ("*", "ModifiesData"): {"xml": "ModifiesData", "status": "rw", "priority": "P1", "slot": "meta[3]"},
     ("*", "SkipOnInput"): {"xml": "SkipOnInput", "status": "rw", "priority": "P1", "slot": "meta[4]"},
     ("*", "FirstInGroup"): {"xml": "FirstInGroup", "status": "rw", "priority": "P1", "slot": "meta[5]"},
-    ("*", "ActivateByDefault"): {"xml": "ActivateByDefault", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
+    ("*", "ActivateByDefault"): {"xml": "ActivateByDefault", "status": "unk", "priority": "P2", "slot": "geom[20..24]"},
 
     # TextBox (InputField)
     ("TextBox", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P0", "slot": "info[2][0][13]"},
@@ -204,13 +210,17 @@ KNOWN_PROPERTIES_STATUS = {
     ("TextBox", "ChoiceListButton"): {"xml": "DropListButton", "status": "rw", "priority": "P0", "slot": "info[2][0][6]"},
     ("TextBox", "SpinButton"): {"xml": "SpinButton", "status": "rw", "priority": "P0", "slot": "info[2][0][9]"},
     ("TextBox", "AutoMarkIncomplete"): {"xml": "AutoMarkIncomplete", "status": "rw", "priority": "P0", "slot": "info[2][0][35]"},
+    ("TextBox", "MarkIncomplete"): {"xml": "AutoMarkIncomplete", "status": "rw", "priority": "P0", "slot": "info[2][0][35]"},
     ("TextBox", "AutoChoiceIncomplete"): {"xml": "AutoChoiceIncomplete", "status": "rw", "priority": "P0", "slot": "info[2][0][36]"},
+    ("TextBox", "ChoiceIncomplete"): {"xml": "AutoChoiceIncomplete", "status": "rw", "priority": "P0", "slot": "info[2][0][36]"},
+    ("TextBox", "IncompleteChoiceMode"): {"xml": "AutoChoiceIncomplete", "status": "rw", "priority": "P0", "slot": "info[2][0][36]"},
     ("TextBox", "MarkNegatives"): {"xml": "MarkNegatives", "status": "rw", "priority": "P0", "slot": "info[2][0][27]"},
     ("TextBox", "HorizontalScrollBar"): {"xml": "HorizontalScrollBar", "status": "rw", "priority": "P1", "slot": "info[2][0][2]"},
     ("TextBox", "VerticalScrollBar"): {"xml": "VerticalScrollBar", "status": "rw", "priority": "P1", "slot": "info[2][0][3]"},
     ("TextBox", "Wrap"): {"xml": "AutoCellHeight", "status": "rw", "priority": "P0", "slot": "info[2][0][4]"},
     ("TextBox", "ListChoiceMode"): {"xml": "ChoiceListMode", "status": "rw", "priority": "P0", "slot": "info[9]"},
     ("TextBox", "ValueType"): {"xml": "ValueType", "status": "rw", "priority": "P0", "slot": "info[1]"},
+    ("TextBox", "TypeRestriction"): {"xml": "ValueType", "status": "rw", "priority": "P1", "slot": "info[1]"},
     ("TextBox", "MultiLine"): {"xml": "MultiLine", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[3] + info[2][0][26]"},
     ("TextBox", "PasswordMode"): {"xml": "PasswordMode", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[5] + info[2][0][5]"},
     ("TextBox", "ExtendedEdit"): {"xml": "ExtendedEdit", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[6] + info[2][0][24]"},
@@ -218,7 +228,10 @@ KNOWN_PROPERTIES_STATUS = {
     ("TextBox", "ChooseType"): {"xml": "ChooseType", "status": "rw", "priority": "P1", "slot": "info[6]"},
     ("TextBox", "TextEdit"): {"xml": "TextEdit", "status": "rw", "priority": "P1", "slot": "info[5] + info[2][0][12]"},
     ("TextBox", "TypeLinkItem"): {"xml": "TypeLink", "status": "rw", "priority": "P0", "slot": "info[8]"},
-    ("TextBox", "Format"): {"xml": "Format", "status": "unk", "priority": "P1"},
+    ("TextBox", "Format"): {"xml": "Format", "status": "rw", "priority": "P1", "slot": "info[2][0][34]"},
+    ("TextBox", "ChoiceListWidth"): {"xml": "ChoiceListWidth", "status": "rw", "priority": "P1", "slot": "info[2][0][32]"},
+    ("TextBox", "MinValue"): {"xml": "MinValue", "status": "rw", "priority": "P1", "slot": "info[2][0][19]"},
+    ("TextBox", "MaxValue"): {"xml": "MaxValue", "status": "rw", "priority": "P1", "slot": "info[2][0][20]"},
     ("TextBox", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][17]"},
     ("TextBox", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][18]"},
     ("TextBox", "Border"): {"xml": "Border", "status": "unk", "priority": "P2"},
@@ -234,12 +247,29 @@ KNOWN_PROPERTIES_STATUS = {
     ("TableBox", "Header"): {"xml": "Header", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 0"},
     ("TableBox", "HorizontalLines"): {"xml": "HorizontalLines", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 3"},
     ("TableBox", "VerticalLines"): {"xml": "VerticalLines", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 2"},
+    ("TableBox", "UseAlternationRowColor"): {"xml": "UseAlternationRowColor", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 4"},
+    ("TableBox", "EnableStartDrag"): {"xml": "EnableStartDrag", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 14"},
     ("TableBox", "AutoInsertNewRow"): {"xml": "AutoInsertNewRow", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 15"},
     ("TableBox", "ChangeSettingOfColumns"): {"xml": "ChangeSettingOfColumns", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 25"},
     ("TableBox", "ChangePositionOfColumns"): {"xml": "ChangePositionOfColumns", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 26"},
     ("TableBox", "ChangeRowSet"): {"xml": "ChangeRowSet", "status": "rw", "priority": "P1", "slot": "info[2][1][22]"},
     ("TableBox", "HorizontalScrollBar"): {"xml": "HorizontalScrollBar", "status": "rw", "priority": "P1", "slot": "info[2][1][9]"},
     ("TableBox", "VerticalScrollBar"): {"xml": "VerticalScrollBar", "status": "rw", "priority": "P1", "slot": "info[2][1][10]"},
+    ("TableBox", "HeaderBackColor"): {"xml": "HeaderBackColor", "status": "rw", "priority": "P1", "slot": "info[2][1][2]"},
+    ("TableBox", "HeaderTextColor"): {"xml": "HeaderTextColor", "status": "rw", "priority": "P1", "slot": "info[2][1][3]"},
+    ("TableBox", "FooterBackColor"): {"xml": "FooterBackColor", "status": "rw", "priority": "P1", "slot": "info[2][1][4]"},
+    ("TableBox", "FooterTextColor"): {"xml": "FooterTextColor", "status": "rw", "priority": "P1", "slot": "info[2][1][5]"},
+    ("TableBox", "SelectionBackColor"): {"xml": "SelectionBackColor", "status": "rw", "priority": "P1", "slot": "info[2][1][6]"},
+    ("TableBox", "SelectionTextColor"): {"xml": "SelectionTextColor", "status": "rw", "priority": "P1", "slot": "info[2][1][7]"},
+    ("TableBox", "AlternationRowBackColor"): {"xml": "AlternationRowBackColor", "status": "rw", "priority": "P1", "slot": "info[2][1][8]"},
+    ("TableBox", "FixedLeft"): {"xml": "FixedLeft", "status": "rw", "priority": "P1", "slot": "info[2][1][11]"},
+    ("TableBox", "FixedRight"): {"xml": "FixedRight", "status": "rw", "priority": "P1", "slot": "info[2][1][12]"},
+    ("TableBox", "RowInputMode"): {"xml": "RowInputMode", "status": "rw", "priority": "P1", "slot": "info[2][1][13]"},
+    ("TableBox", "RowSelectionMode"): {"xml": "RowSelectionMode", "status": "rw", "priority": "P1", "slot": "info[2][1][14]"},
+    ("TableBox", "HeaderHeight"): {"xml": "HeaderHeight", "status": "rw", "priority": "P1", "slot": "info[2][1][16]"},
+    ("TableBox", "FooterHeight"): {"xml": "FooterHeight", "status": "rw", "priority": "P1", "slot": "info[2][1][17]"},
+    ("TableBox", "HeaderFont"): {"xml": "HeaderFont", "status": "rw", "priority": "P1", "slot": "info[2][1][18]"},
+    ("TableBox", "FooterFont"): {"xml": "FooterFont", "status": "rw", "priority": "P1", "slot": "info[2][1][19]"},
 
     # TableBoxColumn (Columns)
     ("TableBoxColumn", "Name"): {"xml": "name", "status": "rw", "priority": "P0", "slot": "col_props[30]"},
@@ -251,59 +281,197 @@ KNOWN_PROPERTIES_STATUS = {
     ("TableBoxColumn", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P0", "slot": "col_props[26]"},
     ("TableBoxColumn", "Data"): {"xml": "DataPath", "status": "rw", "priority": "P0", "slot": "wrapper[2]"},
     ("TableBoxColumn", "Events"): {"xml": "Events", "status": "rw", "priority": "P0", "slot": "col_props[39] deflate"},
+    ("TableBoxColumn", "ShowHierarchy"): {"xml": "ShowHierarchy", "status": "rw", "priority": "P1", "slot": "col_props[9] bit 0"},
+    ("TableBoxColumn", "CheckBoxThreeState"): {"xml": "CheckBoxThreeState", "status": "rw", "priority": "P1", "slot": "col_props[9] bit 3"},
+    ("TableBoxColumn", "ShowInHeader"): {"xml": "ShowInHeader", "status": "rw", "priority": "P1", "slot": "col_props[9] bit 11"},
+    ("TableBoxColumn", "ShowInFooter"): {"xml": "ShowInFooter", "status": "rw", "priority": "P1", "slot": "col_props[9] bit 12"},
+    ("TableBoxColumn", "ChangeSetting"): {"xml": "ChangeSetting", "status": "rw", "priority": "P1", "slot": "col_props[9] bit 22"},
+    ("TableBoxColumn", "ChangePosition"): {"xml": "ChangePosition", "status": "rw", "priority": "P1", "slot": "col_props[9] bit 23"},
+    ("TableBoxColumn", "FieldBackColor"): {"xml": "FieldBackColor", "status": "rw", "priority": "P1", "slot": "col_props[16]"},
+    ("TableBoxColumn", "FieldTextColor"): {"xml": "FieldTextColor", "status": "rw", "priority": "P1", "slot": "col_props[17]"},
+    ("TableBoxColumn", "HeaderBackColor"): {"xml": "HeaderBackColor", "status": "rw", "priority": "P1", "slot": "col_props[18]"},
+    ("TableBoxColumn", "HeaderTextColor"): {"xml": "HeaderTextColor", "status": "rw", "priority": "P1", "slot": "col_props[19]"},
+    ("TableBoxColumn", "FooterBackColor"): {"xml": "FooterBackColor", "status": "rw", "priority": "P1", "slot": "col_props[20]"},
+    ("TableBoxColumn", "FooterTextColor"): {"xml": "FooterTextColor", "status": "rw", "priority": "P1", "slot": "col_props[21]"},
+    ("TableBoxColumn", "TextFont"): {"xml": "TextFont", "status": "rw", "priority": "P1", "slot": "col_props[22]"},
+    ("TableBoxColumn", "HeaderFont"): {"xml": "HeaderFont", "status": "rw", "priority": "P1", "slot": "col_props[23]"},
+    ("TableBoxColumn", "FooterFont"): {"xml": "FooterFont", "status": "rw", "priority": "P1", "slot": "col_props[24]"},
+    ("TableBoxColumn", "HeaderHorizontalAlign"): {"xml": "HeaderHorizontalAlign", "status": "rw", "priority": "P1", "slot": "col_props[27]"},
+    ("TableBoxColumn", "HorizontalAlignInColumn"): {"xml": "HorizontalAlignInColumn", "status": "rw", "priority": "P1", "slot": "col_props[28]"},
+    ("TableBoxColumn", "FooterHorizontalAlign"): {"xml": "FooterHorizontalAlign", "status": "rw", "priority": "P1", "slot": "col_props[29]"},
+    ("TableBoxColumn", "Format"): {"xml": "Format", "status": "rw", "priority": "P1", "slot": "col_props[34]"},
+    ("TableBoxColumn", "CellHeight"): {"xml": "CellHeight", "status": "rw", "priority": "P1", "slot": "col_props[37]"},
     ("TableBoxColumn", "HeaderPicture"): {"xml": "HeaderPicture", "status": "unk", "priority": "P2"},
-    ("TableBoxColumn", "HorizontalAlignInColumn"): {"xml": "HorizontalAlign", "status": "unk", "priority": "P1"},
-    ("TableBoxColumn", "Format"): {"xml": "Format", "status": "unk", "priority": "P1"},
+
+    # Button
+    ("Button", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "info[1][2]"},
+    ("Button", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P1", "slot": "info[1][3]"},
+    ("Button", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
+    ("Button", "PictureLocation"): {"xml": "PictureLocation", "status": "rw", "priority": "P1", "slot": "info[1][6]"},
+    ("Button", "PictureSize"): {"xml": "PictureSize", "status": "rw", "priority": "P1", "slot": "info[1][7]"},
+    ("Button", "MultiLine"): {"xml": "MultiLine", "status": "rw", "priority": "P1", "slot": "info[1][10]"},
 
     # CommandBar
     ("CommandBar", "AutoFill"): {"xml": "AutoFill", "status": "rw", "priority": "P0", "slot": "info[1][3]"},
     ("CommandBar", "ButtonsAlignment"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P0", "slot": "info[1][4]"},
+    ("CommandBar", "Orientation"): {"xml": "Orientation", "status": "rw", "priority": "P1", "slot": "info[1][2]"},
+    ("CommandBar", "Secondary"): {"xml": "Secondary", "status": "rw", "priority": "P1", "slot": "info[1][5]"},
     ("CommandBar", "Buttons"): {"xml": "Buttons", "status": "rw", "priority": "P0", "slot": "info[1][7]"},
 
     # CommandBarButton
-    ("CommandBarButton", "Name"): {"xml": "name", "status": "rw", "priority": "P0"},
-    ("CommandBarButton", "Text"): {"xml": "Caption", "status": "rw", "priority": "P0"},
-    ("CommandBarButton", "Action"): {"xml": "action", "status": "rw", "priority": "P0"},
-    ("CommandBarButton", "Representation"): {"xml": "representation", "status": "rw", "priority": "P0"},
-    ("CommandBarButton", "Check"): {"xml": "checked", "status": "rw", "priority": "P0"},
-    ("CommandBarButton", "ToolTip"): {"xml": "Tooltip", "status": "rw", "priority": "P0"},
+    ("CommandBarButton", "Name"): {"xml": "name", "status": "rw", "priority": "P0", "slot": "b[1]"},
+    ("CommandBarButton", "ButtonType"): {"xml": "kind", "status": "rw", "priority": "P0", "slot": "b[9]"},
+    ("CommandBarButton", "Text"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "b[4]"},
+    ("CommandBarButton", "Action"): {"xml": "action", "status": "rw", "priority": "P0", "slot": "action[4][1]"},
+    ("CommandBarButton", "Representation"): {"xml": "representation", "status": "rw", "priority": "P0", "slot": "b[10]"},
+    ("CommandBarButton", "Check"): {"xml": "checked", "status": "rw", "priority": "P0", "slot": "b[12]"},
+    ("CommandBarButton", "ToolTip"): {"xml": "Tooltip", "status": "rw", "priority": "P0", "slot": "action[4][2][3]"},
+    ("CommandBarButton", "Buttons"): {"xml": "Buttons", "status": "rw", "priority": "P0", "slot": "X[7] group"},
 
     # Panel
-    ("Panel", "ShowTabs"): {"xml": "ShowTabs", "status": "rw", "priority": "P0", "slot": "info[1][5]"},
+    ("Panel", "ShowTabs"): {"xml": "ShowTabs", "status": "rw", "priority": "P0", "slot": "info[1][base+1]"},
     ("Panel", "Pages"): {"xml": "Pages", "status": "rw", "priority": "P0", "slot": "info[1][base+3]"},
+    ("Panel", "SeparateByPage"): {"xml": "SeparateByPage", "status": "rw", "priority": "P1", "slot": "info[1][base+4]"},
+    ("Panel", "AutoTabOrder"): {"xml": "AutoTabOrder", "status": "rw", "priority": "P1", "slot": "info[1][base+5]"},
+    ("Panel", "ScrollPageMode"): {"xml": "ScrollPageMode", "status": "rw", "priority": "P1", "slot": "info[1][base+6]"},
 
     # PanelPage
+    ("PanelPage", "Name"): {"xml": "name", "status": "rw", "priority": "P0", "slot": "rec[6]"},
     ("PanelPage", "Title"): {"xml": "Title", "status": "rw", "priority": "P0", "slot": "rec[1]"},
+    ("PanelPage", "Caption"): {"xml": "Title", "status": "rw", "priority": "P0", "slot": "rec[1]"},
     ("PanelPage", "Visible"): {"xml": "Visible", "status": "rw", "priority": "P0", "slot": "rec[4]"},
     ("PanelPage", "Enabled"): {"xml": "Enabled", "status": "rw", "priority": "P0", "slot": "rec[5]"},
 
     # Label (LabelDecoration)
-    ("Label", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0"},
+    ("Label", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "info[1][2]"},
     ("Label", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P0", "slot": "info[1][3]"},
+    ("Label", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
     ("Label", "Hyperlink"): {"xml": "Hyperlink", "status": "rw", "priority": "P0", "slot": "info[1][5]"},
-    ("Label", "Picture"): {"xml": "Picture", "status": "ro", "priority": "P2"},
+    ("Label", "MarkNegatives"): {"xml": "MarkNegatives", "status": "rw", "priority": "P1", "slot": "info[1][6]"},
+    ("Label", "Format"): {"xml": "Format", "status": "rw", "priority": "P1", "slot": "info[1][10]"},
+    ("Label", "PictureSize"): {"xml": "PictureSize", "status": "rw", "priority": "P1", "slot": "info[1][13]"},
+    ("Label", "Picture"): {"xml": "Picture", "status": "ro", "priority": "P2", "slot": "info[1][12]"},
 
     # CheckBox
-    ("CheckBox", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0"},
+    ("CheckBox", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "info[1][0][2]"},
     ("CheckBox", "ThreeState"): {"xml": "ThreeState", "status": "rw", "priority": "P0", "slot": "info[1][2]"},
     ("CheckBox", "TitleLocation"): {"xml": "TitleLocation", "status": "rw", "priority": "P0", "slot": "info[1][0][3]"},
+    ("CheckBox", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P1", "slot": "info[1][0][4]"},
+    ("CheckBox", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[1][0][5]"},
+
+    # RadioButton
+    ("RadioButton", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "info[2][0][2]"},
+    ("RadioButton", "TitleLocation"): {"xml": "TitleLocation", "status": "rw", "priority": "P1", "slot": "info[2][0][3]"},
+    ("RadioButton", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][4]"},
+    ("RadioButton", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][5]"},
+    ("RadioButton", "SelectionValue"): {"xml": "SelectionValue", "status": "rw", "priority": "P0", "slot": "info[4]"},
 
     # ComboBox (ChoiceField)
     ("ComboBox", "ChoiceList"): {"xml": "ChoiceList", "status": "rw", "priority": "P0", "slot": "info[1][26]"},
+    ("ComboBox", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P1", "slot": "info[1][13]"},
+    ("ComboBox", "ChoiceButton"): {"xml": "ChoiceButton", "status": "rw", "priority": "P1", "slot": "info[1][7]"},
+    ("ComboBox", "ClearButton"): {"xml": "ClearButton", "status": "rw", "priority": "P1", "slot": "info[1][8]"},
+    ("ComboBox", "SpinButton"): {"xml": "SpinButton", "status": "rw", "priority": "P1", "slot": "info[1][9]"},
+    ("ComboBox", "OpenButton"): {"xml": "OpenButton", "status": "rw", "priority": "P1", "slot": "info[1][10]"},
+    ("ComboBox", "ChoiceListWidth"): {"xml": "ChoiceListWidth", "status": "rw", "priority": "P1", "slot": "info[1][32]"},
 
     # GroupBox (UsualGroup)
-    ("GroupBox", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0"},
+    ("GroupBox", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "info[1][2]"},
     ("GroupBox", "BorderStyle"): {"xml": "BorderStyle", "status": "rw", "priority": "P0", "slot": "info[1][3][3]"},
+
+    # PictureBox (PictureDecoration / PictureField)
+    ("PictureBox", "Zoomable"): {"xml": "Zoomable", "status": "rw", "priority": "P1", "slot": "info[1][6]"},
+    ("PictureBox", "EnableStartDrag"): {"xml": "EnableStartDrag", "status": "rw", "priority": "P1", "slot": "info[1][8]"},
+    ("PictureBox", "EnableDrag"): {"xml": "EnableDrag", "status": "rw", "priority": "P1", "slot": "info[1][9]"},
+    ("PictureBox", "NonselectedPictureText"): {"xml": "NonselectedPictureText", "status": "rw", "priority": "P1", "slot": "info[1][10]"},
+    ("PictureBox", "UseContextMenu"): {"xml": "UseContextMenu", "status": "rw", "priority": "P1", "slot": "info[1][12]"},
+
+    # ListBox
+    ("ListBox", "ShowPicture"): {"xml": "ShowPicture", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
+    ("ListBox", "ShowCheckBox"): {"xml": "ShowCheckBox", "status": "rw", "priority": "P1", "slot": "info[1][5]"},
+
+    # TrackBar
+    ("TrackBar", "MinValue"): {"xml": "MinValue", "status": "rw", "priority": "P1", "slot": "info[1][2]"},
+    ("TrackBar", "MaxValue"): {"xml": "MaxValue", "status": "rw", "priority": "P1", "slot": "info[1][3]"},
+    ("TrackBar", "Step"): {"xml": "Step", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
+    ("TrackBar", "LargeStep"): {"xml": "LargeStep", "status": "rw", "priority": "P1", "slot": "info[1][5]"},
+    ("TrackBar", "Orientation"): {"xml": "Orientation", "status": "rw", "priority": "P1", "slot": "info[1][6]"},
+    ("TrackBar", "MarkingAppearance"): {"xml": "MarkingAppearance", "status": "rw", "priority": "P1", "slot": "info[1][7]"},
+    ("TrackBar", "MarkingStep"): {"xml": "MarkingStep", "status": "rw", "priority": "P1", "slot": "info[1][8]"},
+
+    # ProgressBar
+    ("ProgressBar", "MinValue"): {"xml": "MinValue", "status": "rw", "priority": "P1", "slot": "info[1][2]"},
+    ("ProgressBar", "MaxValue"): {"xml": "MaxValue", "status": "rw", "priority": "P1", "slot": "info[1][3]"},
+    ("ProgressBar", "Step"): {"xml": "Step", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
+    ("ProgressBar", "ShowStyle"): {"xml": "ShowStyle", "status": "rw", "priority": "P1", "slot": "info[1][5]"},
+    ("ProgressBar", "ShowPercent"): {"xml": "ShowPercent", "status": "rw", "priority": "P1", "slot": "info[1][6]"},
+    ("ProgressBar", "Orientation"): {"xml": "Orientation", "status": "rw", "priority": "P1", "slot": "info[1][7]"},
+
+    # Splitter
+    ("Splitter", "Orientation"): {"xml": "Orientation", "status": "rw", "priority": "P1", "slot": "info[1][2]"},
+
+    # CalendarBox (CalendarField)
+    ("CalendarBox", "SelectionBackColor"): {"xml": "SelectionBackColor", "status": "rw", "priority": "P1", "slot": "info[1][2]"},
+    ("CalendarBox", "SelectionTextColor"): {"xml": "SelectionTextColor", "status": "rw", "priority": "P1", "slot": "info[1][3]"},
+    ("CalendarBox", "HolidayColor"): {"xml": "HolidayColor", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
+    ("CalendarBox", "ShowCurrentDate"): {"xml": "ShowCurrentDate", "status": "rw", "priority": "P1", "slot": "info[1][7]"},
+    ("CalendarBox", "CalendarNavigation"): {"xml": "CalendarNavigation", "status": "rw", "priority": "P1", "slot": "info[1][8]"},
+    ("CalendarBox", "SelectionMode"): {"xml": "SelectionMode", "status": "rw", "priority": "P1", "slot": "info[1][9]"},
+    ("CalendarBox", "EnableStartDrag"): {"xml": "EnableStartDrag", "status": "rw", "priority": "P1", "slot": "info[1][10]"},
+    ("CalendarBox", "EnableDrag"): {"xml": "EnableDrag", "status": "rw", "priority": "P1", "slot": "info[1][11]"},
+
+    # Value sub-objects supported via XML attributes/elements
+    ("Font", "Name"): {"xml": "Font@face", "status": "rw", "priority": "P1", "slot": "{7,kind,mask,...}"},
+    ("Font", "Size"): {"xml": "Font@size", "status": "rw", "priority": "P1", "slot": "{7,kind,mask,...}"},
+    ("Font", "Bold"): {"xml": "Font@bold", "status": "rw", "priority": "P1", "slot": "{7,kind,mask,...}"},
+    ("Font", "Type"): {"xml": "Font@source", "status": "rw", "priority": "P1", "slot": "{7,kind,mask,...}"},
+    ("Color", "R"): {"xml": "*Color@value", "status": "rw", "priority": "P1", "slot": "{3,kind,{rgb}}"},
+    ("Color", "G"): {"xml": "*Color@value", "status": "rw", "priority": "P1", "slot": "{3,kind,{rgb}}"},
+    ("Color", "B"): {"xml": "*Color@value", "status": "rw", "priority": "P1", "slot": "{3,kind,{rgb}}"},
+    ("Color", "Type"): {"xml": "*Color@kind", "status": "rw", "priority": "P1", "slot": "{3,kind,{...}}"},
+    ("Border", "BorderType"): {"xml": "BorderStyle@code", "status": "rw", "priority": "P1", "slot": "info[1][3][3]"},
+    ("Border", "Type"): {"xml": "BorderStyle", "status": "rw", "priority": "P1", "slot": "info[1][3][3]"},
+    ("TypeDescription", "StringQualifiers"): {"xml": "ValueType@length", "status": "rw", "priority": "P0", "slot": "{\"S\",len,fixed}"},
+    ("TypeDescription", "NumberQualifiers"): {"xml": "ValueType@digits,fractionDigits", "status": "rw", "priority": "P0", "slot": "{\"N\",d,f,sign}"},
+    ("TypeDescription", "DateQualifiers"): {"xml": "ValueType@kind", "status": "rw", "priority": "P0", "slot": "{\"D\",\"D\"|\"T\"}"},
+    ("StringQualifiers", "Length"): {"xml": "ValueType@length", "status": "rw", "priority": "P0", "slot": "{\"S\",len,fixed}"},
+    ("StringQualifiers", "AllowedLength"): {"xml": "ValueType@fixed", "status": "ro", "priority": "P1", "slot": "{\"S\",len,fixed}"},
+    ("NumberQualifiers", "Digits"): {"xml": "ValueType@digits", "status": "rw", "priority": "P0", "slot": "{\"N\",d,f,sign}"},
+    ("NumberQualifiers", "FractionDigits"): {"xml": "ValueType@fractionDigits", "status": "rw", "priority": "P0", "slot": "{\"N\",d,f,sign}"},
+    ("NumberQualifiers", "AllowedSign"): {"xml": "ValueType@nonNegative", "status": "ro", "priority": "P1", "slot": "{\"N\",d,f,sign}"},
+    ("DateQualifiers", "DateFractions"): {"xml": "ValueType@kind", "status": "rw", "priority": "P0", "slot": "{\"D\",\"D\"|\"T\"}"},
+    ("ValueList", "AvailableValues"): {"xml": "ChoiceList", "status": "rw", "priority": "P1", "slot": "info[1][26][2][6]"},
+    ("ValueListItem", "Value"): {"xml": "ChoiceItem@value", "status": "rw", "priority": "P1", "slot": "item[3]"},
+    ("ValueListItem", "Presentation"): {"xml": "ChoiceItem/Presentation", "status": "rw", "priority": "P1", "slot": "item[4]"},
 }
 
 # Runtime-only properties from 1C API (never stored in binary FormStream.bin)
 RUNTIME_PROPERTIES = {
     ("Form", "Modified"), ("Form", "CurrentControl"), ("Form", "FormOwner"),
     ("Form", "ThisForm"), ("Form", "ModalMode"), ("Form", "Controls"),
+    ("Form", "<Attribute name>"), ("Form", "Panel"), ("Form", "UniqueKey"),
+    ("Form", "ChoiceMode"), ("Form", "ChoiceInitialValue"), ("Form", "MultipleChoice"),
     ("TextBox", "SelectedText"),
     ("TableBox", "CurrentRow"), ("TableBox", "CurrentColumn"), ("TableBox", "CurrentData"),
     ("TableBox", "CurrentParent"), ("TableBox", "SelectedRows"), ("TableBox", "Columns"),
+    ("TableBoxColumn", "Control"),
+    ("TableBoxColumns", "<Column name>"),
+    ("CommandBarButtons", "<Button name>"),
     ("Controls", "<Control name>"),
+    ("Panel", "CurrentPage"), ("PanelPage", "IsOpen"), ("PanelPage", "Value"),
+    ("Extension for controls located in a form", "Value"),
+    ("Extension for controls located in a table box", "Value"),
+    ("Extension for controls located in a spreadsheet document field", "Value"),
+    ("HTMLDocumentField", "Document"),
+    ("TextDocumentField", "SelectedText"),
+    ("CalendarBox", "CurrentDate"),
+    ("ListBox", "CurrentRow"),
+    ("GraphicalSchemaField", "CurrentItem"),
+    ("GeographicalSchemaField", "ActiveObject"), ("GeographicalSchemaField", "ShowedArea"),
+}
+RUNTIME_OWNERS = {
+    "CellAppearance", "RowAppearance", "DateAppearance", "PeriodAppearance",
+    "ValueTable", "ValueTree",
 }
 
 # 5. Обработка всех свойств из catalog.json
@@ -328,7 +496,7 @@ for prop in catalog.get("properties", []):
     name_ru = prop.get("name_ru", "")
 
     # Проверка runtime
-    if (owner, name_en) in RUNTIME_PROPERTIES or prop.get("api_access") == "read_only" and any(w in name_en for w in ["Current", "Selected", "This", "Controls"]):
+    if owner in RUNTIME_OWNERS or (owner, name_en) in RUNTIME_PROPERTIES or prop.get("api_access") == "read_only" and any(w in name_en for w in ["Current", "Selected", "This", "Controls"]):
         status = "runtime"
         priority = "P4"
         xml_tag = "-"
