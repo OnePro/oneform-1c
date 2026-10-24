@@ -122,7 +122,7 @@
 | `InputField` | **`ВертикальнаяПолосаПрокрутки`** | `<VerticalScrollBar>` | **`info[2][0][3]`** (`0`=DontUse, `1`=Use, `2`=Auto) | 🟢 R/W | Полный цикл чтения и записи (`inputfield-flag-01`) |
 | `InputField` | **`АвтоПереносСтрок` (`AutoCellHeight`)** | `<AutoCellHeight>` | **`info[2][0][4]`** (`0/1`) | 🟢 R/W | Патчится при указании в `Form.xml` (`inputfield-flag-02`) |
 | `InputField` | **`РежимВыбораИзСписка` (`ChoiceListMode`)** | `<ChoiceListMode>` | **`info[9]`** (`0/1`) | 🟢 R/W | Полный цикл чтения и записи (`inputfield-tail-09`) |
-| `InputField` | **Тип значения (`ValueType`)** | `<ValueType kind="..."/>` | `info[1]` (`{"Pattern", ...}`) | 🟢 R/W | Полный цикл чтения и записи паттерна типа (`String`, `Number`, `Date`, `Boolean`, `ValueList`, `ValueTable`, `Ref`) |
+| `InputField` | **Тип значения (`ValueType`)** | `<ValueType kind="..." ref="..." length="..." digits="..."/>` | `info[1]` (`{"Pattern", ...}`) | 🟢 R/W | Полный цикл чтения и записи паттерна типа (примитивные типы, `ValueList`, `ValueTable`, конкретные ссылки `Ref` на объекты метаданных через `ConfigDumpInfo.xml`, составные типы и квалификаторы длины/разрядности) |
 | `InputField` | `РежимПароля`, `МногострочныйРежим`, `Маска` | *(не выводится)* | Внутри `info[2][0][11..41]` | ⚪ Unk | Зависят от строкового типа значения; нужен прогон на строковом `ПолеВвода` |
 
 ### 4.2. Надпись (`LabelDecoration`), Флажок (`CheckBox`), Группа (`UsualGroup`), Поле выбора (`ChoiceField`)

@@ -1724,7 +1724,7 @@ fn remaining_colors_fonts_scrollbars_valuetype_buttons_and_form_header_round_tri
     let inp = got.control(7).unwrap();
     assert_eq!(inp.values.horizontal_scroll_bar, "Use");
     assert_eq!(inp.values.vertical_scroll_bar, "Auto");
-    assert_eq!(inp.values.value_type, Some(("String".to_string(), false, None)));
+    assert_eq!(inp.values.value_type.as_ref().map(|vt| vt.kind.as_str()), Some("String"));
     assert!(inp.values.back_color.is_some());
     assert!(inp.values.font.as_ref().is_some_and(|f| f.bold));
     let tbl = got.control(6).unwrap();
@@ -1736,5 +1736,50 @@ fn remaining_colors_fonts_scrollbars_valuetype_buttons_and_form_header_round_tri
     let cf = got.control(pf.allocated[0].1).unwrap();
     assert_eq!(cf.values.choice_list.len(), 1);
     assert_eq!(cf.values.choice_list[0].value, "Зн1");
+}
+
+#[test]
+fn concrete_reference_and_qualified_valuetypes_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. Add a concrete reference attribute
+    let new_attr = "    <Attribute id=\"16\" name=\"КонтрагентРеквизит\">\n      <Main>false</Main>\n      <ValueType kind=\"Ref\" composite=\"false\" ref=\"Справочник.Контрагенты\"/>\n    </Attribute>\n  </Attributes>";
+    edited = edited.replacen("  </Attributes>", new_attr, 1);
+
+    // 2. Patch InputField ПолеВвода1 to concrete reference by refGuid
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода1",
+        &[(
+            "<ValueType kind=\"ValueList\" composite=\"false\"/>",
+            "<ValueType kind=\"Ref\" composite=\"false\" refGuid=\"47e6dd42-cd5c-4e3a-9bc4-14816ed53d38\"/>",
+        )],
+    );
+
+    // 3. Patch InputField ПолеВвода7 to qualified String length="50"
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода7",
+        &[(
+            "<ValueType kind=\"String\" composite=\"false\"/>",
+            "<ValueType kind=\"String\" composite=\"false\" length=\"50\"/>",
+        )],
+    );
+
+    let (_, got) = structural_round_trip("DonorForm", &edited);
+    let attr16 = got.attributes.iter().find(|a| a.id == 16).unwrap();
+    assert_eq!(attr16.kind, "Ref");
+    assert!(!attr16.composite);
+    assert_eq!(attr16.ref_guids, vec!["47e6dd42-cd5c-4e3a-9bc4-14816ed53d38"]);
+
+    let inp1 = got.control(7).unwrap();
+    let vt1 = inp1.values.value_type.as_ref().unwrap();
+    assert_eq!(vt1.kind, "Ref");
+    assert!(!vt1.composite);
+    assert_eq!(vt1.ref_guids, vec!["47e6dd42-cd5c-4e3a-9bc4-14816ed53d38"]);
+
+    let inp7 = got.control(33).unwrap();
+    let vt7 = inp7.values.value_type.as_ref().unwrap();
+    assert_eq!(vt7.kind, "String");
+    assert_eq!(vt7.length, Some(50));
 }
 

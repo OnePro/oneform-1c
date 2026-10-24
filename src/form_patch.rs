@@ -30,6 +30,7 @@ use serde_json::Value;
 
 use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
 use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
+use crate::naming::is_uuid;
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
 use crate::oof_props::{app_path, caption_path, localized};
 
@@ -132,6 +133,33 @@ impl XmlElement {
 type LocItems = Vec<(String, String)>;
 type EventItems = Vec<(i64, String)>;
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ValueTypeSpec {
+    pub kind: String,
+    pub composite: bool,
+    pub fraction_digits: Option<i64>,
+    pub digits: Option<i64>,
+    pub length: Option<i64>,
+    pub ref_guids: Vec<String>,
+}
+
+impl ValueTypeSpec {
+    pub fn to_attr(&self) -> FormAttribute {
+        FormAttribute {
+            id: 0,
+            name: String::new(),
+            main: false,
+            stored: false,
+            kind: self.kind.clone(),
+            composite: self.composite,
+            fraction_digits: self.fraction_digits,
+            digits: self.digits,
+            length: self.length,
+            ref_guids: self.ref_guids.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormAttribute {
     pub id: i64,
@@ -141,16 +169,26 @@ pub struct FormAttribute {
     pub kind: String,
     pub composite: bool,
     pub fraction_digits: Option<i64>,
+    pub digits: Option<i64>,
+    pub length: Option<i64>,
+    pub ref_guids: Vec<String>,
 }
 
 fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
     match (a.kind.as_str(), a.composite) {
         ("", false) => Some("{\"Pattern\"}".to_string()),
-        ("String", false) => Some("{\"Pattern\",{\"S\"}}".to_string()),
+        ("String", false) => {
+            if let Some(l) = a.length {
+                Some(format!("{{\"Pattern\",{{\"S\",{l},0}}}}"))
+            } else {
+                Some("{\"Pattern\",{\"S\"}}".to_string())
+            }
+        }
         ("Boolean", false) => Some("{\"Pattern\",{\"B\"}}".to_string()),
         ("Number", false) => {
+            let d = a.digits.unwrap_or(10);
             let f = a.fraction_digits.unwrap_or(0);
-            Some(format!("{{\"Pattern\",{{\"N\",10,{f},0}}}}"))
+            Some(format!("{{\"Pattern\",{{\"N\",{d},{f},0}}}}"))
         }
         ("DateTime", false) => Some("{\"Pattern\",{\"D\"}}".to_string()),
         ("Date", false) => Some("{\"Pattern\",{\"D\",\"D\"}}".to_string()),
@@ -158,8 +196,86 @@ fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
         ("ValueTable", false) => Some("{\"Pattern\",{\"#\",acf6192e-81ca-46ef-93a6-5a6968b78663}}".to_string()),
         ("ValueTree", false) => Some("{\"Pattern\",{\"#\",e603c0f2-92fb-4d47-8f38-a44a381cf235}}".to_string()),
         ("ValueList", false) => Some("{\"Pattern\",{\"#\",4772b3b4-f4a3-49c0-a1a5-8cb5961511a3}}".to_string()),
-        ("Ref", true) => Some("{\"Pattern\",{\"#\",e61ef7b8-f3e1-4f4b-8ac7-676e90524997}}".to_string()),
+        ("Ref", _) => {
+            if !a.ref_guids.is_empty() {
+                let branches: Vec<String> = a.ref_guids.iter().map(|g| format!("{{\"#\",{g}}}")).collect();
+                Some(format!("{{\"Pattern\",{}}}", branches.join(",")))
+            } else if a.composite {
+                Some("{\"Pattern\",{\"#\",e61ef7b8-f3e1-4f4b-8ac7-676e90524997}}".to_string())
+            } else {
+                None
+            }
+        }
         _ => None,
+    }
+}
+
+fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
+    if !e.children.is_empty() || !e.text.trim().is_empty() {
+        return None;
+    }
+    let kind = e.attrs.get("kind")?.clone();
+    let comp_s = e.attrs.get("composite")?;
+    let composite = match comp_s.as_str() {
+        "true" => true,
+        "false" => false,
+        _ => return None,
+    };
+    let fraction_digits = match e.attrs.get("fractionDigits") {
+        Some(s) => Some(s.trim().parse::<i64>().ok()?),
+        None => None,
+    };
+    let digits = match e.attrs.get("digits") {
+        Some(s) => Some(s.trim().parse::<i64>().ok()?),
+        None => None,
+    };
+    let length = match e.attrs.get("length") {
+        Some(s) => Some(s.trim().parse::<i64>().ok()?),
+        None => None,
+    };
+    let mut ref_guids = Vec::new();
+    if let Some(r) = e.attrs.get("ref") {
+        let lookup = crate::metaref::ConfigTypeLookup::new();
+        for part in r.split(';') {
+            let part = part.trim();
+            if !part.is_empty() {
+                if is_uuid(part) {
+                    ref_guids.push(part.to_lowercase());
+                } else {
+                    let g = lookup.resolve_name(part)?;
+                    ref_guids.push(g.to_string());
+                }
+            }
+        }
+    }
+    if let Some(rg) = e.attrs.get("refGuid") {
+        for part in rg.split(';') {
+            let part = part.trim();
+            if !part.is_empty() {
+                if is_uuid(part) {
+                    ref_guids.push(part.to_lowercase());
+                } else {
+                    return None;
+                }
+            }
+        }
+    }
+    let attrs_ok = e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits" | "digits" | "length" | "ref" | "refGuid"));
+    if !attrs_ok {
+        return None;
+    }
+    let spec = ValueTypeSpec {
+        kind,
+        composite,
+        fraction_digits,
+        digits,
+        length,
+        ref_guids,
+    };
+    if format_attr_pattern(&spec.to_attr()).is_some() {
+        Some(spec)
+    } else {
+        None
     }
 }
 
@@ -380,7 +496,7 @@ pub struct ControlValues {
     pub border_color: Option<ColorSpec>,
     pub font: Option<FontSpec>,
     pub tooltip: Vec<(String, String)>,
-    pub value_type: Option<(String, bool, Option<i64>)>,
+    pub value_type: Option<ValueTypeSpec>,
     pub horizontal_scroll_bar: String,
     pub vertical_scroll_bar: String,
     pub read_only: bool,
@@ -1357,36 +1473,11 @@ impl Parser<'_> {
                 rest.children.push((*e).clone());
             }
         }
-        let mut value_type: Option<(String, bool, Option<i64>)> = None;
+        let mut value_type: Option<ValueTypeSpec> = None;
         if let Some(e) = found.get("ValueType") {
-            let mut valid = e.children.is_empty() && e.text.trim().is_empty();
-            if valid {
-                if let (Some(kind), Some(comp_s)) = (e.attrs.get("kind"), e.attrs.get("composite")) {
-                    let comp = match comp_s.as_str() {
-                        "true" => Some(true),
-                        "false" => Some(false),
-                        _ => None,
-                    };
-                    let frac = match e.attrs.get("fractionDigits") {
-                        Some(s) => s.trim().parse::<i64>().ok().map(Some),
-                        None => Some(None),
-                    };
-                    let attrs_ok = e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits"));
-                    if let (Some(c), Some(f), true) = (comp, frac, attrs_ok) {
-                        let fa = FormAttribute { id: 0, name: String::new(), main: false, stored: false, kind: kind.clone(), composite: c, fraction_digits: f };
-                        if format_attr_pattern(&fa).is_some() {
-                            value_type = Some((kind.clone(), c, f));
-                        } else {
-                            valid = false;
-                        }
-                    } else {
-                        valid = false;
-                    }
-                } else {
-                    valid = false;
-                }
-            }
-            if !valid {
+            if let Some(spec) = parse_value_type_spec(e) {
+                value_type = Some(spec);
+            } else {
                 rest.children.push((*e).clone());
             }
         }
@@ -1591,56 +1682,35 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
         }
         let mut main = false;
         let mut stored = false;
-        let mut vt_info: Option<(String, bool, Option<i64>)> = None;
+        let mut vt_info: Option<ValueTypeSpec> = None;
         let mut seen_tags = std::collections::HashSet::new();
         for ch in &a.children {
             match ch.tag.as_str() {
                 "Main" => {
-                    if !seen_tags.insert("Main") || !ch.children.is_empty() || !ch.attrs.is_empty() || ch.text.trim() != "true" {
+                    if !seen_tags.insert("Main") || !ch.children.is_empty() || !ch.attrs.is_empty() || (ch.text.trim() != "true" && ch.text.trim() != "false") {
                         ok = false;
                         break;
                     }
-                    main = true;
+                    main = ch.text.trim() == "true";
                 }
                 "StoredData" => {
-                    if !seen_tags.insert("StoredData") || !ch.children.is_empty() || !ch.attrs.is_empty() || ch.text.trim() != "true" {
+                    if !seen_tags.insert("StoredData") || !ch.children.is_empty() || !ch.attrs.is_empty() || (ch.text.trim() != "true" && ch.text.trim() != "false") {
                         ok = false;
                         break;
                     }
-                    stored = true;
+                    stored = ch.text.trim() == "true";
                 }
                 "ValueType" => {
-                    if !seen_tags.insert("ValueType") || !ch.children.is_empty() || !ch.text.trim().is_empty() {
+                    if !seen_tags.insert("ValueType") {
                         ok = false;
                         break;
                     }
-                    let Some(kind) = ch.attrs.get("kind").cloned() else {
-                        ok = false;
-                        break;
-                    };
-                    let comp = match ch.attrs.get("composite").map(String::as_str) {
-                        Some("true") => true,
-                        Some("false") => false,
-                        _ => {
-                            ok = false;
-                            break;
-                        }
-                    };
-                    let frac = match ch.attrs.get("fractionDigits") {
-                        Some(s) => match s.trim().parse::<i64>() {
-                            Ok(v) => Some(v),
-                            Err(_) => {
-                                ok = false;
-                                break;
-                            }
-                        },
-                        None => None,
-                    };
-                    if ch.attrs.keys().any(|k| !matches!(k.as_str(), "kind" | "composite" | "fractionDigits")) {
+                    if let Some(spec) = parse_value_type_spec(ch) {
+                        vt_info = Some(spec);
+                    } else {
                         ok = false;
                         break;
                     }
-                    vt_info = Some((kind, comp, frac));
                 }
                 _ => {
                     ok = false;
@@ -1651,8 +1721,19 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
         if !ok {
             break;
         }
-        let (kind, composite, fraction_digits) = vt_info.unwrap_or_else(|| (String::new(), false, None));
-        let fa = FormAttribute { id, name, main, stored, kind, composite, fraction_digits };
+        let vt = vt_info.unwrap_or_default();
+        let fa = FormAttribute {
+            id,
+            name,
+            main,
+            stored,
+            kind: vt.kind,
+            composite: vt.composite,
+            fraction_digits: vt.fraction_digits,
+            digits: vt.digits,
+            length: vt.length,
+            ref_guids: vt.ref_guids,
+        };
         if format_attr_pattern(&fa).is_none() {
             ok = false;
             break;
@@ -2626,9 +2707,8 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
     }
     match type_name {
         "InputField" => {
-            if let Some((kind, comp, frac)) = &v.value_type {
-                let fa = FormAttribute { id: 0, name: String::new(), main: false, stored: false, kind: kind.clone(), composite: *comp, fraction_digits: *frac };
-                if let Some(pat) = format_attr_pattern(&fa) {
+            if let Some(vt) = &v.value_type {
+                if let Some(pat) = format_attr_pattern(&vt.to_attr()) {
                     info.children[1] = Item::Node(
                         crate::brace::parse_metadata(pat.as_bytes()).map_err(|e| layout_err(e.to_string()))?,
                     );
@@ -3707,13 +3787,32 @@ fn read_choice_list_values(info: &Node) -> Vec<ChoiceItemSpec> {
     out
 }
 
-fn read_input_value_type(info: &Node) -> Option<(String, bool, Option<i64>)> {
+fn read_input_value_type(info: &Node) -> Option<ValueTypeSpec> {
     let pat_item = info.children.get(1)?;
     let vt = crate::oof_props::decode_pattern(pat_item).ok()??;
     let kind = vt.get("kind")?.as_str()?.to_string();
-    let comp = vt.get("composite")?.as_bool()?;
-    let frac = vt.get("fractionDigits").and_then(|v| v.as_i64());
-    Some((kind, comp, frac))
+    let composite = vt.get("composite")?.as_bool()?;
+    let fraction_digits = vt.get("fractionDigits").and_then(|v| v.as_i64());
+    let digits = vt.get("digits").and_then(|v| v.as_i64());
+    let length = vt.get("length").and_then(|v| v.as_i64());
+    let mut ref_guids = Vec::new();
+    if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
+        ref_guids.push(rg.to_string());
+    } else if let Some(arr) = vt.get("refGuids").and_then(|v| v.as_array()) {
+        for item in arr {
+            if let Some(s) = item.as_str() {
+                ref_guids.push(s.to_string());
+            }
+        }
+    }
+    Some(ValueTypeSpec {
+        kind,
+        composite,
+        fraction_digits,
+        digits,
+        length,
+        ref_guids,
+    })
 }
 
 fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
@@ -4014,11 +4113,8 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     .ok_or_else(|| site.layout("unexpected-shape", "ValueType", "input field pattern node missing".into()))?;
                 let pat = match &new.value_type {
                     None => "{\"Pattern\"}".to_string(),
-                    Some((k, c, f)) => {
-                        let fa = FormAttribute { id: 0, name: String::new(), main: false, stored: false, kind: k.clone(), composite: *c, fraction_digits: *f };
-                        format_attr_pattern(&fa)
-                            .ok_or_else(|| site.layout("unexpected-shape", "ValueType", "unsupported ValueType pattern".into()))?
-                    }
+                    Some(vt) => format_attr_pattern(&vt.to_attr())
+                        .ok_or_else(|| site.layout("unexpected-shape", "ValueType", "unsupported ValueType pattern".into()))?,
                 };
                 out.push(piece(pat_node.span.span, pat, &[prop]));
             }

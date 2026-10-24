@@ -1176,3 +1176,38 @@ fn epf_remaining_form_and_control_properties_pack() {
 fn config_remaining_form_and_control_properties_pack() {
     assert_remaining_properties_pack(Target::Config);
 }
+
+fn assert_reference_and_qualified_valuetypes_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    let new_attr = "    <Attribute id=\"16\" name=\"КонтрагентРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"Ref\" composite=\"false\" ref=\"Справочник.Контрагенты\"/>\n    </Attribute>\n  </Attributes>";
+    xml = xml.replacen("  </Attributes>", new_attr, 1);
+    xml = xml.replacen(
+        "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <ValueType kind=\"String\" composite=\"false\"/>",
+        "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <ValueType kind=\"String\" composite=\"false\" length=\"50\"/>",
+        1,
+    );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    assert!(packed_xml.contains("name=\"КонтрагентРеквизит\""), "{target:?}: missing attribute in:\n{packed_xml}");
+    assert!(packed_xml.contains("length=\"50\""), "{target:?}: missing length in:\n{packed_xml}");
+}
+
+#[test]
+fn epf_reference_and_qualified_valuetypes_pack() {
+    assert_reference_and_qualified_valuetypes_pack(Target::Epf);
+}
+
+#[test]
+fn config_reference_and_qualified_valuetypes_pack() {
+    assert_reference_and_qualified_valuetypes_pack(Target::Config);
+}

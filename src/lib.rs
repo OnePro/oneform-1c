@@ -17,6 +17,7 @@ pub mod form_patch;
 pub mod formbin;
 pub mod manifest;
 pub mod metadata;
+pub mod metaref;
 pub mod naming;
 pub mod oof;
 pub mod oof_props;

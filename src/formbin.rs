@@ -196,18 +196,31 @@ fn meta_of_doc(doc: &roxmltree::Document<'_>) -> Option<Meta> {
     Some(meta)
 }
 
-/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included).
+/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included),
+/// as well as all configuration metadata type references discovered in ancestor directories.
 pub fn read_meta_lookup(path: &Path) -> MetaLookup {
-    let Some(text) = read_xml_text(path) else { return HashMap::new() };
-    open_doc(&text).map(|doc| lookup_of_doc(&doc)).unwrap_or_default()
+    let mut lookup = HashMap::new();
+    if let Some(text) = read_xml_text(path) {
+        if let Some(doc) = open_doc(&text) {
+            lookup = lookup_of_doc(&doc);
+        }
+    }
+    if let Some(cfg_root) = crate::metaref::ConfigTypeLookup::find_config_root(path) {
+        let cfg_lookup = crate::metaref::ConfigTypeLookup::from_config_dir(&cfg_root);
+        for (guid, name) in cfg_lookup.all_guid_names() {
+            lookup.entry(guid.to_string()).or_insert_with(|| name.to_string());
+        }
+    }
+    lookup
 }
 
 /// `(_read_meta(path), read_meta_lookup(path))` from one parse of the file.
 fn read_meta_and_lookup(path: &Path) -> (Meta, MetaLookup) {
-    let Some(text) = read_xml_text(path) else { return Default::default() };
+    let lookup = read_meta_lookup(path);
+    let Some(text) = read_xml_text(path) else { return (Default::default(), lookup) };
     match open_doc(&text) {
-        Some(doc) => (meta_of_doc(&doc).unwrap_or_default(), lookup_of_doc(&doc)),
-        None => Default::default(),
+        Some(doc) => (meta_of_doc(&doc).unwrap_or_default(), lookup),
+        None => (Default::default(), lookup),
     }
 }
 

@@ -588,7 +588,7 @@ fn control(n: &Item, warnings: &mut Vec<Value>, form_uuid: &str, meta_lookup: Op
         }
     }
     let cols = if type_name == Some("Table") { columns(info, meta_lookup)? } else { Vec::new() };
-    let props = match type_name {
+    let mut props = match type_name {
         Some(t) => {
             let mut unreadable = |prop: &str| {
                 warnings.push(diagnostic(
@@ -602,6 +602,15 @@ fn control(n: &Item, warnings: &mut Vec<Value>, form_uuid: &str, meta_lookup: Op
         }
         None => Map::new(),
     };
+    if let Some(Value::Object(vt)) = props.get_mut("valueType") {
+        if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
+            if let Some(ml) = meta_lookup {
+                if let Some(ref_name) = ml.get(rg) {
+                    vt.insert("ref".into(), ref_name.clone().into());
+                }
+            }
+        }
+    }
     let mut children = Vec::new();
     for c in table(Some(children_node), "control children")? {
         children.push(control(c, warnings, form_uuid, meta_lookup)?);
@@ -649,7 +658,14 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Attribute
         attr.insert("main".into(), main.into());
         attr.insert("stored".into(), stored.into());
         if rec.len() > 5 {
-            if let Ok(Some(vt)) = decode_pattern(&rec.children[5]) {
+            if let Ok(Some(mut vt)) = decode_pattern(&rec.children[5]) {
+                if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
+                    if let Some(ml) = meta_lookup {
+                        if let Some(ref_name) = ml.get(rg) {
+                            vt.insert("ref".into(), ref_name.clone().into());
+                        }
+                    }
+                }
                 attr.insert("valueType".into(), Value::Object(vt));
             }
         }
@@ -930,6 +946,17 @@ impl Writer {
 
     fn value_type(&mut self, vt: &Value) {
         let mut attrs: Attrs = vec![("kind", pystr(&vt["kind"])), ("composite", pystr(&vt["composite"]).to_lowercase())];
+        if let Some(r) = vt.get("ref").and_then(|v| v.as_str()) {
+            attrs.push(("ref", r.to_string()));
+        } else if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
+            attrs.push(("refGuid", rg.to_string()));
+        }
+        if let Some(l) = vt.get("length") {
+            attrs.push(("length", pystr(l)));
+        }
+        if let Some(d) = vt.get("digits").filter(|d| d.as_i64() != Some(10)) {
+            attrs.push(("digits", pystr(d)));
+        }
         if let Some(f) = vt.get("fractionDigits") {
             attrs.push(("fractionDigits", pystr(f)));
         }
