@@ -1571,8 +1571,9 @@ impl FormXml {
 fn patch_app_path(type_name: &str) -> Option<&'static [i64]> {
     Some(match type_name {
         "LabelDecoration" | "UsualGroup" | "Button" | "Panel" | "CommandBar" | "ChoiceField" | "PictureDecoration"
-        | "PictureField" | "ListBox" | "TrackBar" | "ProgressBar" | "Splitter" | "CalendarField" | "TextDocumentField"
-        | "HTMLDocumentField" | "GraphicalSchemaField" | "GeographicalSchemaField" => &[1, 0],
+        | "PictureField" | "ListBox" | "TrackBar" | "ProgressBar" | "Splitter" | "CalendarField" => &[1, 0],
+        "TextDocumentField" | "GraphicalSchemaField" => &[0],
+        "GeographicalSchemaField" => &[],
         "InputField" | "RadioButton" => &[2, 0, 0],
         "CheckBox" => &[1, 0, 0],
         "Table" | "TableBox" => &[2, 0],
