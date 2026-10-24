@@ -563,8 +563,8 @@ fn formatting_only_xml_edit_is_not_a_layout_edit() {
 #[test]
 fn unsupported_control_edits_are_rejected_without_changes() {
     let edits = [
-        ("name=\"Надпись1\" id=\"5\"", "name=\"Надпись2\" id=\"5\""),
-        ("<Click id=\"0\">Надпись1Нажатие", "<Click id=\"0\">Другой"),
+        ("name=\"Надпись1\" id=\"5\"", "name=\"Кнопка1\" id=\"5\""),
+        ("<Click id=\"0\">Надпись1Нажатие", "<Click id=\"999\">Надпись1Нажатие"),
     ];
     for target in [Target::Epf, Target::Config] {
         for edit in edits {
@@ -915,4 +915,39 @@ fn epf_discovered_control_properties_pack() {
 #[test]
 fn config_discovered_control_properties_pack() {
     assert_discovered_properties_pack(Target::Config);
+}
+
+fn assert_rename_and_events_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    // Rename Надпись1 -> НадписьПереименованная and change its Click handler
+    xml = xml
+        .replacen(r#"<LabelDecoration name="Надпись1" id="5">"#, r#"<LabelDecoration name="НадписьПереименованная" id="5">"#, 1)
+        .replacen("<Click id=\"0\">Надпись1Нажатие</Click>", "<Click id=\"0\">НовыйОбработчикНадписи</Click>", 1);
+    // Clear Events on Кнопка1
+    xml = xml.replacen("          <Events>\n            <Click id=\"0\">Кнопка1Нажатие</Click>\n          </Events>\n", "", 1);
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    assert!(packed_xml.contains(r#"<LabelDecoration name="НадписьПереименованная" id="5">"#), "{target:?}: missing renamed label");
+    assert!(packed_xml.contains("<Click id=\"0\">НовыйОбработчикНадписи</Click>"), "{target:?}: missing updated event");
+    assert!(!packed_xml.contains("Кнопка1Нажатие"), "{target:?}: removed event still present");
+}
+
+#[test]
+fn epf_existing_control_rename_and_events_pack() {
+    assert_rename_and_events_pack(Target::Epf);
+}
+
+#[test]
+fn config_existing_control_rename_and_events_pack() {
+    assert_rename_and_events_pack(Target::Config);
 }

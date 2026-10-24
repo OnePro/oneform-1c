@@ -164,10 +164,16 @@ fn identity_errors_are_actionable() {
     assert_eq!(kind, "added-control");
     assert!(text.contains("Чужой"), "{text}");
 
-    // Renamed and retyped.
-    let (kind, text) = rejected(&mutate(r#"name="Надпись1" id="5""#, r#"name="Другое" id="5""#));
+    // Renaming a control by id is now a supported edit; empty or duplicate names are rejected.
+    let p = plan(&s, &mutate(r#"name="Надпись1" id="5""#, r#"name="Другое" id="5""#)).unwrap();
+    assert_eq!(p.diff.edits.len(), 1);
+    assert_eq!(p.diff.edits[0].changed, vec![Property::Name]);
+    let (kind, text) = rejected(&mutate(r#"name="Надпись1" id="5""#, r#"name="" id="5""#));
     assert_eq!(kind, "renamed-control");
-    assert!(text.contains("Надпись1") && text.contains("Другое"), "{text}");
+    assert!(text.contains("id 5"), "{text}");
+    let (kind, text) = rejected(&mutate(r#"name="Надпись1" id="5""#, r#"name="Кнопка1" id="5""#));
+    assert_eq!(kind, "renamed-control");
+    assert!(text.contains("Кнопка1"), "{text}");
     let retyped = mutate(r#"<LabelDecoration name="Надпись1" id="5">"#, r#"<InputField name="Надпись1" id="5">"#)
         .replace("</LabelDecoration>", "</InputField>");
     let (kind, text) = rejected(&retyped);
@@ -264,12 +270,7 @@ fn form_level_differences_are_rejected() {
 fn event_differences_are_rejected() {
     assert_unsupported(mutate(">ПередОткрытием<", ">Другой<"), "unsupported-event", &["form 'Форма'", "BeforeOpen"]);
     assert_unsupported(mutate("<OnOpen id=\"70001\">", "<OnOpen id=\"70099\">"), "unsupported-event", &["OnOpen"]);
-    assert_unsupported(mutate(">Надпись1Нажатие<", ">Иначе<"), "unsupported-event", &["Надпись1", "Click"]);
-    assert_unsupported(
-        mutate("          <Events>\n            <Click id=\"0\">Надпись1Нажатие</Click>\n          </Events>\n", ""),
-        "unsupported-event",
-        &["Events"],
-    );
+    assert_unsupported(mutate("<Click id=\"0\">Надпись1Нажатие</Click>", "<Click id=\"999\">Надпись1Нажатие</Click>"), "unsupported-event", &["Надпись1", "Events"]);
 }
 
 #[test]
@@ -1362,7 +1363,7 @@ fn add_control_with_event_handler() {
     );
     let (_pf, got) = structural_round_trip("DonorForm", &edited);
     let c = got.control(37).unwrap();
-    assert!(c.rest.children.iter().any(|e| e.tag == "Events" && e.children.iter().any(|ev| ev.text.trim() == "ДобавленнаяНажатие")));
+    assert_eq!(c.values.events, vec![(0, "ДобавленнаяНажатие".to_string())]);
 }
 
 #[test]
@@ -1526,5 +1527,39 @@ fn donor_added_controls_accept_discovered_properties() {
     assert_eq!(c.values.choice_button, Some(true));
     assert_eq!(c.values.clear_button, Some(false));
     assert!(c.values.mark_negatives);
+}
+
+#[test]
+fn existing_control_rename_and_events_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // Rename Надпись1 -> НадписьПереименованная and change its Click handler
+    edited = edited
+        .replacen(r#"<LabelDecoration name="Надпись1" id="5">"#, r#"<LabelDecoration name="НадписьПереименованная" id="5">"#, 1)
+        .replacen("<Click id=\"0\">Надпись1Нажатие</Click>", "<Click id=\"0\">НовыйОбработчикНажатия</Click>", 1);
+    // Remove Events from Кнопка1 (id 4)
+    edited = edit_ctl(
+        &edited,
+        "Кнопка1",
+        &[("<Click id=\"0\">Кнопка1Нажатие</Click>", "")],
+    );
+    let pf = round_trip("DonorForm", &edited);
+    let step1_xml = decode_xml("DonorForm", &pf.bytes);
+    let got = parse_form_xml(step1_xml.as_bytes(), "decoded").unwrap();
+    let lbl = got.control(5).unwrap();
+    assert_eq!(lbl.name, "НадписьПереименованная");
+    assert_eq!(lbl.values.events, vec![(0, "НовыйОбработчикНажатия".to_string())]);
+    let btn = got.control(4).unwrap();
+    assert!(btn.values.events.is_empty());
+
+    // Now add <Events> back onto Кнопка1 (which currently has an empty {0} event list in pf.bytes!)
+    let re_added = step1_xml.replacen(
+        "<Button name=\"Кнопка1\" id=\"4\">",
+        "<Button name=\"Кнопка1\" id=\"4\">\n          <Events>\n            <Click id=\"0\">Кнопка1СноваНажатие</Click>\n          </Events>",
+        1,
+    );
+    let step1_src = parse_spanned(&pf.bytes).unwrap();
+    let pf2 = patch_form(&step1_src, step1_xml.as_bytes(), re_added.as_bytes()).unwrap();
+    let got2 = parse_form_xml(decode_xml("DonorForm", &pf2.bytes).as_bytes(), "decoded").unwrap();
+    assert_eq!(got2.control(4).unwrap().values.events, vec![(0, "Кнопка1СноваНажатие".to_string())]);
 }
 

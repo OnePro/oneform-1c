@@ -104,12 +104,16 @@ pub(crate) fn neutralize_events(n: &mut Node) {
     }
 }
 
-/// Paths of the counted event lists inside a control record (lists whose items are all event nodes).
+/// Paths of the counted control-level event lists inside a control record (lists whose items are all
+/// event nodes, excluding `<Column>` subtrees inside a `Table`).
 pub(crate) fn event_list_paths(n: &Node) -> Vec<Vec<usize>> {
     let mut out = Vec::new();
     fn walk(n: &Node, path: &mut Vec<usize>, out: &mut Vec<Vec<usize>>) {
         for (i, c) in n.children.iter().enumerate() {
             let Item::Node(x) = c else { continue };
+            if !x.is_empty() && crate::oof::is_column_guid(&x.children[0]) {
+                continue;
+            }
             path.push(i);
             let is_list = x.len() > 1
                 && matches!(&x.children[0], Item::Atom(a) if a.kind == AtomKind::Bare && a.value.bytes().all(|b| b.is_ascii_digit()))
@@ -124,6 +128,80 @@ pub(crate) fn event_list_paths(n: &Node) -> Vec<Vec<usize>> {
     }
     walk(n, &mut Vec::new(), &mut out);
     out
+}
+
+/// Whether the donor prototype for `type_name` has a single control-level event list.
+pub(crate) fn has_event_list(type_name: &str) -> bool {
+    prototype(type_name).is_ok_and(|p| event_list_paths(&p).len() == 1)
+}
+
+/// Locate the single control-level counted event list path inside `control` (falling back to the
+/// donor prototype's event list path when `control` currently has `{0}` events).
+pub(crate) fn control_event_list_path(control: &Node, type_name: &str, who: &str) -> Result<Vec<usize>> {
+    let paths = event_list_paths(control);
+    if paths.len() == 1 {
+        return Ok(paths.into_iter().next().unwrap());
+    }
+    if paths.len() > 1 {
+        return Err(ExtractionError::new(
+            METADATA_LAYOUT_UNSUPPORTED,
+            format!("{who}: multiple event lists ({}) in control record are not supported", paths.len()),
+        ));
+    }
+    let proto = prototype(type_name)?;
+    let proto_paths = event_list_paths(&proto);
+    if proto_paths.len() != 1 {
+        return Err(ExtractionError::new(
+            METADATA_LAYOUT_UNSUPPORTED,
+            format!("{who}: events on control type '{type_name}' are not supported (donor prototype has {} event lists)", proto_paths.len()),
+        ));
+    }
+    let path = proto_paths.into_iter().next().unwrap();
+    let mut cur = control;
+    for &idx in &path {
+        cur = cur
+            .children
+            .get(idx)
+            .and_then(Item::as_node)
+            .ok_or_else(|| ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, format!("{who}: event list path {path:?} missing in control")))?;
+    }
+    let is_empty_list = cur.len() == 1 && matches!(&cur.children[0], Item::Atom(a) if a.kind == AtomKind::Bare && a.value == "0");
+    if !is_empty_list {
+        return Err(ExtractionError::new(
+            METADATA_LAYOUT_UNSUPPORTED,
+            format!("{who}: expected empty event list {{0}} at {path:?}"),
+        ));
+    }
+    Ok(path)
+}
+
+/// Build a counted event list node `{N, ev1, ...}` (or `{0}`) from `(tag, handler)` pairs.
+pub(crate) fn build_event_list(events: &[(i64, String)]) -> Result<Node> {
+    if events.is_empty() {
+        return Ok(Node { children: vec![Item::Atom(Atom::new(AtomKind::Bare, "0"))] });
+    }
+    let template = event_template()?;
+    let template_handler = match template.children.get(2) {
+        Some(Item::Node(body)) => body.children.get(1).and_then(|h| h.as_atom()).map(|a| a.value.clone()).unwrap_or_default(),
+        _ => String::new(),
+    };
+    let mut list = Node { children: vec![Item::Atom(Atom::new(AtomKind::Bare, events.len().to_string()))] };
+    for (tag, handler) in events {
+        let mut ev = clone_node(&template);
+        ev.children[0] = Item::Atom(Atom::new(AtomKind::Bare, tag.to_string()));
+        fn replace_handler(n: &mut Node, from: &str, to: &str) {
+            for c in &mut n.children {
+                match c {
+                    Item::Atom(a) if a.kind == AtomKind::Quoted && a.value == from => a.value = to.to_string(),
+                    Item::Node(x) => replace_handler(x, from, to),
+                    _ => {}
+                }
+            }
+        }
+        replace_handler(&mut ev, &template_handler, handler);
+        list.children.push(Item::Node(ev));
+    }
+    Ok(list)
 }
 
 /// A cloned prototype for a new control WITHOUT event neutralization (the caller decides).
@@ -246,6 +324,15 @@ mod tests {
             let meta_idx = c.len() - 2;
             let Item::Node(meta) = &c.children[meta_idx] else { panic!("meta") };
             assert_eq!(str_val(&meta.children[1], "name").unwrap(), "Новый");
+            // If the raw prototype had control-level events, control_event_list_path resolves both
+            // on the raw prototype and on the neutralized clone ({0}).
+            let raw = prototype(name).unwrap();
+            let raw_paths = event_list_paths(&raw);
+            assert!(raw_paths.len() <= 1, "{name}: expected at most 1 control-level event list, got {raw_paths:?}");
+            if raw_paths.len() == 1 {
+                assert_eq!(control_event_list_path(&raw, name, name).unwrap(), raw_paths[0]);
+                assert_eq!(control_event_list_path(&c, name, name).unwrap(), raw_paths[0]);
+            }
             c.children.clear();
         }
     }

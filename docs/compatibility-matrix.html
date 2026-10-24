@@ -139,17 +139,17 @@
 </header>
 <div class="container">
   <div class="kpi-grid">
-    <div class="kpi"><div class="num">60</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
+    <div class="kpi"><div class="num">62</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
     <div class="kpi"><div class="num">3</div><div class="label">🔵 Найдено в бинарнике через <code>explore</code> (готово к проводке)</div></div>
-    <div class="kpi"><div class="num">23</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
+    <div class="kpi"><div class="num">21</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
     <div class="kpi"><div class="num">4</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
   </div>
   <div class="toolbar">
     <div class="filters">
       <button class="filter-btn active" data-filter="all">Все статусы</button>
-      <button class="filter-btn" data-filter="rw">🟢 R/W (60)</button>
+      <button class="filter-btn" data-filter="rw">🟢 R/W (62)</button>
       <button class="filter-btn" data-filter="bin">🔵 Bin (3)</button>
-      <button class="filter-btn" data-filter="ro">🟡 R/O (23)</button>
+      <button class="filter-btn" data-filter="ro">🟡 R/O (21)</button>
       <button class="filter-btn" data-filter="unk">⚪ Unk (4)</button>
     </div>
     <input type="search" id="searchInput" class="search-box" placeholder="Поиск по свойству, XML-тегу, слоту info[...] или типу..." />
@@ -225,8 +225,8 @@
 <table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
 <tr data-status="rw"><td>Все элементы</td><td><code>Заголовок</code> (<code>Caption</code>)</td><td><code>&lt;Caption&gt;&lt;Item&gt;</code></td><td><code>info[1][2]</code> / <code>info[1][0][2]</code> / <code>info[2][0][2]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Работает и для существующих элементов, и при создании из донора</td></tr>
 <tr data-status="rw"><td>Новые элементы</td><td><code>Имя</code> (<code>Name</code>) и <code>&lt;Events&gt;</code></td><td>Атрибут <code>name</code>, <code>&lt;Events&gt;</code></td><td>Слот имени + таблица событий</td><td><span class="badge rw">🟢 R/W</span></td><td>При создании элемента из донора задаются имя и обработчики событий</td></tr>
-<tr data-status="ro"><td>Существующие элементы</td><td>Переименование <code>name</code></td><td>Атрибут <code>name</code></td><td>Зависит от типа контрола</td><td><span class="badge ro">🟡 R/O</span></td><td>Координаты известны (<code>src/donor.rs</code>), легко разрешить патч имени по <code>id</code></td></tr>
-<tr data-status="ro"><td>Существующие элементы</td><td>Изменение <code>&lt;Events&gt;</code></td><td><code>&lt;Events&gt;&lt;Click&gt;...</code></td><td>Списки событий в <code>info</code> / <code>control[3]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Шаблоны событий уже есть в <code>src/donor.rs</code>; осталось подключить патч на существующих контролах</td></tr>
+<tr data-status="rw"><td>Существующие элементы</td><td><strong>Переименование <code>name</code></strong></td><td>Атрибут <code>name</code></td><td><code>meta[1]</code> (<code>control[len-2][1]</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл переименования по <code>id</code> с защитой от пустых и дублирующихся имён</td></tr>
+<tr data-status="rw"><td>Существующие элементы</td><td><strong>Изменение <code>&lt;Events&gt;</code></strong></td><td><code>&lt;Events&gt;&lt;Click&gt;...</code></td><td>Списки событий в <code>info</code> / <code>control[3]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл изменения, добавления и удаления обработчиков событий контрола</td></tr>
 </tbody></table>
 <h3>3.3. Базовый блок состояния и оформления (<code>ControlBase</code> / <code>Appearance</code>)</h3>
 <p style='margin:10px 18px'>У каждого контрола есть 18-элементный узел <code>&lt;base&gt;</code> (<code>info[1][0]</code> у <code>Button</code>/<code>LabelDecoration</code>/<code>Panel</code>/<code>CommandBar</code>/<code>UsualGroup</code>, <code>info[2][0][0]</code> у <code>InputField</code>/<code>RadioButton</code>, <code>info[1][0][0]</code> у <code>CheckBox</code>, <code>info[2][0]</code> у <code>Table</code>):</p>
@@ -293,7 +293,7 @@
 <h2>5. Приоритетный план достижения 100% совместимости</h2>
 <ol class="roadmap-list">
 <li>✅ <strong>Шаг А — Перевод всех найденных флагов и простых свойств (🔵 + 🟡 -&gt; 🟢 R/W): ВЫПОЛНЕНО</strong> (<code>pack-discovered-control-properties</code>). Подключены <code>&lt;Enabled&gt;</code>, <code>&lt;TransparentBack&gt;</code>, <code>&lt;Tooltip&gt;</code>, <code>&lt;ReadOnly&gt;</code>, все 5 кнопок <code>InputField</code>, <code>&lt;AutoMarkIncomplete&gt;</code>, <code>&lt;AutoChoiceIncomplete&gt;</code>, <code>&lt;MarkNegatives&gt;</code>, <code>&lt;AutoCellHeight&gt;</code>, <code>&lt;ChoiceListMode&gt;</code>, <code>&lt;ThreeState&gt;</code>, <code>&lt;TitleLocation&gt;</code>, <code>&lt;Hyperlink&gt;</code>, <code>&lt;HorizontalAlign&gt;</code>, <code>&lt;ShowTabs&gt;</code>, <code>&lt;Footer&gt;</code>, <code>&lt;SelectionMode&gt;</code>, <code>&lt;AutoFill&gt;</code>.</li>
-<li><strong>Шаг Б — События и переименование существующих элементов:</strong> разрешить редактировать <code>&lt;Events&gt;</code> и переименовывать <code>name</code> (при сохранении <code>id</code>) у уже существующих элементов на форме, переиспользуя шаблоны из <code>src/donor.rs</code>.</li>
+<li>✅ <strong>Шаг Б — События и переименование существующих элементов: ВЫПОЛНЕНО</strong> (<code>pack-existing-control-events-and-renames</code>). Разрешено редактировать <code>&lt;Events&gt;</code> и переименовывать <code>name</code> (при сохранении <code>id</code>) у уже существующих элементов на форме.</li>
 <li><strong>Шаг В — Патч колонок <code>Table</code> и вкладок <code>Panel</code>:</strong> разрешить менять ширину, заголовок, видимость и <code>ReadOnly</code> существующих колонок <code>&lt;Column&gt;</code> табличного поля и заголовки вкладок <code>&lt;Page&gt;</code> у <code>Panel</code>, а затем — добавлять и удалять колонки и вкладки.</li>
 <li><strong>Шаг Г — Донор 27/27 и Реквизиты формы + <code>DataPath</code>:</strong> добавить в <code>donor.epf</code> недостающие 3 типа (<code>UsualGroup</code>, <code>ChoiceField</code>, <code>ActiveXControl</code>) и научить <code>form_patch.rs</code> добавлять реквизиты в <code>root[2][2]</code> и привязывать их к контролам в <code>root[2][3]</code> (<code>&lt;DataPath&gt;</code>).</li>
 </ol>

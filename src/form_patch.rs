@@ -36,7 +36,7 @@ use crate::oof_props::{app_path, caption_path, localized};
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 30] = [
+const SUPPORTED_TAGS: [&str; 31] = [
     "Caption",
     "Left",
     "Top",
@@ -45,6 +45,7 @@ const SUPPORTED_TAGS: [&str; 30] = [
     "Visible",
     "ZOrder",
     "TabOrder",
+    "Events",
     "Enabled",
     "TransparentBack",
     "Tooltip",
@@ -120,6 +121,7 @@ impl XmlElement {
 /// (`Visible` true, `TabOrder` 0, empty `Caption` when the element is absent).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ControlValues {
+    pub name: String,
     /// `(language, text)` pairs in document order.
     pub caption: Vec<(String, String)>,
     pub left: i64,
@@ -129,6 +131,7 @@ pub struct ControlValues {
     pub visible: bool,
     pub z_order: i64,
     pub tab_order: i64,
+    pub events: Vec<(i64, String)>,
     pub enabled: bool,
     pub transparent_back: bool,
     pub tooltip: Vec<(String, String)>,
@@ -156,6 +159,7 @@ pub struct ControlValues {
 impl ControlValues {
     fn empty() -> ControlValues {
         ControlValues {
+            name: String::new(),
             caption: Vec::new(),
             left: 0,
             top: 0,
@@ -164,6 +168,7 @@ impl ControlValues {
             visible: true,
             z_order: 0,
             tab_order: 0,
+            events: Vec::new(),
             enabled: true,
             transparent_back: false,
             tooltip: Vec::new(),
@@ -192,6 +197,7 @@ impl ControlValues {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Property {
+    Name,
     Caption,
     Left,
     Top,
@@ -200,6 +206,7 @@ pub enum Property {
     Visible,
     ZOrder,
     TabOrder,
+    Events,
     Enabled,
     TransparentBack,
     Tooltip,
@@ -227,6 +234,7 @@ pub enum Property {
 impl Property {
     pub fn xml_name(self) -> &'static str {
         match self {
+            Property::Name => "name",
             Property::Caption => "Caption",
             Property::Left => "Left",
             Property::Top => "Top",
@@ -235,6 +243,7 @@ impl Property {
             Property::Visible => "Visible",
             Property::ZOrder => "ZOrder",
             Property::TabOrder => "TabOrder",
+            Property::Events => "Events",
             Property::Enabled => "Enabled",
             Property::TransparentBack => "TransparentBack",
             Property::Tooltip => "Tooltip",
@@ -265,6 +274,7 @@ impl ControlValues {
     /// Supported properties whose value differs from `other`.
     pub fn changed_from(&self, other: &ControlValues) -> Vec<Property> {
         [
+            (self.name == other.name, Property::Name),
             (self.caption == other.caption, Property::Caption),
             (self.left == other.left, Property::Left),
             (self.top == other.top, Property::Top),
@@ -273,6 +283,7 @@ impl ControlValues {
             (self.visible == other.visible, Property::Visible),
             (self.z_order == other.z_order, Property::ZOrder),
             (self.tab_order == other.tab_order, Property::TabOrder),
+            (self.events == other.events, Property::Events),
             (self.enabled == other.enabled, Property::Enabled),
             (self.transparent_back == other.transparent_back, Property::TransparentBack),
             (self.tooltip == other.tooltip, Property::Tooltip),
@@ -433,6 +444,7 @@ impl FormXml {
 fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
         "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" => true,
+        "Events" => crate::donor::has_event_list(type_name),
         "Enabled" | "TransparentBack" | "Tooltip" => app_path(type_name).is_some(),
         "ReadOnly" | "ChoiceButton" | "ClearButton" | "OpenButton" | "DropListButton" | "SpinButton"
         | "AutoMarkIncomplete" | "AutoChoiceIncomplete" | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => {
@@ -543,7 +555,9 @@ impl Parser<'_> {
     fn split_values(&self, slot: usize, inner: &XmlElement) -> Result<(ControlValues, XmlElement)> {
         let who = self.controls[slot].describe();
         let type_name = self.controls[slot].type_name.clone();
+        let ctrl_name = self.controls[slot].name.clone();
         let mut rest = XmlElement { children: Vec::new(), ..inner.clone() };
+        rest.attrs.remove("name");
         let mut found: HashMap<&str, &XmlElement> = HashMap::new();
         for c in &inner.children {
             if let Some(tag) = SUPPORTED_TAGS.iter().find(|t| **t == c.tag && tag_supported_for(&type_name, t)) {
@@ -633,7 +647,31 @@ impl Parser<'_> {
         } else {
             None
         };
+        let mut events: Vec<(i64, String)> = Vec::new();
+        if let Some(e) = found.get("Events") {
+            let mut valid = e.attrs.is_empty() && e.text.trim().is_empty();
+            if valid {
+                for ev in &e.children {
+                    let Some(tag) = ev.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()) else {
+                        valid = false;
+                        break;
+                    };
+                    let expected_tag = crate::oof::event_name(Some(&type_name), tag);
+                    let handler = ev.text.trim();
+                    if ev.attrs.len() != 1 || !ev.children.is_empty() || handler.is_empty() || ev.tag != expected_tag {
+                        valid = false;
+                        break;
+                    }
+                    events.push((tag, handler.to_string()));
+                }
+            }
+            if !valid {
+                events.clear();
+                rest.children.push((*e).clone());
+            }
+        }
         let values = ControlValues {
+            name: ctrl_name,
             caption: loc_of("Caption")?,
             left: int_of("Left", true)?,
             top: int_of("Top", true)?,
@@ -642,6 +680,7 @@ impl Parser<'_> {
             visible: bool_of("Visible", true)?,
             z_order: int_of("ZOrder", true)?,
             tab_order: int_of("TabOrder", false)?,
+            events,
             enabled: bool_of("Enabled", true)?,
             transparent_back: bool_of("TransparentBack", false)?,
             tooltip: loc_of("Tooltip")?,
@@ -896,6 +935,7 @@ impl<'a> ControlIndex<'a> {
     pub fn validate_mode(&self, xml: &FormXml, structural_ok: bool) -> Result<()> {
         let mut problems = Vec::new();
         let mut seen: HashMap<i64, &ControlXml> = HashMap::new();
+        let mut seen_names: HashMap<&str, &ControlXml> = HashMap::new();
         for c in &xml.controls {
             if let Some(prev) = seen.insert(c.id, c) {
                 problems.push(problem(
@@ -903,6 +943,17 @@ impl<'a> ControlIndex<'a> {
                     format!("line {}: duplicate control id {} ({} and {}); controls cannot be matched uniquely", c.line, c.id, prev.describe(), c.describe()),
                 ));
                 continue;
+            }
+            if c.name.trim().is_empty() {
+                problems.push(problem(
+                    "renamed-control",
+                    format!("line {}: control id {} has an empty 'name' attribute", c.line, c.id),
+                ));
+            } else if let Some(prev) = seen_names.insert(c.name.as_str(), c) {
+                problems.push(problem(
+                    "renamed-control",
+                    format!("line {}: duplicate control name '{}' (id {} and id {})", c.line, c.name, prev.id, c.id),
+                ));
             }
             let Some(e) = self.get(c.id) else {
                 if !structural_ok {
@@ -913,7 +964,7 @@ impl<'a> ControlIndex<'a> {
                 }
                 continue;
             };
-            if c.name != e.name {
+            if !structural_ok && c.name != e.name {
                 problems.push(problem(
                     "renamed-control",
                     format!("line {}: control id {} renamed '{}' -> '{}' (renaming is not supported)", c.line, c.id, e.name, c.name),
@@ -1141,6 +1192,7 @@ pub fn diff_forms_full(
         }
     }
     let mut seen: HashMap<i64, &ControlXml> = HashMap::new();
+    let mut seen_names: HashMap<&str, &ControlXml> = HashMap::new();
     for c in &edited.controls {
         if let Some(prev) = seen.insert(c.id, c) {
             problems.push(problem(
@@ -1148,6 +1200,11 @@ pub fn diff_forms_full(
                 format!("line {}: duplicate control id {} ({} and {}); controls cannot be matched uniquely", c.line, c.id, prev.describe(), c.describe()),
             ));
             continue;
+        }
+        if c.name.trim().is_empty() {
+            problems.push(problem("renamed-control", format!("line {}: control id {} has an empty 'name' attribute", c.line, c.id)));
+        } else if let Some(prev) = seen_names.insert(c.name.as_str(), c) {
+            problems.push(problem("renamed-control", format!("line {}: duplicate control name '{}' (id {} and id {})", c.line, c.name, prev.id, c.id)));
         }
         let Some(b) = base_ids.get(&c.id) else {
             if structural {
@@ -1157,9 +1214,6 @@ pub fn diff_forms_full(
             }
             continue;
         };
-        if b.name != c.name {
-            problems.push(problem("renamed-control", format!("line {}: control id {} renamed '{}' -> '{}' (renaming is not supported)", c.line, c.id, b.name, c.name)));
-        }
         if b.type_name != c.type_name || b.guid != c.guid {
             problems.push(problem("retyped-control", format!("line {}: control '{}' (id {}) changed type {} -> {} (not supported)", c.line, b.name, c.id, b.type_name, c.type_name)));
         }
@@ -1302,7 +1356,7 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
 
 /// XML events of a control: `(numeric tag, handler)` from its `<Events>` element.
 fn xml_events(c: &ControlXml) -> Result<Vec<(i64, String)>> {
-    let mut out = Vec::new();
+    let mut out = c.values.events.clone();
     for e in &c.rest.children {
         if e.tag != "Events" {
             continue;
@@ -1592,27 +1646,8 @@ fn set_clone_events(n: &mut Node, events: &[(i64, String)], who: &str) -> Result
             paths.len()
         )));
     }
-    let template = crate::donor::event_template()?;
-    let template_handler = match template.children.get(2) {
-        Some(Item::Node(body)) => body.children.get(1).and_then(|h| h.as_atom()).map(|a| a.value.clone()).unwrap_or_default(),
-        _ => String::new(),
-    };
-    let mut list = Node { children: vec![Item::Atom(Atom::new(BARE, events.len().to_string()))] };
-    for (tag, handler) in events {
-        let mut ev = crate::donor::clone_node(&template);
-        ev.children[0] = bare(*tag);
-        fn replace_handler(n: &mut Node, from: &str, to: &str) {
-            for c in &mut n.children {
-                match c {
-                    Item::Atom(a) if a.kind == QUOTED && a.value == from => a.value = to.to_string(),
-                    Item::Node(x) => replace_handler(x, from, to),
-                    _ => {}
-                }
-            }
-        }
-        replace_handler(&mut ev, &template_handler, handler);
-        list.children.push(Item::Node(ev));
-    }
+    crate::donor::neutralize_events(n);
+    let list = crate::donor::build_event_list(events)?;
     let mut cur = n;
     for &i in &paths[0] {
         cur = match cur.children[i].as_node_mut() {
@@ -2346,6 +2381,29 @@ fn info_bool_piece(site: &Site, path: &[usize], idx: usize, old: Option<bool>, n
     Ok(piece(span, i32::from(new), &[prop]))
 }
 
+fn read_control_events(entry: &ControlEntry) -> Result<Vec<(i64, String)>> {
+    let paths = crate::donor::event_list_paths(entry.control.node);
+    if paths.is_empty() {
+        return Ok(Vec::new());
+    }
+    if paths.len() > 1 {
+        return Err(layout_err(format!("control '{}' (id {}): multiple event lists", entry.name, entry.id)));
+    }
+    let mut cur = entry.control.node;
+    for &i in &paths[0] {
+        cur = cur.children.get(i).and_then(Item::as_node).ok_or_else(|| layout_err("event list path missing"))?;
+    }
+    let mut out = Vec::new();
+    for item in cur.children.iter().skip(1) {
+        let Item::Node(ev) = item else { return Err(layout_err("event item is not a node")) };
+        let tag = int(&ev.children[0], "event tag").map_err(|e| layout_err(e.to_string()))?;
+        let Some(Item::Node(body)) = ev.children.get(2) else { return Err(layout_err("event body missing")) };
+        let handler = str_val(&body.children[1], "event handler").map_err(|e| layout_err(e.to_string()))?.to_string();
+        out.push((tag, handler));
+    }
+    Ok(out)
+}
+
 fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
     let (old, new) = (&site.edit.old, &site.edit.new);
     let mut out = Vec::new();
@@ -2360,6 +2418,37 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             | Property::Visible
             | Property::ZOrder
             | Property::TabOrder => {}
+            Property::Name => {
+                let meta = site
+                    .entry
+                    .meta()
+                    .ok_or_else(|| site.layout("unexpected-shape", "name", "control meta node is missing".into()))?;
+                let (cur_atom, span) = meta
+                    .atom(1)
+                    .ok_or_else(|| site.layout("unexpected-shape", "name", "control meta[1] name atom is missing".into()))?;
+                if cur_atom.value != old.name {
+                    return Err(site.mismatch("name", &old.name, &cur_atom.value));
+                }
+                out.push(piece(span, quote(&new.name), &[prop]));
+            }
+            Property::Events => {
+                let cur_events = read_control_events(site.entry)?;
+                if cur_events != old.events {
+                    return Err(site.mismatch("Events", &format!("{:?}", old.events), &format!("{cur_events:?}")));
+                }
+                let who = format!("{} '{}' (id {})", site.edit.type_name, site.edit.name, site.edit.id);
+                let path = crate::donor::control_event_list_path(site.entry.control.node, site.entry.type_name, &who)?;
+                let mut cur = site.entry.control;
+                for &i in &path {
+                    cur = cur
+                        .child(i)
+                        .ok_or_else(|| site.layout("unexpected-shape", "Events", format!("event list path {path:?} missing")))?;
+                }
+                let list_node = crate::donor::build_event_list(&new.events)?;
+                let mut buf = Vec::new();
+                crate::donor::write_node(&list_node, &mut buf);
+                out.push(Piece { range: cur.span.span, bytes: buf, properties: vec![prop] });
+            }
             Property::Enabled => {
                 let ap = app_vec
                     .as_deref()
@@ -2570,6 +2659,8 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
     let app_vec: Option<Vec<usize>> = app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
     for &p in &site.edit.changed {
         let ok = match p {
+            Property::Name => site.entry.name == new.name,
+            Property::Events => read_control_events(site.entry)? == new.events,
             Property::Enabled => (info_int_slot(site, app_vec.as_deref().unwrap(), 1, p)?.0 != 0) == new.enabled,
             Property::TransparentBack => (info_int_slot(site, app_vec.as_deref().unwrap(), 5, p)?.0 != 0) == new.transparent_back,
             Property::Tooltip => {

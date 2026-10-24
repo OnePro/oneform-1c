@@ -74,7 +74,7 @@ pub const LIST_COLUMN_GUID: &str = "48a6ebc3-fcc8-4f8f-b399-459fb32aa46b";
 pub const VT_COLUMN_GUID: &str = "737535a4-21e6-4971-8513-3e3173a9fedd";
 pub const VL_COLUMN_GUID: &str = "fbacf851-e6ff-4107-9e08-4302dda1d14d";
 
-fn is_column_guid(item: &Item) -> bool {
+pub(crate) fn is_column_guid(item: &Item) -> bool {
     matches!(
         item,
         Item::Atom(a)
