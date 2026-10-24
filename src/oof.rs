@@ -606,7 +606,16 @@ fn control(n: &Item, warnings: &mut Vec<Value>, form_uuid: &str, meta_lookup: Op
         if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
             if let Some(ml) = meta_lookup {
                 if let Some(ref_name) = ml.get(rg) {
-                    vt.insert("ref".into(), ref_name.clone().into());
+                    vt.insert("title".into(), ref_name.clone().into());
+                }
+            }
+        } else if let Some(arr) = vt.get("refGuids").and_then(|v| v.as_array()) {
+            let guid_strs: Vec<String> = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
+            if !guid_strs.is_empty() {
+                vt.insert("refGuid".into(), guid_strs.join(";").into());
+                if let Some(ml) = meta_lookup {
+                    let titles: Vec<String> = guid_strs.iter().map(|g| ml.get(g).cloned().unwrap_or_else(|| g.clone())).collect();
+                    vt.insert("title".into(), titles.join("; ").into());
                 }
             }
         }
@@ -662,7 +671,16 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Attribute
                 if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
                     if let Some(ml) = meta_lookup {
                         if let Some(ref_name) = ml.get(rg) {
-                            vt.insert("ref".into(), ref_name.clone().into());
+                            vt.insert("title".into(), ref_name.clone().into());
+                        }
+                    }
+                } else if let Some(arr) = vt.get("refGuids").and_then(|v| v.as_array()) {
+                    let guid_strs: Vec<String> = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
+                    if !guid_strs.is_empty() {
+                        vt.insert("refGuid".into(), guid_strs.join(";").into());
+                        if let Some(ml) = meta_lookup {
+                            let titles: Vec<String> = guid_strs.iter().map(|g| ml.get(g).cloned().unwrap_or_else(|| g.clone())).collect();
+                            vt.insert("title".into(), titles.join("; ").into());
                         }
                     }
                 }
@@ -946,10 +964,13 @@ impl Writer {
 
     fn value_type(&mut self, vt: &Value) {
         let mut attrs: Attrs = vec![("kind", pystr(&vt["kind"])), ("composite", pystr(&vt["composite"]).to_lowercase())];
-        if let Some(r) = vt.get("ref").and_then(|v| v.as_str()) {
-            attrs.push(("ref", r.to_string()));
-        } else if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
+        if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
             attrs.push(("refGuid", rg.to_string()));
+        }
+        if let Some(t) = vt.get("title").and_then(|v| v.as_str()) {
+            attrs.push(("title", t.to_string()));
+        } else if let Some(r) = vt.get("ref").and_then(|v| v.as_str()) {
+            attrs.push(("title", r.to_string()));
         }
         if let Some(l) = vt.get("length") {
             attrs.push(("length", pystr(l)));

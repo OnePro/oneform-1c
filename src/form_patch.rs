@@ -234,7 +234,18 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
         None => None,
     };
     let mut ref_guids = Vec::new();
-    if let Some(r) = e.attrs.get("ref") {
+    if let Some(rg) = e.attrs.get("refGuid") {
+        for part in rg.split(';') {
+            let part = part.trim();
+            if !part.is_empty() {
+                if is_uuid(part) {
+                    ref_guids.push(part.to_lowercase());
+                } else {
+                    return None;
+                }
+            }
+        }
+    } else if let Some(r) = e.attrs.get("title").or_else(|| e.attrs.get("ref")) {
         let lookup = crate::metaref::ConfigTypeLookup::new();
         for part in r.split(';') {
             let part = part.trim();
@@ -248,19 +259,7 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
             }
         }
     }
-    if let Some(rg) = e.attrs.get("refGuid") {
-        for part in rg.split(';') {
-            let part = part.trim();
-            if !part.is_empty() {
-                if is_uuid(part) {
-                    ref_guids.push(part.to_lowercase());
-                } else {
-                    return None;
-                }
-            }
-        }
-    }
-    let attrs_ok = e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits" | "digits" | "length" | "ref" | "refGuid"));
+    let attrs_ok = e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits" | "digits" | "length" | "ref" | "refGuid" | "title"));
     if !attrs_ok {
         return None;
     }

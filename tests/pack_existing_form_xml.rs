@@ -1199,6 +1199,10 @@ fn assert_reference_and_qualified_valuetypes_pack(target: Target) {
     assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
     let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
     assert!(packed_xml.contains("name=\"КонтрагентРеквизит\""), "{target:?}: missing attribute in:\n{packed_xml}");
+    assert!(packed_xml.contains("refGuid=\"47e6dd42-cd5c-4e3a-9bc4-14816ed53d38\""), "{target:?}: missing refGuid in:\n{packed_xml}");
+    if matches!(target, Target::Config) {
+        assert!(packed_xml.contains("title=\"Справочник.Контрагенты\""), "{target:?}: missing title in:\n{packed_xml}");
+    }
     assert!(packed_xml.contains("length=\"50\""), "{target:?}: missing length in:\n{packed_xml}");
 }
 
