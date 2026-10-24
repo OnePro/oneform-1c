@@ -19,7 +19,7 @@ use crate::errors::{
     ExtractionError, Result, ENCODING_INVALID, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
     PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
-use crate::form_patch::{diff_forms, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
+use crate::form_patch::{diff_forms_full, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
 use crate::manifest::MANIFEST_PATH;
 use crate::metadata::discover;
 use crate::stage::{stage_processor, ExtractionResult, StageOpts};
@@ -122,8 +122,15 @@ impl LayoutPatch {
         let xml = staged.get(&self.xml_path).ok_or_else(|| fail("staged Form.xml is missing"))?;
         let decoded =
             parse_form_xml(xml, "packed").map_err(|e| fail("staged Form.xml cannot be read").with("error", e.message))?;
-        let expected = self.requested.with_derived_pages(&self.patched.derived_pages).in_decoder_order();
-        match diff_forms(&expected, &decoded) {
+        let expected = self
+            .requested
+            .with_allocated_ids(&self.patched.allocated)
+            .with_derived_pages(&self.patched.derived_pages)
+            .in_decoder_order();
+        // Added controls carry a sparse user-written projection; their identity and values are compared,
+        // the full decoded rest is not.
+        let skip_rest: std::collections::HashSet<i64> = self.patched.allocated.iter().map(|(_, new_id)| *new_id).collect();
+        match diff_forms_full(&expected, &decoded, true, &skip_rest) {
             Ok(d) if d.is_empty() => Ok(()),
             Ok(_) => Err(fail("packed form does not reproduce the requested Form.xml").with("kind", "xml-mismatch")),
             Err(e) => Err(fail("packed form does not reproduce the requested Form.xml")

@@ -8,6 +8,7 @@ pub mod cli_oneform;
 pub mod config;
 pub mod container;
 pub mod discovery;
+pub mod donor;
 pub mod encoding;
 pub mod errors;
 pub mod explore;

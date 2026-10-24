@@ -769,3 +769,54 @@ fn panel_resize_packs_with_derived_page_geometry() {
         );
     }
 }
+
+// ---------------------------------------------------------------- structural pack (add/remove controls)
+
+/// Add a LabelDecoration and remove ПолеВвода1 in Form.xml, pack, verify both targets.
+fn assert_structural_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    // add a new label after Надпись1
+    let anchor = xml.find(LABEL).expect("label");
+    let insert_at = xml[anchor..].find("</LabelDecoration>").map(|i| anchor + i + "</LabelDecoration>".len()).unwrap();
+    let new_control = "\n        <LabelDecoration name=\"Добавленная\" id=\"999\">\n          <Caption>\n            <Item language=\"ru\">Новая надпись</Item>\n          </Caption>\n          <Left>500</Left>\n          <Top>500</Top>\n          <Width>80</Width>\n          <Height>20</Height>\n          <ZOrder>50</ZOrder>\n          <TabOrder>50</TabOrder>\n        </LabelDecoration>";
+    xml.insert_str(insert_at, new_control);
+    // remove ПолеВвода1
+    let at = xml.find("<InputField name=\"ПолеВвода1\"").expect("input");
+    let end = at + xml[at..].find("</InputField>").unwrap() + "</InputField>\n".len();
+    let start = xml[..at].rfind('\n').unwrap() + 1;
+    xml.replace_range(start..end, "");
+    fs::write(&xml_file, &xml).unwrap();
+    let bsl_file = w.src_file("FormModule.bsl");
+    let bsl_before = fs::read(&bsl_file).unwrap();
+    let target_path = w.target_path();
+    let before = w.snap();
+
+    let out = run(w.root(), &["pack", ".", "--backup"]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+    let after = w.snap();
+    assert_ne!(before[&target_path], after[&target_path], "{target:?}: target not rewritten");
+    assert_eq!(fs::read(&bsl_file).unwrap(), bsl_before, "{target:?}: BSL changed");
+
+    // the published src Form.xml is the canonical regenerated projection with the allocated id
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap().replace("\r\n", "\n");
+    assert!(packed_xml.contains("name=\"Добавленная\" id=\"37\""), "{target:?}: added control missing/renumbered\n{packed_xml}");
+    assert!(!packed_xml.contains("<InputField name=\"ПолеВвода1\""), "{target:?}: removed control still present");
+    assert!(packed_xml.contains("name=\"ПолеВвода1\""), "{target:?}: attribute ПолеВвода1 must stay");
+
+    // fresh extraction of the packed target reproduces the published XML exactly
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+}
+
+#[test]
+fn epf_structural_add_remove_packs() {
+    assert_structural_pack(Target::Epf);
+}
+
+#[test]
+fn config_structural_add_remove_packs() {
+    assert_structural_pack(Target::Config);
+}

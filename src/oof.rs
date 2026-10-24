@@ -244,7 +244,7 @@ fn collect_events(n: &Node) -> Res<Vec<(i64, String)>> {
     Ok(found)
 }
 
-fn event_name(type_name: Option<&str>, tag: i64) -> &'static str {
+pub(crate) fn event_name(type_name: Option<&str>, tag: i64) -> &'static str {
     let Some(type_name) = type_name else {
         return FORM_EVENTS.iter().find(|(t, _)| *t == tag).map(|(_, n)| *n).unwrap_or("Event");
     };

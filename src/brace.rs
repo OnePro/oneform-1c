@@ -93,6 +93,13 @@ impl Item {
             _ => None,
         }
     }
+
+    pub fn as_node_mut(&mut self) -> Option<&mut Node> {
+        match self {
+            Item::Node(n) => Some(n),
+            _ => None,
+        }
+    }
 }
 
 pub const MAX_PARSE_DEPTH: usize = 256;

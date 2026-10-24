@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use oneform::brace::{parse_spanned, Replacement, SpannedMetadata};
 use oneform::errors::{ExtractionError, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
 use oneform::form_patch::{
-    diff_forms, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, NodeRef, PatchedForm, Property,
+    diff_forms, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, FormXml, NodeRef, PatchedForm, Property,
 };
 use oneform::oof::{decode_oof_stream, render_form_xml};
 
@@ -140,24 +140,29 @@ fn index_matches_every_control_of_both_fixtures() {
 
 #[test]
 fn identity_errors_are_actionable() {
-    // Deleted (whole control removed).
+    // Deleted and added controls of donor-supported types are now structural edits, not errors.
     let (deleted, _) = cut_block(&baseline("DonorForm"), "<LabelDecoration name=\"Надпись1\"", "</LabelDecoration>");
-    let (kind, text) = rejected(&deleted);
-    assert_eq!(kind, "deleted-control");
-    assert!(text.contains("Надпись1") && text.contains("id 5"), "{text}");
-
-    // Added (new id) and duplicate (existing id reused).
+    let s = stream("DonorForm");
+    let p = plan(&s, &deleted).unwrap();
+    assert_eq!(p.diff.deletions.len(), 1);
+    assert_eq!(p.diff.deletions[0].name, "Надпись1");
     let new_ctl = |id: u32| {
         format!(
             "<LabelDecoration name=\"Новая\" id=\"{id}\"><Left>0</Left><Top>0</Top><Width>1</Width><Height>1</Height><ZOrder>0</ZOrder></LabelDecoration>\n        <Table name=\"ТабличноеПоле1\""
         )
     };
-    let (kind, text) = rejected(&mutate("<Table name=\"ТабличноеПоле1\"", &new_ctl(999)));
-    assert_eq!(kind, "added-control");
-    assert!(text.contains("Новая") && text.contains("999"), "{text}");
+    let p = plan(&s, &mutate("<Table name=\"ТабличноеПоле1\"", &new_ctl(999))).unwrap();
+    assert_eq!(p.diff.additions.len(), 1);
+    assert_eq!(p.diff.additions[0].name, "Новая");
+    // Duplicate id is still an error.
     let (kind, text) = rejected(&mutate("<Table name=\"ТабличноеПоле1\"", &new_ctl(5)));
     assert_eq!(kind, "duplicate-control");
     assert!(text.contains("id 5"), "{text}");
+    // A type without a donor prototype is rejected.
+    let unknown = "<UnknownControl name=\"Чужой\" id=\"999\" guid=\"aaaaaaaa-0000-0000-0000-000000000001\"><Left>0</Left><Top>0</Top><Width>1</Width><Height>1</Height><ZOrder>0</ZOrder></UnknownControl>\n        <Table name=\"ТабличноеПоле1\"";
+    let (kind, text) = rejected(&mutate("<Table name=\"ТабличноеПоле1\"", unknown));
+    assert_eq!(kind, "added-control");
+    assert!(text.contains("Чужой"), "{text}");
 
     // Renamed and retyped.
     let (kind, text) = rejected(&mutate(r#"name="Надпись1" id="5""#, r#"name="Другое" id="5""#));
@@ -1291,3 +1296,138 @@ fn panel_resize_rejects_unknown_shapes_atomically() {
     assert_eq!(kind, "unexpected-shape", "{text}");
     assert!(text.contains("Панель2"), "{text}");
 }
+
+// ---------------------------------------------------------------- structural edits (add/remove)
+
+/// Round-trip a structural edit: patch, decode, verify semantics, preservation and id allocation.
+fn structural_round_trip(name: &str, edited: &str) -> (PatchedForm, FormXml) {
+    let s = stream(name);
+    let pf = patch_form(&s, baseline(name).as_bytes(), edited.as_bytes()).unwrap();
+    assert_only_authorized_changes(s.source(), &pf);
+    let decoded = decode_xml(name, &pf.bytes);
+    let got = parse_form_xml(decoded.as_bytes(), "decoded").unwrap();
+    (pf, got)
+}
+
+fn added_label(page_xml: Option<&str>) -> String {
+    // A new LabelDecoration placed after the existing Надпись1.
+    let mut xml = baseline("DonorForm");
+    let label = "<LabelDecoration name=\"Добавленная\" id=\"999\">\n          <Caption><Item language=\"ru\">Новая надпись</Item></Caption>\n          <Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>\n          <ZOrder>50</ZOrder><TabOrder>50</TabOrder>\n        </LabelDecoration>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    if page_xml.is_none() {
+        assert!(xml.contains(anchor));
+        xml = xml.replacen(anchor, &(label.to_string() + anchor), 1);
+    }
+    xml
+}
+
+#[test]
+fn add_control_clones_the_donor_prototype() {
+    let edited = added_label(None);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    assert_eq!(pf.allocated.len(), 1);
+    let (xml_id, new_id) = pf.allocated[0];
+    assert_eq!(xml_id, 999);
+    assert_eq!(new_id, 37); // donor max id 36 + 1
+    // max-id slot updated in the stream
+    let s = parse_spanned(&pf.bytes).unwrap();
+    let idx = oneform::form_patch::ControlIndex::build(&s).unwrap();
+    assert_eq!(oneform::donor::max_control_id(&s).unwrap(), 37);
+    let e = idx.get(37).unwrap();
+    assert_eq!((e.name.as_str(), e.type_name), ("Добавленная", "LabelDecoration"));
+    // decoded values match the requested ones
+    let c = got.control(37).unwrap();
+    assert_eq!(c.values.left, 500);
+    assert_eq!(c.values.top, 500);
+    assert_eq!(c.values.width, 80);
+    assert_eq!(c.values.height, 20);
+    assert_eq!(c.values.caption, vec![("ru".to_string(), "Новая надпись".to_string())]);
+    assert!(c.values.visible);
+    // untouched controls still there
+    assert!(got.control(5).is_some());
+    let _ = edited;
+}
+
+#[test]
+fn add_control_with_event_handler() {
+    let mut edited = added_label(None);
+    edited = edited.replacen(
+        "<ZOrder>50</ZOrder><TabOrder>50</TabOrder>",
+        "<ZOrder>50</ZOrder><TabOrder>50</TabOrder><Events><Click id=\"0\">ДобавленнаяНажатие</Click></Events>",
+        1,
+    );
+    let (_pf, got) = structural_round_trip("DonorForm", &edited);
+    let c = got.control(37).unwrap();
+    assert!(c.rest.children.iter().any(|e| e.tag == "Events" && e.children.iter().any(|ev| ev.text.trim() == "ДобавленнаяНажатие")));
+}
+
+#[test]
+fn add_control_to_a_panel_page() {
+    let mut xml = baseline("DonorForm");
+    let label = "<LabelDecoration name=\"НаВторойСтранице\" id=\"999\">\n              <Caption><Item language=\"ru\">Вторая</Item></Caption>\n              <Left>10</Left><Top>10</Top><Width>50</Width><Height>20</Height>\n              <ZOrder>9</ZOrder><TabOrder>9</TabOrder>\n            </LabelDecoration>\n            ";
+    let anchor = "<Table name=\"ТабличноеПоле2\"";
+    assert!(xml.contains(anchor));
+    xml = xml.replacen(anchor, &(label.to_string() + anchor), 1);
+    let (pf, got) = structural_round_trip("DonorForm", &xml);
+    let c = got.control(pf.allocated[0].1).unwrap();
+    assert_eq!(c.page.as_deref(), Some("Страница2"));
+    // parent is Панель1 (id 13)
+    assert_eq!(c.parent, Some(13));
+}
+
+#[test]
+fn remove_control_removes_record_and_links() {
+    // ПолеВвода1 (id 7) has a DataPath link in the attributes section.
+    let (edited, _) = cut_block(&baseline("DonorForm"), "<InputField name=\"ПолеВвода1\"", "</InputField>");
+    let s = stream("DonorForm");
+    let pf = patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes()).unwrap();
+    assert_only_authorized_changes(s.source(), &pf);
+    let reparsed = parse_spanned(&pf.bytes).unwrap();
+    let idx = oneform::form_patch::ControlIndex::build(&reparsed).unwrap();
+    assert!(idx.get(7).is_none(), "control still present");
+    // no dangling reference to id 7 in the links section: the link row is removed
+    // (the form ATTRIBUTE named ПолеВвода1 stays — removing attributes is out of scope)
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    assert!(got.control(7).is_none());
+    assert!(got.control(5).is_some());
+}
+
+#[test]
+fn add_remove_and_property_edit_combine() {
+    let mut edited = added_label(None);
+    // remove Надпись1 (id 5)
+    let (without, _) = cut_block(&edited, "<LabelDecoration name=\"Надпись1\"", "</LabelDecoration>");
+    edited = without;
+    // and change an untouched control's caption
+    edited = replace_once(&edited, "<Item language=\"ru\">Кнопка1</Item>", "<Item language=\"ru\">Кнопка-новая</Item>");
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    assert!(got.control(5).is_none());
+    let c = got.control(pf.allocated[0].1).unwrap();
+    assert_eq!(c.name, "Добавленная");
+    let btn = got.control(4).unwrap();
+    assert_eq!(btn.values.caption, vec![("ru".to_string(), "Кнопка-новая".to_string())]);
+}
+
+#[test]
+fn add_under_command_bar_is_rejected() {
+    let mut xml = baseline("DonorForm");
+    let label = "<LabelDecoration name=\"Плохая\" id=\"999\"><Left>0</Left><Top>0</Top><Width>1</Width><Height>1</Height><ZOrder>0</ZOrder></LabelDecoration>\n            ";
+    let anchor = "<Buttons>";
+    assert!(xml.contains(anchor));
+    xml = xml.replacen(anchor, &format!("{label}{anchor}"), 1);
+    let e = patch_form(&stream("DonorForm"), baseline("DonorForm").as_bytes(), xml.as_bytes()).unwrap_err();
+    assert!(format!("{e}").contains("CommandBar"), "{e}");
+}
+
+#[test]
+fn two_additions_get_monotonic_ids() {
+    let mut edited = added_label(None);
+    let second = "<LabelDecoration name=\"Вторая\" id=\"1000\"><Left>600</Left><Top>500</Top><Width>80</Width><Height>20</Height><ZOrder>51</ZOrder><TabOrder>51</TabOrder></LabelDecoration>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(second.to_string() + anchor), 1);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    assert_eq!(pf.allocated, vec![(999, 37), (1000, 38)]); // XML document order
+    assert!(got.control(37).is_some() && got.control(38).is_some());
+    assert_eq!(oneform::donor::max_control_id(&parse_spanned(&pf.bytes).unwrap()).unwrap(), 38);
+}
+

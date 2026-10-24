@@ -28,7 +28,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use serde_json::Value;
 
-use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata};
+use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
 use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
 use crate::oof_props::{caption_path, localized};
@@ -217,6 +217,33 @@ impl FormXml {
                 }
             }
         }
+        out
+    }
+
+    /// The model where controls added by the structural patcher carry their allocated stream ids
+    /// (control `id` attributes, `parent` references and shell stubs rewritten by `map`).
+    pub fn with_allocated_ids(&self, map: &[(i64, i64)]) -> FormXml {
+        let mut out = self.clone();
+        let lookup = |id: i64| map.iter().find(|(from, _)| *from == id).map(|(_, to)| *to).unwrap_or(id);
+        for c in &mut out.controls {
+            let new_id = lookup(c.id);
+            c.id = new_id;
+            c.rest.attrs.insert("id".into(), new_id.to_string());
+            c.parent = c.parent.map(lookup);
+        }
+        fn stubs(el: &mut XmlElement, lookup: &dyn Fn(i64) -> i64) {
+            if el.tag == CONTROL_STUB {
+                if let Some(v) = el.attrs.get_mut("id") {
+                    if let Ok(id) = v.parse::<i64>() {
+                        *v = lookup(id).to_string();
+                    }
+                }
+            }
+            for c in &mut el.children {
+                stubs(c, lookup);
+            }
+        }
+        stubs(&mut out.shell, &lookup);
         out
     }
 
@@ -449,6 +476,10 @@ pub struct ControlEntry<'a> {
     pub page: i64,
     /// Child indexes from the stream root to the control node.
     pub path: Vec<usize>,
+    /// Child indexes from the stream root to the counted list holding this control.
+    pub list_path: Vec<usize>,
+    /// Position of this control in its list (0-based, excluding the count atom).
+    pub list_index: usize,
     /// The control record itself.
     pub control: NodeRef<'a>,
     info_index: usize,
@@ -488,6 +519,7 @@ impl<'a> ControlEntry<'a> {
 pub struct ControlIndex<'a> {
     pub entries: Vec<ControlEntry<'a>>,
     by_id: HashMap<i64, usize>,
+    source: &'a SpannedMetadata,
 }
 
 fn layout_err(message: impl Into<String>) -> ExtractionError {
@@ -510,7 +542,7 @@ impl<'a> ControlIndex<'a> {
             .and_then(|s| s.node(2))
             .ok_or_else(|| layout_err("form stream: root panel not found at {27,{..,..,panel}}"))?;
         let panel_span = span_node(span_node(&source.spans, 1)?, 2)?;
-        let mut idx = ControlIndex { entries: Vec::new(), by_id: HashMap::new() };
+        let mut idx = ControlIndex { entries: Vec::new(), by_id: HashMap::new(), source };
         idx.walk_list(panel, panel_span, 2, vec![1, 2], None)?;
         Ok(idx)
     }
@@ -527,12 +559,12 @@ impl<'a> ControlIndex<'a> {
             let mut cpath = path.clone();
             cpath.push(slot);
             cpath.push(at);
-            self.add(item, node, span, cpath, parent)?;
+            self.add(item, node, span, cpath, parent, k)?;
         }
         Ok(())
     }
 
-    fn add(&mut self, item: &'a Item, node: &'a Node, span: &'a SpanNode, path: Vec<usize>, parent: Option<i64>) -> Result<()> {
+    fn add(&mut self, item: &'a Item, node: &'a Node, span: &'a SpanNode, path: Vec<usize>, parent: Option<i64>, list_index: usize) -> Result<()> {
         let at = format!("control at stream path {path:?}");
         let parts = control_parts(item).map_err(|e| layout_err(format!("{at}: {e}")))?;
         if span.children.len() != node.children.len() {
@@ -568,6 +600,8 @@ impl<'a> ControlIndex<'a> {
             guid,
             parent,
             page,
+            list_path: path[..path.len() - 1].to_vec(),
+            list_index,
             path: path.clone(),
             control: NodeRef { node, span },
             info_index,
@@ -579,10 +613,51 @@ impl<'a> ControlIndex<'a> {
         self.by_id.get(&id).map(|&i| &self.entries[i])
     }
 
+    /// The original stream behind this index.
+    pub fn source(&self) -> &'a SpannedMetadata {
+        self.source
+    }
+
+    /// Walk the span sidecar / semantic tree along `path` (child indexes from the root).
+    fn at_path(&self, path: &[usize]) -> Result<NodeRef<'a>> {
+        let mut node = &self.source.root;
+        let mut span = &self.source.spans;
+        for &i in path {
+            match (node.children.get(i), span.children.get(i)) {
+                (Some(Item::Node(n)), Some(SpanItem::Node(s))) => {
+                    node = n;
+                    span = s;
+                }
+                _ => return Err(layout_err(format!("form stream: path {path:?} is not a node"))),
+            }
+        }
+        Ok(NodeRef { node, span })
+    }
+
+    /// The form's root panel (not itself a control entry).
+    pub fn root_panel(&self) -> Result<NodeRef<'a>> {
+        self.at_path(&[1, 2])
+    }
+
+    /// The counted children list of the root panel (form-level controls).
+    pub fn root_children_list(&self) -> Result<NodeRef<'a>> {
+        self.root_panel()?.child(2).ok_or_else(|| layout_err("form stream: root panel has no children list"))
+    }
+
+    /// The counted links list (`root[2][3]`: control id -> DataPath), when present.
+    pub fn links_list(&self) -> Option<NodeRef<'a>> {
+        self.at_path(&[2, 3]).ok()
+    }
+
     /// Validate an XML projection against the binary controls: unique ids, and every control matched by
     /// numeric id with the same name, type and parent. Missing (deleted), extra (added), duplicate,
-    /// renamed, retyped and moved controls are all errors.
+    /// renamed, retyped and moved controls are all errors when `structural_ok` is false; when true,
+    /// added and deleted controls are left for the structural diff (donor-based add/remove).
     pub fn validate(&self, xml: &FormXml) -> Result<()> {
+        self.validate_mode(xml, false)
+    }
+
+    pub fn validate_mode(&self, xml: &FormXml, structural_ok: bool) -> Result<()> {
         let mut problems = Vec::new();
         let mut seen: HashMap<i64, &ControlXml> = HashMap::new();
         for c in &xml.controls {
@@ -594,10 +669,12 @@ impl<'a> ControlIndex<'a> {
                 continue;
             }
             let Some(e) = self.get(c.id) else {
-                problems.push(problem(
-                    "added-control",
-                    format!("line {}: {} is not in the original form (adding controls is not supported)", c.line, c.describe()),
-                ));
+                if !structural_ok {
+                    problems.push(problem(
+                        "added-control",
+                        format!("line {}: {} is not in the original form (adding controls is not supported)", c.line, c.describe()),
+                    ));
+                }
                 continue;
             };
             if c.name != e.name {
@@ -628,7 +705,7 @@ impl<'a> ControlIndex<'a> {
             }
         }
         for e in &self.entries {
-            if !seen.contains_key(&e.id) {
+            if !seen.contains_key(&e.id) && !structural_ok {
                 problems.push(problem(
                     "deleted-control",
                     format!("{} '{}' (id {}) is missing from the XML (deleting controls is not supported)", e.type_name, e.name, e.id),
@@ -657,15 +734,20 @@ pub struct ControlEdit {
     pub changed: Vec<Property>,
 }
 
-/// Result of a clean diff: only supported edits, in document order.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Result of a clean diff: only supported edits, in document order. `additions`/`deletions` are
+/// structural edits (donor-based add/remove) collected when `structural` mode is on.
+#[derive(Debug, Clone, Default)]
 pub struct FormDiff {
     pub edits: Vec<ControlEdit>,
+    /// Controls present only in the edited XML (new, to be cloned from the donor).
+    pub additions: Vec<ControlXml>,
+    /// Controls present only in the baseline XML (to be removed).
+    pub deletions: Vec<ControlXml>,
 }
 
 impl FormDiff {
     pub fn is_empty(&self) -> bool {
-        self.edits.is_empty()
+        self.edits.is_empty() && self.additions.is_empty() && self.deletions.is_empty()
     }
 }
 
@@ -792,11 +874,30 @@ fn unsupported(owner: &str, owner_type: Option<&str>, line: u32, path: &str, msg
     )
 }
 
-/// Diff the ENTIRE projection of `edited` against `baseline`. Identity changes (added/deleted/duplicate/
-/// renamed/retyped/moved) and every difference outside the supported property set are errors; supported
-/// differences are returned as [`ControlEdit`]s. Both models should also pass [`ControlIndex::validate`].
+/// Diff the ENTIRE projection of `edited` against `baseline`. In non-structural mode identity changes
+/// (added/deleted/duplicate/renamed/retyped/moved) and every difference outside the supported property
+/// set are errors. In structural mode, added controls of donor-supported types and deletions are
+/// collected into [`FormDiff::additions`]/[`FormDiff::deletions`] instead. Supported property
+/// differences are returned as [`ControlEdit`]s.
 pub fn diff_forms(baseline: &FormXml, edited: &FormXml) -> Result<FormDiff> {
+    diff_forms_mode(baseline, edited, false)
+}
+
+pub fn diff_forms_mode(baseline: &FormXml, edited: &FormXml, structural: bool) -> Result<FormDiff> {
+    diff_forms_full(baseline, edited, structural, &std::collections::HashSet::new())
+}
+
+/// Full diff; controls whose id is in `skip_rest` compare identity and values only (their `rest` is
+/// allowed to be sparse on one side — used for added controls in pack-time verification).
+pub fn diff_forms_full(
+    baseline: &FormXml,
+    edited: &FormXml,
+    structural: bool,
+    skip_rest: &std::collections::HashSet<i64>,
+) -> Result<FormDiff> {
     let mut problems: Vec<Problem> = Vec::new();
+    let mut additions: Vec<ControlXml> = Vec::new();
+    let mut deletions: Vec<ControlXml> = Vec::new();
     let mut base_ids: HashMap<i64, &ControlXml> = HashMap::new();
     for c in &baseline.controls {
         if base_ids.insert(c.id, c).is_some() {
@@ -813,7 +914,11 @@ pub fn diff_forms(baseline: &FormXml, edited: &FormXml) -> Result<FormDiff> {
             continue;
         }
         let Some(b) = base_ids.get(&c.id) else {
-            problems.push(problem("added-control", format!("line {}: {} is not in the baseline (adding controls is not supported)", c.line, c.describe())));
+            if structural {
+                additions.push(c.clone());
+            } else {
+                problems.push(problem("added-control", format!("line {}: {} is not in the baseline (adding controls is not supported)", c.line, c.describe())));
+            }
             continue;
         };
         if b.name != c.name {
@@ -828,15 +933,57 @@ pub fn diff_forms(baseline: &FormXml, edited: &FormXml) -> Result<FormDiff> {
     }
     for b in &baseline.controls {
         if !seen.contains_key(&b.id) {
-            problems.push(problem("deleted-control", format!("{} is missing from the edited XML (deleting controls is not supported)", b.describe())));
+            if structural {
+                deletions.push(b.clone());
+            } else {
+                problems.push(problem("deleted-control", format!("{} is missing from the edited XML (deleting controls is not supported)", b.describe())));
+            }
+        }
+    }
+    if structural {
+        // Structural validation of the collected changes: additions need a donor prototype and a
+        // non-CommandBar parent; their events/unsupported inner structure are still diffed below.
+        for c in &additions {
+            if crate::donor::prototype(&c.type_name).is_err() {
+                problems.push(problem(
+                    "added-control",
+                    format!("line {}: {} has no approved donor prototype (adding it is not supported)", c.line, c.describe()),
+                ));
+            }
+            if let Some(_pid) = c.parent {
+                // CommandBar parents are rejected later against the binary index (needs entry lookup);
+                // here we only have the XML. The pack planner performs the binary-side check.
+            }
         }
     }
     if !problems.is_empty() {
         return Err(fail(&baseline.name, &edited.label, problems));
     }
 
+    // Shell diff ignores stubs of structurally added/removed controls; everything else must match.
+    let skip: std::collections::HashSet<i64> =
+        additions.iter().map(|c| c.id).chain(deletions.iter().map(|c| c.id)).collect();
+    fn strip_stubs(e: &XmlElement, skip: &std::collections::HashSet<i64>) -> XmlElement {
+        let mut out = e.clone();
+        out.children = e
+            .children
+            .iter()
+            .filter(|c| {
+                !(c.tag == CONTROL_STUB
+                    && c.attrs.get("id").and_then(|v| v.parse::<i64>().ok()).is_some_and(|id| skip.contains(&id)))
+            })
+            .map(|c| strip_stubs(c, skip))
+            .collect();
+        out
+    }
+    let (shell_a, shell_b) = if skip.is_empty() {
+        (baseline.shell.clone(), edited.shell.clone())
+    } else {
+        (strip_stubs(&baseline.shell, &skip), strip_stubs(&edited.shell, &skip))
+    };
+
     let mut diffs = Vec::new();
-    diff_elements(&baseline.shell, &edited.shell, "", &mut diffs);
+    diff_elements(&shell_a, &shell_b, "", &mut diffs);
     let owner = format!("form '{}'", baseline.name);
     for (path, msg) in diffs {
         problems.push(unsupported(&owner, None, edited.shell.line, &path, &msg));
@@ -844,9 +991,17 @@ pub fn diff_forms(baseline: &FormXml, edited: &FormXml) -> Result<FormDiff> {
 
     let mut edits = Vec::new();
     for c in &edited.controls {
-        let b = base_ids[&c.id];
+        let Some(b) = base_ids.get(&c.id) else { continue }; // additions: no baseline counterpart
         let mut diffs = Vec::new();
-        diff_elements(&b.rest, &c.rest, "", &mut diffs);
+        let (rest_a, rest_b) = if skip.is_empty() {
+            (b.rest.clone(), c.rest.clone())
+        } else {
+            (strip_stubs(&b.rest, &skip), strip_stubs(&c.rest, &skip))
+        };
+        // Added controls (sparse user XML vs full decoded projection) compare identity and values only.
+        if !skip_rest.contains(&c.id) {
+            diff_elements(&rest_a, &rest_b, "", &mut diffs);
+        }
         let owner = format!("control {}", b.describe());
         for (path, msg) in diffs {
             problems.push(unsupported(&owner, Some(&b.type_name), c.line, &path, &msg));
@@ -864,7 +1019,7 @@ pub fn diff_forms(baseline: &FormXml, edited: &FormXml) -> Result<FormDiff> {
         }
     }
     if problems.is_empty() {
-        Ok(FormDiff { edits })
+        Ok(FormDiff { edits, additions, deletions })
     } else {
         Err(fail(&baseline.name, &edited.label, problems))
     }
@@ -902,9 +1057,238 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     let edited = parse_form_xml(edited_xml, "edited")?;
     let index = ControlIndex::build(source)?;
     index.validate(&baseline)?;
-    index.validate(&edited)?;
-    let diff = diff_forms(&baseline, &edited)?;
+    index.validate_mode(&edited, true)?;
+    let diff = diff_forms_mode(&baseline, &edited, true)?;
     Ok(FormPatchPlan { source, index, diff })
+}
+
+// ------------------------------------------------------------------ structural edits (add/remove)
+
+/// XML events of a control: `(numeric tag, handler)` from its `<Events>` element.
+fn xml_events(c: &ControlXml) -> Result<Vec<(i64, String)>> {
+    let mut out = Vec::new();
+    for e in &c.rest.children {
+        if e.tag != "Events" {
+            continue;
+        }
+        for ev in &e.children {
+            let tag = ev
+                .attrs
+                .get("id")
+                .and_then(|v| v.parse::<i64>().ok())
+                .ok_or_else(|| layout_err(format!("{}: event <{}> has a missing or non-integer id", c.describe(), ev.tag)))?;
+            out.push((tag, ev.text.trim().to_string()));
+        }
+    }
+    Ok(out)
+}
+
+/// The page slot of a new control: the page NAME in XML resolved to the page index of the
+/// parent panel (or the form's root panel for top-level pages).
+fn resolve_page(index: &ControlIndex, parent: Option<i64>, page: Option<&str>) -> Result<i64> {
+    let Some(page) = page else { return Ok(0) };
+    // The root panel is not a full control record: its info node is children[1] and the form's
+    // width/height live in the section at root[1][3..4]. Real panels go through control_parts.
+    let (info, width, height) = match parent {
+        Some(id) => {
+            let entry = index
+                .get(id)
+                .ok_or_else(|| layout_err(format!("added control on page '{page}': parent id {id} not found")))?;
+            let panel_item = Item::Node(entry.control.node.clone());
+            let parts = control_parts(&panel_item).map_err(|e| layout_err(e.to_string()))?;
+            let gi = |i: usize| int(&parts.geom.children[i], "geom").map_err(|e| layout_err(e.to_string()));
+            let (left, top) = (gi(1)?, gi(2)?);
+            (parts.info.clone(), gi(3)? - left, gi(4)? - top)
+        }
+        None => {
+            let panel = index.root_panel()?;
+            let info = panel
+                .node
+                .node(1)
+                .ok_or_else(|| layout_err("form stream: root panel has no info node"))?
+                .clone();
+            let section = index.at_path(&[1])?;
+            let gi = |i: usize| {
+                section
+                    .node
+                    .children
+                    .get(i)
+                    .and_then(|c| c.as_atom())
+                    .and_then(|a| a.value.parse::<i64>().ok())
+                    .ok_or_else(|| layout_err("form stream: width/height missing"))
+            };
+            (info, gi(3)?, gi(4)?)
+        }
+    };
+    let (_show, pages) = panel_pages(&info, width, height);
+    pages
+        .iter()
+        .position(|p| p["name"].as_str() == Some(page))
+        .map(|i| i as i64)
+        .ok_or_else(|| layout_err(format!("added control: page '{page}' not found in its panel")))
+}
+
+fn bare(v: i64) -> Item {
+    Item::Atom(Atom::new(BARE, v.to_string()))
+}
+
+/// Write the requested geometry/visibility/order/page into a cloned prototype (semantic, no spans).
+fn set_clone_geometry(n: &mut Node, v: &ControlValues, page: i64) -> Result<()> {
+    let len = n.len();
+    let Some(Item::Node(g)) = n.children.get_mut(len - 3) else {
+        return Err(layout_err("prototype: geometry node missing"));
+    };
+    if g.len() < 18 {
+        return Err(layout_err("prototype: geometry node too short"));
+    }
+    let right = v.left + v.width;
+    let bottom = v.top + v.height;
+    for (i, val) in [(1, v.left), (2, v.top), (3, right), (4, bottom), (5, i64::from(v.visible))] {
+        g.children[i] = bare(val);
+    }
+    let mut idx = 12usize;
+    for _ in 0..6 {
+        let Some(Item::Atom(a)) = g.children.get(idx) else {
+            return Err(layout_err("prototype: geometry incoming list size missing"));
+        };
+        let size: usize = a.value.parse().map_err(|_| layout_err("prototype: bad incoming list size"))?;
+        idx += 1 + size;
+        if idx > g.len() {
+            return Err(layout_err("prototype: incoming lists overrun the geometry node"));
+        }
+    }
+    if idx + 3 > g.len() {
+        return Err(layout_err("prototype: geometry tail missing"));
+    }
+    g.children[idx] = bare(page);
+    g.children[idx + 1] = bare(v.z_order);
+    g.children[idx + 2] = bare(v.tab_order);
+    Ok(())
+}
+
+/// Build a localized node `{1,N,{"lang","text"}...}`.
+fn localized_node(items: &[(String, String)]) -> Node {
+    let mut n = Node { children: vec![Item::Atom(Atom::new(BARE, "1")), Item::Atom(Atom::new(BARE, items.len().to_string()))] };
+    for (l, t) in items {
+        n.children.push(Item::Node(Node {
+            children: vec![Item::Atom(Atom::new(QUOTED, l)), Item::Atom(Atom::new(QUOTED, t))],
+        }));
+    }
+    n
+}
+
+/// Write the caption into a cloned prototype at the decoder's caption location.
+fn set_clone_caption(n: &mut Node, type_name: &str, caption: &[(String, String)]) -> Result<()> {
+    let owned = Node { children: n.children.clone() };
+    let owned_item = Item::Node(owned);
+    let info_index = {
+        let parts = control_parts(&owned_item).map_err(|e| layout_err(e.to_string()))?;
+        // positions in the temporary clone are the same as in `n`
+        let on = owned_item.as_node().unwrap();
+        on.children
+            .iter()
+            .position(|c| matches!(c, Item::Node(x) if std::ptr::eq(x, parts.info)))
+            .ok_or_else(|| layout_err("prototype: info node not found"))?
+    };
+    if let Some(path) = caption_path(Some(type_name)) {
+        let mut cur: &mut Node = match n.children[info_index].as_node_mut() {
+            Some(x) => x,
+            None => return Err(layout_err("prototype: info node is not a node")),
+        };
+        for &i in path {
+            cur = match cur.children.get_mut(i as usize).and_then(Item::as_node_mut) {
+                Some(x) => x,
+                None => return Err(layout_err(format!("prototype: caption path {path:?} missing"))),
+            };
+        }
+        *cur = localized_node(caption);
+        return Ok(());
+    }
+    // Fallback types (Button, ...): the first localized node among the properties block.
+    let Item::Node(info) = &mut n.children[info_index] else { unreachable!() };
+    let Some(Item::Node(props)) = info.children.get_mut(1) else {
+        return Err(layout_err("prototype: properties block missing"));
+    };
+    let at = props.children.iter().position(|c| localized(c).is_some_and(|l| !l.is_empty()));
+    match (at, caption.is_empty()) {
+        (Some(i), _) => {
+            props.children[i] = Item::Node(localized_node(caption));
+            Ok(())
+        }
+        (None, true) => Ok(()),
+        (None, false) => Err(layout_err(format!("prototype '{type_name}': no caption slot to write"))),
+    }
+}
+
+/// Write events into a cloned prototype: exactly one event list must exist; its entries are built
+/// from the donor event template with tag and handler replaced.
+fn set_clone_events(n: &mut Node, events: &[(i64, String)], who: &str) -> Result<()> {
+    if events.is_empty() {
+        crate::donor::neutralize_events(n);
+        return Ok(());
+    }
+    let paths = crate::donor::event_list_paths(n);
+    if paths.len() != 1 {
+        return Err(layout_err(format!(
+            "{who}: events on a new control of this type are not supported ({} event lists in the prototype); add it without events",
+            paths.len()
+        )));
+    }
+    let template = crate::donor::event_template()?;
+    let template_handler = match template.children.get(2) {
+        Some(Item::Node(body)) => body.children.get(1).and_then(|h| h.as_atom()).map(|a| a.value.clone()).unwrap_or_default(),
+        _ => String::new(),
+    };
+    let mut list = Node { children: vec![Item::Atom(Atom::new(BARE, events.len().to_string()))] };
+    for (tag, handler) in events {
+        let mut ev = crate::donor::clone_node(&template);
+        ev.children[0] = bare(*tag);
+        fn replace_handler(n: &mut Node, from: &str, to: &str) {
+            for c in &mut n.children {
+                match c {
+                    Item::Atom(a) if a.kind == QUOTED && a.value == from => a.value = to.to_string(),
+                    Item::Node(x) => replace_handler(x, from, to),
+                    _ => {}
+                }
+            }
+        }
+        replace_handler(&mut ev, &template_handler, handler);
+        list.children.push(Item::Node(ev));
+    }
+    let mut cur = n;
+    for &i in &paths[0] {
+        cur = match cur.children[i].as_node_mut() {
+            Some(x) => x,
+            None => return Err(layout_err("prototype: event list path")),
+        };
+    }
+    *cur = list;
+    Ok(())
+}
+
+/// Byte range cutting item `k` of `n` from a counted list, including one separator.
+fn removal_range(list: &SpanNode, k: usize, n: usize) -> Result<Span> {
+    let items: Vec<Span> = (1..=n)
+        .map(|i| match list.children.get(i) {
+            Some(SpanItem::Node(x)) => Ok(x.span),
+            Some(SpanItem::Atom(s)) => Ok(*s),
+            None => Err(layout_err("structural edit: list span does not match its count")),
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if n == 1 {
+        return Ok(items[0]);
+    }
+    if k == 0 {
+        return Ok(Span { start: items[0].start, end: items[1].start });
+    }
+    Ok(Span { start: items[k - 1].end, end: items[k].end })
+}
+
+/// Edits of one counted list: removals by item index, insertions at the end.
+#[derive(Default)]
+struct ListEdit {
+    removals: Vec<usize>,
+    inserts: Vec<Vec<u8>>,
 }
 
 // ------------------------------------------------------------------ 4.x lossless property patchers
@@ -930,6 +1314,8 @@ pub struct PatchedForm {
     /// comparisons must expect exactly these page values, which are derived, not user-edited. Empty when no panel
     /// was resized.
     pub derived_pages: Vec<DerivedPage>,
+    /// `(xml id, allocated stream id)` for every added control (empty without structural edits).
+    pub allocated: Vec<(i64, i64)>,
 }
 
 impl PatchedForm {
@@ -1633,6 +2019,174 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
 type ZMember<'e, 'a> = (&'e ControlEntry<'a>, i64, i64);
 
 impl FormPatchPlan<'_> {
+    /// Structural edits (additions/deletions): produce replacements on the original stream and the
+    /// data `verify_structural` needs afterwards. Property pieces are produced separately by the caller.
+    fn structural_pieces(&self, out: &mut Vec<AppliedReplacement>) -> Result<Vec<(i64, i64)>> {
+        let mut allocated: Vec<(i64, i64)> = Vec::new();
+        if self.diff.additions.is_empty() && self.diff.deletions.is_empty() {
+            return Ok(allocated);
+        }
+        // list span start -> (list NodeRef, original count, edits)
+        let mut lists: BTreeMap<usize, (NodeRef, usize, ListEdit)> = BTreeMap::new();
+        let list_entry = |nr: NodeRef| -> Result<(usize, usize)> {
+            let Some((count_atom, _)) = nr.atom(0) else {
+                return Err(layout_err("structural edit: list has no count atom"));
+            };
+            let count: usize = count_atom.value.parse().map_err(|_| layout_err("structural edit: bad count atom"))?;
+            Ok((nr.span.span.start, count))
+        };
+
+        // ---- deletions
+        for d in &self.diff.deletions {
+            let entry = self
+                .index
+                .get(d.id)
+                .ok_or_else(|| layout_err(format!("deleted control '{}' (id {}) not found in the stream", d.name, d.id)))?;
+            let list = self.index.at_path(&entry.list_path)?;
+            let (key, count) = list_entry(list)?;
+            lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.removals.push(entry.list_index);
+            // DataPath links of the deleted id
+            if let Some(links) = self.index.links_list() {
+                let (_k, lcount) = list_entry(links)?;
+                let rows: Vec<usize> = links
+                    .node
+                    .children
+                    .iter()
+                    .enumerate()
+                    .skip(1)
+                    .filter(|(_, c)| {
+                        matches!(c, Item::Node(row) if row.children.first().and_then(|i| i.as_atom()).and_then(|a| a.value.parse::<i64>().ok()) == Some(d.id))
+                    })
+                    .map(|(i, _)| i - 1)
+                    .collect();
+                if !rows.is_empty() {
+                    let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
+                    e.2.removals.extend(rows);
+                }
+            }
+        }
+
+        // ---- additions
+        let mut max_id = crate::donor::max_control_id(self.source)?;
+        for c in &self.diff.additions {
+            if let Some(pid) = c.parent {
+                let parent = self
+                    .index
+                    .get(pid)
+                    .ok_or_else(|| layout_err(format!("added control '{}': parent id {pid} not found", c.name)))?;
+                if parent.type_name == "CommandBar" {
+                    return Err(layout_err(format!(
+                        "added control '{}': adding under a CommandBar is not supported (command bar buttons are edited separately)",
+                        c.name
+                    )));
+                }
+            }
+            let page = resolve_page(&self.index, c.parent, c.page.as_deref())?;
+            max_id += 1;
+            let mut clone = crate::donor::clone_prototype_raw(&c.type_name, max_id, &c.name)?;
+            set_clone_geometry(&mut clone, &c.values, page)?;
+            set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
+            set_clone_events(&mut clone, &xml_events(c)?, &c.describe())?;
+            let mut buf = Vec::new();
+            crate::donor::write_node(&clone, &mut buf);
+            let list = match c.parent {
+                Some(pid) => self
+                    .index
+                    .get(pid)
+                    .and_then(|e| e.children_list())
+                    .ok_or_else(|| layout_err(format!("added control '{}': parent has no children list", c.name)))?,
+                None => self.index.root_children_list()?,
+            };
+            let (key, count) = list_entry(list)?;
+            lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.inserts.push(buf);
+            allocated.push((c.id, max_id));
+        }
+
+        // ---- materialize replacements
+        for (_key, (list, count, edit)) in lists {
+            let control_id = 0;
+            for &k in &edit.removals {
+                let range = removal_range(list.span, k, count)?;
+                out.push(AppliedReplacement { control_id, properties: Vec::new(), range, bytes: Vec::new() });
+            }
+            if !edit.inserts.is_empty() {
+                let mut text = Vec::new();
+                let existing_after = count - edit.removals.len();
+                for (i, ins) in edit.inserts.iter().enumerate() {
+                    if existing_after + i > 0 {
+                        text.push(b',');
+                    }
+                    text.extend_from_slice(ins);
+                }
+                // Insert right after the last item COVERED BY THE COUNT: trailing nodes beyond the
+                // count (tab records, sentinels) must stay after the inserted controls.
+                let at = if count > 0 {
+                    match list.span.children.get(count) {
+                        Some(item) => item.span().end,
+                        None => return Err(layout_err("structural edit: list span does not match its count")),
+                    }
+                } else {
+                    list.span
+                        .children
+                        .first()
+                        .map(|c| c.span().end)
+                        .ok_or_else(|| layout_err("structural edit: count atom span missing"))?
+                };
+                out.push(AppliedReplacement { control_id, properties: Vec::new(), range: Span { start: at, end: at }, bytes: text });
+            }
+            let final_count = count - edit.removals.len() + edit.inserts.len();
+            if final_count != count {
+                let Some(SpanItem::Atom(count_span)) = list.span.children.first() else {
+                    return Err(layout_err("structural edit: count atom span missing"));
+                };
+                out.push(AppliedReplacement {
+                    control_id,
+                    properties: Vec::new(),
+                    range: *count_span,
+                    bytes: final_count.to_string().into_bytes(),
+                });
+            }
+        }
+
+        // ---- max-id slot
+        if !allocated.is_empty() {
+            let head = self.index.at_path(&[1, 1])?;
+            let Some((_a, span)) = head.atom(1) else {
+                return Err(layout_err("form stream: max control id slot missing"));
+            };
+            out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: span, bytes: max_id.to_string().into_bytes() });
+        }
+        Ok(allocated)
+    }
+
+    /// After structural patching: additions are present with the requested values, deletions are gone.
+    fn verify_structural(&self, index: &ControlIndex, allocated: &[(i64, i64)]) -> Result<()> {
+        // stored checks are recomputed by structural_pieces; keep the signature small by re-deriving
+        let bad = |m: String| ExtractionError::new(GENERATED_FILE_MODIFIED, m).with("kind", "verification-failed");
+        for d in &self.diff.deletions {
+            if index.get(d.id).is_some() {
+                return Err(bad(format!("deleted control '{}' (id {}) is still present", d.name, d.id)));
+            }
+        }
+        let mut added = self.diff.additions.iter().zip(allocated);
+        for (c, (_, new_id)) in &mut added {
+            let Some(e) = index.get(*new_id) else {
+                return Err(bad(format!("added control '{}' (id {new_id}) is missing after patching", c.name)));
+            };
+            if e.name != c.name || e.type_name != c.type_name {
+                return Err(bad(format!("added control id {new_id}: expected {} '{}', found {} '{}'", c.type_name, c.name, e.type_name, e.name)));
+            }
+            let g = e.geom().ok_or_else(|| bad(format!("added control '{}' has no geometry", c.name)))?;
+            let gi = |i: usize| g.atom(i).and_then(|(a, _)| a.value.parse::<i64>().ok());
+            let (l, t, r, b, v) = (gi(1), gi(2), gi(3), gi(4), gi(5));
+            let want = &c.values;
+            if l != Some(want.left) || t != Some(want.top) || r != Some(want.left + want.width) || b != Some(want.top + want.height) || v != Some(i64::from(want.visible)) {
+                return Err(bad(format!("added control '{}' (id {new_id}): geometry does not match the requested values", c.name)));
+            }
+        }
+        Ok(())
+    }
+
     /// ZOrder values must stay unique among the controls of one parent/page whenever they were unique in the
     /// original stream.
     fn check_z_order_collisions(&self) -> Result<()> {
@@ -1684,7 +2238,7 @@ impl FormPatchPlan<'_> {
     /// read back, and the bytes outside the authorized ranges are compared with the original.
     pub fn apply(&self) -> Result<PatchedForm> {
         if self.is_empty() {
-            return Ok(PatchedForm { bytes: self.source.emit(), replacements: Vec::new(), derived_pages: Vec::new() });
+            return Ok(PatchedForm { bytes: self.source.emit(), replacements: Vec::new(), derived_pages: Vec::new(), allocated: Vec::new() });
         }
         self.check_z_order_collisions()?;
         let mut replacements: Vec<AppliedReplacement> = Vec::new();
@@ -1694,6 +2248,7 @@ impl FormPatchPlan<'_> {
                 replacements.push(AppliedReplacement { control_id: edit.id, properties: p.properties, range: p.range, bytes: p.bytes });
             }
         }
+        let allocated = self.structural_pieces(&mut replacements)?;
         replacements.sort_by_key(|r| (r.range.start, r.range.end));
         let edits: Vec<Replacement> = replacements.iter().map(|r| Replacement { range: r.range, bytes: r.bytes.clone() }).collect();
         let bytes = self.source.apply(&edits)?;
@@ -1701,11 +2256,16 @@ impl FormPatchPlan<'_> {
 
         let reparsed = parse_spanned(&bytes)?;
         let index = ControlIndex::build(&reparsed)?;
-        let same_layout = index.entries.len() == self.index.entries.len()
-            && index.entries.iter().zip(&self.index.entries).all(|(a, b)| (a.id, &a.path, a.page) == (b.id, &b.path, b.page));
-        if !same_layout {
-            return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, "the patched stream has a different control layout")
-                .with("kind", "verification-failed"));
+        let structural = !self.diff.additions.is_empty() || !self.diff.deletions.is_empty();
+        if !structural {
+            let same_layout = index.entries.len() == self.index.entries.len()
+                && index.entries.iter().zip(&self.index.entries).all(|(a, b)| (a.id, &a.path, a.page) == (b.id, &b.path, b.page));
+            if !same_layout {
+                return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, "the patched stream has a different control layout")
+                    .with("kind", "verification-failed"));
+            }
+        } else {
+            self.verify_structural(&index, &allocated)?;
         }
         let mut derived_pages = Vec::new();
         for (edit, entry) in self.targets() {
@@ -1713,7 +2273,7 @@ impl FormPatchPlan<'_> {
             let original = Site { source: self.source, edit, entry };
             derived_pages.extend(read_back(&Site { source: &reparsed, edit, entry: patched }, &original)?);
         }
-        Ok(PatchedForm { bytes, replacements, derived_pages })
+        Ok(PatchedForm { bytes, replacements, derived_pages, allocated })
     }
 }
 
