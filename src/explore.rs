@@ -250,11 +250,48 @@ fn execute(args: &[String]) -> Result<String> {
         Some("mutate") => execute_mutate(&args[1..]),
         Some("run") => execute_run(&args[1..]),
         Some("candidates") => execute_candidates(&args[1..]),
+        Some("probe") => execute_probe(&args[1..]),
         _ => Err(ExtractionError::new(
             CONFIG_INVALID,
             "usage: oneform explore <mutate|run|candidates> ...",
         )),
     }
+}
+
+fn execute_probe(args: &[String]) -> Result<String> {
+    let (mut epf, mut stream, mut base, mut platform, mut out) = (None, None, None, None, None);
+    let mut i = 0;
+    while i < args.len() {
+        let a = &args[i];
+        let Some(value) = args.get(i + 1) else {
+            return Err(ExtractionError::new(CONFIG_INVALID, format!("argument {a}: expected one argument")));
+        };
+        match a.as_str() {
+            "--epf" => epf = Some(value.clone()),
+            "--stream" => stream = Some(value.clone()),
+            "--base" => base = Some(value.clone()),
+            "--platform" => platform = Some(value.clone()),
+            "--out" => out = Some(value.clone()),
+            other => return Err(ExtractionError::new(CONFIG_INVALID, format!("unrecognized argument {other}"))),
+        }
+        i += 2;
+    }
+    let (Some(epf), Some(stream), Some(base), Some(platform), Some(out)) = (epf, stream, base, platform, out) else {
+        return Err(ExtractionError::new(
+            CONFIG_INVALID,
+            "usage: oneform explore probe --epf <epf> --stream <FormStream.bin> --base <base> --platform <1cv8> --out <json>",
+        ));
+    };
+    let epf_bytes = fs::read(&epf).map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot read {epf}: {e}")))?;
+    let stream_bytes = fs::read(&stream).map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot read {stream}: {e}")))?;
+    let rg = RuntimeGate {
+        platform,
+        base: Path::new(&base).to_path_buf(),
+    };
+    let rt = rg.run(&epf_bytes, &stream_bytes)?;
+    fs::write(&out, serde_json::to_string_pretty(&rt.snapshot).unwrap())
+        .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot write {out}: {e}")))?;
+    Ok(format!("probed {} properties in {}ms\n", rt.snapshot.len(), rt.duration_ms))
 }
 
 fn execute_mutate(rest: &[String]) -> Result<String> {
@@ -454,6 +491,114 @@ pub const RUNTIME_PROBED_PROPERTIES: &[&str] = &[
     "ИспользованиеТекущейСтроки",
     "РежимЗаписиДаты",
     "ВыделятьОтрицательные",
+    "РежимМеню",
+    "ПоложениеКартинки",
+    "ПоложениеКартинкиНадписи",
+    "ПоложениеКартинкиПанели",
+    "РазмерКартинки",
+    "Формат",
+    "БегущаяСтрока",
+    "ВыбираемоеЗначение",
+    "ВысотаСпискаВыбора",
+    "ШиринаСпискаВыбора",
+    "ВыборНезаполненного",
+    "РежимВыбораНезаполненного",
+    "ОтметкаНезаполненного",
+    "МинимальноеЗначение",
+    "МаксимальноеЗначение",
+    "РаспределятьПоСтраницам",
+    "РежимПрокручиваемыхСтраниц",
+    "Свертка",
+    "Вспомогательная",
+    "Ориентация",
+    "ФиксацияСлева",
+    "ФиксацияСправа",
+    "ВысотаШапки",
+    "ВысотаПодвала",
+    "ЧередованиеЦветовСтрок",
+    "РежимВводаСтрок",
+    "РежимВыделенияСтроки",
+    "РазрешитьНачалоПеретаскивания",
+    "РазрешитьПеретаскивание",
+    "Масштабировать",
+    "ТекстНевыбраннойКартинки",
+    "ИспользоватьКонтекстноеМеню",
+    "ОтображатьВыделение",
+    "ЦветФонаПоля",
+    "ЦветТекстаПоля",
+    "ЦветФонаКнопки",
+    "ЦветТекстаКнопки",
+    "ЦветФонаВыделения",
+    "ЦветТекстаВыделения",
+    "ЦветФонаЧередованияСтрок",
+    "ЦветФонаШапки",
+    "ЦветТекстаШапки",
+    "ЦветФонаПодвала",
+    "ЦветТекстаПодвала",
+    "Шаг",
+    "БольшойШаг",
+    "ШагРазметки",
+    "ОтображениеРазметки",
+    "ОтображатьПроценты",
+    "СтильОтображения",
+    "ОтображатьПометку",
+    "ОтображатьКартинку",
+    "ОтображатьТекущуюДату",
+    "ПеремещениеПоКалендарю",
+];
+
+pub const FORM_PROBED_PROPERTIES: &[&str] = &[
+    "Заголовок",
+    "АвтоЗаголовок",
+    "ИзменениеРазмера",
+    "ПоложениеОкна",
+    "СостояниеОкна",
+    "СпособОтображенияОкна",
+    "ИзменятьСпособОтображенияОкна",
+    "ПоведениеКлавишиEnter",
+    "ТолькоПросмотр",
+    "ЗакрыватьПриВыборе",
+    "ЗакрыватьПриЗакрытииВладельца",
+    "РазрешитьЗакрытие",
+    "РежимРабочегоСтола",
+    "КлючСохраненияПоложенияОкна",
+    "ИмяСохраненияПоложенияОкна",
+    "СоединяемоеОкно",
+    "РазрешитьСоединятьОкно",
+    "РазрешитьСостояниеОбычное",
+    "РазрешитьСостояниеПрикрепленное",
+    "РазрешитьСостояниеСвободное",
+    "РазрешитьСостояниеПрячущееся",
+    "ПоложениеПрикрепленногоОкна",
+];
+
+pub const COLUMN_PROBED_PROPERTIES: &[&str] = &[
+    "ГоризонтальноеПоложениеВКолонке",
+    "ГоризонтальноеПоложениеВШапке",
+    "ГоризонтальноеПоложениеВПодвале",
+    "Формат",
+    "РежимРедактирования",
+    "Положение",
+    "ИзменениеРазмера",
+    "ИзменятьВидимость",
+    "ИзменятьПозицию",
+    "ИзменятьНастройку",
+    "ОтображатьВШапке",
+    "ОтображатьВПодвале",
+    "ОтображатьИерархию",
+    "АвтоВысотаЯчейки",
+    "ВысотаЯчейки",
+    "АвтоОтметкаНезаполненного",
+    "ВыделятьОтрицательные",
+    "Гиперссылка",
+    "ТриСостоянияФлажка",
+    "ДанныеФлажка",
+    "ЦветФонаПоля",
+    "ЦветТекстаПоля",
+    "ЦветФонаШапки",
+    "ЦветТекстаШапки",
+    "ЦветФонаПодвала",
+    "ЦветТекстаПодвала",
 ];
 
 /// Generate the `Процедура ПриОткрытии()` BSL body that writes `<Control>.<Prop>=<Val>` lines to
@@ -463,13 +608,25 @@ pub fn generate_runtime_probe_bsl(out_path: &Path) -> String {
     let mut lines = vec![
         "Процедура ПриОткрытии()".to_string(),
         "\tТ = Новый ТекстовыйДокумент;".to_string(),
-        "\tДля Каждого Э Из ЭлементыФормы Цикл".to_string(),
     ];
+    for prop in FORM_PROBED_PROPERTIES {
+        lines.push(format!(
+            "\tПопытка Т.ДобавитьСтроку(\"ЭтаФорма.{prop}=\" + Строка(ЭтаФорма.{prop})); Исключение КонецПопытки;"
+        ));
+    }
+    lines.push("\tДля Каждого Э Из ЭлементыФормы Цикл".to_string());
     for prop in RUNTIME_PROBED_PROPERTIES {
         lines.push(format!(
             "\t\tПопытка Т.ДобавитьСтроку(Э.Имя + \".{prop}=\" + Строка(Э.{prop})); Исключение КонецПопытки;"
         ));
     }
+    lines.push("\t\tПопытка Для Каждого К Из Э.Колонки Цикл".to_string());
+    for prop in COLUMN_PROBED_PROPERTIES {
+        lines.push(format!(
+            "\t\t\tПопытка Т.ДобавитьСтроку(Э.Имя + \".\" + К.Имя + \".{prop}=\" + Строка(К.{prop})); Исключение КонецПопытки;"
+        ));
+    }
+    lines.push("\t\tКонецЦикла; Исключение КонецПопытки;".to_string());
     lines.push("\tКонецЦикла;".to_string());
     lines.push(format!("\tТ.Записать(\"{escaped}\", КодировкаТекста.UTF8);"));
     lines.push("КонецПроцедуры".to_string());
@@ -788,20 +945,30 @@ impl PlatformGate {
         cmd.stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
-        let out = cmd
-            .output()
+        let mut child = cmd
+            .spawn()
             .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot start 1cv8: {e}")))?;
+        let mut status = None;
+        for _ in 0..60 {
+            if let Some(st) = child
+                .try_wait()
+                .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot wait for 1cv8: {e}")))?
+            {
+                status = Some(st);
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(250));
+        }
+        let Some(status) = status else {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok((false, "designer timed out".into()));
+        };
         let mut log_text = fs::read_to_string(log).unwrap_or_default();
         if log_text.is_empty() {
-            // The platform did not even write /Out: surface its console output for diagnosis.
-            log_text = format!(
-                "exit={} stdout={} stderr={}",
-                out.status.code().unwrap_or(-1),
-                String::from_utf8_lossy(&out.stdout),
-                String::from_utf8_lossy(&out.stderr)
-            );
+            log_text = format!("exit={}", status.code().unwrap_or(-1));
         }
-        Ok((out.status.success() && !log_text.contains("Ошибка"), log_text))
+        Ok((status.success() && !log_text.contains("Ошибка"), log_text))
     }
 
     /// Gate one EPF: copy the base, dump, reload, return the normalized form stream on accept.

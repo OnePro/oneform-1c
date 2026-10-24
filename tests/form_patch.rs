@@ -1946,3 +1946,131 @@ fn table_grid_flags_scrollbars_and_behavior_round_trip() {
     let text = String::from_utf8(pf.bytes).unwrap();
     assert!(text.contains(&format!("{{19,{expected_flags},")), "coalesced table bitmask not patched: expected {expected_flags}");
 }
+
+#[test]
+fn extended_catalog_properties_across_priority_and_secondary_controls_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. Button (Кнопка1): HorizontalAlign, VerticalAlign, PictureLocation, PictureSize, MultiLine, ButtonBackColor, ButtonTextColor
+    edited = edit_ctl(
+        &edited,
+        "Кнопка1",
+        &[(
+            "<TabOrder>2</TabOrder>",
+            "<TabOrder>2</TabOrder>\n          <ButtonBackColor kind=\"rgb\" value=\"#FF0000\"/>\n          <ButtonTextColor kind=\"rgb\" value=\"#00FF00\"/>\n          <HorizontalAlign>Left</HorizontalAlign>\n          <VerticalAlign>Top</VerticalAlign>\n          <PictureLocation>Right</PictureLocation>\n          <PictureSize>Stretch</PictureSize>\n          <MultiLine>true</MultiLine>",
+        )],
+    );
+    // 2. LabelDecoration (Надпись1): VerticalAlign, MarkNegatives, Format, PictureSize
+    edited = edit_ctl(
+        &edited,
+        "Надпись1",
+        &[(
+            "<TabOrder>3</TabOrder>",
+            "<TabOrder>3</TabOrder>\n          <VerticalAlign>Bottom</VerticalAlign>\n          <MarkNegatives>true</MarkNegatives>\n          <PictureSize>Stretch</PictureSize>\n          <Format>\n            <Item language=\"ru\">ЧДЦ=2</Item>\n          </Format>",
+        )],
+    );
+    // 3. CheckBox (Флажок1): HorizontalAlign, VerticalAlign, FieldBackColor, FieldTextColor
+    edited = edit_ctl(
+        &edited,
+        "Флажок1",
+        &[(
+            "<TabOrder>5</TabOrder>",
+            "<TabOrder>5</TabOrder>\n          <FieldBackColor kind=\"rgb\" value=\"#112233\"/>\n          <FieldTextColor kind=\"rgb\" value=\"#445566\"/>\n          <HorizontalAlign>Center</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>",
+        )],
+    );
+    // 4. RadioButton (Переключатель1): TitleLocation, HorizontalAlign, VerticalAlign, ValueType, SelectionValue
+    edited = edit_ctl(
+        &edited,
+        "Переключатель1",
+        &[(
+            "<TabOrder>10</TabOrder>",
+            "<TabOrder>10</TabOrder>\n          <ValueType kind=\"Number\" composite=\"false\" fractionDigits=\"0\"/>\n          <TitleLocation>Left</TitleLocation>\n          <HorizontalAlign>Right</HorizontalAlign>\n          <VerticalAlign>Top</VerticalAlign>\n          <SelectionValue>1</SelectionValue>",
+        )],
+    );
+    // 5. InputField (ПолеВвода2): MinValue, MaxValue, ChoiceListWidth, Format, FieldBackColor, FieldTextColor
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода2",
+        &[(
+            "<OpenButton>false</OpenButton>",
+            "<OpenButton>false</OpenButton>\n          <FieldBackColor kind=\"rgb\" value=\"#FF0000\"/>\n          <FieldTextColor kind=\"rgb\" value=\"#00FF00\"/>\n          <MinValue>5</MinValue>\n          <MaxValue>95</MaxValue>\n          <ChoiceListWidth>25</ChoiceListWidth>\n          <Format>\n            <Item language=\"ru\">ЧГ=0</Item>\n          </Format>",
+        )],
+    );
+    // 6. Panel (Панель1): SeparateByPage, AutoTabOrder, ScrollPageMode
+    edited = edit_ctl(
+        &edited,
+        "Панель1",
+        &[(
+            "<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>",
+            "<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>\n          <SeparateByPage>false</SeparateByPage>\n          <AutoTabOrder>false</AutoTabOrder>\n          <ScrollPageMode>true</ScrollPageMode>",
+        )],
+    );
+    // 7. CommandBar (КоманднаяПанель2): Orientation, Secondary
+    edited = edit_ctl(
+        &edited,
+        "КоманднаяПанель2",
+        &[(
+            "<AutoFill>false</AutoFill>",
+            "<AutoFill>false</AutoFill>\n          <Orientation>Vertical</Orientation>\n          <Secondary>false</Secondary>",
+        )],
+    );
+    // 8. PictureDecoration (ПолеКартинки1), ListBox (ПолеСписка1), TrackBar (ПолосаРегулирования1), ProgressBar (Индикатор1), Splitter (Разделитель1), CalendarField (ПолеКалендаря1)
+    edited = edit_ctl(
+        &edited,
+        "ПолеКартинки1",
+        &[(
+            "<TabOrder>13</TabOrder>",
+            "<TabOrder>13</TabOrder>\n          <Zoomable>false</Zoomable>\n          <UseContextMenu>false</UseContextMenu>\n          <EnableStartDrag>true</EnableStartDrag>\n          <EnableDrag>true</EnableDrag>\n          <NonselectedPictureText>\n            <Item language=\"ru\">Нет картинки</Item>\n          </NonselectedPictureText>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеСписка1",
+        &[(
+            "<TabOrder>11</TabOrder>",
+            "<TabOrder>11</TabOrder>\n          <ShowPicture>true</ShowPicture>\n          <ShowCheckBox>true</ShowCheckBox>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолосаРегулирования1",
+        &[(
+            "<TabOrder>12</TabOrder>",
+            "<TabOrder>12</TabOrder>\n          <MinValue>10</MinValue>\n          <MaxValue>80</MaxValue>\n          <Step>2</Step>\n          <LargeStep>15</LargeStep>\n          <Orientation>Vertical</Orientation>\n          <MarkingAppearance>DontShow</MarkingAppearance>\n          <MarkingStep>8</MarkingStep>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Индикатор1",
+        &[(
+            "<TabOrder>16</TabOrder>",
+            "<TabOrder>16</TabOrder>\n          <MinValue>5</MinValue>\n          <MaxValue>90</MaxValue>\n          <Step>5</Step>\n          <ShowStyle>Broken</ShowStyle>\n          <ShowPercent>true</ShowPercent>\n          <Orientation>Vertical</Orientation>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Разделитель1",
+        &[(
+            "<TabOrder>6</TabOrder>",
+            "<TabOrder>6</TabOrder>\n          <Orientation>Vertical</Orientation>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеКалендаря1",
+        &[(
+            "<TabOrder>7</TabOrder>",
+            "<TabOrder>7</TabOrder>\n          <SelectionBackColor kind=\"rgb\" value=\"#FF0000\"/>\n          <SelectionTextColor kind=\"rgb\" value=\"#00FF00\"/>\n          <HolidayColor kind=\"rgb\" value=\"#0000FF\"/>\n          <ShowCurrentDate>false</ShowCurrentDate>\n          <CalendarNavigation>false</CalendarNavigation>\n          <SelectionMode>Multi</SelectionMode>\n          <EnableStartDrag>true</EnableStartDrag>\n          <EnableDrag>true</EnableDrag>",
+        )],
+    );
+    // 9. Added ChoiceField with ReadOnly, ChoiceButton, ClearButton, SpinButton, OpenButton, ChoiceListWidth
+    let added = "<ChoiceField name=\"ПолеВыбораНовое\" id=\"999\">\n          <Left>500</Left><Top>500</Top><Width>150</Width><Height>20</Height>\n          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>\n          <ReadOnly>true</ReadOnly>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <SpinButton>true</SpinButton>\n          <OpenButton>true</OpenButton>\n          <ChoiceListWidth>30</ChoiceListWidth>\n        </ChoiceField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(added.to_string() + anchor), 1);
+
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(compact.contains("{\"N\",1}"), "RadioButton SelectionValue not patched");
+    assert!(compact.contains("{\"N\",5},{\"N\",95}"), "InputField MinValue/MaxValue not patched");
+    assert!(text.contains("\"Нет картинки\""), "PictureDecoration NonselectedPictureText not patched");
+}

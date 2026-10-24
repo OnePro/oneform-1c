@@ -35,14 +35,14 @@ use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_L
 use crate::metaref::{ConfigTypeLookup, ANY_REF_GUID, VALUE_LIST_GUID, VALUE_TABLE_GUID, VALUE_TREE_GUID};
 use crate::naming::is_uuid;
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
-use crate::oof_props::{app_path, atom, caption_path, localized};
+use crate::oof_props::{atom, caption_path, localized};
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
-const SUPPORTED_TAGS: [&str; 64] = [
+const SUPPORTED_TAGS: [&str; 98] = [
     "DataPath",
     "Caption",
     "Left",
@@ -107,6 +107,40 @@ const SUPPORTED_TAGS: [&str; 64] = [
     "ChangeSettingOfColumns",
     "InitialListView",
     "Output",
+    "FieldBackColor",
+    "FieldTextColor",
+    "ButtonBackColor",
+    "ButtonTextColor",
+    "PictureLocation",
+    "PictureSize",
+    "Format",
+    "SelectionValue",
+    "ChoiceListWidth",
+    "MinValue",
+    "MaxValue",
+    "SeparateByPage",
+    "AutoTabOrder",
+    "ScrollPageMode",
+    "Orientation",
+    "Secondary",
+    "Zoomable",
+    "UseContextMenu",
+    "NonselectedPictureText",
+    "EnableStartDrag",
+    "EnableDrag",
+    "ShowPicture",
+    "ShowCheckBox",
+    "Step",
+    "LargeStep",
+    "MarkingStep",
+    "MarkingAppearance",
+    "ShowStyle",
+    "ShowPercent",
+    "SelectionBackColor",
+    "SelectionTextColor",
+    "HolidayColor",
+    "ShowCurrentDate",
+    "CalendarNavigation",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -705,6 +739,40 @@ pub struct ControlValues {
     pub text_edit: Option<bool>,
     pub vertical_align: Option<String>,
     pub type_link: Option<TypeLinkSpec>,
+    pub field_back_color: Option<ColorSpec>,
+    pub field_text_color: Option<ColorSpec>,
+    pub button_back_color: Option<ColorSpec>,
+    pub button_text_color: Option<ColorSpec>,
+    pub picture_location: Option<String>,
+    pub picture_size: Option<String>,
+    pub format: LocItems,
+    pub selection_value: Option<String>,
+    pub choice_list_width: Option<i64>,
+    pub min_value: Option<i64>,
+    pub max_value: Option<i64>,
+    pub separate_by_page: Option<bool>,
+    pub auto_tab_order: Option<bool>,
+    pub scroll_page_mode: Option<bool>,
+    pub orientation: Option<String>,
+    pub secondary: Option<bool>,
+    pub zoomable: Option<bool>,
+    pub use_context_menu: Option<bool>,
+    pub nonselected_picture_text: LocItems,
+    pub enable_start_drag: Option<bool>,
+    pub enable_drag: Option<bool>,
+    pub show_picture: Option<bool>,
+    pub show_check_box: Option<bool>,
+    pub step: Option<i64>,
+    pub large_step: Option<i64>,
+    pub marking_step: Option<i64>,
+    pub marking_appearance: Option<String>,
+    pub show_style: Option<String>,
+    pub show_percent: Option<bool>,
+    pub selection_back_color: Option<ColorSpec>,
+    pub selection_text_color: Option<ColorSpec>,
+    pub holiday_color: Option<ColorSpec>,
+    pub show_current_date: Option<bool>,
+    pub calendar_navigation: Option<bool>,
 }
 
 /// `<TypeLink>` of an `InputField`: the attribute (and optional field GUID) whose type the field follows.
@@ -786,6 +854,40 @@ impl ControlValues {
             text_edit: None,
             vertical_align: None,
             type_link: None,
+            field_back_color: None,
+            field_text_color: None,
+            button_back_color: None,
+            button_text_color: None,
+            picture_location: None,
+            picture_size: None,
+            format: Vec::new(),
+            selection_value: None,
+            choice_list_width: None,
+            min_value: None,
+            max_value: None,
+            separate_by_page: None,
+            auto_tab_order: None,
+            scroll_page_mode: None,
+            orientation: None,
+            secondary: None,
+            zoomable: None,
+            use_context_menu: None,
+            nonselected_picture_text: Vec::new(),
+            enable_start_drag: None,
+            enable_drag: None,
+            show_picture: None,
+            show_check_box: None,
+            step: None,
+            large_step: None,
+            marking_step: None,
+            marking_appearance: None,
+            show_style: None,
+            show_percent: None,
+            selection_back_color: None,
+            selection_text_color: None,
+            holiday_color: None,
+            show_current_date: None,
+            calendar_navigation: None,
         }
     }
 }
@@ -859,6 +961,40 @@ pub enum Property {
     TextEdit,
     VerticalAlign,
     TypeLink,
+    FieldBackColor,
+    FieldTextColor,
+    ButtonBackColor,
+    ButtonTextColor,
+    PictureLocation,
+    PictureSize,
+    Format,
+    SelectionValue,
+    ChoiceListWidth,
+    MinValue,
+    MaxValue,
+    SeparateByPage,
+    AutoTabOrder,
+    ScrollPageMode,
+    Orientation,
+    Secondary,
+    Zoomable,
+    UseContextMenu,
+    NonselectedPictureText,
+    EnableStartDrag,
+    EnableDrag,
+    ShowPicture,
+    ShowCheckBox,
+    Step,
+    LargeStep,
+    MarkingStep,
+    MarkingAppearance,
+    ShowStyle,
+    ShowPercent,
+    SelectionBackColor,
+    SelectionTextColor,
+    HolidayColor,
+    ShowCurrentDate,
+    CalendarNavigation,
 }
 
 impl Property {
@@ -931,6 +1067,40 @@ impl Property {
             Property::TextEdit => "TextEdit",
             Property::VerticalAlign => "VerticalAlign",
             Property::TypeLink => "TypeLink",
+            Property::FieldBackColor => "FieldBackColor",
+            Property::FieldTextColor => "FieldTextColor",
+            Property::ButtonBackColor => "ButtonBackColor",
+            Property::ButtonTextColor => "ButtonTextColor",
+            Property::PictureLocation => "PictureLocation",
+            Property::PictureSize => "PictureSize",
+            Property::Format => "Format",
+            Property::SelectionValue => "SelectionValue",
+            Property::ChoiceListWidth => "ChoiceListWidth",
+            Property::MinValue => "MinValue",
+            Property::MaxValue => "MaxValue",
+            Property::SeparateByPage => "SeparateByPage",
+            Property::AutoTabOrder => "AutoTabOrder",
+            Property::ScrollPageMode => "ScrollPageMode",
+            Property::Orientation => "Orientation",
+            Property::Secondary => "Secondary",
+            Property::Zoomable => "Zoomable",
+            Property::UseContextMenu => "UseContextMenu",
+            Property::NonselectedPictureText => "NonselectedPictureText",
+            Property::EnableStartDrag => "EnableStartDrag",
+            Property::EnableDrag => "EnableDrag",
+            Property::ShowPicture => "ShowPicture",
+            Property::ShowCheckBox => "ShowCheckBox",
+            Property::Step => "Step",
+            Property::LargeStep => "LargeStep",
+            Property::MarkingStep => "MarkingStep",
+            Property::MarkingAppearance => "MarkingAppearance",
+            Property::ShowStyle => "ShowStyle",
+            Property::ShowPercent => "ShowPercent",
+            Property::SelectionBackColor => "SelectionBackColor",
+            Property::SelectionTextColor => "SelectionTextColor",
+            Property::HolidayColor => "HolidayColor",
+            Property::ShowCurrentDate => "ShowCurrentDate",
+            Property::CalendarNavigation => "CalendarNavigation",
         }
     }
 }
@@ -1009,6 +1179,40 @@ impl ControlValues {
             (self.text_edit == other.text_edit, Property::TextEdit),
             (self.vertical_align == other.vertical_align, Property::VerticalAlign),
             (self.type_link == other.type_link, Property::TypeLink),
+            (self.field_back_color == other.field_back_color, Property::FieldBackColor),
+            (self.field_text_color == other.field_text_color, Property::FieldTextColor),
+            (self.button_back_color == other.button_back_color, Property::ButtonBackColor),
+            (self.button_text_color == other.button_text_color, Property::ButtonTextColor),
+            (self.picture_location == other.picture_location, Property::PictureLocation),
+            (self.picture_size == other.picture_size, Property::PictureSize),
+            (self.format == other.format, Property::Format),
+            (self.selection_value == other.selection_value, Property::SelectionValue),
+            (self.choice_list_width == other.choice_list_width, Property::ChoiceListWidth),
+            (self.min_value == other.min_value, Property::MinValue),
+            (self.max_value == other.max_value, Property::MaxValue),
+            (self.separate_by_page == other.separate_by_page, Property::SeparateByPage),
+            (self.auto_tab_order == other.auto_tab_order, Property::AutoTabOrder),
+            (self.scroll_page_mode == other.scroll_page_mode, Property::ScrollPageMode),
+            (self.orientation == other.orientation, Property::Orientation),
+            (self.secondary == other.secondary, Property::Secondary),
+            (self.zoomable == other.zoomable, Property::Zoomable),
+            (self.use_context_menu == other.use_context_menu, Property::UseContextMenu),
+            (self.nonselected_picture_text == other.nonselected_picture_text, Property::NonselectedPictureText),
+            (self.enable_start_drag == other.enable_start_drag, Property::EnableStartDrag),
+            (self.enable_drag == other.enable_drag, Property::EnableDrag),
+            (self.show_picture == other.show_picture, Property::ShowPicture),
+            (self.show_check_box == other.show_check_box, Property::ShowCheckBox),
+            (self.step == other.step, Property::Step),
+            (self.large_step == other.large_step, Property::LargeStep),
+            (self.marking_step == other.marking_step, Property::MarkingStep),
+            (self.marking_appearance == other.marking_appearance, Property::MarkingAppearance),
+            (self.show_style == other.show_style, Property::ShowStyle),
+            (self.show_percent == other.show_percent, Property::ShowPercent),
+            (self.selection_back_color == other.selection_back_color, Property::SelectionBackColor),
+            (self.selection_text_color == other.selection_text_color, Property::SelectionTextColor),
+            (self.holiday_color == other.holiday_color, Property::HolidayColor),
+            (self.show_current_date == other.show_current_date, Property::ShowCurrentDate),
+            (self.calendar_navigation == other.calendar_navigation, Property::CalendarNavigation),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -1155,7 +1359,66 @@ impl FormXml {
             c.values.text_edit = None;
             c.values.vertical_align = None;
             c.values.type_link = None;
-            if c.type_name == "InputField" {
+            c.values.field_back_color = None;
+            c.values.field_text_color = None;
+            c.values.button_back_color = None;
+            c.values.button_text_color = None;
+            c.values.picture_location = None;
+            c.values.picture_size = None;
+            c.values.format.clear();
+            c.values.selection_value = None;
+            c.values.choice_list_width = None;
+            c.values.min_value = None;
+            c.values.max_value = None;
+            c.values.separate_by_page = None;
+            c.values.auto_tab_order = None;
+            c.values.scroll_page_mode = None;
+            c.values.orientation = None;
+            c.values.secondary = None;
+            c.values.zoomable = None;
+            c.values.use_context_menu = None;
+            c.values.nonselected_picture_text.clear();
+            c.values.enable_start_drag = None;
+            c.values.enable_drag = None;
+            c.values.show_picture = None;
+            c.values.show_check_box = None;
+            c.values.step = None;
+            c.values.large_step = None;
+            c.values.marking_step = None;
+            c.values.marking_appearance = None;
+            c.values.show_style = None;
+            c.values.show_percent = None;
+            c.values.selection_back_color = None;
+            c.values.selection_text_color = None;
+            c.values.holiday_color = None;
+            c.values.show_current_date = None;
+            c.values.calendar_navigation = None;
+            if crate::oof_props::app_path(&c.type_name).is_none() && patch_app_path(&c.type_name).is_some() {
+                c.values.enabled = true;
+                c.values.transparent_back = false;
+                c.values.back_color = None;
+                c.values.text_color = None;
+                c.values.border_color = None;
+                c.values.font = None;
+                c.values.tooltip.clear();
+            }
+            match c.type_name.as_str() {
+                "LabelDecoration" => c.values.mark_negatives = false,
+                "RadioButton" => {
+                    c.values.title_location.clear();
+                    c.values.value_type = None;
+                }
+                "ChoiceField" => {
+                    c.values.choice_button = None;
+                    c.values.clear_button = None;
+                    c.values.spin_button = None;
+                    c.values.open_button = None;
+                    c.values.read_only = false;
+                }
+                "CalendarField" => c.values.selection_mode.clear(),
+                _ => {}
+            }
+            if matches!(c.type_name.as_str(), "InputField" | "Button" | "CheckBox" | "RadioButton") {
                 c.values.horizontal_align = String::new();
             }
             if c.type_name == "Table" {
@@ -1177,31 +1440,69 @@ impl FormXml {
     }
 }
 
+/// Appearance-block location for every control type whose appearance (and extended catalog colors) can be patched.
+fn patch_app_path(type_name: &str) -> Option<&'static [i64]> {
+    Some(match type_name {
+        "LabelDecoration" | "UsualGroup" | "Button" | "Panel" | "CommandBar" | "ChoiceField" | "PictureDecoration"
+        | "PictureField" | "ListBox" | "TrackBar" | "ProgressBar" | "Splitter" | "CalendarField" | "TextDocumentField"
+        | "HTMLDocumentField" | "GraphicalSchemaField" | "GeographicalSchemaField" => &[1, 0],
+        "InputField" | "RadioButton" => &[2, 0, 0],
+        "CheckBox" => &[1, 0, 0],
+        "Table" | "TableBox" => &[2, 0],
+        _ => return None,
+    })
+}
+
 fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
         "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" | "Anchors"
         | "ModifiesData" | "SkipOnInput" | "FirstInGroup" => true,
-        "MultiLine" | "PasswordMode" | "ExtendedEdit" | "Mask" | "ChooseType" | "TextEdit" | "VerticalAlign" | "TypeLink" => {
-            type_name == "InputField"
-        }
+        "PasswordMode" | "ExtendedEdit" | "Mask" | "ChooseType" | "TextEdit" | "TypeLink" => type_name == "InputField",
+        "MultiLine" => matches!(type_name, "InputField" | "Button"),
+        "VerticalAlign" => matches!(type_name, "InputField" | "Button" | "LabelDecoration" | "CheckBox" | "RadioButton"),
         "Events" => crate::donor::has_event_list(type_name),
-        "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" => {
-            app_path(type_name).is_some()
-        }
+        "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" | "FieldBackColor"
+        | "FieldTextColor" | "ButtonBackColor" | "ButtonTextColor" => patch_app_path(type_name).is_some(),
         "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" if type_name == "Table" => true,
         "Header" | "HorizontalLines" | "VerticalLines" | "AutoInsertNewRow" | "ChangeRowSet" | "ChangePositionOfColumns"
         | "ChangeSettingOfColumns" | "InitialListView" | "Output" => type_name == "Table",
+        "ReadOnly" | "ChoiceButton" | "ClearButton" | "SpinButton" | "OpenButton" if type_name == "ChoiceField" => true,
+        "ValueType" if type_name == "RadioButton" => true,
+        "MarkNegatives" if type_name == "LabelDecoration" => true,
         "ValueType" | "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" | "ChoiceButton" | "ClearButton"
         | "OpenButton" | "DropListButton" | "SpinButton" | "AutoMarkIncomplete" | "AutoChoiceIncomplete"
         | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => type_name == "InputField",
-        "HorizontalAlign" => matches!(type_name, "LabelDecoration" | "CommandBar" | "InputField"),
+        "HorizontalAlign" => matches!(
+            type_name,
+            "LabelDecoration" | "CommandBar" | "InputField" | "Button" | "CheckBox" | "RadioButton"
+        ),
         "Hyperlink" => type_name == "LabelDecoration",
-        "ThreeState" | "TitleLocation" => type_name == "CheckBox",
+        "ThreeState" => type_name == "CheckBox",
+        "TitleLocation" => matches!(type_name, "CheckBox" | "RadioButton"),
         "ChoiceList" => type_name == "ChoiceField",
         "ShowTabs" => type_name == "Panel",
+        "SelectionMode" if type_name == "CalendarField" => true,
         "Footer" | "SelectionMode" | "InitialTreeView" => type_name == "Table",
         "AutoFill" | "Buttons" => type_name == "CommandBar",
         "BorderStyle" => type_name == "UsualGroup",
+        "PictureLocation" => type_name == "Button",
+        "PictureSize" => matches!(type_name, "Button" | "LabelDecoration"),
+        "Format" => matches!(type_name, "LabelDecoration" | "InputField"),
+        "SelectionValue" => type_name == "RadioButton",
+        "ChoiceListWidth" => matches!(type_name, "InputField" | "ChoiceField"),
+        "MinValue" | "MaxValue" => matches!(type_name, "InputField" | "TrackBar" | "ProgressBar"),
+        "SeparateByPage" | "AutoTabOrder" | "ScrollPageMode" => type_name == "Panel",
+        "Orientation" => matches!(type_name, "CommandBar" | "Splitter" | "TrackBar" | "ProgressBar"),
+        "Secondary" => type_name == "CommandBar",
+        "Zoomable" | "UseContextMenu" | "NonselectedPictureText" => matches!(type_name, "PictureDecoration" | "PictureField"),
+        "EnableStartDrag" | "EnableDrag" => matches!(type_name, "PictureDecoration" | "PictureField" | "CalendarField"),
+        "ShowPicture" | "ShowCheckBox" => type_name == "ListBox",
+        "Step" => matches!(type_name, "TrackBar" | "ProgressBar"),
+        "LargeStep" | "MarkingStep" | "MarkingAppearance" => type_name == "TrackBar",
+        "ShowStyle" | "ShowPercent" => type_name == "ProgressBar",
+        "SelectionBackColor" | "SelectionTextColor" | "HolidayColor" | "ShowCurrentDate" | "CalendarNavigation" => {
+            type_name == "CalendarField"
+        }
         _ => false,
     }
 }
@@ -1339,6 +1640,9 @@ impl Parser<'_> {
             }
         };
         let bool_of = |tag: &str, default: bool| -> Result<bool> { Ok(opt_bool_of(tag)?.unwrap_or(default)) };
+        let opt_int_of = |tag: &str| -> Result<Option<i64>> {
+            if found.contains_key(tag) { int_of(tag, false).map(Some) } else { Ok(None) }
+        };
         let loc_of = |tag: &str| -> Result<Vec<(String, String)>> {
             let mut items: Vec<(String, String)> = Vec::new();
             if let Some(e) = found.get(tag) {
@@ -1382,7 +1686,9 @@ impl Parser<'_> {
         let horizontal_align = match type_name.as_str() {
             "LabelDecoration" => enum_of("HorizontalAlign", &["Left", "Center", "Right"], "Left")?,
             "CommandBar" => enum_of("HorizontalAlign", &["Left", "Right"], "Left")?,
-            "InputField" => enum_of("HorizontalAlign", &["Auto", "Left", "Center", "Right"], "")?,
+            "InputField" | "Button" | "CheckBox" | "RadioButton" => {
+                enum_of("HorizontalAlign", &["Auto", "Left", "Center", "Right"], "")?
+            }
             _ => String::new(),
         };
         let vertical_align = match found.get("VerticalAlign") {
@@ -1789,6 +2095,13 @@ impl Parser<'_> {
         let back_color = color_of("BackColor", &mut rest);
         let text_color = color_of("TextColor", &mut rest);
         let border_color = color_of("BorderColor", &mut rest);
+        let field_back_color = color_of("FieldBackColor", &mut rest);
+        let field_text_color = color_of("FieldTextColor", &mut rest);
+        let button_back_color = color_of("ButtonBackColor", &mut rest);
+        let button_text_color = color_of("ButtonTextColor", &mut rest);
+        let selection_back_color = color_of("SelectionBackColor", &mut rest);
+        let selection_text_color = color_of("SelectionTextColor", &mut rest);
+        let holiday_color = color_of("HolidayColor", &mut rest);
         let font = match found.get("Font") {
             None => None,
             Some(e) => match parse_font_elem(e) {
@@ -1930,6 +2243,11 @@ impl Parser<'_> {
                 None => rest.children.push((*e).clone()),
             }
         }
+        let selection_value = match found.get("SelectionValue") {
+            None => None,
+            Some(e) if e.children.is_empty() && e.attrs.is_empty() => Some(e.text.clone()),
+            Some(e) => return Err(self.bad(e.line, format!("{who}: <SelectionValue> must be a plain text value"))),
+        };
         let values = ControlValues {
             name: ctrl_name,
             data_path,
@@ -1954,9 +2272,9 @@ impl Parser<'_> {
             vertical_scroll_bar: enum_of("VerticalScrollBar", &["DontUse", "Use", "Auto"], scroll_default)?,
             read_only: if type_name != "Table" { bool_of("ReadOnly", false)? } else { false },
             table_read_only: if type_name == "Table" { opt_bool_of("ReadOnly")? } else { None },
-            choice_button: if is_inp { Some(opt_bool_of("ChoiceButton")?.unwrap_or(false)) } else { None },
-            clear_button: if is_inp { Some(opt_bool_of("ClearButton")?.unwrap_or(false)) } else { None },
-            open_button: if is_inp { Some(opt_bool_of("OpenButton")?.unwrap_or(false)) } else { None },
+            choice_button: if is_inp { Some(opt_bool_of("ChoiceButton")?.unwrap_or(false)) } else { opt_bool_of("ChoiceButton")? },
+            clear_button: if is_inp { Some(opt_bool_of("ClearButton")?.unwrap_or(false)) } else { opt_bool_of("ClearButton")? },
+            open_button: if is_inp { Some(opt_bool_of("OpenButton")?.unwrap_or(false)) } else { opt_bool_of("OpenButton")? },
             drop_list_button: opt_bool_of("DropListButton")?,
             spin_button: opt_bool_of("SpinButton")?,
             auto_mark_incomplete: bool_of("AutoMarkIncomplete", false)?,
@@ -1967,7 +2285,11 @@ impl Parser<'_> {
             horizontal_align,
             hyperlink: bool_of("Hyperlink", false)?,
             three_state: bool_of("ThreeState", false)?,
-            title_location: enum_of("TitleLocation", &["Left", "Right"], "Right")?,
+            title_location: enum_of(
+                "TitleLocation",
+                &["Left", "Right"],
+                if type_name == "RadioButton" { "\0" } else { "Right" },
+            )?,
             choice_list,
             show_tabs,
             pages,
@@ -1981,7 +2303,11 @@ impl Parser<'_> {
             change_setting_of_columns: opt_bool_of("ChangeSettingOfColumns")?,
             initial_list_view: opt_enum_of("InitialListView", &["Begin", "End", "Auto"])?,
             output: opt_enum_of("Output", &["Auto", "Enable", "Disable"])?,
-            selection_mode: enum_of("SelectionMode", &["Single", "Multi"], "Single")?,
+            selection_mode: if type_name == "CalendarField" {
+                enum_of("SelectionMode", &["Single", "Multi", "Interval"], "\0")?
+            } else {
+                enum_of("SelectionMode", &["Single", "Multi"], "Single")?
+            },
             initial_tree_view: enum_of("InitialTreeView", &["NoExpand", "ExpandTopLevel", "ExpandAllLevels"], "NoExpand")?,
             columns,
             auto_fill: if type_name == "CommandBar" { Some(opt_bool_of("AutoFill")?.unwrap_or(true)) } else { None },
@@ -2020,6 +2346,40 @@ impl Parser<'_> {
             text_edit: opt_bool_of("TextEdit")?,
             vertical_align,
             type_link,
+            field_back_color,
+            field_text_color,
+            button_back_color,
+            button_text_color,
+            picture_location: opt_enum_of("PictureLocation", &["Left", "Right", "Top", "Bottom"])?,
+            picture_size: opt_enum_of("PictureSize", &["RealSize", "Stretch", "AutoSize", "Proportionally", "Tile"])?,
+            format: loc_of("Format")?,
+            selection_value,
+            choice_list_width: opt_int_of("ChoiceListWidth")?,
+            min_value: opt_int_of("MinValue")?,
+            max_value: opt_int_of("MaxValue")?,
+            separate_by_page: opt_bool_of("SeparateByPage")?,
+            auto_tab_order: opt_bool_of("AutoTabOrder")?,
+            scroll_page_mode: opt_bool_of("ScrollPageMode")?,
+            orientation: opt_enum_of("Orientation", &["Auto", "Vertical", "Horizontal"])?,
+            secondary: opt_bool_of("Secondary")?,
+            zoomable: opt_bool_of("Zoomable")?,
+            use_context_menu: opt_bool_of("UseContextMenu")?,
+            nonselected_picture_text: loc_of("NonselectedPictureText")?,
+            enable_start_drag: opt_bool_of("EnableStartDrag")?,
+            enable_drag: opt_bool_of("EnableDrag")?,
+            show_picture: opt_bool_of("ShowPicture")?,
+            show_check_box: opt_bool_of("ShowCheckBox")?,
+            step: opt_int_of("Step")?,
+            large_step: opt_int_of("LargeStep")?,
+            marking_step: opt_int_of("MarkingStep")?,
+            marking_appearance: opt_enum_of("MarkingAppearance", &["DontShow", "TopOrLeft", "BottomOrRight", "BothSides"])?,
+            show_style: opt_enum_of("ShowStyle", &["Broken", "Smooth"])?,
+            show_percent: opt_bool_of("ShowPercent")?,
+            selection_back_color,
+            selection_text_color,
+            holiday_color,
+            show_current_date: opt_bool_of("ShowCurrentDate")?,
+            calendar_navigation: opt_bool_of("CalendarNavigation")?,
         };
         Ok((values, rest))
     }
@@ -3191,6 +3551,323 @@ fn set_input_extras(info: &mut Node, v: &ControlValues) -> Result<()> {
     Ok(())
 }
 
+// ---- extended catalog slots (fixed `info` positions)
+
+type CodeTable = &'static [(&'static str, i64)];
+
+const H_ALIGN: CodeTable = &[("Left", 0), ("Center", 1), ("Right", 2), ("Auto", 4)];
+const V_ALIGN: CodeTable = &[("Top", 0), ("Center", 1), ("Bottom", 2)];
+const PICTURE_LOCATION: CodeTable = &[("Left", 0), ("Right", 1), ("Top", 2), ("Bottom", 3)];
+const BUTTON_PICTURE_SIZE: CodeTable = &[("RealSize", 0), ("Stretch", 1), ("AutoSize", 2), ("Proportionally", 3), ("Tile", 4)];
+const LABEL_PICTURE_SIZE: CodeTable = &[("RealSize", 0), ("Stretch", 1), ("Proportionally", 2), ("Tile", 3), ("AutoSize", 4)];
+const ORIENTATION: CodeTable = &[("Vertical", 0), ("Horizontal", 1), ("Auto", 2)];
+const MARKING_APPEARANCE: CodeTable = &[("DontShow", 0), ("TopOrLeft", 1), ("BottomOrRight", 2), ("BothSides", 3)];
+const SHOW_STYLE: CodeTable = &[("Broken", 0), ("Smooth", 1)];
+const CALENDAR_SELECTION: CodeTable = &[("Single", 0), ("Multi", 1), ("Interval", 2)];
+
+/// Properties that live in a fixed `info` slot (`ext_slot`); the others keep their dedicated mapping.
+const EXT_PROPS: &[Property] = &[
+    Property::FieldBackColor,
+    Property::FieldTextColor,
+    Property::ButtonBackColor,
+    Property::ButtonTextColor,
+    Property::HorizontalAlign,
+    Property::VerticalAlign,
+    Property::MultiLine,
+    Property::MarkNegatives,
+    Property::TitleLocation,
+    Property::ReadOnly,
+    Property::ChoiceButton,
+    Property::ClearButton,
+    Property::SpinButton,
+    Property::OpenButton,
+    Property::SelectionMode,
+    Property::PictureLocation,
+    Property::PictureSize,
+    Property::Format,
+    Property::SelectionValue,
+    Property::ChoiceListWidth,
+    Property::MinValue,
+    Property::MaxValue,
+    Property::SeparateByPage,
+    Property::AutoTabOrder,
+    Property::ScrollPageMode,
+    Property::Orientation,
+    Property::Secondary,
+    Property::Zoomable,
+    Property::UseContextMenu,
+    Property::NonselectedPictureText,
+    Property::EnableStartDrag,
+    Property::EnableDrag,
+    Property::ShowPicture,
+    Property::ShowCheckBox,
+    Property::Step,
+    Property::LargeStep,
+    Property::MarkingStep,
+    Property::MarkingAppearance,
+    Property::ShowStyle,
+    Property::ShowPercent,
+    Property::SelectionBackColor,
+    Property::SelectionTextColor,
+    Property::HolidayColor,
+    Property::ShowCurrentDate,
+    Property::CalendarNavigation,
+];
+
+struct ExtSlot {
+    path: Vec<usize>,
+    idx: usize,
+    table: CodeTable,
+}
+
+/// Value to store in an [`ExtSlot`].
+enum Want {
+    Atom(i64),
+    Node(String),
+    Color(Option<ColorSpec>),
+    Loc(LocItems),
+}
+
+/// Index of the `Page` list inside the panel parameters `info[1]` (after the six counted anchor lists).
+fn panel_page_list_idx(p: &Node) -> Option<usize> {
+    let mut idx = 2usize;
+    for _ in 0..6 {
+        let sz = p.children.get(idx)?.as_atom()?.value.parse::<usize>().ok()?;
+        idx += 1 + sz;
+    }
+    Some(idx + 3)
+}
+
+fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
+    use Property as P;
+    let color_idx = match prop {
+        P::FieldBackColor => Some(7),
+        P::FieldTextColor => Some(8),
+        P::ButtonBackColor => Some(9),
+        P::ButtonTextColor => Some(10),
+        _ => None,
+    };
+    if let Some(idx) = color_idx {
+        let path = patch_app_path(type_name)?.iter().map(|&i| i as usize).collect();
+        return Some(ExtSlot { path, idx, table: &[] });
+    }
+    let (path, idx, table): (&[usize], usize, CodeTable) = match (type_name, prop) {
+        ("Button", P::HorizontalAlign) => (&[1], 3, H_ALIGN),
+        ("CheckBox", P::HorizontalAlign) => (&[1, 0], 4, H_ALIGN),
+        ("RadioButton", P::HorizontalAlign) => (&[2, 0], 4, H_ALIGN),
+        ("Button" | "LabelDecoration", P::VerticalAlign) => (&[1], 4, V_ALIGN),
+        ("CheckBox", P::VerticalAlign) => (&[1, 0], 5, V_ALIGN),
+        ("RadioButton", P::VerticalAlign) => (&[2, 0], 5, V_ALIGN),
+        ("Button", P::MultiLine) => (&[1], 10, &[]),
+        ("LabelDecoration", P::MarkNegatives) => (&[1], 6, &[]),
+        ("RadioButton", P::TitleLocation) => (&[2, 0], 3, &[]),
+        ("ChoiceField", P::ChoiceButton) => (&[1], 7, &[]),
+        ("ChoiceField", P::ClearButton) => (&[1], 8, &[]),
+        ("ChoiceField", P::SpinButton) => (&[1], 9, &[]),
+        ("ChoiceField", P::OpenButton) => (&[1], 10, &[]),
+        ("ChoiceField", P::ReadOnly) => (&[1], 13, &[]),
+        ("ChoiceField", P::ChoiceListWidth) => (&[1], 32, &[]),
+        ("InputField", P::ChoiceListWidth) => (&[2, 0], 32, &[]),
+        ("CalendarField", P::SelectionMode) => (&[1], 9, CALENDAR_SELECTION),
+        ("Button", P::PictureLocation) => (&[1], 6, PICTURE_LOCATION),
+        ("Button", P::PictureSize) => (&[1], 7, BUTTON_PICTURE_SIZE),
+        ("LabelDecoration", P::PictureSize) => (&[1], 13, LABEL_PICTURE_SIZE),
+        ("LabelDecoration", P::Format) => (&[1], 10, &[]),
+        ("InputField", P::Format) => (&[2, 0], 34, &[]),
+        ("RadioButton", P::SelectionValue) => (&[], 4, &[]),
+        ("InputField", P::MinValue) => (&[2, 0], 19, &[]),
+        ("InputField", P::MaxValue) => (&[2, 0], 20, &[]),
+        ("TrackBar" | "ProgressBar", P::MinValue) => (&[1], 2, &[]),
+        ("TrackBar" | "ProgressBar", P::MaxValue) => (&[1], 3, &[]),
+        ("CommandBar" | "Splitter", P::Orientation) => (&[1], 2, ORIENTATION),
+        ("TrackBar", P::Orientation) => (&[1], 6, ORIENTATION),
+        ("ProgressBar", P::Orientation) => (&[1], 7, ORIENTATION),
+        ("CommandBar", P::Secondary) => (&[1], 5, &[]),
+        ("PictureDecoration" | "PictureField", P::Zoomable) => (&[1], 6, &[]),
+        ("PictureDecoration" | "PictureField", P::EnableStartDrag) => (&[1], 8, &[]),
+        ("PictureDecoration" | "PictureField", P::EnableDrag) => (&[1], 9, &[]),
+        ("PictureDecoration" | "PictureField", P::NonselectedPictureText) => (&[1], 10, &[]),
+        ("PictureDecoration" | "PictureField", P::UseContextMenu) => (&[1], 12, &[]),
+        ("CalendarField", P::EnableStartDrag) => (&[1], 10, &[]),
+        ("CalendarField", P::EnableDrag) => (&[1], 11, &[]),
+        ("CalendarField", P::SelectionBackColor) => (&[1], 2, &[]),
+        ("CalendarField", P::SelectionTextColor) => (&[1], 3, &[]),
+        ("CalendarField", P::HolidayColor) => (&[1], 4, &[]),
+        ("CalendarField", P::ShowCurrentDate) => (&[1], 7, &[]),
+        ("CalendarField", P::CalendarNavigation) => (&[1], 8, &[]),
+        ("ListBox", P::ShowPicture) => (&[1], 4, &[]),
+        ("ListBox", P::ShowCheckBox) => (&[1], 5, &[]),
+        ("TrackBar" | "ProgressBar", P::Step) => (&[1], 4, &[]),
+        ("TrackBar", P::LargeStep) => (&[1], 5, &[]),
+        ("TrackBar", P::MarkingAppearance) => (&[1], 7, MARKING_APPEARANCE),
+        ("TrackBar", P::MarkingStep) => (&[1], 8, &[]),
+        ("ProgressBar", P::ShowStyle) => (&[1], 5, SHOW_STYLE),
+        ("ProgressBar", P::ShowPercent) => (&[1], 6, &[]),
+        ("Panel", P::SeparateByPage | P::AutoTabOrder | P::ScrollPageMode) => {
+            let page = panel_page_list_idx(info.children.get(1)?.as_node()?)?;
+            let off = match prop {
+                P::SeparateByPage => 1,
+                P::AutoTabOrder => 2,
+                _ => 3,
+            };
+            return Some(ExtSlot { path: vec![1], idx: page + off, table: &[] });
+        }
+        _ => return None,
+    };
+    Some(ExtSlot { path: path.to_vec(), idx, table })
+}
+
+/// `SelectionValue` text -> the `{"U"}` / `{"B",n}` / `{"N",n}` / `{"S","s"}` value node.
+fn selection_value_node(s: &str) -> String {
+    match s {
+        "" => "{\"U\"}".to_string(),
+        "true" => "{\"B\",1}".to_string(),
+        "false" => "{\"B\",0}".to_string(),
+        _ => match s.parse::<i64>() {
+            Ok(n) => format!("{{\"N\",{n}}}"),
+            Err(_) => format!("{{\"S\",{}}}", quote(s)),
+        },
+    }
+}
+
+/// Requested value for the slot; `None` when the model does not set the property.
+fn ext_want(v: &ControlValues, prop: Property, slot: &ExtSlot) -> Option<Want> {
+    use Property as P;
+    let flag = |b: Option<bool>| b.map(|b| Want::Atom(i64::from(b)));
+    let int = |n: Option<i64>| n.map(Want::Atom);
+    let code = |s: Option<&str>| -> Option<Want> {
+        let s = s.filter(|s| !s.is_empty())?;
+        slot.table.iter().find(|(n, _)| *n == s).map(|(_, c)| Want::Atom(*c))
+    };
+    let bare_or_node = |n: Option<i64>| {
+        if slot.path == [2, 0] {
+            n.map(|n| Want::Node(format!("{{\"N\",{n}}}")))
+        } else {
+            int(n)
+        }
+    };
+    match prop {
+        P::FieldBackColor => Some(Want::Color(v.field_back_color.clone())),
+        P::FieldTextColor => Some(Want::Color(v.field_text_color.clone())),
+        P::ButtonBackColor => Some(Want::Color(v.button_back_color.clone())),
+        P::ButtonTextColor => Some(Want::Color(v.button_text_color.clone())),
+        P::SelectionBackColor => v.selection_back_color.clone().map(|c| Want::Color(Some(c))),
+        P::SelectionTextColor => v.selection_text_color.clone().map(|c| Want::Color(Some(c))),
+        P::HolidayColor => v.holiday_color.clone().map(|c| Want::Color(Some(c))),
+        P::HorizontalAlign => code(Some(&v.horizontal_align)),
+        P::VerticalAlign => code(v.vertical_align.as_deref()),
+        P::MultiLine => flag(v.multi_line),
+        P::MarkNegatives => flag(Some(v.mark_negatives)),
+        P::TitleLocation => Some(Want::Atom(if v.title_location == "Left" { 0 } else { 1 })),
+        P::ReadOnly => flag(Some(v.read_only)),
+        P::ChoiceButton => flag(v.choice_button),
+        P::ClearButton => flag(v.clear_button),
+        P::SpinButton => flag(v.spin_button),
+        P::OpenButton => flag(v.open_button),
+        P::SelectionMode => Some(Want::Atom(
+            slot.table.iter().find(|(n, _)| *n == v.selection_mode).map_or(0, |(_, c)| *c),
+        )),
+        P::PictureLocation => code(v.picture_location.as_deref()),
+        P::PictureSize => code(v.picture_size.as_deref()),
+        P::Format => Some(Want::Loc(v.format.clone())),
+        P::NonselectedPictureText => Some(Want::Loc(v.nonselected_picture_text.clone())),
+        P::SelectionValue => v.selection_value.as_deref().map(|s| Want::Node(selection_value_node(s))),
+        P::ChoiceListWidth => int(v.choice_list_width),
+        P::MinValue => bare_or_node(v.min_value),
+        P::MaxValue => bare_or_node(v.max_value),
+        P::SeparateByPage => flag(v.separate_by_page),
+        P::AutoTabOrder => flag(v.auto_tab_order),
+        P::ScrollPageMode => flag(v.scroll_page_mode),
+        P::Orientation => code(v.orientation.as_deref()),
+        P::Secondary => flag(v.secondary),
+        P::Zoomable => flag(v.zoomable),
+        P::UseContextMenu => flag(v.use_context_menu),
+        P::EnableStartDrag => flag(v.enable_start_drag),
+        P::EnableDrag => flag(v.enable_drag),
+        P::ShowPicture => flag(v.show_picture),
+        P::ShowCheckBox => flag(v.show_check_box),
+        P::Step => int(v.step),
+        P::LargeStep => int(v.large_step),
+        P::MarkingStep => int(v.marking_step),
+        P::MarkingAppearance => code(v.marking_appearance.as_deref()),
+        P::ShowStyle => code(v.show_style.as_deref()),
+        P::ShowPercent => flag(v.show_percent),
+        P::ShowCurrentDate => flag(v.show_current_date),
+        P::CalendarNavigation => flag(v.calendar_navigation),
+        _ => None,
+    }
+}
+
+fn ext_child<'a>(site: &Site<'_, 'a>, slot: &ExtSlot, prop: Property) -> Result<NodeRef<'a>> {
+    info_node_at(site, &slot.path, prop)?.child(slot.idx).ok_or_else(|| {
+        site.layout("unexpected-shape", prop.xml_name(), format!("info slot {:?}[{}] is not a node", slot.path, slot.idx))
+    })
+}
+
+fn ext_pieces(site: &Site, prop: Property, slot: &ExtSlot) -> Result<Vec<Piece>> {
+    let name = prop.xml_name();
+    let want = ext_want(&site.edit.new, prop, slot)
+        .ok_or_else(|| site.invalid("invalid-xml", name, format!("cannot remove {name} or its value is not supported")))?;
+    Ok(match want {
+        Want::Atom(n) => vec![piece(info_int_slot(site, &slot.path, slot.idx, prop)?.1, n, &[prop])],
+        Want::Node(text) => vec![piece(ext_child(site, slot, prop)?.span.span, text, &[prop])],
+        Want::Color(c) => vec![piece(ext_child(site, slot, prop)?.span.span, format_color_node(c.as_ref()), &[prop])],
+        Want::Loc(new) => {
+            let node = ext_child(site, slot, prop)?;
+            let items = strict_localized(node)
+                .ok_or_else(|| site.layout("unexpected-shape", name, format!("{name} node is not a plain localized string")))?;
+            let current: LocItems = items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
+            localized_pieces(site, node, &items, &current, &new, prop)?
+        }
+    })
+}
+
+/// Read the slot back from the patched stream; `true` when the model does not set the property.
+fn ext_matches(site: &Site, prop: Property, slot: &ExtSlot) -> Result<bool> {
+    let Some(want) = ext_want(&site.edit.new, prop, slot) else { return Ok(true) };
+    Ok(match want {
+        Want::Atom(n) => info_int_slot(site, &slot.path, slot.idx, prop)?.0 == n,
+        Want::Node(text) => {
+            let expected = crate::brace::parse_metadata(text.as_bytes()).ok();
+            expected.is_some() && Some(ext_child(site, slot, prop)?.node) == expected.as_ref()
+        }
+        Want::Color(c) => {
+            let parent = info_node_at(site, &slot.path, prop)?;
+            parent.node.children.get(slot.idx).is_some_and(|item| read_color_spec(item) == c)
+        }
+        Want::Loc(new) => {
+            let node = ext_child(site, slot, prop)?;
+            strict_localized(node)
+                .is_some_and(|items| items.into_iter().map(|i| (i.lang, i.text)).collect::<LocItems>() == new)
+        }
+    })
+}
+
+/// Write the model's extended-catalog values into a donor-cloned control (only values the model sets).
+fn set_clone_ext(info: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
+    for &prop in EXT_PROPS {
+        let Some(slot) = ext_slot(type_name, prop, info) else { continue };
+        let item = match ext_want(v, prop, &slot) {
+            None | Some(Want::Color(None)) => continue,
+            Some(Want::Loc(l)) if l.is_empty() => continue,
+            Some(Want::Atom(n)) => bare(n),
+            Some(Want::Node(text)) => {
+                Item::Node(crate::brace::parse_metadata(text.as_bytes()).map_err(|e| layout_err(e.to_string()))?)
+            }
+            Some(Want::Color(c)) => Item::Node(
+                crate::brace::parse_metadata(format_color_node(c.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+            ),
+            Some(Want::Loc(l)) => Item::Node(localized_node(&l)),
+        };
+        let parent = nav_mut(info, &slot.path)?;
+        *parent
+            .children
+            .get_mut(slot.idx)
+            .ok_or_else(|| layout_err(format!("prototype: {type_name} {} slot {} missing", prop.xml_name(), slot.idx)))? = item;
+    }
+    Ok(())
+}
+
 /// Apply all non-geometry, non-caption `ControlValues` properties to a donor-cloned control node.
 fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
     if let Some(anchors) = &v.anchors {
@@ -3218,9 +3895,12 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
         }
     }
     let info = clone_info_mut(n)?;
-    if let Some(ap) = app_path(type_name) {
+    if let Some(ap) = patch_app_path(type_name) {
         let path: Vec<usize> = ap.iter().map(|&i| i as usize).collect();
         let app = nav_mut(info, &path)?;
+        if app.len() < 7 {
+            return Err(layout_err("prototype: appearance block too short"));
+        }
         app.children[1] = bare(i64::from(v.enabled));
         app.children[2] = Item::Node(crate::brace::parse_metadata(format_color_node(v.back_color.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
         app.children[3] = Item::Node(crate::brace::parse_metadata(format_color_node(v.text_color.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
@@ -3350,6 +4030,12 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 t.children[21] = bare(itv);
             }
         }
+        "RadioButton" => {
+            if let Some(pat) = v.value_type.as_ref().and_then(|vt| format_attr_pattern(&vt.to_attr())) {
+                info.children[1] =
+                    Item::Node(crate::brace::parse_metadata(pat.as_bytes()).map_err(|e| layout_err(e.to_string()))?);
+            }
+        }
         "ChoiceField" => {
             if !v.choice_list.is_empty() {
                 let p = nav_mut(info, &[1])?;
@@ -3376,6 +4062,7 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
         }
         _ => {}
     }
+    set_clone_ext(info, type_name, v)?;
     Ok(())
 }
 
@@ -4696,8 +5383,12 @@ fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
 fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
     let (old, new) = (&site.edit.old, &site.edit.new);
     let mut out = Vec::new();
-    let app_vec: Option<Vec<usize>> = app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
+    let app_vec: Option<Vec<usize>> = patch_app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
     for &prop in &site.edit.changed {
+        if let Some(slot) = site.entry.info().and_then(|i| ext_slot(site.entry.type_name, prop, i.node)) {
+            out.extend(ext_pieces(site, prop, &slot)?);
+            continue;
+        }
         match prop {
             Property::DataPath
             | Property::Caption
@@ -5119,6 +5810,13 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = new.border_style.unwrap_or(6);
                 out.push(piece(span, in_i32(site, prop, want)?, &[prop]));
             }
+            _ => {
+                return Err(site.layout(
+                    "unexpected-shape",
+                    prop.xml_name(),
+                    format!("{} is not supported on {}", prop.xml_name(), site.entry.type_name),
+                ));
+            }
         }
     }
     Ok(out)
@@ -5224,9 +5922,11 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             return Err(wrong(Property::Caption));
         }
     }
-    let app_vec: Option<Vec<usize>> = app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
+    let app_vec: Option<Vec<usize>> = patch_app_path(site.entry.type_name).map(|p| p.iter().map(|&i| i as usize).collect());
     for &p in &site.edit.changed {
+        let ext = site.entry.info().and_then(|i| ext_slot(site.entry.type_name, p, i.node));
         let ok = match p {
+            _ if ext.is_some() => ext_matches(site, p, ext.as_ref().ok_or_else(|| wrong(p))?)?,
             Property::Name => site.entry.name == new.name,
             Property::DataPath => read_control_data_path(site.source, site.edit.id) == new.data_path.as_ref().map(|(id, _)| *id),
             Property::Events => read_control_events(site.entry)? == new.events,

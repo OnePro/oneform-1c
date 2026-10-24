@@ -1352,3 +1352,49 @@ fn epf_table_grid_and_flags_pack() {
 fn config_table_grid_and_flags_pack() {
     assert_table_grid_and_flags_pack(Target::Config);
 }
+
+fn assert_extended_catalog_properties_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let stream_file = w.src_file("FormStream.bin");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    xml = xml.replacen(
+        "<Click id=\"0\">Кнопка1Нажатие</Click>",
+        "<Click id=\"0\">Кнопка1Нажатие</Click>\n          </Events>\n          <ButtonBackColor kind=\"rgb\" value=\"#FF0000\"/>\n          <HorizontalAlign>Left</HorizontalAlign>\n          <VerticalAlign>Top</VerticalAlign>\n          <PictureLocation>Right</PictureLocation>\n          <PictureSize>Stretch</PictureSize>\n          <MultiLine>true</MultiLine",
+        0,
+    );
+    xml = xml.replacen(
+        "<Click id=\"0\">Кнопка1Нажатие</Click>\n          </Events>",
+        "<Click id=\"0\">Кнопка1Нажатие</Click>\n          </Events>\n          <ButtonBackColor kind=\"rgb\" value=\"#FF0000\"/>\n          <HorizontalAlign>Left</HorizontalAlign>\n          <VerticalAlign>Top</VerticalAlign>\n          <PictureLocation>Right</PictureLocation>\n          <PictureSize>Stretch</PictureSize>\n          <MultiLine>true</MultiLine>",
+        1,
+    );
+    xml = xml.replacen(
+        "<OnChange id=\"2147483647\">Переключатель1ПриИзменении</OnChange>\n          </Events>",
+        "<OnChange id=\"2147483647\">Переключатель1ПриИзменении</OnChange>\n          </Events>\n          <TitleLocation>Left</TitleLocation>\n          <HorizontalAlign>Right</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>\n          <SelectionValue>1</SelectionValue>",
+        1,
+    );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let stream_after: String = String::from_utf8_lossy(&after[&rel(&w, &stream_file)])
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    assert!(stream_after.contains("{\"N\",1}"), "{target:?}: RadioButton SelectionValue missing");
+}
+
+#[test]
+fn epf_extended_catalog_properties_pack() {
+    assert_extended_catalog_properties_pack(Target::Epf);
+}
+
+#[test]
+fn config_extended_catalog_properties_pack() {
+    assert_extended_catalog_properties_pack(Target::Config);
+}
