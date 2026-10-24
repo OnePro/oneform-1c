@@ -1542,8 +1542,24 @@ impl FormXml {
                     c.values.open_button = None;
                     c.values.read_only = false;
                 }
+                "ListBox" | "GraphicalSchemaField" | "TextDocumentField" => {
+                    c.values.read_only = false;
+                }
+                "SpreadsheetDocumentField" => {
+                    c.values.horizontal_scroll_bar.clear();
+                    c.values.vertical_scroll_bar.clear();
+                }
                 "CalendarField" => c.values.selection_mode.clear(),
                 _ => {}
+            }
+            if c.type_name != "UsualGroup" {
+                c.values.border_style = None;
+            }
+            if matches!(c.type_name.as_str(), "SpreadsheetDocumentField" | "HTMLDocumentField") {
+                c.values.border_color = None;
+            }
+            if matches!(c.type_name.as_str(), "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField") {
+                c.values.output = None;
             }
             if matches!(c.type_name.as_str(), "InputField" | "Button" | "CheckBox" | "RadioButton") {
                 c.values.horizontal_align = String::new();
@@ -1590,10 +1606,15 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "VerticalAlign" => matches!(type_name, "InputField" | "Button" | "LabelDecoration" | "CheckBox" | "RadioButton"),
         "Events" => crate::donor::has_event_list(type_name),
         "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" | "FieldBackColor"
-        | "FieldTextColor" | "ButtonBackColor" | "ButtonTextColor" => patch_app_path(type_name).is_some(),
-        "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" if type_name == "Table" => true,
+        | "FieldTextColor" | "ButtonBackColor" | "ButtonTextColor" => {
+            patch_app_path(type_name).is_some()
+                || (tag == "BorderColor" && matches!(type_name, "SpreadsheetDocumentField" | "HTMLDocumentField"))
+        }
+        "HorizontalScrollBar" | "VerticalScrollBar" if matches!(type_name, "Table" | "SpreadsheetDocumentField") => true,
+        "ReadOnly" if matches!(type_name, "Table" | "ListBox" | "GraphicalSchemaField" | "TextDocumentField") => true,
+        "Output" if matches!(type_name, "Table" | "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField") => true,
         "Header" | "HorizontalLines" | "VerticalLines" | "AutoInsertNewRow" | "ChangeRowSet" | "ChangePositionOfColumns"
-        | "ChangeSettingOfColumns" | "InitialListView" | "Output" => type_name == "Table",
+        | "ChangeSettingOfColumns" | "InitialListView" => type_name == "Table",
         "ReadOnly" | "ChoiceButton" | "ClearButton" | "SpinButton" | "OpenButton" if type_name == "ChoiceField" => true,
         "ValueType" if type_name == "RadioButton" => true,
         "MarkNegatives" if type_name == "LabelDecoration" => true,
@@ -1612,7 +1633,11 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "SelectionMode" if type_name == "CalendarField" => true,
         "Footer" | "SelectionMode" | "InitialTreeView" => type_name == "Table",
         "AutoFill" | "Buttons" => type_name == "CommandBar",
-        "BorderStyle" => type_name == "UsualGroup",
+        "BorderStyle" => {
+            type_name == "UsualGroup"
+                || patch_app_path(type_name).is_some()
+                || matches!(type_name, "SpreadsheetDocumentField" | "HTMLDocumentField")
+        }
         "PictureLocation" => type_name == "Button",
         "PictureSize" => matches!(type_name, "Button" | "LabelDecoration"),
         "Format" => matches!(type_name, "LabelDecoration" | "InputField"),
@@ -1623,7 +1648,12 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "Orientation" => matches!(type_name, "CommandBar" | "Splitter" | "TrackBar" | "ProgressBar"),
         "Secondary" => type_name == "CommandBar",
         "Zoomable" | "UseContextMenu" | "NonselectedPictureText" => matches!(type_name, "PictureDecoration" | "PictureField"),
-        "EnableStartDrag" | "EnableDrag" => matches!(type_name, "PictureDecoration" | "PictureField" | "CalendarField" | "Table"),
+        "EnableStartDrag" | "EnableDrag" => {
+            matches!(
+                type_name,
+                "PictureDecoration" | "PictureField" | "CalendarField" | "Table" | "SpreadsheetDocumentField"
+            )
+        }
         "UseAlternationRowColor" | "HeaderBackColor" | "HeaderTextColor" | "FooterBackColor" | "FooterTextColor"
         | "AlternationRowBackColor" | "FixedLeft" | "FixedRight" | "RowInputMode" | "RowSelectionMode" | "HeaderHeight"
         | "FooterHeight" | "HeaderFont" | "FooterFont" => type_name == "Table",
@@ -1811,7 +1841,11 @@ impl Parser<'_> {
                 Ok(None)
             }
         };
-        let scroll_default = if type_name == "Table" { " " } else { "DontUse" };
+        let scroll_default = if matches!(type_name.as_str(), "Table" | "SpreadsheetDocumentField") {
+            "\0"
+        } else {
+            "DontUse"
+        };
         let is_inp = type_name == "InputField";
         let horizontal_align = match type_name.as_str() {
             "LabelDecoration" => enum_of("HorizontalAlign", &["Left", "Center", "Right"], "Left")?,
@@ -2571,27 +2605,24 @@ impl Parser<'_> {
             columns,
             auto_fill: if type_name == "CommandBar" { Some(opt_bool_of("AutoFill")?.unwrap_or(true)) } else { None },
             buttons,
-            border_style: if type_name == "UsualGroup" {
-                match found.get("BorderStyle") {
-                    None => Some(6),
-                    Some(e) => {
-                        let code = e.attrs.get("code").and_then(|v| v.trim().parse::<i64>().ok());
-                        let expected_name = match code {
-                            Some(6) => Some("Frame"),
-                            Some(4) => Some("SingleLine"),
-                            Some(0) => Some("None"),
-                            _ => None,
-                        };
-                        if e.attrs.len() != 1 || !e.children.is_empty() || expected_name != Some(e.text.trim()) {
-                            rest.children.push((*e).clone());
-                            None
-                        } else {
-                            code
-                        }
+            border_style: match found.get("BorderStyle") {
+                None if type_name == "UsualGroup" => Some(6),
+                None => None,
+                Some(e) => {
+                    let code = e.attrs.get("code").and_then(|v| v.trim().parse::<i64>().ok());
+                    let expected_name = match code {
+                        Some(6) => Some("Frame"),
+                        Some(4) => Some("SingleLine"),
+                        Some(0) => Some("None"),
+                        _ => None,
+                    };
+                    if e.attrs.len() != 1 || !e.children.is_empty() || expected_name != Some(e.text.trim()) {
+                        rest.children.push((*e).clone());
+                        None
+                    } else {
+                        code
                     }
                 }
-            } else {
-                None
             },
             anchors,
             modifies_data: opt_bool_of("ModifiesData")?,
@@ -3900,6 +3931,11 @@ const EXT_PROPS: &[Property] = &[
     Property::FooterHeight,
     Property::HeaderFont,
     Property::FooterFont,
+    Property::BorderStyle,
+    Property::BorderColor,
+    Property::Output,
+    Property::HorizontalScrollBar,
+    Property::VerticalScrollBar,
 ];
 
 struct ExtSlot {
@@ -3940,7 +3976,30 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
         let path = patch_app_path(type_name)?.iter().map(|&i| i as usize).collect();
         return Some(ExtSlot { path, idx, table: &[] });
     }
+    if prop == P::BorderStyle && type_name != "UsualGroup" {
+        let path = match type_name {
+            "SpreadsheetDocumentField" => vec![10],
+            "HTMLDocumentField" => vec![4],
+            _ => {
+                let mut p: Vec<usize> = patch_app_path(type_name)?.iter().map(|&i| i as usize).collect();
+                p.push(11);
+                p
+            }
+        };
+        return Some(ExtSlot { path, idx: 3, table: &[] });
+    }
     let (path, idx, table): (&[usize], usize, CodeTable) = match (type_name, prop) {
+        ("SpreadsheetDocumentField", P::BorderColor) => (&[], 9, &[]),
+        ("HTMLDocumentField", P::BorderColor) => (&[], 3, &[]),
+        ("SpreadsheetDocumentField", P::EnableStartDrag) => (&[], 15, &[]),
+        ("SpreadsheetDocumentField", P::EnableDrag) => (&[], 16, &[]),
+        ("SpreadsheetDocumentField", P::HorizontalScrollBar) => (&[], 31, &[]),
+        ("SpreadsheetDocumentField", P::VerticalScrollBar) => (&[], 32, &[]),
+        ("ListBox", P::ReadOnly) => (&[1], 6, &[]),
+        ("GraphicalSchemaField", P::ReadOnly) => (&[], 4, &[]),
+        ("GraphicalSchemaField", P::Output) => (&[], 5, &[]),
+        ("TextDocumentField", P::ReadOnly) => (&[], 5, &[]),
+        ("TextDocumentField" | "HTMLDocumentField", P::Output) => (&[], 6, &[]),
         ("Button", P::HorizontalAlign) => (&[1], 3, H_ALIGN),
         ("CheckBox", P::HorizontalAlign) => (&[1, 0], 4, H_ALIGN),
         ("RadioButton", P::HorizontalAlign) => (&[2, 0], 4, H_ALIGN),
@@ -4111,6 +4170,17 @@ fn ext_want(v: &ControlValues, prop: Property, slot: &ExtSlot) -> Option<Want> {
         P::ShowPercent => flag(v.show_percent),
         P::ShowCurrentDate => flag(v.show_current_date),
         P::CalendarNavigation => flag(v.calendar_navigation),
+        P::BorderStyle => int(v.border_style),
+        P::BorderColor => Some(Want::Color(v.border_color.clone())),
+        P::Output => v.output.as_deref().map(|s| Want::Atom(output_code(s))),
+        P::HorizontalScrollBar => Some(Want::Atom(i64::from(matches!(
+            v.horizontal_scroll_bar.as_str(),
+            "Use" | "Auto"
+        )))),
+        P::VerticalScrollBar => Some(Want::Atom(i64::from(matches!(
+            v.vertical_scroll_bar.as_str(),
+            "Use" | "Auto"
+        )))),
         _ => None,
     }
 }

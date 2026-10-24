@@ -2101,3 +2101,58 @@ fn table_and_column_catalog_properties_round_trip() {
     assert!(text.contains(&format!("{{19,{expected_tbl_flags},")), "Table bitmask not patched: {expected_tbl_flags}");
     assert!(text.contains(&format!(",{expected_col_flags},")), "Column bitmask not patched: {expected_col_flags}");
 }
+
+#[test]
+fn universal_border_style_and_document_schema_field_properties_round_trip() {
+    let mut edited = baseline("DonorForm");
+    edited = edit_ctl(
+        &edited,
+        "Кнопка1",
+        &[(
+            "<TabOrder>2</TabOrder>",
+            "<TabOrder>2</TabOrder>\n          <BorderStyle code=\"4\">SingleLine</BorderStyle>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеТабличногоДокумента1",
+        &[(
+            "<TabOrder>19</TabOrder>",
+            "<TabOrder>19</TabOrder>\n          <BorderColor kind=\"rgb\" value=\"#FF0000\"/>\n          <BorderStyle code=\"4\">SingleLine</BorderStyle>\n          <HorizontalScrollBar>DontUse</HorizontalScrollBar>\n          <VerticalScrollBar>DontUse</VerticalScrollBar>\n          <EnableStartDrag>false</EnableStartDrag>\n          <EnableDrag>false</EnableDrag>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеСписка1",
+        &[(
+            "<TabOrder>11</TabOrder>",
+            "<TabOrder>11</TabOrder>\n          <BorderStyle code=\"0\">None</BorderStyle>\n          <ReadOnly>true</ReadOnly>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеТекстовогоДокумента1",
+        &[(
+            "<TabOrder>8</TabOrder>",
+            "<TabOrder>8</TabOrder>\n          <BorderStyle code=\"4\">SingleLine</BorderStyle>\n          <ReadOnly>true</ReadOnly>\n          <Output>Enable</Output>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеHTMLДокумента1",
+        &[(
+            "<TabOrder>18</TabOrder>",
+            "<TabOrder>18</TabOrder>\n          <BorderColor kind=\"rgb\" value=\"#00FF00\"/>\n          <BorderStyle code=\"6\">Frame</BorderStyle>\n          <Output>Disable</Output>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеГрафическойСхемы1",
+        &[(
+            "<TabOrder>1</TabOrder>",
+            "<TabOrder>1</TabOrder>\n          <BorderStyle code=\"0\">None</BorderStyle>\n          <ReadOnly>true</ReadOnly>\n          <Output>Enable</Output>",
+        )],
+    );
+
+    let _ = structural_round_trip("DonorForm", &edited);
+}

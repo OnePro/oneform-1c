@@ -6,10 +6,10 @@
 
 | Статус | Кол-во | Доля от всех (610) | Доля от сериализуемых (529) | Описание |
 |---|---:|---:|---:|---|
-| **🟢 R/W (`rw`)** | **338** | **55.4%** | **63.9%** | Поддерживаются в `Form.xml` и пакуются в `FormStream.bin` с read-back проверкой |
+| **🟢 R/W (`rw`)** | **364** | **59.7%** | **68.8%** | Поддерживаются в `Form.xml` и пакуются в `FormStream.bin` с read-back проверкой |
 | **🟡 R/O (`ro`)** | **5** | **0.8%** | **0.9%** | Извлекаются при `extract` (`Width`/`Height` формы, `Picture` надписи, `fixed`/`nonNegative`) |
 | **⚙️ Runtime (`runtime`)** | **81** | **13.3%** | — | Существуют только в памяти 1С:Предприятие во время работы формы (`ТекущаяСтрока`, `ОформлениеСтроки` и т.д.) |
-| **⚪ Не покрыто (`unk`)** | **186** | **30.5%** | **35.2%** | Редкие/оформительские свойства (параметры печати `SpreadsheetDocument`, `Shortcut`, картинки кнопок) |
+| **⚪ Не покрыто (`unk`)** | **160** | **26.2%** | **30.2%** | Редкие/оформительские свойства (параметры печати `SpreadsheetDocument`, `Shortcut`, картинки кнопок) |
 
 ---
 
@@ -34,40 +34,40 @@
 
 | Объект (`XML` / `API 1C`) | Всего | 🟢 R/W | 🟡 R/O | ⚙️ Runtime | ⚪ Unk | Покрытие сериализуемых |
 |---|---:|---:|---:|---:|---:|---:|
-| `Table` (`TableBox`) | 46 | **37** | 0 | 6 | 3 | **92.5%** |
-| `InputField` (`TextBox`) | 45 | **37** | 0 | 1 | 7 | **84.1%** |
+| `Table` (`TableBox`) | 46 | **38** | 0 | 6 | 2 | **95.0%** |
+| `InputField` (`TextBox`) | 45 | **38** | 0 | 1 | 6 | **86.4%** |
 | `TableColumn` (`TableBoxColumn`) | 44 | **30** | 0 | 1 | 13 | **69.8%** |
-| `ChoiceField` (`ComboBox`) | 21 | **16** | 0 | 0 | 5 | **76.2%** |
-| `CalendarField` (`CalendarBox`) | 21 | **16** | 0 | 2 | 3 | **84.2%** |
-| `LabelDecoration` (`Label`) | 19 | **14** | 1 | 0 | 4 | **78.9%** |
-| `CheckBox` (`CheckBox`) | 15 | **14** | 0 | 0 | 1 | **93.3%** |
-| `RadioButton` (`RadioButton`) | 15 | **14** | 0 | 0 | 1 | **93.3%** |
-| `TrackBar` (`TrackBar`) | 15 | **14** | 0 | 0 | 1 | **93.3%** |
-| `Panel` (`Panel`) | 18 | **13** | 0 | 1 | 4 | **76.5%** |
-| `CommandBar` (`CommandBar`) | 14 | **13** | 0 | 0 | 1 | **92.9%** |
-| `PictureField` (`PictureBox`) | 17 | **12** | 0 | 0 | 5 | **70.6%** |
+| `ChoiceField` (`ComboBox`) | 21 | **17** | 0 | 0 | 4 | **81.0%** |
+| `CalendarField` (`CalendarBox`) | 21 | **17** | 0 | 2 | 2 | **89.5%** |
+| `LabelDecoration` (`Label`) | 19 | **15** | 1 | 0 | 3 | **84.2%** |
+| `CheckBox` (`CheckBox`) | 15 | **15** | 0 | 0 | 0 | **100.0%** |
+| `RadioButton` (`RadioButton`) | 15 | **15** | 0 | 0 | 0 | **100.0%** |
+| `TrackBar` (`TrackBar`) | 15 | **15** | 0 | 0 | 0 | **100.0%** |
+| `Panel` (`Panel`) | 18 | **14** | 0 | 1 | 3 | **82.4%** |
+| `CommandBar` (`CommandBar`) | 14 | **14** | 0 | 0 | 0 | **100.0%** |
+| `PictureField` (`PictureBox`) | 17 | **13** | 0 | 0 | 4 | **76.5%** |
 | `Button` (`Button`) | 16 | **12** | 0 | 0 | 4 | **75.0%** |
-| `ProgressBar` (`ProgressBar`) | 12 | **11** | 0 | 0 | 1 | **91.7%** |
+| `ProgressBar` (`ProgressBar`) | 12 | **12** | 0 | 0 | 0 | **100.0%** |
 | `CommandBarButton` (`CommandBarButton`) | 15 | **10** | 0 | 0 | 5 | **66.7%** |
-| `UsualGroup` (`GroupBox`) | 9 | **8** | 0 | 0 | 1 | **88.9%** |
-| `ListBox` (`ListBox`) | 10 | **7** | 0 | 1 | 2 | **77.8%** |
+| `ListBox` (`ListBox`) | 10 | **9** | 0 | 1 | 0 | **100.0%** |
+| `UsualGroup` (`GroupBox`) | 9 | **9** | 0 | 0 | 0 | **100.0%** |
 | `Panel controls extension` (`Panel controls extension`) | 9 | **7** | 0 | 0 | 2 | **77.8%** |
+| `SpreadsheetDocumentField` (`SpreadsheetDocumentField`) | 8 | **7** | 0 | 0 | 1 | **87.5%** |
 | `Extension for controls located in a form` (`Extension for controls located in a form`) | 11 | **6** | 0 | 1 | 4 | **60.0%** |
+| `Splitter` (`Splitter`) | 6 | **6** | 0 | 0 | 0 | **100.0%** |
 | `Extension for controls located in a spreadsheet document field` (`Extension for controls located in a spreadsheet document field`) | 8 | **5** | 0 | 1 | 2 | **71.4%** |
-| `Splitter` (`Splitter`) | 6 | **5** | 0 | 0 | 1 | **83.3%** |
+| `GraphicalSchemaField` (`GraphicalSchemaField`) | 6 | **5** | 0 | 1 | 0 | **100.0%** |
 | `Font` (`Font`) | 8 | **4** | 0 | 0 | 4 | **50.0%** |
 | `PanelPage` (`PanelPage`) | 7 | **4** | 0 | 2 | 1 | **80.0%** |
+| `TextDocumentField` (`TextDocumentField`) | 5 | **4** | 0 | 1 | 0 | **100.0%** |
 | `Color` (`Color`) | 4 | **4** | 0 | 0 | 0 | **100.0%** |
-| `GraphicalSchemaField` (`GraphicalSchemaField`) | 6 | **3** | 0 | 1 | 2 | **60.0%** |
-| `TextDocumentField` (`TextDocumentField`) | 5 | **3** | 0 | 1 | 1 | **75.0%** |
 | `TypeDescription` (`TypeDescription`) | 4 | **3** | 0 | 0 | 1 | **75.0%** |
+| `HTMLDocumentField` (`HTMLDocumentField`) | 4 | **3** | 0 | 1 | 0 | **100.0%** |
 | `Border` (`Border`) | 3 | **3** | 0 | 0 | 0 | **100.0%** |
-| `SpreadsheetDocumentField` (`SpreadsheetDocumentField`) | 8 | **2** | 0 | 0 | 6 | **25.0%** |
 | `ValueListItem` (`ValueListItem`) | 4 | **2** | 0 | 0 | 2 | **50.0%** |
 | `NumberQualifiers` (`NumberQualifiers`) | 3 | **2** | 1 | 0 | 0 | **100.0%** |
 | `ValueList` (`ValueList`) | 2 | **2** | 0 | 0 | 0 | **100.0%** |
 | `Form` (`Form`) | 38 | **1** | 2 | 12 | 23 | **11.5%** |
-| `HTMLDocumentField` (`HTMLDocumentField`) | 4 | **1** | 0 | 1 | 2 | **33.3%** |
 | `StringQualifiers` (`StringQualifiers`) | 2 | **1** | 1 | 0 | 0 | **100.0%** |
 | `Extension for controls located in a table box` (`Extension for controls located in a table box`) | 2 | **1** | 0 | 1 | 0 | **100.0%** |
 | `DateQualifiers` (`DateQualifiers`) | 1 | **1** | 0 | 0 | 0 | **100.0%** |
@@ -93,12 +93,13 @@
 
 ## 4. Детальная карта свойств по приоритетным элементам
 
-### `InputField` (Всего: 45 | 🟢 R/W: 37 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 7)
+### `InputField` (Всего: 45 | 🟢 R/W: 38 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 6)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `AutoChoiceIncomplete` | `АвтоВыборНезаполненного` | `AutoChoiceIncomplete` | `info[2][0][36]` | 🟢 R/W |
 | `AutoMarkIncomplete` | `АвтоОтметкаНезаполненного` | `AutoMarkIncomplete` | `info[2][0][35]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `ButtonBackColor` | `ЦветФонаКнопки` | `ButtonBackColor` | `<base>[9]` | 🟢 R/W |
 | `ButtonTextColor` | `ЦветТекстаКнопки` | `ButtonTextColor` | `<base>[10]` | 🟢 R/W |
@@ -134,7 +135,6 @@
 | `TypeRestriction` | `ОграничениеТипа` | `ValueType` | `info[1]` | 🟢 R/W |
 | `VerticalAlign` | `ВертикальноеПоложение` | `VerticalAlign` | `info[2][0][18]` | 🟢 R/W |
 | `Wrap` | `АвтоПереносСтрок` | `AutoCellHeight` | `info[2][0][4]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `` | ⚪ Unk |
 | `ChoiceButtonPicture` | `КартинкаКнопкиВыбора` | `ChoiceButtonPicture` | `` | ⚪ Unk |
 | `ChoiceList` | `СписокВыбора` | `ChoiceList` | `Не исследован` | ⚪ Unk |
 | `ChoiceListHeight` | `ВысотаСпискаВыбора` | `ChoiceListHeight` | `Не исследован` | ⚪ Unk |
@@ -143,12 +143,13 @@
 | `Shortcut` | `СочетаниеКлавиш` | `Shortcut` | `Не исследован` | ⚪ Unk |
 | `SelectedText` | `ВыделенныйТекст` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
-### `Table` (Всего: 46 | 🟢 R/W: 37 | 🟡 R/O: 0 | ⚙️ Runtime: 6 | ⚪ Unk: 3)
+### `Table` (Всего: 46 | 🟢 R/W: 38 | 🟡 R/O: 0 | ⚙️ Runtime: 6 | ⚪ Unk: 2)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `AlternationRowBackColor` | `ЦветФонаЧередованияСтрок` | `AlternationRowBackColor` | `info[2][1][8]` | 🟢 R/W |
 | `AutoInsertNewRow` | `АвтоВводНовойСтроки` | `AutoInsertNewRow` | `info[2][1][1] bit 15` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `ChangePositionOfColumns` | `ИзменятьПозициюКолонок` | `ChangePositionOfColumns` | `info[2][1][1] bit 26` | 🟢 R/W |
 | `ChangeRowSet` | `ИзменятьСоставСтрок` | `ChangeRowSet` | `info[2][1][22]` | 🟢 R/W |
@@ -184,7 +185,6 @@
 | `UseAlternationRowColor` | `ЧередованиеЦветовСтрок` | `UseAlternationRowColor` | `info[2][1][1] bit 4` | 🟢 R/W |
 | `VerticalLines` | `ВертикальныеЛинии` | `VerticalLines` | `info[2][1][1] bit 2` | 🟢 R/W |
 | `VerticalScrollBar` | `ВертикальнаяПолосаПрокрутки` | `VerticalScrollBar` | `info[2][1][10]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 | `ChoiceMode` | `РежимВыбора` | `ChoiceMode` | `Не исследован` | ⚪ Unk |
 | `EnableDrag` | `РазрешитьПеретаскивание` | `EnableDrag` | `Не исследован` | ⚪ Unk |
 | `Columns` | `Колонки` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
@@ -264,11 +264,12 @@
 | `Picture` | `Картинка` | `Picture` | `Не исследован` | ⚪ Unk |
 | `Shortcut` | `СочетаниеКлавиш` | `Shortcut` | `Не исследован` | ⚪ Unk |
 
-### `LabelDecoration` (Всего: 19 | 🟢 R/W: 14 | 🟡 R/O: 1 | ⚙️ Runtime: 0 | ⚪ Unk: 4)
+### `LabelDecoration` (Всего: 19 | 🟢 R/W: 15 | 🟡 R/O: 1 | ⚙️ Runtime: 0 | ⚪ Unk: 3)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Caption` | `Заголовок` | `Caption` | `info[1][2]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
@@ -283,16 +284,16 @@
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
 | `VerticalAlign` | `ВертикальноеПоложение` | `VerticalAlign` | `info[1][4]` | 🟢 R/W |
 | `Picture` | `Картинка` | `Picture` | `info[1][12]` | 🟡 R/O |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 | `LabelPictureLocation` | `ПоложениеКартинкиНадписи` | `LabelPictureLocation` | `Не исследован` | ⚪ Unk |
 | `ScrollingText` | `БегущаяСтрока` | `ScrollingText` | `Не исследован` | ⚪ Unk |
 | `Shortcut` | `СочетаниеКлавиш` | `Shortcut` | `Не исследован` | ⚪ Unk |
 
-### `CheckBox` (Всего: 15 | 🟢 R/W: 14 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `CheckBox` (Всего: 15 | 🟢 R/W: 15 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Caption` | `Заголовок` | `Caption` | `info[1][0][2]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
@@ -306,13 +307,13 @@
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
 | `VerticalAlign` | `ВертикальноеПоложение` | `VerticalAlign` | `info[1][0][5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
-### `RadioButton` (Всего: 15 | 🟢 R/W: 14 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `RadioButton` (Всего: 15 | 🟢 R/W: 15 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Caption` | `Заголовок` | `Caption` | `info[2][0][2]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
@@ -326,12 +327,12 @@
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
 | `VerticalAlign` | `ВертикальноеПоложение` | `VerticalAlign` | `info[2][0][5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
-### `ChoiceField` (Всего: 21 | 🟢 R/W: 16 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 5)
+### `ChoiceField` (Всего: 21 | 🟢 R/W: 17 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 4)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `ButtonBackColor` | `ЦветФонаКнопки` | `ButtonBackColor` | `<base>[9]` | 🟢 R/W |
 | `ButtonTextColor` | `ЦветТекстаКнопки` | `ButtonTextColor` | `<base>[10]` | 🟢 R/W |
@@ -348,18 +349,18 @@
 | `SpinButton` | `КнопкаРегулирования` | `SpinButton` | `info[1][9]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 | `ChoiceButtonPicture` | `КартинкаКнопкиВыбора` | `ChoiceButtonPicture` | `Не исследован` | ⚪ Unk |
 | `ChoiceListHeight` | `ВысотаСпискаВыбора` | `ChoiceListHeight` | `Не исследован` | ⚪ Unk |
 | `Picture` | `Картинка` | `Picture` | `Не исследован` | ⚪ Unk |
 | `SelButtonPicture` | `КартинкаКнопкиВыбора` | `SelButtonPicture` | `Не исследован` | ⚪ Unk |
 
-### `Panel` (Всего: 18 | 🟢 R/W: 13 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 4)
+### `Panel` (Всего: 18 | 🟢 R/W: 14 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 3)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `AutoTabOrder` | `АвтоПорядокОбхода` | `AutoTabOrder` | `info[1][base+5]` | 🟢 R/W |
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
 | `Font` | `Шрифт` | `Font` | `<base>[4]` | 🟢 R/W |
@@ -371,7 +372,6 @@
 | `TextColor` | `ЦветТекста` | `TextColor` | `<base>[3]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 | `PanelPictureLocation` | `ПоложениеКартинкиПанели` | `PanelPictureLocation` | `Не исследован` | ⚪ Unk |
 | `Picture` | `Картинка` | `Picture` | `Не исследован` | ⚪ Unk |
 | `PictureSize` | `РазмерКартинки` | `PictureSize` | `Не исследован` | ⚪ Unk |
@@ -389,12 +389,13 @@
 | `IsOpen` | `Раскрыта` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 | `Value` | `Значение` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
-### `CommandBar` (Всего: 14 | 🟢 R/W: 13 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `CommandBar` (Всего: 14 | 🟢 R/W: 14 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `AutoFill` | `АвтоЗаполнение` | `AutoFill` | `info[1][3]` | 🟢 R/W |
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `ButtonBackColor` | `ЦветФонаКнопки` | `ButtonBackColor` | `<base>[9]` | 🟢 R/W |
 | `ButtonTextColor` | `ЦветТекстаКнопки` | `ButtonTextColor` | `<base>[10]` | 🟢 R/W |
@@ -406,7 +407,6 @@
 | `Secondary` | `Вспомогательная` | `Secondary` | `info[1][5]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
 ### `CommandBarButton` (Всего: 15 | 🟢 R/W: 10 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 5)
 
@@ -428,11 +428,12 @@
 | `Picture` | `Картинка` | `Picture` | `Не исследован` | ⚪ Unk |
 | `Shortcut` | `СочетаниеКлавиш` | `Shortcut` | `Не исследован` | ⚪ Unk |
 
-### `UsualGroup` (Всего: 9 | 🟢 R/W: 8 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `UsualGroup` (Всего: 9 | 🟢 R/W: 9 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Caption` | `Заголовок` | `Caption` | `info[1][2]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
@@ -440,13 +441,13 @@
 | `TextColor` | `ЦветТекста` | `TextColor` | `<base>[3]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
-### `PictureField` (Всего: 17 | 🟢 R/W: 12 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 5)
+### `PictureField` (Всего: 17 | 🟢 R/W: 13 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 4)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `EnableDrag` | `РазрешитьПеретаскивание` | `EnableDrag` | `info[1][9]` | 🟢 R/W |
 | `EnableStartDrag` | `РазрешитьНачалоПеретаскивания` | `EnableStartDrag` | `info[1][8]` | 🟢 R/W |
@@ -458,16 +459,16 @@
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
 | `UseContextMenu` | `ИспользоватьКонтекстноеМеню` | `UseContextMenu` | `info[1][12]` | 🟢 R/W |
 | `Zoomable` | `Масштабировать` | `Zoomable` | `info[1][6]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 | `Hyperlink` | `Гиперссылка` | `Hyperlink` | `Не исследован` | ⚪ Unk |
 | `Picture` | `Картинка` | `Picture` | `Не исследован` | ⚪ Unk |
 | `PictureSize` | `РазмерКартинки` | `PictureSize` | `Не исследован` | ⚪ Unk |
 | `Shortcut` | `СочетаниеКлавиш` | `Shortcut` | `Не исследован` | ⚪ Unk |
 
-### `CalendarField` (Всего: 21 | 🟢 R/W: 16 | 🟡 R/O: 0 | ⚙️ Runtime: 2 | ⚪ Unk: 3)
+### `CalendarField` (Всего: 21 | 🟢 R/W: 17 | 🟡 R/O: 0 | ⚙️ Runtime: 2 | ⚪ Unk: 2)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `ButtonBackColor` | `ЦветФонаКнопки` | `ButtonBackColor` | `<base>[9]` | 🟢 R/W |
 | `ButtonTextColor` | `ЦветТекстаКнопки` | `ButtonTextColor` | `<base>[10]` | 🟢 R/W |
@@ -485,16 +486,16 @@
 | `ShowCurrentDate` | `ОтображатьТекущуюДату` | `ShowCurrentDate` | `info[1][7]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `BeginOfDisplayPeriod` | `НачалоПериодаОтображения` | `BeginOfDisplayPeriod` | `Не исследован` | ⚪ Unk |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 | `EndOfDisplayPeriod` | `КонецПериодаОтображения` | `EndOfDisplayPeriod` | `Не исследован` | ⚪ Unk |
 | `CurrentDate` | `ТекущаяДата` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 | `SelectedDates` | `ВыделенныеДаты` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
-### `TrackBar` (Всего: 15 | 🟢 R/W: 14 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `TrackBar` (Всего: 15 | 🟢 R/W: 15 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `ButtonBackColor` | `ЦветФонаКнопки` | `ButtonBackColor` | `<base>[9]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
@@ -508,13 +509,13 @@
 | `TextColor` | `ЦветТекста` | `TextColor` | `<base>[3]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
-### `ProgressBar` (Всего: 12 | 🟢 R/W: 11 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `ProgressBar` (Всего: 12 | 🟢 R/W: 12 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
 | `Font` | `Шрифт` | `Font` | `<base>[4]` | 🟢 R/W |
@@ -525,46 +526,75 @@
 | `ShowStyle` | `СтильОтображения` | `ShowStyle` | `info[1][5]` | 🟢 R/W |
 | `Step` | `Шаг` | `Step` | `info[1][4]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
-### `ListBox` (Всего: 10 | 🟢 R/W: 7 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 2)
+### `ListBox` (Всего: 10 | 🟢 R/W: 9 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
 | `FieldBackColor` | `ЦветФонаПоля` | `FieldBackColor` | `<base>[7]` | 🟢 R/W |
 | `FieldTextColor` | `ЦветТекстаПоля` | `FieldTextColor` | `<base>[8]` | 🟢 R/W |
+| `ReadOnly` | `ТолькоПросмотр` | `ReadOnly` | `info[1][6]` | 🟢 R/W |
 | `ShowCheckBox` | `ОтображатьПометку` | `ShowCheckBox` | `info[1][5]` | 🟢 R/W |
 | `ShowPicture` | `ОтображатьКартинку` | `ShowPicture` | `info[1][4]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
-| `ReadOnly` | `ТолькоПросмотр` | `ReadOnly` | `Не исследован` | ⚪ Unk |
 | `CurrentRow` | `ТекущаяСтрока` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
-### `Splitter` (Всего: 6 | 🟢 R/W: 5 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
+### `Splitter` (Всего: 6 | 🟢 R/W: 6 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 0)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
 | `BackColor` | `ЦветФона` | `BackColor` | `<base>[2]` | 🟢 R/W |
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
 | `Orientation` | `Ориентация` | `Orientation` | `info[1][2]` | 🟢 R/W |
 | `ToolTip` | `Подсказка` | `Tooltip` | `<base>[12]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
 
-### `SpreadsheetDocumentField` (Всего: 8 | 🟢 R/W: 2 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 6)
+### `SpreadsheetDocumentField` (Всего: 8 | 🟢 R/W: 7 | 🟡 R/O: 0 | ⚙️ Runtime: 0 | ⚪ Unk: 1)
 
 | Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
+| `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
+| `EnableDrag` | `РазрешитьПеретаскивание` | `EnableDrag` | `info[16]` | 🟢 R/W |
+| `EnableStartDrag` | `РазрешитьНачалоПеретаскивания` | `EnableStartDrag` | `info[15]` | 🟢 R/W |
+| `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
+| `HorizontalScrollBar` | `ГоризонтальнаяПолосаПрокрутки` | `HorizontalScrollBar` | `info[31]` | 🟢 R/W |
+| `VerticalScrollBar` | `ВертикальнаяПолосаПрокрутки` | `VerticalScrollBar` | `info[32]` | 🟢 R/W |
+| `ShowSelection` | `ОтображатьВыделение` | `ShowSelection` | `Не исследован` | ⚪ Unk |
+
+### `TextDocumentField` (Всего: 5 | 🟢 R/W: 4 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 0)
+
+| Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
+|---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
 | `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
 | `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
-| `Border` | `Рамка` | `Border` | `Не исследован` | ⚪ Unk |
-| `EnableDrag` | `РазрешитьПеретаскивание` | `EnableDrag` | `Не исследован` | ⚪ Unk |
-| `EnableStartDrag` | `РазрешитьНачалоПеретаскивания` | `EnableStartDrag` | `Не исследован` | ⚪ Unk |
-| `HorizontalScrollBar` | `ГоризонтальнаяПолосаПрокрутки` | `HorizontalScrollBar` | `Не исследован` | ⚪ Unk |
-| `ShowSelection` | `ОтображатьВыделение` | `ShowSelection` | `Не исследован` | ⚪ Unk |
-| `VerticalScrollBar` | `ВертикальнаяПолосаПрокрутки` | `VerticalScrollBar` | `Не исследован` | ⚪ Unk |
+| `Font` | `Шрифт` | `Font` | `<base>[4]` | 🟢 R/W |
+| `SelectedText` | `ВыделенныйТекст` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
+
+### `GraphicalSchemaField` (Всего: 6 | 🟢 R/W: 5 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 0)
+
+| Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
+|---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
+| `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
+| `Enabled` | `Доступность` | `Enabled` | `<base>[1]` | 🟢 R/W |
+| `ReadOnly` | `ТолькоПросмотр` | `ReadOnly` | `info[4]` | 🟢 R/W |
+| `Transparent` | `ПрозрачныйФон` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
+| `CurrentItem` | `ТекущийЭлемент` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
+
+### `HTMLDocumentField` (Всего: 4 | 🟢 R/W: 3 | 🟡 R/O: 0 | ⚙️ Runtime: 1 | ⚪ Unk: 0)
+
+| Свойство (EN) | Свойство (RU) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
+|---|---|---|---|---|
+| `Border` | `Рамка` | `BorderStyle` | `<base>[11][3]` | 🟢 R/W |
+| `BorderColor` | `ЦветРамки` | `BorderColor` | `<base>[6]` | 🟢 R/W |
+| `Output` | `Вывод` | `Output` | `info[6]` | 🟢 R/W |
+| `Document` | `Документ` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
 ### `Form` (Всего: 38 | 🟢 R/W: 1 | 🟡 R/O: 2 | ⚙️ Runtime: 12 | ⚪ Unk: 23)
 

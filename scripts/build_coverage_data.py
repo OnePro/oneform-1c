@@ -186,6 +186,7 @@ KNOWN_PROPERTIES_STATUS = {
     ("*", "BackColor"): {"xml": "BackColor", "status": "rw", "priority": "P1", "slot": "<base>[2]"},
     ("*", "TextColor"): {"xml": "TextColor", "status": "rw", "priority": "P1", "slot": "<base>[3]"},
     ("*", "BorderColor"): {"xml": "BorderColor", "status": "rw", "priority": "P1", "slot": "<base>[6]"},
+    ("*", "Border"): {"xml": "BorderStyle", "status": "rw", "priority": "P1", "slot": "<base>[11][3]"},
     ("*", "FieldBackColor"): {"xml": "FieldBackColor", "status": "rw", "priority": "P1", "slot": "<base>[7]"},
     ("*", "FieldTextColor"): {"xml": "FieldTextColor", "status": "rw", "priority": "P1", "slot": "<base>[8]"},
     ("*", "ButtonBackColor"): {"xml": "ButtonBackColor", "status": "rw", "priority": "P1", "slot": "<base>[9]"},
@@ -234,7 +235,6 @@ KNOWN_PROPERTIES_STATUS = {
     ("TextBox", "MaxValue"): {"xml": "MaxValue", "status": "rw", "priority": "P1", "slot": "info[2][0][20]"},
     ("TextBox", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][17]"},
     ("TextBox", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][18]"},
-    ("TextBox", "Border"): {"xml": "Border", "status": "unk", "priority": "P2"},
     ("TextBox", "ChoiceButtonPicture"): {"xml": "ChoiceButtonPicture", "status": "unk", "priority": "P2"},
 
     # TableBox (Table)
@@ -389,6 +389,18 @@ KNOWN_PROPERTIES_STATUS = {
     # ListBox
     ("ListBox", "ShowPicture"): {"xml": "ShowPicture", "status": "rw", "priority": "P1", "slot": "info[1][4]"},
     ("ListBox", "ShowCheckBox"): {"xml": "ShowCheckBox", "status": "rw", "priority": "P1", "slot": "info[1][5]"},
+    ("ListBox", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P1", "slot": "info[1][6]"},
+
+    # SpreadsheetDocumentField / TextDocumentField / HTMLDocumentField / GraphicalSchemaField
+    ("SpreadsheetDocumentField", "EnableStartDrag"): {"xml": "EnableStartDrag", "status": "rw", "priority": "P1", "slot": "info[15]"},
+    ("SpreadsheetDocumentField", "EnableDrag"): {"xml": "EnableDrag", "status": "rw", "priority": "P1", "slot": "info[16]"},
+    ("SpreadsheetDocumentField", "HorizontalScrollBar"): {"xml": "HorizontalScrollBar", "status": "rw", "priority": "P1", "slot": "info[31]"},
+    ("SpreadsheetDocumentField", "VerticalScrollBar"): {"xml": "VerticalScrollBar", "status": "rw", "priority": "P1", "slot": "info[32]"},
+    ("TextDocumentField", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P1", "slot": "info[5]"},
+    ("TextDocumentField", "Output"): {"xml": "Output", "status": "rw", "priority": "P1", "slot": "info[6]"},
+    ("GraphicalSchemaField", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P1", "slot": "info[4]"},
+    ("GraphicalSchemaField", "Output"): {"xml": "Output", "status": "rw", "priority": "P1", "slot": "info[5]"},
+    ("HTMLDocumentField", "Output"): {"xml": "Output", "status": "rw", "priority": "P1", "slot": "info[6]"},
 
     # TrackBar
     ("TrackBar", "MinValue"): {"xml": "MinValue", "status": "rw", "priority": "P1", "slot": "info[1][2]"},
