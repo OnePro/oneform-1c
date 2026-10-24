@@ -659,6 +659,7 @@ pub struct ControlValues {
     pub horizontal_scroll_bar: String,
     pub vertical_scroll_bar: String,
     pub read_only: bool,
+    pub table_read_only: Option<bool>,
     pub choice_button: Option<bool>,
     pub clear_button: Option<bool>,
     pub open_button: Option<bool>,
@@ -739,6 +740,7 @@ impl ControlValues {
             horizontal_scroll_bar: String::new(),
             vertical_scroll_bar: String::new(),
             read_only: false,
+            table_read_only: None,
             choice_button: None,
             clear_button: None,
             open_button: None,
@@ -958,7 +960,10 @@ impl ControlValues {
             (self.value_type == other.value_type, Property::ValueType),
             (self.horizontal_scroll_bar == other.horizontal_scroll_bar, Property::HorizontalScrollBar),
             (self.vertical_scroll_bar == other.vertical_scroll_bar, Property::VerticalScrollBar),
-            (self.read_only == other.read_only, Property::ReadOnly),
+            (
+                self.read_only == other.read_only && self.table_read_only == other.table_read_only,
+                Property::ReadOnly,
+            ),
             (self.choice_button == other.choice_button, Property::ChoiceButton),
             (self.clear_button == other.clear_button, Property::ClearButton),
             (self.open_button == other.open_button, Property::OpenButton),
@@ -1163,7 +1168,7 @@ impl FormXml {
                 c.values.change_row_set = None;
                 c.values.initial_list_view = None;
                 c.values.output = None;
-                c.values.read_only = false;
+                c.values.table_read_only = None;
                 c.values.horizontal_scroll_bar.clear();
                 c.values.vertical_scroll_bar.clear();
             }
@@ -1947,7 +1952,8 @@ impl Parser<'_> {
             value_type,
             horizontal_scroll_bar: enum_of("HorizontalScrollBar", &["DontUse", "Use", "Auto"], scroll_default)?,
             vertical_scroll_bar: enum_of("VerticalScrollBar", &["DontUse", "Use", "Auto"], scroll_default)?,
-            read_only: bool_of("ReadOnly", false)?,
+            read_only: if type_name != "Table" { bool_of("ReadOnly", false)? } else { false },
+            table_read_only: if type_name == "Table" { opt_bool_of("ReadOnly")? } else { None },
             choice_button: if is_inp { Some(opt_bool_of("ChoiceButton")?.unwrap_or(false)) } else { None },
             clear_button: if is_inp { Some(opt_bool_of("ClearButton")?.unwrap_or(false)) } else { None },
             open_button: if is_inp { Some(opt_bool_of("OpenButton")?.unwrap_or(false)) } else { None },
@@ -3319,8 +3325,12 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 "Auto" => 2,
                 _ => 0,
             };
-            t.children[9] = bare(sb(&v.horizontal_scroll_bar));
-            t.children[10] = bare(sb(&v.vertical_scroll_bar));
+            if !v.horizontal_scroll_bar.is_empty() {
+                t.children[9] = bare(sb(&v.horizontal_scroll_bar));
+            }
+            if !v.vertical_scroll_bar.is_empty() {
+                t.children[10] = bare(sb(&v.vertical_scroll_bar));
+            }
             if let Some(s) = &v.initial_list_view {
                 t.children[20] = bare(initial_list_view_code(s));
             }
@@ -4191,7 +4201,7 @@ fn table_flag_value(v: &ControlValues, p: Property) -> Option<bool> {
         Property::Footer => v.footer,
         Property::VerticalLines => v.vertical_lines,
         Property::HorizontalLines => v.horizontal_lines,
-        Property::ReadOnly => Some(v.read_only),
+        Property::ReadOnly => v.table_read_only,
         Property::AutoInsertNewRow => v.auto_insert_new_row,
         Property::ChangeSettingOfColumns => v.change_setting_of_columns,
         Property::ChangePositionOfColumns => v.change_position_of_columns,
@@ -5259,7 +5269,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 cur == want || (want.is_empty() && cur == "DontUse")
             }
             Property::ReadOnly if site.entry.type_name == "Table" => {
-                table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p) == new.read_only
+                Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == table_flag_value(new, p)
             }
             Property::Header
             | Property::VerticalLines
