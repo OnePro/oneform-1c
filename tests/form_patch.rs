@@ -256,7 +256,7 @@ fn assert_unsupported(edited: String, kind: &str, needles: &[&str]) {
 fn form_level_differences_are_rejected() {
     assert_unsupported(mutate("<Width>937</Width>", "<Width>938</Width>"), "unsupported-form-value", &["form 'Форма'", "Width"]);
     assert_unsupported(
-        mutate("<Item language=\"ru\">Обработка  ВнешняяОбработка1</Item>", "<Item language=\"ru\">X</Item>"),
+        mutate("<Item language=\"ru\">Обработка  ВнешняяОбработка1</Item>", "<Item>X</Item>"),
         "unsupported-form-value",
         &["Caption"],
     );
@@ -268,8 +268,8 @@ fn form_level_differences_are_rejected() {
 
 #[test]
 fn event_differences_are_rejected() {
-    assert_unsupported(mutate(">ПередОткрытием<", ">Другой<"), "unsupported-event", &["form 'Форма'", "BeforeOpen"]);
-    assert_unsupported(mutate("<OnOpen id=\"70001\">", "<OnOpen id=\"70099\">"), "unsupported-event", &["OnOpen"]);
+    assert_unsupported(mutate("<BeforeOpen id=\"70000\">", "<BeforeOpen id=\"70098\">"), "unsupported-event", &["form 'Форма'", "Events"]);
+    assert_unsupported(mutate("<OnOpen id=\"70001\">", "<OnOpen id=\"70099\">"), "unsupported-event", &["Events"]);
     assert_unsupported(mutate("<Click id=\"0\">Надпись1Нажатие</Click>", "<Click id=\"999\">Надпись1Нажатие</Click>"), "unsupported-event", &["Надпись1", "Events"]);
 }
 
@@ -294,9 +294,10 @@ fn panel_table_and_command_bar_differences_are_rejected() {
     );
     assert_unsupported(mutate_in("<Table name=\"ТабличноеПоле1\"", "<Editor>InputField</Editor>", "<Editor>Other</Editor>"), "unsupported-table", &["ТабличноеПоле1", "Columns"]);
     assert_unsupported(
-        mutate(
-            "<Item language=\"ru\">Выполнить</Item>\n                <Item language=\"ro\">Выполнить</Item>",
-            "<Item language=\"ru\">Run</Item>\n                <Item language=\"ro\">Выполнить</Item>",
+        mutate_in(
+            "<CommandBar name=\"ОсновныеДействияФормы\"",
+            "representation=\"Text\"",
+            "representation=\"Bad\"",
         ),
         "unsupported-command-bar",
         &["ОсновныеДействияФормы", "Buttons"],
@@ -314,7 +315,7 @@ fn property_attribute_and_unknown_element_differences_are_rejected() {
         mutate_in(
             r#"<InputField name="ПолеВвода1" id="7">"#,
             "<ValueType kind=\"ValueList\" composite=\"false\"/>",
-            "<ValueType kind=\"String\" composite=\"false\"/>",
+            "<ValueType kind=\"Unknown\" composite=\"false\"/>",
         ),
         "unsupported-property",
         &["ValueType"],
@@ -345,7 +346,7 @@ fn property_attribute_and_unknown_element_differences_are_rejected() {
         &mutate_in(
             r#"<InputField name="ПолеВвода1" id="7">"#,
             "<ValueType kind=\"ValueList\" composite=\"false\"/>",
-            "<ValueType kind=\"String\" composite=\"false\"/>",
+            "<ValueType kind=\"Unknown\" composite=\"false\"/>",
         ),
         "<Left>79</Left>",
         "<Left>80</Left>",
@@ -1657,5 +1658,83 @@ fn usualgroup_choicefield_and_spreadsheet_events_round_trip() {
     assert_eq!(cf.values.events, vec![(2147483647, "ПолеВыбораНовоеПриИзменении".to_string())]);
     let sp = got.control(15).unwrap();
     assert_eq!(sp.values.events, vec![(3, "ТабДокНачалоПеретаскивания".to_string())]);
+}
+
+#[test]
+fn remaining_colors_fonts_scrollbars_valuetype_buttons_and_form_header_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. Form-level Caption and Events
+    edited = edited
+        .replacen(
+            "<Item language=\"ru\">Обработка  ВнешняяОбработка1</Item>",
+            "<Item language=\"ru\">Новый заголовок формы</Item>",
+            1,
+        )
+        .replacen(
+            "<BeforeOpen id=\"70000\">ПередОткрытием</BeforeOpen>",
+            "<BeforeOpen id=\"70000\">ПередОткрытиемНовый</BeforeOpen>",
+            1,
+        );
+    // 2. InputField ПолеВвода1: BackColor, TextColor, BorderColor, Font, ValueType, HorizontalScrollBar, VerticalScrollBar
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода1",
+        &[(
+            "<ValueType kind=\"ValueList\" composite=\"false\"/>",
+            "<BackColor kind=\"rgb\" value=\"#FF0000\"/><TextColor kind=\"rgb\" value=\"#0000FF\"/><BorderColor kind=\"rgb\" value=\"#00FF00\"/><Font bold=\"true\" source=\"bin\"/><ValueType kind=\"String\" composite=\"false\"/><HorizontalScrollBar>Use</HorizontalScrollBar><VerticalScrollBar>Auto</VerticalScrollBar>",
+        )],
+    );
+    // 3. Table ТабличноеПоле1: InitialTreeView, Column DataPath & Events
+    edited = edited
+        .replacen(
+            "<Footer>false</Footer>",
+            "<Footer>false</Footer><InitialTreeView>ExpandTopLevel</InitialTreeView>",
+            1,
+        )
+        .replacen(
+            "<DataPath attributeId=\"2\">ТабличноеПоле1.Колонка1</DataPath>",
+            "<DataPath attributeId=\"2\">ТабличноеПоле1.КолонкаПервая</DataPath>",
+            1,
+        )
+        .replacen(
+            "<StartChoice id=\"2\">ТабличноеПоле1Колонка1НачалоВыбора</StartChoice>",
+            "<StartChoice id=\"2\">НовыйОбработчикКолонки</StartChoice>",
+            1,
+        );
+    // 4. CommandBar ОсновныеДействияФормы: Button caption and action
+    edited = edited
+        .replacen(
+            "action=\"КнопкаВыполнитьНажатие\"",
+            "action=\"КнопкаВыполнитьНовоеНажатие\"",
+            1,
+        )
+        .replacen(
+            "<Item language=\"ru\">Выполнить</Item>\n                <Item language=\"ro\">Выполнить</Item>",
+            "<Item language=\"ru\">Запустить</Item>\n                <Item language=\"ro\">Выполнить</Item>",
+            1,
+        );
+    // 5. Add ChoiceField with ChoiceList
+    let new_cf = "<ChoiceField name=\"ПолеВыбораСоСписком\" id=\"999\">\n          <Left>520</Left><Top>520</Top><Width>140</Width><Height>20</Height>\n          <ZOrder>58</ZOrder><TabOrder>58</TabOrder>\n          <ChoiceList>\n            <ChoiceItem value=\"Зн1\">\n              <Presentation>\n                <Item language=\"ru\">Первый вариант</Item>\n              </Presentation>\n            </ChoiceItem>\n          </ChoiceList>\n        </ChoiceField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(new_cf.to_string() + anchor), 1);
+
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    assert_eq!(got.form_caption, vec![("ru".to_string(), "Новый заголовок формы".to_string())]);
+    assert!(got.form_events.contains(&(70000, "ПередОткрытиемНовый".to_string())));
+    let inp = got.control(7).unwrap();
+    assert_eq!(inp.values.horizontal_scroll_bar, "Use");
+    assert_eq!(inp.values.vertical_scroll_bar, "Auto");
+    assert_eq!(inp.values.value_type, Some(("String".to_string(), false, None)));
+    assert!(inp.values.back_color.is_some());
+    assert!(inp.values.font.as_ref().is_some_and(|f| f.bold));
+    let tbl = got.control(6).unwrap();
+    assert_eq!(tbl.values.initial_tree_view, "ExpandTopLevel");
+    assert_eq!(tbl.values.columns[0].field_name.as_deref(), Some("КолонкаПервая"));
+    assert!(tbl.values.columns[0].events.contains(&(2, "НовыйОбработчикКолонки".to_string())));
+    let bar = got.control(3).unwrap();
+    assert_eq!(bar.values.buttons[0].action, "КнопкаВыполнитьНовоеНажатие");
+    let cf = got.control(pf.allocated[0].1).unwrap();
+    assert_eq!(cf.values.choice_list.len(), 1);
+    assert_eq!(cf.values.choice_list[0].value, "Зн1");
 }
 

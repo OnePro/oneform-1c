@@ -310,7 +310,7 @@ const FONT_MASK_WEIGHT: i64 = 4;
 
 pub fn app_path(type_name: &str) -> Option<&'static [i64]> {
     Some(match type_name {
-        "LabelDecoration" | "UsualGroup" | "Button" | "Panel" | "CommandBar" => &[1, 0],
+        "LabelDecoration" | "UsualGroup" | "Button" | "Panel" | "CommandBar" | "ChoiceField" => &[1, 0],
         "InputField" | "RadioButton" => &[2, 0, 0],
         "CheckBox" => &[1, 0, 0],
         "Table" | "TableBox" => &[2, 0],
@@ -580,6 +580,17 @@ fn input_field(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofErr
         props.insert("valueType".into(), Value::Object(vt));
     }
     let q = node(at_n(info, &[2, 0])?, "input field", 37)?;
+    for (idx, key) in [(2usize, "horizontalScrollBar"), (3usize, "verticalScrollBar")] {
+        match atom(&q.children[idx]) {
+            "1" => {
+                props.insert(key.into(), "Use".into());
+            }
+            "2" => {
+                props.insert(key.into(), "Auto".into());
+            }
+            _ => {}
+        }
+    }
     props.insert("choiceButton".into(), (int(&q.children[7], "choice button")? != 0).into());
     props.insert("clearButton".into(), (int(&q.children[8], "clear button")? != 0).into());
     props.insert("openButton".into(), (int(&q.children[10], "open button")? != 0).into());
@@ -788,6 +799,17 @@ fn table(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofError> {
     props.insert("footer".into(), (flags & 2 != 0).into());
     if is_bare(&t.children[15], "1") {
         props.insert("selectionMode".into(), "Multi".into());
+    }
+    if t.len() > 21 {
+        match atom(&t.children[21]) {
+            "1" => {
+                props.insert("initialTreeView".into(), "ExpandTopLevel".into());
+            }
+            "2" => {
+                props.insert("initialTreeView".into(), "ExpandAllLevels".into());
+            }
+            _ => {}
+        }
     }
     Ok(())
 }

@@ -975,6 +975,11 @@ impl Writer {
         if let Some(vt) = p.get("valueType") {
             self.value_type(vt);
         }
+        for (tag, key) in [("HorizontalScrollBar", "horizontalScrollBar"), ("VerticalScrollBar", "verticalScrollBar")] {
+            if let Some(v) = p.get(key) {
+                self.leaf(tag, Some(&pystr(v)), &[]);
+            }
+        }
         for (tag, key) in [("ChoiceButton", "choiceButton"), ("ClearButton", "clearButton"), ("OpenButton", "openButton")] {
             if let Some(v) = p.get(key) {
                 self.leaf(tag, Some(&pystr(v).to_lowercase()), &[]);
@@ -1018,6 +1023,9 @@ impl Writer {
         }
         if let Some(v) = p.get("selectionMode") {
             self.leaf("SelectionMode", Some(&pystr(v)), &[]);
+        }
+        if let Some(v) = p.get("initialTreeView") {
+            self.leaf("InitialTreeView", Some(&pystr(v)), &[]);
         }
         if let Some(v) = p.get("autoFill") {
             self.leaf("AutoFill", Some(&pystr(v).to_lowercase()), &[]);

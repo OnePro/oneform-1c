@@ -1095,3 +1095,84 @@ fn epf_usualgroup_and_choicefield_donor_pack() {
 fn config_usualgroup_and_choicefield_donor_pack() {
     assert_usualgroup_and_choicefield_donor_pack(Target::Config);
 }
+
+fn assert_remaining_properties_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    let inp_at = xml.find("<InputField name=\"ПолеВвода1\"").expect("input");
+    let inp_end = inp_at + xml[inp_at..].find("</InputField>").unwrap();
+    let inp_block = xml[inp_at..inp_end].replacen(
+        "<ValueType kind=\"ValueList\" composite=\"false\"/>",
+        "<BackColor kind=\"rgb\" value=\"#FF0000\"/>\n          <TextColor kind=\"rgb\" value=\"#0000FF\"/>\n          <BorderColor kind=\"rgb\" value=\"#00FF00\"/>\n          <Font bold=\"true\" source=\"bin\"/>\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <HorizontalScrollBar>Use</HorizontalScrollBar>\n          <VerticalScrollBar>Auto</VerticalScrollBar>",
+        1,
+    );
+    xml.replace_range(inp_at..inp_end, &inp_block);
+    xml = xml
+        .replacen(
+            "<Item language=\"ru\">Обработка  ВнешняяОбработка1</Item>",
+            "<Item language=\"ru\">Новый заголовок формы</Item>",
+            1,
+        )
+        .replacen(
+            "<BeforeOpen id=\"70000\">ПередОткрытием</BeforeOpen>",
+            "<BeforeOpen id=\"70000\">ПередОткрытиемНовый</BeforeOpen>",
+            1,
+        )
+        .replacen(
+            "<Footer>false</Footer>",
+            "<Footer>false</Footer>\n          <InitialTreeView>ExpandTopLevel</InitialTreeView>",
+            1,
+        )
+        .replacen(
+            "<DataPath attributeId=\"2\">ТабличноеПоле1.Колонка1</DataPath>",
+            "<DataPath attributeId=\"2\">ТабличноеПоле1.КолонкаПервая</DataPath>",
+            1,
+        )
+        .replacen(
+            "<StartChoice id=\"2\">ТабличноеПоле1Колонка1НачалоВыбора</StartChoice>",
+            "<StartChoice id=\"2\">НовыйОбработчикКолонки</StartChoice>",
+            1,
+        )
+        .replacen(
+            "action=\"КнопкаВыполнитьНажатие\"",
+            "action=\"КнопкаВыполнитьНовоеНажатие\"",
+            1,
+        );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    for needle in [
+        "<Item language=\"ru\">Новый заголовок формы</Item>",
+        "<BeforeOpen id=\"70000\">ПередОткрытиемНовый</BeforeOpen>",
+        r##"<BackColor kind="rgb" value="#FF0000"/>"##,
+        r##"<TextColor kind="rgb" value="#0000FF"/>"##,
+        r##"<BorderColor kind="rgb" value="#00FF00"/>"##,
+        r#"<Font bold="true" source="bin"/>"#,
+        "<HorizontalScrollBar>Use</HorizontalScrollBar>",
+        "<VerticalScrollBar>Auto</VerticalScrollBar>",
+        "<InitialTreeView>ExpandTopLevel</InitialTreeView>",
+        "<DataPath attributeId=\"2\">ТабличноеПоле1.КолонкаПервая</DataPath>",
+        "<StartChoice id=\"2\">НовыйОбработчикКолонки</StartChoice>",
+        "action=\"КнопкаВыполнитьНовоеНажатие\"",
+    ] {
+        assert!(packed_xml.contains(needle), "{target:?}: missing {needle} in:\n{packed_xml}");
+    }
+}
+
+#[test]
+fn epf_remaining_form_and_control_properties_pack() {
+    assert_remaining_properties_pack(Target::Epf);
+}
+
+#[test]
+fn config_remaining_form_and_control_properties_pack() {
+    assert_remaining_properties_pack(Target::Config);
+}

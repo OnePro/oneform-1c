@@ -36,7 +36,7 @@ use crate::oof_props::{app_path, caption_path, localized};
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 33] = [
+const SUPPORTED_TAGS: [&str; 43] = [
     "DataPath",
     "Caption",
     "Left",
@@ -49,7 +49,14 @@ const SUPPORTED_TAGS: [&str; 33] = [
     "Events",
     "Enabled",
     "TransparentBack",
+    "BackColor",
+    "TextColor",
+    "BorderColor",
+    "Font",
     "Tooltip",
+    "ValueType",
+    "HorizontalScrollBar",
+    "VerticalScrollBar",
     "ReadOnly",
     "ChoiceButton",
     "ClearButton",
@@ -65,10 +72,13 @@ const SUPPORTED_TAGS: [&str; 33] = [
     "Hyperlink",
     "ThreeState",
     "TitleLocation",
+    "ChoiceList",
     "ShowTabs",
     "Footer",
     "SelectionMode",
+    "InitialTreeView",
     "AutoFill",
+    "Buttons",
     "BorderStyle",
 ];
 const MAX_REPORTED: usize = 50;
@@ -119,6 +129,9 @@ impl XmlElement {
     }
 }
 
+type LocItems = Vec<(String, String)>;
+type EventItems = Vec<(i64, String)>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormAttribute {
     pub id: i64,
@@ -164,9 +177,176 @@ pub struct PageValues {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ColorSpec {
+    Rgb(i64, String),
+    Style(String),
+}
+
+fn parse_color_elem(e: &XmlElement) -> Option<ColorSpec> {
+    if !e.children.is_empty() || !e.text.trim().is_empty() {
+        return None;
+    }
+    match e.attrs.get("kind").map(String::as_str)? {
+        "rgb" => {
+            if e.attrs.len() != 2 {
+                return None;
+            }
+            let hex = e.attrs.get("value")?.trim().strip_prefix('#')?;
+            if hex.len() != 6 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+                return None;
+            }
+            let r = i64::from_str_radix(&hex[0..2], 16).ok()?;
+            let g = i64::from_str_radix(&hex[2..4], 16).ok()?;
+            let b = i64::from_str_radix(&hex[4..6], 16).ok()?;
+            let rgb = (b << 16) | (g << 8) | r;
+            Some(ColorSpec::Rgb(rgb, format!("#{:02X}{:02X}{:02X}", r, g, b)))
+        }
+        "style" => {
+            let r = e.attrs.get("ref")?.trim().to_lowercase();
+            if r.len() != 36 {
+                return None;
+            }
+            Some(ColorSpec::Style(r))
+        }
+        _ => None,
+    }
+}
+
+fn format_color_node(c: Option<&ColorSpec>) -> String {
+    match c {
+        None => "{3,4,{0}}".to_string(),
+        Some(ColorSpec::Rgb(rgb, _)) => format!("{{3,0,{{{rgb}}}}}"),
+        Some(ColorSpec::Style(r)) => format!("{{3,3,{{0,{r}}}}}"),
+    }
+}
+
+fn read_color_spec(item: &Item) -> Option<ColorSpec> {
+    let m = crate::oof_props::decode_color(item).ok()??;
+    match m.get("kind")?.as_str()? {
+        "rgb" => {
+            let val = m.get("value")?.as_str()?.to_string();
+            let hex = val.strip_prefix('#')?;
+            let r = i64::from_str_radix(&hex[0..2], 16).ok()?;
+            let g = i64::from_str_radix(&hex[2..4], 16).ok()?;
+            let b = i64::from_str_radix(&hex[4..6], 16).ok()?;
+            Some(ColorSpec::Rgb((b << 16) | (g << 8) | r, val))
+        }
+        "style" => Some(ColorSpec::Style(m.get("ref")?.as_str()?.to_lowercase())),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FontSpec {
+    pub bold: bool,
+    pub style_source: bool,
+    pub face: Option<String>,
+    pub size: Option<i64>,
+}
+
+fn parse_font_elem(e: &XmlElement) -> Option<FontSpec> {
+    if !e.children.is_empty() || !e.text.trim().is_empty() || e.attrs.is_empty() {
+        return None;
+    }
+    for k in e.attrs.keys() {
+        if !matches!(k.as_str(), "bold" | "source" | "face" | "size") {
+            return None;
+        }
+    }
+    let bold = match e.attrs.get("bold").map(String::as_str) {
+        Some("true") => true,
+        Some("false") | None => false,
+        _ => return None,
+    };
+    let style_source = match e.attrs.get("source").map(String::as_str) {
+        Some("style") => true,
+        Some("bin") | None => false,
+        _ => return None,
+    };
+    let face = e.attrs.get("face").map(|s| s.to_string()).filter(|s| !s.is_empty());
+    let size = match e.attrs.get("size") {
+        Some(s) => Some(s.trim().parse::<i64>().ok().filter(|&v| v > 0)?),
+        None => None,
+    };
+    if !bold && face.is_none() && size.is_none() {
+        return None;
+    }
+    Some(FontSpec { bold, style_source: style_source && face.is_none() && size.is_none(), face, size })
+}
+
+fn format_font_node(f: Option<&FontSpec>) -> String {
+    let Some(f) = f else {
+        return "{7,3,0,1,100}".to_string();
+    };
+    if f.style_source && f.bold && f.face.is_none() && f.size.is_none() {
+        return "{7,2,0,{0,5477b48d-c6e4-4ba3-a715-24bd7ad690bd},1,100}".to_string();
+    }
+    if f.bold && f.face.is_none() && f.size.is_none() {
+        return "{7,1,60,{0},700,0,0,0,0,100}".to_string();
+    }
+    let mask = if f.bold { 60 } else { 0 };
+    let weight = if f.bold { 700 } else { 400 };
+    let h = f.size.map(|s| -(s * 2)).unwrap_or(0);
+    let face_part = f.face.as_deref().map(|fc| format!("{},", quote(fc))).unwrap_or_default();
+    format!("{{7,1,{mask},{face_part}{{{h}}},{weight},0,0,0,0,100}}")
+}
+
+fn read_font_spec(item: &Item) -> Option<FontSpec> {
+    let m = crate::oof_props::decode_font(item).ok()??;
+    let bold = m.get("bold").and_then(|v| v.as_bool()).unwrap_or(false);
+    let style_source = m.get("source").and_then(|v| v.as_str()) == Some("style");
+    let face = m.get("face").and_then(|v| v.as_str()).map(str::to_string);
+    let size = m.get("size").and_then(|v| v.as_i64());
+    Some(FontSpec { bold, style_source, face, size })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChoiceItemSpec {
+    pub value: String,
+    pub presentation: Vec<(String, String)>,
+}
+
+fn format_choice_list_node(items: &[ChoiceItemSpec]) -> String {
+    if items.is_empty() {
+        return "0".to_string();
+    }
+    let mut parts = Vec::with_capacity(items.len());
+    for it in items {
+        let mut pres_parts = Vec::with_capacity(1 + 2 * it.presentation.len());
+        pres_parts.push(it.presentation.len().to_string());
+        for (l, t) in &it.presentation {
+            pres_parts.push(quote(l));
+            pres_parts.push(quote(t));
+        }
+        parts.push(format!(
+            "{{0,0,0,{{\"S\",{}}},{{0,0,{{{}}}}}}}",
+            quote(&it.value),
+            pres_parts.join(",")
+        ));
+    }
+    format!("{{8,0,{{0,0,0,0,0,0,{{1,{},{}}}}}}}", items.len(), parts.join(","))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandBarButton {
+    pub name: String,
+    pub id: Option<i64>,
+    pub kind: String,
+    pub checked: bool,
+    pub representation: String,
+    pub has_picture: bool,
+    pub action_kind: String,
+    pub action: String,
+    pub caption: Vec<(String, String)>,
+    pub tooltip: Vec<(String, String)>,
+    pub buttons: Vec<CommandBarButton>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ColumnValues {
     pub id: Option<i64>,
     pub name: String,
+    pub field_name: Option<String>,
     pub header: Vec<(String, String)>,
     pub footer_text: Vec<(String, String)>,
     pub tooltip: Vec<(String, String)>,
@@ -174,6 +354,7 @@ pub struct ColumnValues {
     pub visible: bool,
     pub read_only: bool,
     pub editor: Option<String>,
+    pub events: Vec<(i64, String)>,
 }
 
 /// Values of the supported property set, with the projection defaults applied
@@ -194,7 +375,14 @@ pub struct ControlValues {
     pub events: Vec<(i64, String)>,
     pub enabled: bool,
     pub transparent_back: bool,
+    pub back_color: Option<ColorSpec>,
+    pub text_color: Option<ColorSpec>,
+    pub border_color: Option<ColorSpec>,
+    pub font: Option<FontSpec>,
     pub tooltip: Vec<(String, String)>,
+    pub value_type: Option<(String, bool, Option<i64>)>,
+    pub horizontal_scroll_bar: String,
+    pub vertical_scroll_bar: String,
     pub read_only: bool,
     pub choice_button: Option<bool>,
     pub clear_button: Option<bool>,
@@ -210,12 +398,15 @@ pub struct ControlValues {
     pub hyperlink: bool,
     pub three_state: bool,
     pub title_location: String,
+    pub choice_list: Vec<ChoiceItemSpec>,
     pub show_tabs: Option<i64>,
     pub pages: Vec<PageValues>,
     pub footer: Option<bool>,
     pub selection_mode: String,
+    pub initial_tree_view: String,
     pub columns: Vec<ColumnValues>,
     pub auto_fill: Option<bool>,
+    pub buttons: Vec<CommandBarButton>,
     pub border_style: Option<i64>,
 }
 
@@ -235,7 +426,14 @@ impl ControlValues {
             events: Vec::new(),
             enabled: true,
             transparent_back: false,
+            back_color: None,
+            text_color: None,
+            border_color: None,
+            font: None,
             tooltip: Vec::new(),
+            value_type: None,
+            horizontal_scroll_bar: String::new(),
+            vertical_scroll_bar: String::new(),
             read_only: false,
             choice_button: None,
             clear_button: None,
@@ -251,12 +449,15 @@ impl ControlValues {
             hyperlink: false,
             three_state: false,
             title_location: String::new(),
+            choice_list: Vec::new(),
             show_tabs: None,
             pages: Vec::new(),
             footer: None,
             selection_mode: String::new(),
+            initial_tree_view: String::new(),
             columns: Vec::new(),
             auto_fill: None,
+            buttons: Vec::new(),
             border_style: None,
         }
     }
@@ -277,7 +478,14 @@ pub enum Property {
     Events,
     Enabled,
     TransparentBack,
+    BackColor,
+    TextColor,
+    BorderColor,
+    Font,
     Tooltip,
+    ValueType,
+    HorizontalScrollBar,
+    VerticalScrollBar,
     ReadOnly,
     ChoiceButton,
     ClearButton,
@@ -293,12 +501,15 @@ pub enum Property {
     Hyperlink,
     ThreeState,
     TitleLocation,
+    ChoiceList,
     ShowTabs,
     Pages,
     Footer,
     SelectionMode,
+    InitialTreeView,
     Columns,
     AutoFill,
+    Buttons,
     BorderStyle,
 }
 
@@ -318,7 +529,14 @@ impl Property {
             Property::Events => "Events",
             Property::Enabled => "Enabled",
             Property::TransparentBack => "TransparentBack",
+            Property::BackColor => "BackColor",
+            Property::TextColor => "TextColor",
+            Property::BorderColor => "BorderColor",
+            Property::Font => "Font",
             Property::Tooltip => "Tooltip",
+            Property::ValueType => "ValueType",
+            Property::HorizontalScrollBar => "HorizontalScrollBar",
+            Property::VerticalScrollBar => "VerticalScrollBar",
             Property::ReadOnly => "ReadOnly",
             Property::ChoiceButton => "ChoiceButton",
             Property::ClearButton => "ClearButton",
@@ -334,12 +552,15 @@ impl Property {
             Property::Hyperlink => "Hyperlink",
             Property::ThreeState => "ThreeState",
             Property::TitleLocation => "TitleLocation",
+            Property::ChoiceList => "ChoiceList",
             Property::ShowTabs => "ShowTabs",
             Property::Pages => "Pages",
             Property::Footer => "Footer",
             Property::SelectionMode => "SelectionMode",
+            Property::InitialTreeView => "InitialTreeView",
             Property::Columns => "Columns",
             Property::AutoFill => "AutoFill",
+            Property::Buttons => "Buttons",
             Property::BorderStyle => "BorderStyle",
         }
     }
@@ -362,7 +583,14 @@ impl ControlValues {
             (self.events == other.events, Property::Events),
             (self.enabled == other.enabled, Property::Enabled),
             (self.transparent_back == other.transparent_back, Property::TransparentBack),
+            (self.back_color == other.back_color, Property::BackColor),
+            (self.text_color == other.text_color, Property::TextColor),
+            (self.border_color == other.border_color, Property::BorderColor),
+            (self.font == other.font, Property::Font),
             (self.tooltip == other.tooltip, Property::Tooltip),
+            (self.value_type == other.value_type, Property::ValueType),
+            (self.horizontal_scroll_bar == other.horizontal_scroll_bar, Property::HorizontalScrollBar),
+            (self.vertical_scroll_bar == other.vertical_scroll_bar, Property::VerticalScrollBar),
             (self.read_only == other.read_only, Property::ReadOnly),
             (self.choice_button == other.choice_button, Property::ChoiceButton),
             (self.clear_button == other.clear_button, Property::ClearButton),
@@ -378,12 +606,15 @@ impl ControlValues {
             (self.hyperlink == other.hyperlink, Property::Hyperlink),
             (self.three_state == other.three_state, Property::ThreeState),
             (self.title_location == other.title_location, Property::TitleLocation),
+            (self.choice_list == other.choice_list, Property::ChoiceList),
             (self.show_tabs == other.show_tabs, Property::ShowTabs),
             (self.pages == other.pages, Property::Pages),
             (self.footer == other.footer, Property::Footer),
             (self.selection_mode == other.selection_mode, Property::SelectionMode),
+            (self.initial_tree_view == other.initial_tree_view, Property::InitialTreeView),
             (self.columns == other.columns, Property::Columns),
             (self.auto_fill == other.auto_fill, Property::AutoFill),
+            (self.buttons == other.buttons, Property::Buttons),
             (self.border_style == other.border_style, Property::BorderStyle),
         ]
         .into_iter()
@@ -426,6 +657,8 @@ pub struct FormXml {
     /// `baseline` / `edited`, used in messages.
     pub label: String,
     pub name: String,
+    pub form_caption: Vec<(String, String)>,
+    pub form_events: Vec<(i64, String)>,
     /// Non-main form attributes with deterministic ValueType patterns.
     pub attributes: Vec<FormAttribute>,
     /// Controls in document order.
@@ -526,17 +759,19 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
         "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" => true,
         "Events" => crate::donor::has_event_list(type_name),
-        "Enabled" | "TransparentBack" | "Tooltip" => app_path(type_name).is_some(),
-        "ReadOnly" | "ChoiceButton" | "ClearButton" | "OpenButton" | "DropListButton" | "SpinButton"
-        | "AutoMarkIncomplete" | "AutoChoiceIncomplete" | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => {
-            type_name == "InputField"
+        "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" => {
+            app_path(type_name).is_some()
         }
+        "ValueType" | "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" | "ChoiceButton" | "ClearButton"
+        | "OpenButton" | "DropListButton" | "SpinButton" | "AutoMarkIncomplete" | "AutoChoiceIncomplete"
+        | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => type_name == "InputField",
         "HorizontalAlign" => matches!(type_name, "LabelDecoration" | "CommandBar"),
         "Hyperlink" => type_name == "LabelDecoration",
         "ThreeState" | "TitleLocation" => type_name == "CheckBox",
+        "ChoiceList" => type_name == "ChoiceField",
         "ShowTabs" => type_name == "Panel",
-        "Footer" | "SelectionMode" => type_name == "Table",
-        "AutoFill" => type_name == "CommandBar",
+        "Footer" | "SelectionMode" | "InitialTreeView" => type_name == "Table",
+        "AutoFill" | "Buttons" => type_name == "CommandBar",
         "BorderStyle" => type_name == "UsualGroup",
         _ => false,
     }
@@ -884,6 +1119,7 @@ impl Parser<'_> {
                             ok = false;
                             break;
                         }
+                        let mut field_name: Option<String> = None;
                         let mut header = Vec::new();
                         let mut footer_text = Vec::new();
                         let mut tooltip = Vec::new();
@@ -891,9 +1127,18 @@ impl Parser<'_> {
                         let mut visible = true;
                         let mut read_only = false;
                         let mut editor: Option<String> = None;
+                        let mut col_events: Vec<(i64, String)> = Vec::new();
                         let mut seen_tags = std::collections::HashSet::new();
                         for ch in &col_el.children {
                             match ch.tag.as_str() {
+                                "DataPath" => {
+                                    if !seen_tags.insert("DataPath") || !ch.children.is_empty() || ch.text.trim().is_empty() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let p = ch.text.trim();
+                                    field_name = Some(p.rsplit('.').next().unwrap_or(p).to_string());
+                                }
                                 "Header" => {
                                     if !seen_tags.insert("Header") {
                                         ok = false;
@@ -972,6 +1217,27 @@ impl Parser<'_> {
                                     }
                                     editor = Some(ed.to_string());
                                 }
+                                "Events" => {
+                                    if !seen_tags.insert("Events") || !ch.attrs.is_empty() || !ch.text.trim().is_empty() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    for ev in &ch.children {
+                                        let Some(tag) = ev.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()) else {
+                                            ok = false;
+                                            break;
+                                        };
+                                        let h = ev.text.trim();
+                                        if ev.attrs.len() != 1 || !ev.children.is_empty() || h.is_empty() {
+                                            ok = false;
+                                            break;
+                                        }
+                                        col_events.push((tag, h.to_string()));
+                                    }
+                                    if !ok {
+                                        break;
+                                    }
+                                }
                                 _ => {}
                             }
                         }
@@ -985,6 +1251,7 @@ impl Parser<'_> {
                         extracted.push(ColumnValues {
                             id: cid,
                             name: cname,
+                            field_name,
                             header,
                             footer_text,
                             tooltip,
@@ -992,6 +1259,7 @@ impl Parser<'_> {
                             visible,
                             read_only,
                             editor,
+                            events: col_events,
                         });
                     }
                 }
@@ -1002,7 +1270,7 @@ impl Parser<'_> {
                         col_el.children.retain(|ch| {
                             !matches!(
                                 ch.tag.as_str(),
-                                "Header" | "FooterText" | "Tooltip" | "Width" | "Visible" | "ReadOnly" | "Editor"
+                                "DataPath" | "Header" | "FooterText" | "Tooltip" | "Width" | "Visible" | "ReadOnly" | "Editor" | "Events"
                             )
                         });
                     }
@@ -1029,6 +1297,177 @@ impl Parser<'_> {
                 rest.children.push((*e).clone());
             }
         }
+        let color_of = |tag: &str, rest: &mut XmlElement| -> Option<ColorSpec> {
+            let e = found.get(tag)?;
+            match parse_color_elem(e) {
+                Some(c) => Some(c),
+                None => {
+                    rest.children.push((*e).clone());
+                    None
+                }
+            }
+        };
+        let back_color = color_of("BackColor", &mut rest);
+        let text_color = color_of("TextColor", &mut rest);
+        let border_color = color_of("BorderColor", &mut rest);
+        let font = match found.get("Font") {
+            None => None,
+            Some(e) => match parse_font_elem(e) {
+                Some(f) => Some(f),
+                None => {
+                    rest.children.push((*e).clone());
+                    None
+                }
+            },
+        };
+        let mut choice_list: Vec<ChoiceItemSpec> = Vec::new();
+        if let Some(e) = found.get("ChoiceList") {
+            let mut valid = e.attrs.is_empty() && e.text.trim().is_empty();
+            if valid {
+                for ci in &e.children {
+                    if ci.tag != "ChoiceItem" || ci.attrs.len() != 1 || !ci.text.trim().is_empty() {
+                        valid = false;
+                        break;
+                    }
+                    let Some(val) = ci.attrs.get("value").cloned() else {
+                        valid = false;
+                        break;
+                    };
+                    let mut pres = Vec::new();
+                    if ci.children.len() > 1 {
+                        valid = false;
+                        break;
+                    }
+                    if let Some(p_el) = ci.children.first() {
+                        if p_el.tag != "Presentation" {
+                            valid = false;
+                            break;
+                        }
+                        let Some(loc) = parse_loc_elem(p_el) else {
+                            valid = false;
+                            break;
+                        };
+                        pres = loc;
+                    }
+                    choice_list.push(ChoiceItemSpec { value: val, presentation: pres });
+                }
+            }
+            if !valid {
+                choice_list.clear();
+                rest.children.push((*e).clone());
+            }
+        }
+        let mut value_type: Option<(String, bool, Option<i64>)> = None;
+        if let Some(e) = found.get("ValueType") {
+            let mut valid = e.children.is_empty() && e.text.trim().is_empty();
+            if valid {
+                if let (Some(kind), Some(comp_s)) = (e.attrs.get("kind"), e.attrs.get("composite")) {
+                    let comp = match comp_s.as_str() {
+                        "true" => Some(true),
+                        "false" => Some(false),
+                        _ => None,
+                    };
+                    let frac = match e.attrs.get("fractionDigits") {
+                        Some(s) => s.trim().parse::<i64>().ok().map(Some),
+                        None => Some(None),
+                    };
+                    let attrs_ok = e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits"));
+                    if let (Some(c), Some(f), true) = (comp, frac, attrs_ok) {
+                        let fa = FormAttribute { id: 0, name: String::new(), main: false, stored: false, kind: kind.clone(), composite: c, fraction_digits: f };
+                        if format_attr_pattern(&fa).is_some() {
+                            value_type = Some((kind.clone(), c, f));
+                        } else {
+                            valid = false;
+                        }
+                    } else {
+                        valid = false;
+                    }
+                } else {
+                    valid = false;
+                }
+            }
+            if !valid {
+                rest.children.push((*e).clone());
+            }
+        }
+        fn parse_cb_buttons(
+            e: &XmlElement,
+            parse_loc: &dyn Fn(&XmlElement) -> Option<LocItems>,
+        ) -> Option<Vec<CommandBarButton>> {
+            if !e.attrs.is_empty() || !e.text.trim().is_empty() {
+                return None;
+            }
+            let mut out = Vec::new();
+            for b in &e.children {
+                if b.tag != "Button" || !b.text.trim().is_empty() {
+                    return None;
+                }
+                for k in b.attrs.keys() {
+                    if !matches!(
+                        k.as_str(),
+                        "name" | "id" | "kind" | "checked" | "representation" | "hasPicture" | "actionKind" | "action"
+                    ) {
+                        return None;
+                    }
+                }
+                let name = b.attrs.get("name")?.trim().to_string();
+                if name.is_empty() {
+                    return None;
+                }
+                let id = match b.attrs.get("id") {
+                    Some(s) => Some(s.trim().parse::<i64>().ok()?),
+                    None => None,
+                };
+                let kind = b.attrs.get("kind")?.to_string();
+                if !matches!(kind.as_str(), "Action" | "Submenu" | "Separator") {
+                    return None;
+                }
+                let checked = match b.attrs.get("checked").map(String::as_str)? {
+                    "true" => true,
+                    "false" => false,
+                    _ => return None,
+                };
+                let representation = b.attrs.get("representation").cloned().unwrap_or_else(|| "Auto".to_string());
+                if !matches!(representation.as_str(), "Auto" | "Text" | "Picture" | "PictureAndText") {
+                    return None;
+                }
+                let has_picture = b.attrs.get("hasPicture").map(String::as_str) == Some("true");
+                let action_kind = b.attrs.get("actionKind").cloned().unwrap_or_default();
+                let action = b.attrs.get("action").cloned().unwrap_or_default();
+                let mut caption = Vec::new();
+                let mut tooltip = Vec::new();
+                let mut sub_buttons = Vec::new();
+                for ch in &b.children {
+                    match ch.tag.as_str() {
+                        "Caption" => caption = parse_loc(ch)?,
+                        "Tooltip" => tooltip = parse_loc(ch)?,
+                        "Buttons" => sub_buttons = parse_cb_buttons(ch, parse_loc)?,
+                        _ => return None,
+                    }
+                }
+                out.push(CommandBarButton {
+                    name,
+                    id,
+                    kind,
+                    checked,
+                    representation,
+                    has_picture,
+                    action_kind,
+                    action,
+                    caption,
+                    tooltip,
+                    buttons: sub_buttons,
+                });
+            }
+            Some(out)
+        }
+        let mut buttons: Vec<CommandBarButton> = Vec::new();
+        if let Some(e) = found.get("Buttons") {
+            match parse_cb_buttons(e, &parse_loc_elem) {
+                Some(b) => buttons = b,
+                None => rest.children.push((*e).clone()),
+            }
+        }
         let values = ControlValues {
             name: ctrl_name,
             data_path,
@@ -1043,7 +1482,14 @@ impl Parser<'_> {
             events,
             enabled: bool_of("Enabled", true)?,
             transparent_back: bool_of("TransparentBack", false)?,
+            back_color,
+            text_color,
+            border_color,
+            font,
             tooltip: loc_of("Tooltip")?,
+            value_type,
+            horizontal_scroll_bar: enum_of("HorizontalScrollBar", &["DontUse", "Use", "Auto"], "DontUse")?,
+            vertical_scroll_bar: enum_of("VerticalScrollBar", &["DontUse", "Use", "Auto"], "DontUse")?,
             read_only: bool_of("ReadOnly", false)?,
             choice_button: if is_inp { Some(opt_bool_of("ChoiceButton")?.unwrap_or(false)) } else { None },
             clear_button: if is_inp { Some(opt_bool_of("ClearButton")?.unwrap_or(false)) } else { None },
@@ -1059,12 +1505,15 @@ impl Parser<'_> {
             hyperlink: bool_of("Hyperlink", false)?,
             three_state: bool_of("ThreeState", false)?,
             title_location: enum_of("TitleLocation", &["Left", "Right"], "Right")?,
+            choice_list,
             show_tabs,
             pages,
             footer: if type_name == "Table" { Some(opt_bool_of("Footer")?.unwrap_or(false)) } else { None },
             selection_mode: enum_of("SelectionMode", &["Single", "Multi"], "Single")?,
+            initial_tree_view: enum_of("InitialTreeView", &["NoExpand", "ExpandTopLevel", "ExpandAllLevels"], "NoExpand")?,
             columns,
             auto_fill: if type_name == "CommandBar" { Some(opt_bool_of("AutoFill")?.unwrap_or(true)) } else { None },
+            buttons,
             border_style: if type_name == "UsualGroup" {
                 match found.get("BorderStyle") {
                     None => Some(6),
@@ -1220,6 +1669,67 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
     }
 }
 
+fn extract_form_header(root: &mut XmlElement) -> (LocItems, EventItems) {
+    let mut form_caption = Vec::new();
+    let mut cap_ok = false;
+    if let Some(cap_el) = root.children.iter().find(|e| e.tag == "Caption") {
+        if cap_el.attrs.is_empty() && cap_el.text.trim().is_empty() {
+            let mut items = Vec::new();
+            let mut valid = true;
+            for it in &cap_el.children {
+                if let Some(lang) = it.attrs.get("language") {
+                    if it.tag == "Item" && it.attrs.len() == 1 && it.children.is_empty() && !items.iter().any(|(l, _)| l == lang) {
+                        items.push((lang.clone(), it.text.clone()));
+                        continue;
+                    }
+                }
+                valid = false;
+                break;
+            }
+            if valid {
+                form_caption = items;
+                cap_ok = true;
+            }
+        }
+    }
+    if cap_ok {
+        root.children.retain(|e| e.tag != "Caption");
+    }
+
+    let mut form_events = Vec::new();
+    let mut ev_ok = false;
+    if let Some(ev_el) = root.children.iter().find(|e| e.tag == "Events") {
+        if ev_el.attrs.is_empty() && ev_el.text.trim().is_empty() {
+            let mut items = Vec::new();
+            let mut valid = true;
+            for ev in &ev_el.children {
+                let Some(tag) = ev.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()) else {
+                    valid = false;
+                    break;
+                };
+                let h = ev.text.trim();
+                let tag_matches = crate::oof::FORM_EVENTS.iter().any(|(t, n)| *t == tag && *n == ev.tag)
+                    || crate::oof::EXT_DP_EVENTS.iter().any(|(t, n)| *t == tag && *n == ev.tag)
+                    || crate::oof::EXT_DOC_EVENTS.iter().any(|(t, n)| *t == tag && *n == ev.tag)
+                    || (tag == 0 && ev.tag == "OnCurrentPageChange");
+                if ev.attrs.len() != 1 || !ev.children.is_empty() || h.is_empty() || !tag_matches {
+                    valid = false;
+                    break;
+                }
+                items.push((tag, h.to_string()));
+            }
+            if valid {
+                form_events = items;
+                ev_ok = true;
+            }
+        }
+    }
+    if ev_ok {
+        root.children.retain(|e| e.tag != "Events");
+    }
+    (form_caption, form_events)
+}
+
 /// Parse a `Form.xml` (UTF-8, BOM optional) into a [`FormXml`]. `label` (`"baseline"`/`"edited"`) is
 /// used in errors. Indentation, line endings, attribute order and inter-element whitespace do not
 /// influence the result.
@@ -1238,10 +1748,11 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         let p = Parser { label, form: form_name, attr_names: HashMap::new(), controls: Vec::new() };
         return Err(p.bad(root.line, format!("root element must be <Form>, found <{}>", root.tag)));
     }
+    let (form_caption, form_events) = extract_form_header(&mut root);
     let (attr_names, attributes) = extract_form_attributes(&mut root);
     let mut p = Parser { label, form: form_name, attr_names, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
-    Ok(FormXml { label: label.to_string(), name: p.form, attributes, controls: p.controls, shell })
+    Ok(FormXml { label: label.to_string(), name: p.form, form_caption, form_events, attributes, controls: p.controls, shell })
 }
 
 // ------------------------------------------------------------------ 3.2 control identity index
@@ -1545,6 +2056,11 @@ pub struct FormDiff {
     pub additions: Vec<ControlXml>,
     /// Controls present only in the baseline XML (to be removed).
     pub deletions: Vec<ControlXml>,
+    pub form_caption_changed: bool,
+    pub new_form_caption: Vec<(String, String)>,
+    pub form_events_changed: bool,
+    pub old_form_events: Vec<(i64, String)>,
+    pub new_form_events: Vec<(i64, String)>,
     pub attributes_changed: bool,
     pub old_attributes: Vec<FormAttribute>,
     pub new_attributes: Vec<FormAttribute>,
@@ -1552,7 +2068,12 @@ pub struct FormDiff {
 
 impl FormDiff {
     pub fn is_empty(&self) -> bool {
-        self.edits.is_empty() && self.additions.is_empty() && self.deletions.is_empty() && !self.attributes_changed
+        self.edits.is_empty()
+            && self.additions.is_empty()
+            && self.deletions.is_empty()
+            && !self.form_caption_changed
+            && !self.form_events_changed
+            && !self.attributes_changed
     }
 }
 
@@ -1826,6 +2347,12 @@ pub fn diff_forms_full(
             if b.values.columns.is_empty() {
                 changed.retain(|p| *p != Property::Columns);
             }
+            if b.values.value_type.is_none() {
+                changed.retain(|p| *p != Property::ValueType);
+            }
+            if b.values.buttons.is_empty() {
+                changed.retain(|p| *p != Property::Buttons);
+            }
         }
         if !changed.is_empty() {
             edits.push(ControlEdit {
@@ -1838,12 +2365,19 @@ pub fn diff_forms_full(
             });
         }
     }
+    let form_caption_changed = baseline.form_caption != edited.form_caption;
+    let form_events_changed = baseline.form_events != edited.form_events;
     let attributes_changed = baseline.attributes != edited.attributes;
     if problems.is_empty() {
         Ok(FormDiff {
             edits,
             additions,
             deletions,
+            form_caption_changed,
+            new_form_caption: edited.form_caption.clone(),
+            form_events_changed,
+            old_form_events: baseline.form_events.clone(),
+            new_form_events: edited.form_events.clone(),
             attributes_changed,
             old_attributes: baseline.attributes.clone(),
             new_attributes: edited.attributes.clone(),
@@ -2081,14 +2615,33 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
         let path: Vec<usize> = ap.iter().map(|&i| i as usize).collect();
         let app = nav_mut(info, &path)?;
         app.children[1] = bare(i64::from(v.enabled));
+        app.children[2] = Item::Node(crate::brace::parse_metadata(format_color_node(v.back_color.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
+        app.children[3] = Item::Node(crate::brace::parse_metadata(format_color_node(v.text_color.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
+        app.children[4] = Item::Node(crate::brace::parse_metadata(format_font_node(v.font.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
         app.children[5] = bare(i64::from(v.transparent_back));
+        app.children[6] = Item::Node(crate::brace::parse_metadata(format_color_node(v.border_color.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?);
         if app.len() > 12 {
             app.children[12] = Item::Node(localized_node(&v.tooltip));
         }
     }
     match type_name {
         "InputField" => {
+            if let Some((kind, comp, frac)) = &v.value_type {
+                let fa = FormAttribute { id: 0, name: String::new(), main: false, stored: false, kind: kind.clone(), composite: *comp, fraction_digits: *frac };
+                if let Some(pat) = format_attr_pattern(&fa) {
+                    info.children[1] = Item::Node(
+                        crate::brace::parse_metadata(pat.as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+                    );
+                }
+            }
             let q = nav_mut(info, &[2, 0])?;
+            let sb = |s: &str| match s {
+                "Use" => 1,
+                "Auto" => 2,
+                _ => 0,
+            };
+            q.children[2] = bare(sb(&v.horizontal_scroll_bar));
+            q.children[3] = bare(sb(&v.vertical_scroll_bar));
             if let Some(b) = v.auto_cell_height {
                 q.children[4] = bare(i64::from(b));
             }
@@ -2157,6 +2710,25 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 t.children[1] = bare(if footer { cur | 2 } else { cur & !2 });
             }
             t.children[15] = bare(if v.selection_mode == "Multi" { 1 } else { 0 });
+            if t.len() > 21 {
+                let itv = match v.initial_tree_view.as_str() {
+                    "ExpandTopLevel" => 1,
+                    "ExpandAllLevels" => 2,
+                    _ => 0,
+                };
+                t.children[21] = bare(itv);
+            }
+        }
+        "ChoiceField" => {
+            if !v.choice_list.is_empty() {
+                let p = nav_mut(info, &[1])?;
+                if p.len() > 26 {
+                    p.children[26] = Item::Node(
+                        crate::brace::parse_metadata(format_choice_list_node(&v.choice_list).as_bytes())
+                            .map_err(|e| layout_err(e.to_string()))?,
+                    );
+                }
+            }
         }
         "CommandBar" => {
             let x = nav_mut(info, &[1])?;
@@ -2993,8 +3565,8 @@ fn read_panel_page_values(site: &Site) -> Result<Vec<PageValues>> {
     Ok(out)
 }
 
-fn table_column_props<'a>(site: &Site<'_, 'a>) -> Result<Vec<NodeRef<'a>>> {
-    fn walk<'a>(site: &Site<'_, 'a>, nr: NodeRef<'a>, out: &mut Vec<NodeRef<'a>>) -> Result<()> {
+fn table_column_props<'a>(site: &Site<'_, 'a>) -> Result<Vec<(NodeRef<'a>, NodeRef<'a>)>> {
+    fn walk<'a>(site: &Site<'_, 'a>, nr: NodeRef<'a>, out: &mut Vec<(NodeRef<'a>, NodeRef<'a>)>) -> Result<()> {
         if !nr.node.is_empty() && crate::oof::is_column_guid(&nr.node.children[0]) {
             let col_guid = nr.atom(0).map(|(a, _)| a.value.as_str()).unwrap_or("");
             let wrapper = nr
@@ -3013,7 +3585,7 @@ fn table_column_props<'a>(site: &Site<'_, 'a>) -> Result<Vec<NodeRef<'a>>> {
             if props.node.len() < 39 {
                 return Err(site.layout("unexpected-shape", "Columns", "column props too short".into()));
             }
-            out.push(props);
+            out.push((wrapper, props));
             return Ok(());
         }
         for i in 0..nr.node.len() {
@@ -3032,15 +3604,263 @@ fn table_column_props<'a>(site: &Site<'_, 'a>) -> Result<Vec<NodeRef<'a>>> {
     Ok(out)
 }
 
+fn read_column_editor_events(cp: NodeRef) -> Vec<(i64, String)> {
+    use std::io::Read;
+    let Some(bnode) = cp.child(39) else { return Vec::new() };
+    let Some((b0, _)) = bnode.atom(0) else { return Vec::new() };
+    if b0.kind != crate::brace::AtomKind::Base64 {
+        return Vec::new();
+    }
+    let Ok(raw) = b0.decode_base64() else { return Vec::new() };
+    if raw.len() <= 18 {
+        return Vec::new();
+    }
+    let mut inflated = Vec::new();
+    if flate2::read::DeflateDecoder::new(&raw[18..]).read_to_end(&mut inflated).is_err() || inflated.len() <= 8 {
+        return Vec::new();
+    }
+    let Ok(tree) = crate::brace::parse_metadata(&inflated[8..]) else { return Vec::new() };
+    let paths = crate::donor::event_list_paths(&tree);
+    if paths.len() != 1 {
+        return Vec::new();
+    }
+    let mut cur = &tree;
+    for &i in &paths[0] {
+        let Some(n) = cur.children.get(i).and_then(Item::as_node) else { return Vec::new() };
+        cur = n;
+    }
+    let mut out = Vec::new();
+    for item in cur.children.iter().skip(1) {
+        let Item::Node(ev) = item else { continue };
+        let Ok(tag) = int(&ev.children[0], "tag") else { continue };
+        let Some(Item::Node(body)) = ev.children.get(2) else { continue };
+        let Ok(h) = str_val(&body.children[1], "handler") else { continue };
+        out.push((tag, h.to_string()));
+    }
+    out
+}
+
+fn patch_column_editor_events(site: &Site, cp: NodeRef, ed_type: &str, new_events: &[(i64, String)], prop: Property) -> Result<Piece> {
+    use std::io::{Read, Write};
+    let bnode = cp.child(39).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column editor blob missing".into()))?;
+    let (b0, span) = bnode.atom(0).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column editor base64 missing".into()))?;
+    let raw = b0.decode_base64().map_err(|_| site.layout("unexpected-shape", "Columns", "column editor base64 invalid".into()))?;
+    if raw.len() <= 18 {
+        return Err(site.layout("unexpected-shape", "Columns", "column editor raw too short".into()));
+    }
+    let mut inflated = Vec::new();
+    flate2::read::DeflateDecoder::new(&raw[18..])
+        .read_to_end(&mut inflated)
+        .map_err(|_| site.layout("unexpected-shape", "Columns", "column editor deflate invalid".into()))?;
+    if inflated.len() <= 8 {
+        return Err(site.layout("unexpected-shape", "Columns", "column editor inflated too short".into()));
+    }
+    let inner_src = parse_spanned(&inflated[8..]).map_err(|e| site.layout("unexpected-shape", "Columns", e.to_string()))?;
+    let path = crate::donor::control_event_list_path(&inner_src.root, ed_type, "column editor")?;
+    let mut cur_span = &inner_src.spans;
+    for &i in &path {
+        cur_span = match cur_span.children.get(i) {
+            Some(SpanItem::Node(n)) => n,
+            _ => return Err(site.layout("unexpected-shape", "Columns", "column editor event span missing".into())),
+        };
+    }
+    let list_node = crate::donor::build_event_list(new_events)?;
+    let mut list_bytes = Vec::new();
+    crate::donor::write_node(&list_node, &mut list_bytes);
+    let patched_tree = inner_src.apply(&[Replacement { range: cur_span.span, bytes: list_bytes }])?;
+    let mut payload = Vec::with_capacity(8 + patched_tree.len());
+    payload.extend_from_slice(&inflated[..8]);
+    payload.extend_from_slice(&patched_tree);
+    let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+    enc.write_all(&payload).map_err(|e| site.layout("unexpected-shape", "Columns", e.to_string()))?;
+    let deflated = enc.finish().map_err(|e| site.layout("unexpected-shape", "Columns", e.to_string()))?;
+    let mut full = Vec::with_capacity(18 + deflated.len());
+    full.extend_from_slice(&raw[..18]);
+    full.extend_from_slice(&deflated);
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&full);
+    Ok(piece(span, format!("{{#base64:{b64}}}"), &[prop]))
+}
+
+fn read_choice_list_values(info: &Node) -> Vec<ChoiceItemSpec> {
+    let mut props = serde_json::Map::new();
+    let _ = crate::oof_props::decode_props("ChoiceField", info, &mut |_| {});
+    props.extend(crate::oof_props::decode_props("ChoiceField", info, &mut |_| {}));
+    let Some(Value::Array(arr)) = props.get("choiceList") else { return Vec::new() };
+    let mut out = Vec::new();
+    for item in arr {
+        let val = item.get("value").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let mut pres = Vec::new();
+        if let Some(Value::Array(pa)) = item.get("presentation") {
+            for p in pa {
+                if let Some(pair) = p.as_array() {
+                    if pair.len() >= 2 {
+                        let l = pair[0].as_str().unwrap_or("").to_string();
+                        let t = pair[1].as_str().unwrap_or("").to_string();
+                        pres.push((l, t));
+                    }
+                }
+            }
+        }
+        out.push(ChoiceItemSpec { value: val, presentation: pres });
+    }
+    out
+}
+
+fn read_input_value_type(info: &Node) -> Option<(String, bool, Option<i64>)> {
+    let pat_item = info.children.get(1)?;
+    let vt = crate::oof_props::decode_pattern(pat_item).ok()??;
+    let kind = vt.get("kind")?.as_str()?.to_string();
+    let comp = vt.get("composite")?.as_bool()?;
+    let frac = vt.get("fractionDigits").and_then(|v| v.as_i64());
+    Some((kind, comp, frac))
+}
+
+fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
+    let props = crate::oof_props::decode_props("CommandBar", info, &mut |_| {});
+    let Some(Value::Array(arr)) = props.get("buttons") else { return Vec::new() };
+    fn conv(arr: &[Value]) -> Vec<CommandBarButton> {
+        let mut out = Vec::new();
+        for b in arr {
+            let name = b.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let id = b.get("id").and_then(|v| v.as_i64());
+            let kind = b.get("kind").and_then(|v| v.as_str()).unwrap_or("Action").to_string();
+            let checked = b.get("checked").and_then(|v| v.as_bool()).unwrap_or(false);
+            let representation = b.get("representation").and_then(|v| v.as_str()).unwrap_or("Auto").to_string();
+            let has_picture = b.get("hasPicture").and_then(|v| v.as_bool()).unwrap_or(false);
+            let action_kind = b.get("actionKind").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let action = b.get("action").and_then(|v| v.as_str()).unwrap_or("").to_string();
+            let loc = |key: &str| -> Vec<(String, String)> {
+                let mut res = Vec::new();
+                if let Some(Value::Array(pa)) = b.get(key) {
+                    for p in pa {
+                        if let Some(pair) = p.as_array() {
+                            if pair.len() >= 2 {
+                                res.push((
+                                    pair[0].as_str().unwrap_or("").to_string(),
+                                    pair[1].as_str().unwrap_or("").to_string(),
+                                ));
+                            }
+                        }
+                    }
+                }
+                res
+            };
+            let sub = match b.get("buttons") {
+                Some(Value::Array(sa)) => conv(sa),
+                _ => Vec::new(),
+            };
+            out.push(CommandBarButton {
+                name,
+                id,
+                kind,
+                checked,
+                representation,
+                has_picture,
+                action_kind,
+                action,
+                caption: loc("caption"),
+                tooltip: loc("tooltip"),
+                buttons: sub,
+            });
+        }
+        out
+    }
+    conv(arr)
+}
+
+fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[CommandBarButton], prop: Property) -> Result<Vec<Piece>> {
+    if old_btns.len() != new_btns.len() {
+        return Err(site.layout("unexpected-shape", "Buttons", "button count mismatch".into()));
+    }
+    let x = info_node_at(site, &[1], prop)?;
+    let t = x.child(7).ok_or_else(|| site.layout("unexpected-shape", "Buttons", "command bar table missing".into()))?;
+    let action_count: usize = t
+        .atom(4)
+        .and_then(|(a, _)| a.value.parse().ok())
+        .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "action count missing".into()))?;
+    let group_count: usize = t
+        .atom(5 + action_count)
+        .and_then(|(a, _)| a.value.parse().ok())
+        .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "group count missing".into()))?;
+    let root_g = t
+        .child(6 + action_count + group_count.saturating_sub(1))
+        .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "root button group missing".into()))?;
+    let mut out = Vec::new();
+    for (i, (ob, nb)) in old_btns.iter().zip(new_btns.iter()).enumerate() {
+        let guid = root_g
+            .atom(5 + 2 * i)
+            .map(|(a, _)| a.value.clone())
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button action guid missing".into()))?;
+        let bnode = root_g
+            .child(6 + 2 * i)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button node missing".into()))?;
+        if ob.name != nb.name {
+            let (_, span) = bnode
+                .atom(1)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button name missing".into()))?;
+            out.push(piece(span, quote(&nb.name), &[prop]));
+        }
+        if ob.caption != nb.caption {
+            let cnode = bnode
+                .child(4)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button caption missing".into()))?;
+            let items = strict_localized(cnode)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button caption malformed".into()))?;
+            out.extend(localized_pieces(site, cnode, &items, &ob.caption, &nb.caption, prop)?);
+        }
+        if ob.representation != nb.representation {
+            let (_, span) = bnode
+                .atom(10)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button representation missing".into()))?;
+            let rcode = match nb.representation.as_str() {
+                "Text" => 1,
+                "Picture" => 2,
+                "PictureAndText" => 3,
+                _ => 0,
+            };
+            out.push(piece(span, rcode, &[prop]));
+        }
+        if ob.checked != nb.checked {
+            let (_, span) = bnode
+                .atom(12)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button checked missing".into()))?;
+            out.push(piece(span, i32::from(nb.checked), &[prop]));
+        }
+        if ob.action != nb.action && nb.action_kind == "Handler" {
+            for ai in 0..action_count {
+                let Some(anode) = t.child(5 + ai) else { continue };
+                if anode.atom(1).map(|(a, _)| a.value.as_str()) == Some(guid.as_str()) {
+                    if let Some(body) = anode.child(4) {
+                        if let Some((_, sp1)) = body.atom(1) {
+                            out.push(piece(sp1, quote(&nb.action), &[prop]));
+                        }
+                        if let Some(meta) = body.child(2) {
+                            if let Some((_, sp2)) = meta.atom(1) {
+                                out.push(piece(sp2, quote(&nb.action), &[prop]));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(out)
+}
+
 fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
     let cols = table_column_props(site)?;
     let mut out = Vec::with_capacity(cols.len());
-    for cp in cols {
+    for (wrapper, cp) in cols {
         let id = cp.atom(5).and_then(|(a, _)| a.value.parse::<i64>().ok());
         let name = cp
             .atom(30)
             .map(|(a, _)| a.value.clone())
             .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column name atom missing".into()))?;
+        let field_name = wrapper
+            .atom(2)
+            .map(|(a, _)| a.value.clone())
+            .filter(|s| !s.is_empty());
         let loc_at = |idx: usize| -> Result<Vec<(String, String)>> {
             let n = cp
                 .child(idx)
@@ -3077,9 +3897,11 @@ fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
         } else {
             control_type(&ed_atom.value).map(str::to_string)
         };
+        let events = if editor.is_some() { read_column_editor_events(cp) } else { Vec::new() };
         out.push(ColumnValues {
             id,
             name,
+            field_name,
             header,
             footer_text,
             tooltip,
@@ -3087,6 +3909,7 @@ fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
             visible,
             read_only,
             editor,
+            events,
         });
     }
     Ok(out)
@@ -3150,6 +3973,30 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     .ok_or_else(|| site.layout("unexpected-shape", "TransparentBack", "control has no appearance block".into()))?;
                 out.push(info_bool_piece(site, ap, 5, Some(old.transparent_back), new.transparent_back, prop)?);
             }
+            Property::BackColor | Property::TextColor | Property::BorderColor => {
+                let ap = app_vec
+                    .as_deref()
+                    .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), "control has no appearance block".into()))?;
+                let (idx, want) = match prop {
+                    Property::BackColor => (2usize, new.back_color.as_ref()),
+                    Property::TextColor => (3usize, new.text_color.as_ref()),
+                    Property::BorderColor => (6usize, new.border_color.as_ref()),
+                    _ => unreachable!(),
+                };
+                let cnode = info_node_at(site, ap, prop)?
+                    .child(idx)
+                    .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), "appearance color node missing".into()))?;
+                out.push(piece(cnode.span.span, format_color_node(want), &[prop]));
+            }
+            Property::Font => {
+                let ap = app_vec
+                    .as_deref()
+                    .ok_or_else(|| site.layout("unexpected-shape", "Font", "control has no appearance block".into()))?;
+                let fnode = info_node_at(site, ap, prop)?
+                    .child(4)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Font", "appearance font node missing".into()))?;
+                out.push(piece(fnode.span.span, format_font_node(new.font.as_ref()), &[prop]));
+            }
             Property::Tooltip => {
                 let ap = app_vec
                     .as_deref()
@@ -3160,6 +4007,34 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let items = strict_localized(tip_node)
                     .ok_or_else(|| site.layout("unexpected-shape", "Tooltip", "Tooltip node is not a plain localized string".into()))?;
                 out.extend(localized_pieces(site, tip_node, &items, &old.tooltip, &new.tooltip, prop)?);
+            }
+            Property::ValueType => {
+                let pat_node = info_node_at(site, &[], prop)?
+                    .child(1)
+                    .ok_or_else(|| site.layout("unexpected-shape", "ValueType", "input field pattern node missing".into()))?;
+                let pat = match &new.value_type {
+                    None => "{\"Pattern\"}".to_string(),
+                    Some((k, c, f)) => {
+                        let fa = FormAttribute { id: 0, name: String::new(), main: false, stored: false, kind: k.clone(), composite: *c, fraction_digits: *f };
+                        format_attr_pattern(&fa)
+                            .ok_or_else(|| site.layout("unexpected-shape", "ValueType", "unsupported ValueType pattern".into()))?
+                    }
+                };
+                out.push(piece(pat_node.span.span, pat, &[prop]));
+            }
+            Property::HorizontalScrollBar | Property::VerticalScrollBar => {
+                let (idx, want_s) = if prop == Property::HorizontalScrollBar {
+                    (2usize, new.horizontal_scroll_bar.as_str())
+                } else {
+                    (3usize, new.vertical_scroll_bar.as_str())
+                };
+                let (_, span) = info_int_slot(site, &[2, 0], idx, prop)?;
+                let want = match want_s {
+                    "Use" => 1,
+                    "Auto" => 2,
+                    _ => 0,
+                };
+                out.push(piece(span, want, &[prop]));
             }
             Property::AutoCellHeight => {
                 let want = new.auto_cell_height.ok_or_else(|| site.invalid("invalid-xml", "AutoCellHeight", "cannot remove AutoCellHeight".into()))?;
@@ -3243,6 +4118,16 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = if new.title_location == "Left" { 0 } else { 1 };
                 out.push(piece(span, want, &[prop]));
             }
+            Property::ChoiceList => {
+                let p = info_node_at(site, &[1], prop)?;
+                let span = p
+                    .span
+                    .children
+                    .get(26)
+                    .map(SpanItem::span)
+                    .ok_or_else(|| site.layout("unexpected-shape", "ChoiceList", "choice list slot missing".into()))?;
+                out.push(piece(span, format_choice_list_node(&new.choice_list), &[prop]));
+            }
             Property::ShowTabs => {
                 let layout = read_panel(site)?;
                 if Some(layout.show_tabs.0) != old.show_tabs {
@@ -3298,6 +4183,15 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = if new.selection_mode == "Multi" { 1 } else { 0 };
                 out.push(piece(span, want, &[prop]));
             }
+            Property::InitialTreeView => {
+                let (_, span) = info_int_slot(site, &[2, 1], 21, prop)?;
+                let want = match new.initial_tree_view.as_str() {
+                    "ExpandTopLevel" => 1,
+                    "ExpandAllLevels" => 2,
+                    _ => 0,
+                };
+                out.push(piece(span, want, &[prop]));
+            }
             Property::Columns => {
                 let cols = table_column_props(site)?;
                 let cur_cols = read_table_column_values(site)?;
@@ -3307,13 +4201,19 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 if cols.len() != new.columns.len() {
                     return Err(site.layout("unexpected-shape", "Columns", "column count mismatch".into()));
                 }
-                for (i, cp) in cols.into_iter().enumerate() {
+                for (i, (wrapper, cp)) in cols.into_iter().enumerate() {
                     let (oc, nc) = (&old.columns[i], &new.columns[i]);
                     if oc.name != nc.name {
                         let (_, span) = cp
                             .atom(30)
                             .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column name atom missing".into()))?;
                         out.push(piece(span, quote(&nc.name), &[prop]));
+                    }
+                    if oc.field_name != nc.field_name {
+                        let (_, span) = wrapper
+                            .atom(2)
+                            .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column field name atom missing".into()))?;
+                        out.push(piece(span, quote(nc.field_name.as_deref().unwrap_or("")), &[prop]));
                     }
                     for (idx, o_loc, n_loc) in [
                         (1usize, &oc.header, &nc.header),
@@ -3361,11 +4261,18 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                             out.push(piece(span, guid, &[prop]));
                         }
                     }
+                    if oc.events != nc.events {
+                        let ed_type = nc.editor.as_deref().unwrap_or("InputField");
+                        out.push(patch_column_editor_events(site, cp, ed_type, &nc.events, prop)?);
+                    }
                 }
             }
             Property::AutoFill => {
                 let want = new.auto_fill.unwrap_or(false);
                 out.push(info_bool_piece(site, &[1], 3, old.auto_fill, want, prop)?);
+            }
+            Property::Buttons => {
+                out.extend(patch_cb_buttons(site, &old.buttons, &new.buttons, prop)?);
             }
             Property::BorderStyle => {
                 let (cur, span) = info_int_slot(site, &[1, 3], 3, prop)?;
@@ -3455,6 +4362,22 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             Property::Events => read_control_events(site.entry)? == new.events,
             Property::Enabled => (info_int_slot(site, app_vec.as_deref().unwrap(), 1, p)?.0 != 0) == new.enabled,
             Property::TransparentBack => (info_int_slot(site, app_vec.as_deref().unwrap(), 5, p)?.0 != 0) == new.transparent_back,
+            Property::BackColor => {
+                let n = info_node_at(site, app_vec.as_deref().unwrap(), p)?;
+                read_color_spec(&n.node.children[2]) == new.back_color
+            }
+            Property::TextColor => {
+                let n = info_node_at(site, app_vec.as_deref().unwrap(), p)?;
+                read_color_spec(&n.node.children[3]) == new.text_color
+            }
+            Property::BorderColor => {
+                let n = info_node_at(site, app_vec.as_deref().unwrap(), p)?;
+                read_color_spec(&n.node.children[6]) == new.border_color
+            }
+            Property::Font => {
+                let n = info_node_at(site, app_vec.as_deref().unwrap(), p)?;
+                read_font_spec(&n.node.children[4]) == new.font
+            }
             Property::Tooltip => {
                 let tip_node = info_node_at(site, app_vec.as_deref().unwrap(), p)?.child(12).ok_or_else(|| wrong(p))?;
                 let items: Vec<(String, String)> = strict_localized(tip_node)
@@ -3463,6 +4386,23 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                     .map(|i| (i.lang, i.text))
                     .collect();
                 items == new.tooltip
+            }
+            Property::ValueType => read_input_value_type(site.entry.info().unwrap().node) == new.value_type,
+            Property::HorizontalScrollBar => {
+                let cur = match info_int_slot(site, &[2, 0], 2, p)?.0 {
+                    1 => "Use",
+                    2 => "Auto",
+                    _ => "",
+                };
+                cur == new.horizontal_scroll_bar
+            }
+            Property::VerticalScrollBar => {
+                let cur = match info_int_slot(site, &[2, 0], 3, p)?.0 {
+                    1 => "Use",
+                    2 => "Auto",
+                    _ => "",
+                };
+                cur == new.vertical_scroll_bar
             }
             Property::AutoCellHeight => Some(info_int_slot(site, &[2, 0], 4, p)?.0 != 0) == new.auto_cell_height,
             Property::DropListButton => Some(info_int_slot(site, &[2, 0], 6, p)?.0 != 0) == new.drop_list_button,
@@ -3494,6 +4434,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 let cur = if info_int_slot(site, &[1, 0], 3, p)?.0 == 0 { "Left" } else { "" };
                 cur == new.title_location
             }
+            Property::ChoiceList => read_choice_list_values(site.entry.info().unwrap().node) == new.choice_list,
             Property::ShowTabs => Some(read_panel(site)?.show_tabs.0) == new.show_tabs,
             Property::Pages => read_panel_page_values(site)? == new.pages,
             Property::Footer => Some((info_int_slot(site, &[2, 1], 1, p)?.0 & 2) != 0) == new.footer,
@@ -3501,8 +4442,17 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 let cur = if info_int_slot(site, &[2, 1], 15, p)?.0 == 1 { "Multi" } else { "" };
                 cur == new.selection_mode
             }
+            Property::InitialTreeView => {
+                let cur = match info_int_slot(site, &[2, 1], 21, p)?.0 {
+                    1 => "ExpandTopLevel",
+                    2 => "ExpandAllLevels",
+                    _ => "",
+                };
+                cur == new.initial_tree_view
+            }
             Property::Columns => read_table_column_values(site)? == new.columns,
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
+            Property::Buttons => read_cb_buttons(site.entry.info().unwrap().node) == new.buttons,
             Property::BorderStyle => Some(info_int_slot(site, &[1, 3], 3, p)?.0) == new.border_style,
             _ => true,
         };
@@ -3556,7 +4506,13 @@ impl FormPatchPlan<'_> {
     fn structural_pieces(&self, out: &mut Vec<AppliedReplacement>) -> Result<Vec<(i64, i64)>> {
         let mut allocated: Vec<(i64, i64)> = Vec::new();
         let has_dp_edits = self.diff.edits.iter().any(|e| e.changed.contains(&Property::DataPath));
-        if self.diff.additions.is_empty() && self.diff.deletions.is_empty() && !self.diff.attributes_changed && !has_dp_edits {
+        if self.diff.additions.is_empty()
+            && self.diff.deletions.is_empty()
+            && !self.diff.form_caption_changed
+            && !self.diff.form_events_changed
+            && !self.diff.attributes_changed
+            && !has_dp_edits
+        {
             return Ok(allocated);
         }
         // list span start -> (list NodeRef, original count, edits)
@@ -3568,6 +4524,83 @@ impl FormPatchPlan<'_> {
             let count: usize = count_atom.value.parse().map_err(|_| layout_err("structural edit: bad count atom"))?;
             Ok((nr.span.span.start, count))
         };
+
+        // ---- form caption (root[1][1][0])
+        if self.diff.form_caption_changed {
+            let cap_node = self
+                .index
+                .at_path(&[1, 1, 0])
+                .ok()
+                .ok_or_else(|| layout_err("form stream: form caption node missing at root[1][1][0]"))?;
+            let mut buf = Vec::new();
+            crate::donor::write_node(&localized_node(&self.diff.new_form_caption), &mut buf);
+            out.push(AppliedReplacement {
+                control_id: 0,
+                properties: Vec::new(),
+                range: cap_node.span.span,
+                bytes: buf,
+            });
+        }
+
+        // ---- form events (root[4], root[1][2][1], root[3])
+        if self.diff.form_events_changed {
+            let old_main: Vec<(i64, String)> = self.diff.old_form_events.iter().filter(|(t, _)| (70000..80000).contains(t)).cloned().collect();
+            let new_main: Vec<(i64, String)> = self.diff.new_form_events.iter().filter(|(t, _)| (70000..80000).contains(t)).cloned().collect();
+            if old_main != new_main {
+                let ev_sec = self.index.at_path(&[4])?;
+                let list_node = crate::donor::build_event_list(&new_main)?;
+                let mut buf = Vec::new();
+                crate::donor::write_node(&list_node, &mut buf);
+                out.push(AppliedReplacement {
+                    control_id: 0,
+                    properties: Vec::new(),
+                    range: ev_sec.span.span,
+                    bytes: buf,
+                });
+            }
+            let old_p: Vec<(i64, String)> = self.diff.old_form_events.iter().filter(|(t, _)| *t == 0).cloned().collect();
+            let new_p: Vec<(i64, String)> = self.diff.new_form_events.iter().filter(|(t, _)| *t == 0).cloned().collect();
+            if old_p != new_p {
+                let pinfo = self.index.at_path(&[1, 2, 1])?;
+                let paths = crate::donor::event_list_paths(pinfo.node);
+                if paths.len() == 1 {
+                    let mut cur = pinfo;
+                    for &i in &paths[0] {
+                        cur = cur.child(i).ok_or_else(|| layout_err("root panel event list missing"))?;
+                    }
+                    let list_node = crate::donor::build_event_list(&new_p)?;
+                    let mut buf = Vec::new();
+                    crate::donor::write_node(&list_node, &mut buf);
+                    out.push(AppliedReplacement {
+                        control_id: 0,
+                        properties: Vec::new(),
+                        range: cur.span.span,
+                        bytes: buf,
+                    });
+                }
+            }
+            let old_ext: Vec<(i64, String)> = self.diff.old_form_events.iter().filter(|(t, _)| *t >= 80000).cloned().collect();
+            let new_ext: Vec<(i64, String)> = self.diff.new_form_events.iter().filter(|(t, _)| *t >= 80000).cloned().collect();
+            if old_ext != new_ext {
+                let ext = self.index.at_path(&[3])?;
+                let paths = crate::donor::event_list_paths(ext.node);
+                if paths.len() == 1 {
+                    let mut cur = ext;
+                    for &i in &paths[0] {
+                        cur = cur.child(i).ok_or_else(|| layout_err("extension event list missing"))?;
+                    }
+                    let list_node = crate::donor::build_event_list(&new_ext)?;
+                    let mut buf = Vec::new();
+                    crate::donor::write_node(&list_node, &mut buf);
+                    out.push(AppliedReplacement {
+                        control_id: 0,
+                        properties: Vec::new(),
+                        range: cur.span.span,
+                        bytes: buf,
+                    });
+                }
+            }
+        }
 
         // ---- form attributes (root[2][1] and root[2][2])
         if self.diff.attributes_changed {
