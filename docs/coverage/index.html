@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>oneform: Дашборд покрытия обычных форм 1С и цель 90%</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Alpine.js via CDN -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  <!-- Embedded / Local dataset for direct file:/// usage without CORS -->
+  <script src="data/dataset.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased" x-data="coverageApp()" x-cloak>
+
+  <!-- Top Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/30">
+          1F
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white">oneform</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">Обычные формы 1С 8.2</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">Цель: 90% реальных форм</span>
+          </div>
+          <p class="text-xs text-slate-400">Сверка с исследованием (610 свойств) и реальной базой <span class="text-slate-200 font-medium">dental</span> (1 481 форма)</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex space-x-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80 text-sm">
+        <button @click="currentTab = 'overview'" :class="currentTab === 'overview' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'" class="px-3.5 py-1.5 rounded-lg font-medium transition">
+          📊 Обзор и Метрики
+        </button>
+        <button @click="currentTab = 'controls'" :class="currentTab === 'controls' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'" class="px-3.5 py-1.5 rounded-lg font-medium transition">
+          🧩 Контролы (27)
+        </button>
+        <button @click="currentTab = 'properties'" :class="currentTab === 'properties' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'" class="px-3.5 py-1.5 rounded-lg font-medium transition">
+          🔍 Каталог свойств (<span x-text="filteredProperties.length"></span>)
+        </button>
+        <button @click="currentTab = 'roadmap'" :class="currentTab === 'roadmap' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'" class="px-3.5 py-1.5 rounded-lg font-medium transition">
+          🗺️ Дорожная карта (к 90%)
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- KPI Summary Row -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+        <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">База продакшена (dental)</div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold text-white">1 481</span>
+          <span class="text-xs text-slate-400">форм</span>
+          <span class="text-slate-600">/</span>
+          <span class="text-lg font-semibold text-slate-300">38 635</span>
+          <span class="text-xs text-slate-400">контролов</span>
+        </div>
+        <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1">
+          <span>✓</span> Топ-10 контролов = 99.4% базы (все в доноре)
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+        <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Текущее покрытие форм</div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-indigo-400" x-text="summary.coverage_progress?.current_coverage_pct + '%'"></span>
+          <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Базовый R/W</span>
+        </div>
+        <!-- Progress Bar -->
+        <div class="mt-2.5 w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div class="bg-indigo-500 h-2 rounded-full" :style="'width: ' + summary.coverage_progress?.current_coverage_pct + '%'"></div>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 flex justify-between">
+          <span>Старт: 40%</span>
+          <span class="text-amber-400 font-medium">Цель: 90%</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+        <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Прогноз после этапа P0</div>
+        <div class="mt-2 flex items-baseline justify-between">
+          <span class="text-2xl font-bold text-emerald-400" x-text="summary.coverage_progress?.projected_with_p0_pct + '%'"></span>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Порог достигнут</span>
+        </div>
+        <div class="mt-2.5 w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div class="bg-emerald-500 h-2 rounded-full" :style="'width: ' + summary.coverage_progress?.projected_with_p0_pct + '%'"></div>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 flex justify-between">
+          <span>Ref ValueType + Anchors</span>
+          <span class="text-emerald-400 font-medium">+16.7%</span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+        <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">Статус свойств по каталогу</div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold text-emerald-400" x-text="summary.catalog_totals?.status_counts?.rw"></span>
+          <span class="text-xs text-slate-400">R/W</span>
+          <span class="text-slate-600">/</span>
+          <span class="text-lg font-semibold text-slate-300">610</span>
+          <span class="text-xs text-slate-400">в исследовании</span>
+        </div>
+        <div class="mt-2 text-xs text-slate-400 flex items-center gap-2">
+          <span class="text-emerald-400 font-medium">174 🟢 R/W</span>
+          <span>•</span>
+          <span class="text-amber-400">3 🟡 R/O</span>
+          <span>•</span>
+          <span class="text-slate-500">16 ⚙️ Run</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    <div x-show="currentTab === 'overview'" class="space-y-6">
+      
+      <!-- Key Insights Alert -->
+      <div class="bg-gradient-to-r from-indigo-950/60 to-slate-900 border border-indigo-800/40 rounded-2xl p-5 shadow-sm">
+        <div class="flex items-start gap-4">
+          <div class="p-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 text-xl">💡</div>
+          <div class="space-y-1">
+            <h3 class="text-base font-semibold text-white">Ключевое открытие аудита 1 481 формы базы dental</h3>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              В исследовании <code class="text-indigo-300 font-mono">1c-ordinary-forms-research</code> зафиксировано 610 свойств и 27 типов контролов. Однако в реальной конфигурации <strong>99.4% всех элементов управления приходятся всего на 10 базовых типов</strong> (Кнопки, Надписи, Поля ввода, Панели, Таблицы, Флажки, Списки, Рамки групп). 
+              Все эти 10 типов <strong>уже есть в нашем доноре</strong> и поддерживают создание, удаление, перемещение и основные свойства. Редкие контролы (ActiveX, диаграммы Ганта, географические схемы) составляют 0.0% в реальном проде.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two column breakdown -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Real World Distribution in dental -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-semibold text-white flex items-center gap-2">
+              <span>📈</span> Распределение контролов в реальной базе
+            </h3>
+            <span class="text-xs text-slate-400">1 481 форм / 38 635 контролов</span>
+          </div>
+
+          <div class="space-y-2.5">
+            <template x-for="c in controls.slice(0, 10)" :key="c.xml_name">
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs">
+                  <span class="font-medium text-slate-200" x-text="c.name_ru + ' (' + c.xml_name + ')'"></span>
+                  <span class="text-slate-400">
+                    <strong class="text-white" x-text="c.total_count"></strong> шт. 
+                    (<span class="text-indigo-400" x-text="c.forms_pct + '% форм'"></span>)
+                  </span>
+                </div>
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div class="bg-indigo-500 h-2 rounded-full" :style="'width: ' + (c.total_count / 19657 * 100) + '%'"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Pareto 90% Funnel -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="font-semibold text-white flex items-center gap-2">
+              <span>🎯</span> Воронка достижения 90% поддержки форм
+            </h3>
+            <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">План действий</span>
+          </div>
+
+          <div class="space-y-3.5 text-sm">
+            <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
+              <div class="text-emerald-400 text-lg font-bold">1</div>
+              <div class="space-y-1">
+                <div class="font-semibold text-white">Базовый слой (Текущее состояние: ~72.5%)</div>
+                <div class="text-xs text-slate-400">
+                  Полный цикл геометрии (x, y, w, h), ZOrder, TabOrder, видимость, доступность, события формы и контролов, цвета, шрифты, базовые типы, колонки таблиц, кнопки командных панелей.
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-800/40 flex items-start gap-3">
+              <div class="text-indigo-400 text-lg font-bold">2</div>
+              <div class="space-y-1">
+                <div class="font-semibold text-white flex items-center justify-between">
+                  <span>Этап P0: Ссылки и Привязка (+16.7% → 89.2%)</span>
+                  <span class="text-xs text-amber-400 font-medium">В РАБОТЕ</span>
+                </div>
+                <div class="text-xs text-slate-300">
+                  • <strong>ValueType Ref</strong>: Ссылочные типы реквизитов (99.2% форм базы имеют реквизиты!) через <code class="font-mono text-indigo-300">ConfigDumpInfo.xml</code>.<br>
+                  • <strong>Anchors (geom[6..11])</strong>: Привязка границ контролов к краям формы при ресайзе.<br>
+                  • <strong>Квалификаторы типов</strong>: Длина строки и точность числа.
+                </div>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex items-start gap-3">
+              <div class="text-purple-400 text-lg font-bold">3</div>
+              <div class="space-y-1">
+                <div class="font-semibold text-white">Этап P1: Тонкие настройки контролов (+6.6% → 95.8%)</div>
+                <div class="text-xs text-slate-400">
+                  • <strong>TypeLink</strong> для полиморфных полей ввода.<br>
+                  • Строковые флаги (многострочный режим, пароль, маска).<br>
+                  • Порядок обхода и фокус (ПропускатьПриВводе, ПервыйВГруппе).<br>
+                  • Табличные флаги (ТолькоПросмотр, линии сетки).
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 2: CONTROLS (27) -->
+    <div x-show="currentTab === 'controls'" class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">27 типов элементов управления обычных форм</h2>
+          <p class="text-xs text-slate-400">Частота встречаемости в 1 481 форме базы dental и статус в доноре oneform</p>
+        </div>
+        <div class="text-xs text-slate-400">
+          В доноре: <strong class="text-emerald-400">26 / 27</strong> (ActiveX осознанно исключен)
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-950/50 text-slate-400 text-xs uppercase font-semibold">
+                <th class="p-3.5">Элемент (XML)</th>
+                <th class="p-3.5">Имя 1C (API)</th>
+                <th class="p-3.5 text-right">Количество в базе</th>
+                <th class="p-3.5 text-right">В скольких формах</th>
+                <th class="p-3.5 text-right">% форм</th>
+                <th class="p-3.5 text-center">Приоритет</th>
+                <th class="p-3.5 text-center">Статус</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              <template x-for="c in controls" :key="c.xml_name">
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3.5 font-medium text-white flex items-center gap-2">
+                    <span x-text="c.name_ru"></span>
+                    <code class="text-xs font-mono text-indigo-400 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-900" x-text="'<' + c.xml_name + '>'"></code>
+                  </td>
+                  <td class="p-3.5 text-slate-300 font-mono text-xs" x-text="c.api_name"></td>
+                  <td class="p-3.5 text-right font-semibold text-slate-200" x-text="c.total_count.toLocaleString()"></td>
+                  <td class="p-3.5 text-right text-slate-400" x-text="c.forms_count.toLocaleString()"></td>
+                  <td class="p-3.5 text-right font-medium" :class="c.forms_pct > 10 ? 'text-indigo-400' : 'text-slate-400'" x-text="c.forms_pct + '%'"></td>
+                  <td class="p-3.5 text-center">
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium" 
+                          :class="{
+                            'bg-red-500/20 text-red-300 border border-red-500/30': c.priority.includes('P0'),
+                            'bg-amber-500/20 text-amber-300 border border-amber-500/30': c.priority.includes('P1'),
+                            'bg-blue-500/20 text-blue-300 border border-blue-500/30': c.priority.includes('P2'),
+                            'bg-slate-700 text-slate-300': c.priority.includes('P3')
+                          }" x-text="c.priority"></span>
+                  </td>
+                  <td class="p-3.5 text-center">
+                    <span class="text-xs px-2.5 py-0.5 rounded-full font-medium"
+                          :class="c.in_donor ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'"
+                          x-text="c.in_donor ? '🟢 R/W (В доноре)' : '⚪ Исключен'"></span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: PROPERTIES CATALOG (610) -->
+    <div x-show="currentTab === 'properties'" class="space-y-4">
+      
+      <!-- Filter and Search Toolbar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
+        <div class="flex flex-col md:flex-row gap-3 items-center justify-between">
+          
+          <!-- Search Input -->
+          <div class="relative w-full md:w-96">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 pointer-events-none">🔍</span>
+            <input type="text" x-model="searchQuery" placeholder="Поиск по имени, тегу или слоту..." 
+                   class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition">
+          </div>
+
+          <!-- Controls Count & Quick Stats -->
+          <div class="text-xs text-slate-400 flex items-center gap-3">
+            <span>Показано: <strong class="text-white" x-text="filteredProperties.length"></strong> из 610</span>
+            <span>•</span>
+            <span class="text-emerald-400">🟢 R/W: <strong x-text="countStatus('rw')"></strong></span>
+            <span>•</span>
+            <span class="text-amber-400">P0: <strong x-text="countPriority('P0')"></strong></span>
+          </div>
+
+        </div>
+
+        <!-- Filter Chips Row -->
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800 text-xs">
+          <span class="text-slate-400 font-medium">Статус:</span>
+          <button @click="statusFilter = 'all'" :class="statusFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Все</button>
+          <button @click="statusFilter = 'rw'" :class="statusFilter === 'rw' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">🟢 R/W</button>
+          <button @click="statusFilter = 'ro'" :class="statusFilter === 'ro' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">🟡 R/O</button>
+          <button @click="statusFilter = 'unk'" :class="statusFilter === 'unk' ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">⚪ Unk (Не исследовано)</button>
+          <button @click="statusFilter = 'runtime'" :class="statusFilter === 'runtime' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">⚙️ Runtime</button>
+
+          <span class="text-slate-600 mx-1">|</span>
+
+          <span class="text-slate-400 font-medium">Приоритет:</span>
+          <button @click="priorityFilter = 'all'" :class="priorityFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Все</button>
+          <button @click="priorityFilter = 'P0'" :class="priorityFilter === 'P0' ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">P0 (Критично)</button>
+          <button @click="priorityFilter = 'P1'" :class="priorityFilter === 'P1' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">P1 (Высокий)</button>
+          <button @click="priorityFilter = 'P2'" :class="priorityFilter === 'P2' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">P2 (Средний)</button>
+          <button @click="priorityFilter = 'P3'" :class="priorityFilter === 'P3' ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">P3 (Низкий)</button>
+        </div>
+      </div>
+
+      <!-- Properties Table -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto max-h-[650px] overflow-y-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead class="sticky top-0 z-20 bg-slate-950/90 backdrop-blur border-b border-slate-800 text-slate-400 text-xs uppercase font-semibold">
+              <tr>
+                <th class="p-3">Объект / Владелец</th>
+                <th class="p-3">Свойство 1C</th>
+                <th class="p-3">Тег в Form.xml</th>
+                <th class="p-3">Слот в FormStream.bin</th>
+                <th class="p-3 text-right">В базе dental</th>
+                <th class="p-3 text-center">Приоритет</th>
+                <th class="p-3 text-center">Статус</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              <template x-for="p in paginatedProperties" :key="p.id">
+                <tr class="hover:bg-slate-800/40 transition">
+                  <td class="p-3 text-xs">
+                    <div class="font-medium text-slate-200" x-text="p.owner_xml"></div>
+                    <div class="text-slate-500 font-mono text-[11px]" x-text="p.owner_api"></div>
+                  </td>
+                  <td class="p-3">
+                    <div class="font-medium text-white text-sm" x-text="p.name_ru"></div>
+                    <div class="text-slate-400 font-mono text-xs" x-text="p.name_en"></div>
+                  </td>
+                  <td class="p-3">
+                    <template x-if="p.xml_tag && p.xml_tag !== '-'">
+                      <code class="text-xs font-mono text-indigo-400 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-900" x-text="'<' + p.xml_tag + '>'"></code>
+                    </template>
+                    <template x-if="!p.xml_tag || p.xml_tag === '-'">
+                      <span class="text-xs text-slate-500">—</span>
+                    </template>
+                  </td>
+                  <td class="p-3 text-xs text-slate-400 font-mono">
+                    <span x-text="p.slot || 'Не исследован'" :class="p.slot && p.slot.includes('root') || p.slot.includes('info') || p.slot.includes('geom') ? 'text-emerald-400' : 'text-slate-500'"></span>
+                  </td>
+                  <td class="p-3 text-right font-medium text-xs">
+                    <span :class="p.dental_count > 0 ? 'text-indigo-400 font-semibold' : 'text-slate-500'" x-text="p.dental_count > 0 ? p.dental_count.toLocaleString() : '—'"></span>
+                  </td>
+                  <td class="p-3 text-center">
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                          :class="{
+                            'bg-red-500/20 text-red-300 border border-red-500/30': p.priority === 'P0',
+                            'bg-amber-500/20 text-amber-300 border border-amber-500/30': p.priority === 'P1',
+                            'bg-blue-500/20 text-blue-300 border border-blue-500/30': p.priority === 'P2',
+                            'bg-slate-700 text-slate-300': p.priority === 'P3',
+                            'bg-purple-900/40 text-purple-300 border border-purple-800': p.priority === 'P4'
+                          }" x-text="p.priority"></span>
+                  </td>
+                  <td class="p-3 text-center">
+                    <span class="text-xs px-2.5 py-0.5 rounded-full font-medium"
+                          :class="{
+                            'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30': p.status === 'rw',
+                            'bg-amber-500/20 text-amber-300 border border-amber-500/30': p.status === 'ro',
+                            'bg-slate-800 text-slate-400': p.status === 'unk',
+                            'bg-purple-950 text-purple-300 border border-purple-800': p.status === 'runtime',
+                            'bg-rose-950 text-rose-300 border border-rose-800': p.status === 'excluded'
+                          }"
+                          x-text="p.status === 'rw' ? '🟢 R/W' : (p.status === 'ro' ? '🟡 R/O' : (p.status === 'runtime' ? '⚙️ Runtime' : '⚪ Unk'))"></span>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="p-3 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between text-xs text-slate-400">
+          <div>
+            Страница <span class="text-white font-medium" x-text="currentPage"></span> из <span class="text-white font-medium" x-text="totalPages"></span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button @click="currentPage = Math.max(1, currentPage - 1)" :disabled="currentPage === 1" class="px-2.5 py-1 rounded bg-slate-800 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700">Назад</button>
+            <button @click="currentPage = Math.min(totalPages, currentPage + 1)" :disabled="currentPage >= totalPages" class="px-2.5 py-1 rounded bg-slate-800 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700">Вперед</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 4: ROADMAP -->
+    <div x-show="currentTab === 'roadmap'" class="space-y-6">
+      
+      <div>
+        <h2 class="text-lg font-bold text-white">Дорожная карта к 90% поддержке реальных форм</h2>
+        <p class="text-xs text-slate-400">Пошаговый план реализации критических свойств на основе частотного анализа базы dental</p>
+      </div>
+
+      <div class="space-y-6">
+        <template x-for="(m, idx) in roadmap" :key="idx">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-3">
+                <span class="h-7 w-7 rounded-lg bg-indigo-600/30 text-indigo-400 border border-indigo-500/40 flex items-center justify-center font-bold text-xs" x-text="idx + 1"></span>
+                <h3 class="text-base font-semibold text-white" x-text="m.milestone"></h3>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400">Целевое покрытие форм:</span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold" x-text="m.target_coverage"></span>
+              </div>
+            </div>
+
+            <!-- Task Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <template x-for="t in m.tasks" :key="t.title">
+                <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 space-y-2 hover:border-slate-700 transition">
+                  <div class="flex items-start justify-between gap-2">
+                    <h4 class="font-medium text-white text-sm" x-text="t.title"></h4>
+                    <span class="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0"
+                          :class="t.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-400'"
+                          x-text="t.status === 'in_progress' ? '🟡 В работе' : '⚪ Запланировано'"></span>
+                  </div>
+                  <p class="text-xs text-slate-300 leading-relaxed" x-text="t.impact"></p>
+                  <div class="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/80">
+                    <span>OpenSpec: <code class="font-mono text-indigo-400" x-text="t.change"></code></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+          </div>
+        </template>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>oneform ordinary forms dashboard • Генерируется из <code class="text-slate-400 font-mono">scripts/build_coverage_data.py</code></div>
+      <div>Синхронизировано: <span class="text-slate-400">24 октября 2026</span></div>
+    </div>
+  </footer>
+
+  <!-- Alpine App Logic -->
+  <script>
+    function coverageApp() {
+      // Load bundled dataset if present, or initialize empty
+      const data = window.COVERAGE_DATA || {
+        summary: {},
+        controls: [],
+        properties: [],
+        roadmap: []
+      };
+
+      return {
+        currentTab: 'overview',
+        summary: data.summary,
+        controls: data.controls,
+        properties: data.properties,
+        roadmap: data.roadmap,
+
+        // Filters
+        searchQuery: '',
+        statusFilter: 'all',
+        priorityFilter: 'all',
+        currentPage: 1,
+        pageSize: 50,
+
+        init() {
+          // Fallback fetch if window.COVERAGE_DATA wasn't injected (e.g. over http server)
+          if (!window.COVERAGE_DATA || !data.properties.length) {
+            fetch('data/summary.json').then(r => r.json()).then(d => this.summary = d).catch(() => {});
+            fetch('data/controls.json').then(r => r.json()).then(d => this.controls = d).catch(() => {});
+            fetch('data/properties.json').then(r => r.json()).then(d => this.properties = d).catch(() => {});
+            fetch('data/roadmap.json').then(r => r.json()).then(d => this.roadmap = d).catch(() => {});
+          }
+        },
+
+        get filteredProperties() {
+          return this.properties.filter(p => {
+            // Status filter
+            if (this.statusFilter !== 'all' && p.status !== this.statusFilter) return false;
+            // Priority filter
+            if (this.priorityFilter !== 'all' && p.priority !== this.priorityFilter) return false;
+            // Search query
+            if (this.searchQuery) {
+              const q = this.searchQuery.toLowerCase();
+              return (p.name_ru && p.name_ru.toLowerCase().includes(q)) ||
+                     (p.name_en && p.name_en.toLowerCase().includes(q)) ||
+                     (p.xml_tag && p.xml_tag.toLowerCase().includes(q)) ||
+                     (p.owner_xml && p.owner_xml.toLowerCase().includes(q)) ||
+                     (p.slot && p.slot.toLowerCase().includes(q));
+            }
+            return true;
+          });
+        },
+
+        get totalPages() {
+          return Math.ceil(this.filteredProperties.length / this.pageSize) || 1;
+        },
+
+        get paginatedProperties() {
+          const start = (this.currentPage - 1) * this.pageSize;
+          return this.filteredProperties.slice(start, start + this.pageSize);
+        },
+
+        countStatus(st) {
+          return this.properties.filter(p => p.status === st).length;
+        },
+
+        countPriority(pr) {
+          return this.properties.filter(p => p.priority === pr).length;
+        }
+      };
+    }
+  </script>
+</body>
+</html>

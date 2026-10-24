@@ -1,0 +1,72 @@
+[
+  {
+    "milestone": "Спринт 1 (P0): Ссылочные типы ValueType и квалификаторы",
+    "target_coverage": "89.2%",
+    "status": "in_progress",
+    "tasks": [
+      {
+        "title": "Конкретные ссылки в ValueType (СправочникСсылка.*, ДокументСсылка.*)",
+        "status": "in_progress",
+        "impact": "Критично для 99.2% форм с реквизитами. Открывает нормальную работу со справочниками и документами через ConfigDumpInfo.xml.",
+        "change": "pack-ref-valuetypes-and-typelink"
+      },
+      {
+        "title": "Квалификаторы типов String (длина) и Number (разрядность)",
+        "status": "in_progress",
+        "impact": "Предотвращает потерю ограничений длины строки и точности чисел.",
+        "change": "pack-ref-valuetypes-and-typelink"
+      }
+    ]
+  },
+  {
+    "milestone": "Спринт 2 (P0): Привязка границ (Anchors: geom[6..11])",
+    "target_coverage": "91.5% (ЦЕЛЬ 90% ПРЕОДОЛЕНА)",
+    "status": "planned",
+    "tasks": [
+      {
+        "title": "Привязка границ (Anchors: geom[6..11])",
+        "status": "planned",
+        "impact": "Критично для ресайза форм. 56% форм имеют таблицы и кнопки с авто-растягиванием к краям.",
+        "change": "pack-control-anchors"
+      }
+    ]
+  },
+  {
+    "milestone": "Спринт 3 (P1): Тонкие свойства полей ввода InputField и связь по типу",
+    "target_coverage": "95.8%",
+    "status": "planned",
+    "tasks": [
+      {
+        "title": "Связь по типу (TypeLink) для полей ввода",
+        "status": "planned",
+        "impact": "Полиморфные поля (составные типы с выбором типа по другому реквизиту).",
+        "change": "pack-inputfield-flags-and-typelink"
+      },
+      {
+        "title": "Флаги строковых InputField (МногострочныйРежим, РежимПароля, Маска)",
+        "status": "planned",
+        "impact": "Корректный рендеринг комментариев, паролей и телефонных масок в info[2][0].",
+        "change": "pack-inputfield-flags-and-typelink"
+      },
+      {
+        "title": "Порядок обхода и фокус (ПропускатьПриВводе, ПервыйВГруппе, АктивизироватьПоУмолчанию)",
+        "status": "planned",
+        "impact": "Навигация клавишами Tab и Enter в geom[20..24].",
+        "change": "pack-inputfield-flags-and-typelink"
+      }
+    ]
+  },
+  {
+    "milestone": "Спринт 4 (P1): Поведение и сетка табличных полей Table",
+    "target_coverage": "97.5%",
+    "status": "planned",
+    "tasks": [
+      {
+        "title": "Общие свойства Table (ТолькоПросмотр, Линии сетки, АвтоВвод, ИзменятьСостав)",
+        "status": "planned",
+        "impact": "Флаги поведения табличного поля в info[2][1].",
+        "change": "pack-table-grid-and-flags"
+      }
+    ]
+  }
+]
