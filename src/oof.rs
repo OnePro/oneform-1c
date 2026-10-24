@@ -186,10 +186,13 @@ pub const LIST_BOX_EVENTS: [(i64, &str); 4] = [
     (34, "Selection"),
     (37, "OnActivateRow"),
 ];
-pub const SPREADSHEET_EVENTS: [(i64, &str); 5] = [
+pub const SPREADSHEET_EVENTS: [(i64, &str); 8] = [
     (0, "Selection"),
     (1, "DetailProcessing"),
     (2, "OnActivateArea"),
+    (3, "DragStart"),
+    (4, "DragCheck"),
+    (5, "DragEnd"),
     (6, "Drag"),
     (7, "OnChangeAreaContent"),
 ];

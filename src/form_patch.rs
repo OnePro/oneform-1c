@@ -36,7 +36,7 @@ use crate::oof_props::{app_path, caption_path, localized};
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 32] = [
+const SUPPORTED_TAGS: [&str; 33] = [
     "DataPath",
     "Caption",
     "Left",
@@ -69,6 +69,7 @@ const SUPPORTED_TAGS: [&str; 32] = [
     "Footer",
     "SelectionMode",
     "AutoFill",
+    "BorderStyle",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -131,6 +132,7 @@ pub struct FormAttribute {
 
 fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
     match (a.kind.as_str(), a.composite) {
+        ("", false) => Some("{\"Pattern\"}".to_string()),
         ("String", false) => Some("{\"Pattern\",{\"S\"}}".to_string()),
         ("Boolean", false) => Some("{\"Pattern\",{\"B\"}}".to_string()),
         ("Number", false) => {
@@ -214,6 +216,7 @@ pub struct ControlValues {
     pub selection_mode: String,
     pub columns: Vec<ColumnValues>,
     pub auto_fill: Option<bool>,
+    pub border_style: Option<i64>,
 }
 
 impl ControlValues {
@@ -254,6 +257,7 @@ impl ControlValues {
             selection_mode: String::new(),
             columns: Vec::new(),
             auto_fill: None,
+            border_style: None,
         }
     }
 }
@@ -295,6 +299,7 @@ pub enum Property {
     SelectionMode,
     Columns,
     AutoFill,
+    BorderStyle,
 }
 
 impl Property {
@@ -335,6 +340,7 @@ impl Property {
             Property::SelectionMode => "SelectionMode",
             Property::Columns => "Columns",
             Property::AutoFill => "AutoFill",
+            Property::BorderStyle => "BorderStyle",
         }
     }
 }
@@ -378,6 +384,7 @@ impl ControlValues {
             (self.selection_mode == other.selection_mode, Property::SelectionMode),
             (self.columns == other.columns, Property::Columns),
             (self.auto_fill == other.auto_fill, Property::AutoFill),
+            (self.border_style == other.border_style, Property::BorderStyle),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -530,6 +537,7 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "ShowTabs" => type_name == "Panel",
         "Footer" | "SelectionMode" => type_name == "Table",
         "AutoFill" => type_name == "CommandBar",
+        "BorderStyle" => type_name == "UsualGroup",
         _ => false,
     }
 }
@@ -1057,6 +1065,28 @@ impl Parser<'_> {
             selection_mode: enum_of("SelectionMode", &["Single", "Multi"], "Single")?,
             columns,
             auto_fill: if type_name == "CommandBar" { Some(opt_bool_of("AutoFill")?.unwrap_or(true)) } else { None },
+            border_style: if type_name == "UsualGroup" {
+                match found.get("BorderStyle") {
+                    None => Some(6),
+                    Some(e) => {
+                        let code = e.attrs.get("code").and_then(|v| v.trim().parse::<i64>().ok());
+                        let expected_name = match code {
+                            Some(6) => Some("Frame"),
+                            Some(4) => Some("SingleLine"),
+                            Some(0) => Some("None"),
+                            _ => None,
+                        };
+                        if e.attrs.len() != 1 || !e.children.is_empty() || expected_name != Some(e.text.trim()) {
+                            rest.children.push((*e).clone());
+                            None
+                        } else {
+                            code
+                        }
+                    }
+                }
+            } else {
+                None
+            },
         };
         Ok((values, rest))
     }
@@ -1172,10 +1202,7 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
         if !ok {
             break;
         }
-        let Some((kind, composite, fraction_digits)) = vt_info else {
-            ok = false;
-            break;
-        };
+        let (kind, composite, fraction_digits) = vt_info.unwrap_or_else(|| (String::new(), false, None));
         let fa = FormAttribute { id, name, main, stored, kind, composite, fraction_digits };
         if format_attr_pattern(&fa).is_none() {
             ok = false;
@@ -2137,6 +2164,12 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 x.children[3] = bare(i64::from(af));
             }
             x.children[4] = bare(if v.horizontal_align == "Right" { 2 } else { 0 });
+        }
+        "UsualGroup" => {
+            if let Some(bs) = v.border_style {
+                let b = nav_mut(info, &[1, 3])?;
+                b.children[3] = bare(bs);
+            }
         }
         _ => {}
     }
@@ -3334,6 +3367,14 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = new.auto_fill.unwrap_or(false);
                 out.push(info_bool_piece(site, &[1], 3, old.auto_fill, want, prop)?);
             }
+            Property::BorderStyle => {
+                let (cur, span) = info_int_slot(site, &[1, 3], 3, prop)?;
+                if Some(cur) != old.border_style {
+                    return Err(site.mismatch("BorderStyle", &format!("{:?}", old.border_style), &cur.to_string()));
+                }
+                let want = new.border_style.unwrap_or(6);
+                out.push(piece(span, in_i32(site, prop, want)?, &[prop]));
+            }
         }
     }
     Ok(out)
@@ -3462,6 +3503,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             }
             Property::Columns => read_table_column_values(site)? == new.columns,
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
+            Property::BorderStyle => Some(info_int_slot(site, &[1, 3], 3, p)?.0) == new.border_style,
             _ => true,
         };
         if !ok {

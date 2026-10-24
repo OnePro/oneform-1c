@@ -9,8 +9,8 @@ use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, SpannedMetadata};
 use crate::errors::{ExtractionError, Result, METADATA_LAYOUT_UNSUPPORTED};
 use crate::form_patch::ControlIndex;
 
-/// Designer-produced donor form stream (all 27 ordinary-form control types).
-pub static DONOR_STREAM: &[u8] = include_bytes!("../tests/fixtures/forms/DonorForm/FormStream.bin");
+/// Designer-produced donor form stream (26 of 27 ordinary-form control types).
+pub static DONOR_STREAM: &[u8] = include_bytes!("../tests/fixtures/forms/DonorFormV2/FormStream.bin");
 
 /// Lazily parsed donor (parsed once per process; the embedded bytes are 'static).
 fn donor() -> &'static SpannedMetadata {
@@ -220,6 +220,18 @@ pub(crate) fn clone_prototype_raw(type_name: &str, new_id: i64, name: &str) -> R
         return Err(ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, format!("donor prototype for '{type_name}' has a short meta node")));
     }
     meta.children[1] = Item::Atom(Atom::new(AtomKind::Quoted, name));
+    if type_name == "UsualGroup" {
+        if let Some(app) = n.children.get_mut(2).and_then(Item::as_node_mut).and_then(|i| i.children.get_mut(1)).and_then(Item::as_node_mut).and_then(|p| p.children.get_mut(0)).and_then(Item::as_node_mut) {
+            if app.len() > 4 {
+                app.children[4] = Item::Node(Node {
+                    children: ["7", "3", "0", "1", "100"]
+                        .into_iter()
+                        .map(|v| Item::Atom(Atom::new(AtomKind::Bare, v)))
+                        .collect(),
+                });
+            }
+        }
+    }
     Ok(n)
 }
 
@@ -275,9 +287,9 @@ mod tests {
         let src = donor();
         let index = ControlIndex::build(src).unwrap();
         assert!(!index.entries.is_empty());
-        assert_eq!(max_control_id(src).unwrap(), 36);
-        // The donor covers 24 of the 27 known types; the missing ones must fail actionably.
-        const MISSING: [&str; 3] = ["ActiveXControl", "ChoiceField", "UsualGroup"];
+        assert_eq!(max_control_id(src).unwrap(), 40);
+        // The donor covers 26 of the 27 known types; only legacy COM ActiveXControl is absent.
+        const MISSING: [&str; 1] = ["ActiveXControl"];
         for (guid, name) in CONTROL_GUIDS {
             let p = prototype(name);
             if MISSING.contains(&name) {

@@ -1011,16 +1011,16 @@ fn assert_form_attributes_and_datapath_pack(target: Target) {
     let w = Work::new(target);
     let xml_file = w.src_file("Form.xml");
     let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
-    // Add attribute id=16 name=НовыйСтроковыйРеквизит
+    // Add attribute id=18 name=НовыйСтроковыйРеквизит
     xml = xml.replacen(
         "  </Attributes>",
-        "    <Attribute id=\"16\" name=\"НовыйСтроковыйРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"String\" composite=\"false\"/>\n    </Attribute>\n  </Attributes>",
+        "    <Attribute id=\"18\" name=\"НовыйСтроковыйРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"String\" composite=\"false\"/>\n    </Attribute>\n  </Attributes>",
         1,
     );
-    // Rebind ПолеВвода1 to attributeId=16
+    // Rebind ПолеВвода1 to attributeId=18
     xml = xml.replacen(
         "<DataPath attributeId=\"3\">ПолеВвода1</DataPath>",
-        "<DataPath attributeId=\"16\">НовыйСтроковыйРеквизит</DataPath>",
+        "<DataPath attributeId=\"18\">НовыйСтроковыйРеквизит</DataPath>",
         1,
     );
     // Add a new InputField bound to attributeId=14 (ПолеВвода7)
@@ -1039,8 +1039,8 @@ fn assert_form_attributes_and_datapath_pack(target: Target) {
     assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
     let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
     for needle in [
-        r#"<Attribute id="16" name="НовыйСтроковыйРеквизит">"#,
-        r#"<DataPath attributeId="16">НовыйСтроковыйРеквизит</DataPath>"#,
+        r#"<Attribute id="18" name="НовыйСтроковыйРеквизит">"#,
+        r#"<DataPath attributeId="18">НовыйСтроковыйРеквизит</DataPath>"#,
         r#"<InputField name="НовоеПолеСПривязкой" id="37">"#,
         r#"<DataPath attributeId="14">ПолеВвода7</DataPath>"#,
     ] {
@@ -1056,4 +1056,42 @@ fn epf_form_attributes_and_datapath_pack() {
 #[test]
 fn config_form_attributes_and_datapath_pack() {
     assert_form_attributes_and_datapath_pack(Target::Config);
+}
+
+fn assert_usualgroup_and_choicefield_donor_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    let additions = "\n        <UsualGroup name=\"ГруппаНовая\" id=\"998\">\n          <Caption>\n            <Item language=\"ru\">Группа 1</Item>\n          </Caption>\n          <Left>500</Left>\n          <Top>500</Top>\n          <Width>200</Width>\n          <Height>80</Height>\n          <ZOrder>56</ZOrder>\n          <TabOrder>56</TabOrder>\n          <BorderStyle code=\"4\">SingleLine</BorderStyle>\n        </UsualGroup>\n        <ChoiceField name=\"ПолеВыбораНовое\" id=\"999\">\n          <Left>510</Left>\n          <Top>520</Top>\n          <Width>140</Width>\n          <Height>20</Height>\n          <ZOrder>57</ZOrder>\n          <TabOrder>57</TabOrder>\n          <Events>\n            <OnChange id=\"2147483647\">ПолеВыбораНовоеПриИзменении</OnChange>\n          </Events>\n        </ChoiceField>";
+    let anchor = xml.find(LABEL).expect("label");
+    let insert_at = xml[anchor..].find("</LabelDecoration>").map(|i| anchor + i + "</LabelDecoration>".len()).unwrap();
+    xml.insert_str(insert_at, additions);
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    for needle in [
+        r#"<UsualGroup name="ГруппаНовая" id="37">"#,
+        r#"<BorderStyle code="4">SingleLine</BorderStyle>"#,
+        r#"<ChoiceField name="ПолеВыбораНовое" id="38">"#,
+        r#"<OnChange id="2147483647">ПолеВыбораНовоеПриИзменении</OnChange>"#,
+    ] {
+        assert!(packed_xml.contains(needle), "{target:?}: missing {needle} in:\n{packed_xml}");
+    }
+}
+
+#[test]
+fn epf_usualgroup_and_choicefield_donor_pack() {
+    assert_usualgroup_and_choicefield_donor_pack(Target::Epf);
+}
+
+#[test]
+fn config_usualgroup_and_choicefield_donor_pack() {
+    assert_usualgroup_and_choicefield_donor_pack(Target::Config);
 }

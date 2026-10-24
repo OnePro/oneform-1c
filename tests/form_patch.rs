@@ -1632,3 +1632,30 @@ fn form_attributes_and_control_datapath_round_trip() {
     );
 }
 
+#[test]
+fn usualgroup_choicefield_and_spreadsheet_events_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. Add a new UsualGroup (with BorderStyle SingleLine) and a new ChoiceField (with OnChange event)
+    let additions = "<UsualGroup name=\"ГруппаНовая\" id=\"998\">\n          <Caption><Item language=\"ru\">Группа 1</Item></Caption>\n          <Left>500</Left><Top>500</Top><Width>200</Width><Height>80</Height>\n          <ZOrder>56</ZOrder><TabOrder>56</TabOrder>\n          <BorderStyle code=\"4\">SingleLine</BorderStyle>\n        </UsualGroup>\n        <ChoiceField name=\"ПолеВыбораНовое\" id=\"999\">\n          <Left>510</Left><Top>520</Top><Width>140</Width><Height>20</Height>\n          <ZOrder>57</ZOrder><TabOrder>57</TabOrder>\n          <Events>\n            <OnChange id=\"2147483647\">ПолеВыбораНовоеПриИзменении</OnChange>\n          </Events>\n        </ChoiceField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(additions.to_string() + anchor), 1);
+    // 2. Add DragStart (id=3) event onto existing ПолеТабличногоДокумента1 (id 15)
+    edited = edit_ctl(
+        &edited,
+        "ПолеТабличногоДокумента1",
+        &[(
+            "<TabOrder>19</TabOrder>",
+            "<TabOrder>19</TabOrder><Events><DragStart id=\"3\">ТабДокНачалоПеретаскивания</DragStart></Events>",
+        )],
+    );
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let grp = got.control(pf.allocated[0].1).unwrap();
+    assert_eq!(grp.type_name, "UsualGroup");
+    assert_eq!(grp.values.border_style, Some(4));
+    let cf = got.control(pf.allocated[1].1).unwrap();
+    assert_eq!(cf.type_name, "ChoiceField");
+    assert_eq!(cf.values.events, vec![(2147483647, "ПолеВыбораНовоеПриИзменении".to_string())]);
+    let sp = got.control(15).unwrap();
+    assert_eq!(sp.values.events, vec![(3, "ТабДокНачалоПеретаскивания".to_string())]);
+}
+
