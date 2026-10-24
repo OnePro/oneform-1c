@@ -371,6 +371,326 @@ pub fn repack_epf_form(epf: &[u8], form: &[u8]) -> Result<Vec<u8>> {
     serialize_container(&out_entries, 0x200)
 }
 
+// ---------------------------------------------------------------- runtime probe (explore-runtime-property-sweep)
+
+/// Candidate ordinary-form control properties probed in `ПриОткрытии()` via `Попытка ... Исключение`.
+pub const RUNTIME_PROBED_PROPERTIES: &[&str] = &[
+    "Видимость",
+    "Доступность",
+    "ТолькоПросмотр",
+    "ПропускПриВводе",
+    "АктивизироватьПоУмолчанию",
+    "КнопкаПоУмолчанию",
+    "ИзменяетДанные",
+    "АвтоПорядокОбхода",
+    "ПорядокОбхода",
+    "Заголовок",
+    "ВыравниваниеНадписи",
+    "ПоложениеЗаголовка",
+    "Рамка",
+    "ПрозрачныйФон",
+    "АвтоРазмер",
+    "Гиперссылка",
+    "РежимОтображенияВыделения",
+    "КнопкаВыбора",
+    "КнопкаОчистки",
+    "КнопкаОткрытия",
+    "КнопкаРегулирования",
+    "КнопкаВыпадающегоСписка",
+    "КнопкаСпискаВыбора",
+    "РежимВыбораИзСписка",
+    "БыстрыйВыбор",
+    "МногострочныйРежим",
+    "РасширенноеРедактирование",
+    "РежимПароля",
+    "Маска",
+    "СвязьПоТипу",
+    "ВыборГруппИЭлементов",
+    "ОграничениеТипа",
+    "АвтоОтметкаНезаполненного",
+    "АвтоВыборНезаполненного",
+    "Подсказка",
+    "ПоложениеКоманднойПанели",
+    "ТриСостояния",
+    "ПервоеСостояние",
+    "ПоложениеФлажка",
+    "Шапка",
+    "Подвал",
+    "ГоризонтальныеЛинии",
+    "ВертикальныеЛинии",
+    "Вывод",
+    "РежимВыделения",
+    "РежимВыбора",
+    "ОтображатьЗаголовки",
+    "ОтображатьПодвал",
+    "АвтоВводНезаполненного",
+    "ИзменениеСоставаСтрок",
+    "ДобавлениеСтрок",
+    "ГоризонтальнаяПолосаПрокрутки",
+    "ВертикальнаяПолосаПрокрутки",
+    "АвтоПереносСтрок",
+    "МногострочныйЗаголовок",
+    "ОтображениеТаблицы",
+    "НачальноеОтображениеДерева",
+    "РазрешитьНастройкуСписка",
+    "ИспользованиеТекущейСтроки",
+    "РежимЗаписиДаты",
+    "ВыделятьОтрицательные",
+];
+
+/// Generate the `Процедура ПриОткрытии()` BSL body that writes `<Control>.<Prop>=<Val>` lines to
+/// `out_path` and exits 1C via `ЗавершитьРаботуСистемы(Ложь)`.
+pub fn generate_runtime_probe_bsl(out_path: &Path) -> String {
+    let escaped = out_path.to_string_lossy().replace('"', "\"\"");
+    let mut lines = vec![
+        "Процедура ПриОткрытии()".to_string(),
+        "\tТ = Новый ТекстовыйДокумент;".to_string(),
+        "\tДля Каждого Э Из ЭлементыФормы Цикл".to_string(),
+    ];
+    for prop in RUNTIME_PROBED_PROPERTIES {
+        lines.push(format!(
+            "\t\tПопытка Т.ДобавитьСтроку(Э.Имя + \".{prop}=\" + Строка(Э.{prop})); Исключение КонецПопытки;"
+        ));
+    }
+    lines.push("\tКонецЦикла;".to_string());
+    lines.push(format!("\tТ.Записать(\"{escaped}\", КодировкаТекста.UTF8);"));
+    lines.push("КонецПроцедуры".to_string());
+    lines.join("\r\n")
+}
+
+fn patch_bsl_on_open(module_raw: &[u8], out_path: &Path) -> Result<Vec<u8>> {
+    let has_bom = module_raw.starts_with(&[0xEF, 0xBB, 0xBF]);
+    let body = if has_bom { &module_raw[3..] } else { module_raw };
+    let text = String::from_utf8(body.to_vec()).map_err(|e| {
+        ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, format!("form module is not valid UTF-8: {e}"))
+    })?;
+    let probe = generate_runtime_probe_bsl(out_path);
+    let patched = if let Some(start) = text.find("Процедура ПриОткрытии(") {
+        let rest = &text[start..];
+        let end_kw = "КонецПроцедуры";
+        let rel_end = rest.find(end_kw).ok_or_else(|| {
+            ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, "unterminated Процедура ПриОткрытии in form module")
+        })?;
+        let mut s = String::with_capacity(text.len() + probe.len());
+        s.push_str(&text[..start]);
+        s.push_str(&probe);
+        s.push_str(&rest[rel_end + end_kw.len()..]);
+        s
+    } else {
+        format!("{text}\r\n\r\n{probe}\r\n")
+    };
+    let mut out = Vec::with_capacity(patched.len() + 3);
+    out.extend_from_slice(&[0xEF, 0xBB, 0xBF]);
+    out.extend_from_slice(patched.as_bytes());
+    Ok(out)
+}
+
+/// Repack the EPF with both a replaced `form` stream and an instrumented `module` entry whose
+/// `ПриОткрытии()` writes runtime control properties to `out_path` and exits 1C.
+pub fn repack_epf_form_with_probe(epf: &[u8], form: &[u8], out_path: &Path) -> Result<Vec<u8>> {
+    let limits = Limits::default();
+    let outer = parse_container(epf, &limits, 0, None)?;
+    let mut replaced = false;
+    let mut owned: Vec<Vec<u8>> = Vec::with_capacity(outer.entries.len());
+    for e in &outer.entries {
+        let mut pushed = false;
+        if !replaced {
+            if let Ok(inner_raw) = inflate(&e.raw, &limits, None) {
+                if let Ok(sub) = parse_container(&inner_raw, &limits, 1, None) {
+                    if let (Some(_), Some(m)) = (sub.get("form"), sub.get("module")) {
+                        let new_mod = patch_bsl_on_open(&m.raw, out_path)?;
+                        let sub_out: Vec<EntryOut> = sub
+                            .entries
+                            .iter()
+                            .map(|s| match s.name.as_str() {
+                                "form" => (s.name.as_str(), form, Some(s.header.as_slice())),
+                                "module" => (s.name.as_str(), new_mod.as_slice(), Some(s.header.as_slice())),
+                                _ => (s.name.as_str(), s.raw.as_slice(), Some(s.header.as_slice())),
+                            })
+                            .collect();
+                        owned.push(deflate(&serialize_container(&sub_out, 0x200)?));
+                        replaced = true;
+                        pushed = true;
+                    }
+                }
+            }
+        }
+        if !pushed {
+            owned.push(e.raw.clone());
+        }
+    }
+    if !replaced {
+        return Err(ExtractionError::new(
+            PAYLOAD_MISSING,
+            "the EPF has no form+module sub-container to instrument",
+        ));
+    }
+    let out_entries: Vec<EntryOut> = outer
+        .entries
+        .iter()
+        .zip(&owned)
+        .map(|(e, raw)| (e.name.as_str(), raw.as_slice(), Some(e.header.as_slice())))
+        .collect();
+    serialize_container(&out_entries, 0x200)
+}
+
+/// Result of one `ENTERPRISE /Execute` runtime probe run.
+#[derive(Debug, Clone)]
+pub struct RuntimeResult {
+    pub snapshot: std::collections::BTreeMap<String, String>,
+    pub duration_ms: u128,
+}
+
+/// Runtime introspection gate: launches `1cv8.exe ENTERPRISE /Execute <epf>` against a disposable
+/// copy of the infobase with an instrumented `ПриОткрытии()` handler that writes runtime properties
+/// to disk and exits.
+pub struct RuntimeGate {
+    /// `1cv8.exe` path or its `bin` directory.
+    pub platform: String,
+    /// Infobase directory whose `1Cv8.1CD` is copied into a disposable working base.
+    pub base: std::path::PathBuf,
+}
+
+impl RuntimeGate {
+    fn exe(&self) -> String {
+        let p = Path::new(&self.platform);
+        if p.is_dir() {
+            p.join("1cv8.exe").to_string_lossy().into_owned()
+        } else {
+            self.platform.clone()
+        }
+    }
+
+    /// Run the instrumented EPF for `form` and return its parsed runtime property snapshot.
+    pub fn run(&self, epf: &[u8], form: &[u8]) -> Result<RuntimeResult> {
+        let started = std::time::Instant::now();
+        let work = std::env::temp_dir().join(format!(
+            "oneform-rt-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let base = work.join("base");
+        fs::create_dir_all(&base).map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot create {}: {e}", base.display())))?;
+        fs::copy(self.base.join("1Cv8.1CD"), base.join("1Cv8.1CD"))
+            .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot copy the infobase: {e}")))?;
+        let out_file = work.join("runtime.txt");
+        let probed = repack_epf_form_with_probe(epf, form, &out_file)?;
+        let epf_path = work.join("probe.epf");
+        fs::write(&epf_path, &probed).map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot write {}: {e}", epf_path.display())))?;
+
+        let result = self.launch_and_collect(&base, &epf_path, &out_file, started);
+        if std::env::var_os("ONEFORM_EXPLORE_KEEP_WORK").is_none() {
+            let _ = fs::remove_dir_all(&work);
+        }
+        result
+    }
+
+    fn launch_and_collect(
+        &self,
+        base: &Path,
+        epf_path: &Path,
+        out_file: &Path,
+        started: std::time::Instant,
+    ) -> Result<RuntimeResult> {
+        let exe = self.exe();
+        let script = format!(
+            concat!(
+                "Stop-Process -Name 1cv8* -Force -ErrorAction SilentlyContinue\n",
+                "$exe = '{}'\n",
+                "$arg = 'ENTERPRISE /F \"{}\" /RunModeOrdinaryApplication /Execute \"{}\" /DisableStartupDialogs /DisableStartupMessages'\n",
+                "$sess = (Get-Process -Id $PID).SessionId\n",
+                "if ($sess -eq 0) {{\n",
+                "  $name = 'OneFormRtProbe'\n",
+                "  Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue | Out-Null\n",
+                "  $action = New-ScheduledTaskAction -Execute $exe -Argument $arg\n",
+                "  $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive\n",
+                "  Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Force | Out-Null\n",
+                "  Start-ScheduledTask -TaskName $name\n",
+                "}} else {{\n",
+                "  Start-Process -FilePath $exe -ArgumentList $arg | Out-Null\n",
+                "}}\n",
+                "for ($i = 0; $i -lt 50; $i++) {{\n",
+                "  if (Test-Path '{}') {{ Start-Sleep -Milliseconds 150; break }}\n",
+                "  Start-Sleep -Milliseconds 250\n",
+                "}}\n",
+                "Stop-Process -Name 1cv8* -Force -ErrorAction SilentlyContinue\n",
+                "Unregister-ScheduledTask -TaskName 'OneFormRtProbe' -Confirm:$false -ErrorAction SilentlyContinue | Out-Null\n",
+                "if (-not (Test-Path '{}')) {{\n",
+                "  Stop-Process -Name 1cv8* -Force -ErrorAction SilentlyContinue\n",
+                "  exit 2\n",
+                "}}\n"
+            ),
+            exe.replace('\'', "''"),
+            base.to_string_lossy().replace('\'', "''"),
+            epf_path.to_string_lossy().replace('\'', "''"),
+            out_file.to_string_lossy().replace('\'', "''"),
+            out_file.to_string_lossy().replace('\'', "''"),
+        );
+        let out = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-Command", &script])
+            .output()
+            .map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot run powershell for RuntimeGate: {e}")))?;
+        if !out_file.is_file() {
+            return Err(ExtractionError::new(
+                METADATA_LAYOUT_UNSUPPORTED,
+                format!(
+                    "runtime probe did not produce output within timeout (exit={:?}): {}",
+                    out.status.code(),
+                    String::from_utf8_lossy(&out.stderr)
+                ),
+            ));
+        }
+        let raw = fs::read(out_file).map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot read {}: {e}", out_file.display())))?;
+        Ok(RuntimeResult {
+            snapshot: parse_runtime_snapshot(&raw),
+            duration_ms: started.elapsed().as_millis(),
+        })
+    }
+}
+
+/// Parse `<Control>.<Prop>=<Val>` lines from a UTF-8 runtime snapshot file into a sorted map.
+pub fn parse_runtime_snapshot(bytes: &[u8]) -> std::collections::BTreeMap<String, String> {
+    let body = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
+    let text = String::from_utf8_lossy(body);
+    let mut map = std::collections::BTreeMap::new();
+    for line in text.lines() {
+        let line = line.trim_end_matches('\r');
+        if let Some((k, v)) = line.split_once('=') {
+            if !k.is_empty() {
+                map.insert(k.to_string(), v.to_string());
+            }
+        }
+    }
+    map
+}
+
+/// Diff two runtime property snapshots (`baseline` vs `current`), optionally filtered to one
+/// control prefix (`<control>.`).
+pub fn diff_runtime(
+    baseline: &std::collections::BTreeMap<String, String>,
+    current: &std::collections::BTreeMap<String, String>,
+    control: Option<&str>,
+) -> Vec<(String, String, String)> {
+    let prefix = control.map(|c| format!("{c}."));
+    let keep = |k: &str| prefix.as_ref().is_none_or(|p| k.starts_with(p.as_str()));
+    let mut keys: Vec<&String> = baseline.keys().chain(current.keys()).filter(|k| keep(k)).collect();
+    keys.sort();
+    keys.dedup();
+    let mut out = Vec::new();
+    for k in keys {
+        match (baseline.get(k), current.get(k)) {
+            (Some(a), Some(b)) if a != b => out.push((k.clone(), a.clone(), b.clone())),
+            (Some(a), None) => out.push((k.clone(), a.clone(), "<missing>".into())),
+            (None, Some(b)) => out.push((k.clone(), "<missing>".into(), b.clone())),
+            _ => {}
+        }
+    }
+    out
+}
+
 // ---------------------------------------------------------------- platform gate (design decision 3)
 
 /// Outcome of one experiment after the platform gate and survival check.
@@ -655,6 +975,21 @@ pub fn run_experiment(
     corpus: &Path,
     platform_version: &str,
 ) -> Result<Outcome> {
+    run_experiment_with_runtime(gate, None, epf, original, spec, baseline, corpus, platform_version)
+}
+
+/// Run one experiment with an optional [`RuntimeGate`] (`ENTERPRISE /Execute`) and write its fixture.
+#[allow(clippy::too_many_arguments)]
+pub fn run_experiment_with_runtime(
+    gate: Option<&PlatformGate>,
+    runtime_gate: Option<&RuntimeGate>,
+    epf: &[u8],
+    original: &[u8],
+    spec: &ExperimentSpec,
+    baseline: &Baseline,
+    corpus: &Path,
+    platform_version: &str,
+) -> Result<Outcome> {
     let source = parse_spanned(original)?;
     let (mutated, old) = mutate_stream(&source, spec)?;
     let dir = corpus.join(&spec.id);
@@ -695,6 +1030,20 @@ pub fn run_experiment(
     // Semantic observation: what the decoder already understands about the mutated slot.
     let decoded = decoded_control_diff(original, &mutated, &spec.control)?;
     write("decoded-diff.json", serde_json::to_string_pretty(&diff_to_json(&decoded)).unwrap().as_bytes())?;
+    let runtime_val = match (outcome, runtime_gate, &baseline.runtime) {
+        (Outcome::Accept, Some(rg), Some(base_rt)) => {
+            let rt_stream = normalized.as_deref().unwrap_or(&mutated);
+            let rres = rg.run(epf, rt_stream)?;
+            let rdiff = diff_runtime(base_rt, &rres.snapshot, Some(&spec.control));
+            write("runtime-diff.json", serde_json::to_string_pretty(&diff_to_json(&rdiff)).unwrap().as_bytes())?;
+            serde_json::json!({
+                "platform": platform_version,
+                "durationMs": rres.duration_ms as u64,
+                "changedCount": rdiff.len(),
+            })
+        }
+        _ => Value::Null,
+    };
     let kind = match &spec.new_value {
         SlotValue::Bare(_) => "bare",
         SlotValue::Quoted(_) => "quoted",
@@ -710,7 +1059,7 @@ pub fn run_experiment(
         "outcome": outcome.as_str(),
         "controlSurvived": outcome != Outcome::SilentDrop,
         "designer": {"platform": platform_version, "durationMs": duration as u64},
-        "runtime": Value::Null,
+        "runtime": runtime_val,
     });
     write("manifest.json", serde_json::to_string_pretty(&manifest).unwrap().as_bytes())?;
     Ok(outcome)
@@ -723,6 +1072,7 @@ pub fn run_experiment(
 pub struct Baseline {
     pub rows: Vec<(String, String, String)>,
     pub volatile: Vec<String>,
+    pub runtime: Option<std::collections::BTreeMap<String, String>>,
 }
 
 /// The baseline (experiment zero): gate the unmutated donor twice. Rows that differ between the two
@@ -771,7 +1121,7 @@ pub fn measure_baseline(gate: &PlatformGate, epf: &[u8], original: &[u8]) -> Res
             format!("the platform gate is too noisy: every control's baseline rows are volatile ({volatile:?})"),
         ));
     }
-    Ok(Baseline { rows: runs.pop().unwrap(), volatile })
+    Ok(Baseline { rows: runs.pop().unwrap(), volatile, runtime: None })
 }
 
 /// Leaf slots of a control's `info` node holding a bare `0`/`1` (flag candidates), as
@@ -828,9 +1178,15 @@ fn execute_run(args: &[String]) -> Result<String> {
     let mut base: Option<String> = None;
     let mut platform: Option<String> = None;
     let mut corpus: Option<String> = None;
+    let mut runtime = false;
     let mut i = 0;
     while i < args.len() {
         let a = &args[i];
+        if a == "--runtime" {
+            runtime = true;
+            i += 1;
+            continue;
+        }
         let Some(value) = args.get(i + 1) else {
             return Err(ExtractionError::new(CONFIG_INVALID, format!("argument {a}: expected one argument")));
         };
@@ -847,7 +1203,7 @@ fn execute_run(args: &[String]) -> Result<String> {
     let (Some(matrix), Some(epf), Some(base), Some(platform)) = (matrix, epf, base, platform) else {
         return Err(ExtractionError::new(
             CONFIG_INVALID,
-            "usage: oneform explore run --matrix <spec.json|dir> --epf <donor.epf> --base <infobase> --platform <1cv8-bin> [--corpus <dir>]",
+            "usage: oneform explore run --matrix <spec.json|dir> --epf <donor.epf> --base <infobase> --platform <1cv8-bin> [--corpus <dir>] [--runtime]",
         ));
     };
     let corpus = Path::new(&corpus.unwrap_or_else(|| "tests/explore".to_string())).to_path_buf();
@@ -872,11 +1228,20 @@ fn execute_run(args: &[String]) -> Result<String> {
     if specs.is_empty() {
         return Err(ExtractionError::new(CONFIG_INVALID, "the matrix contains no experiments"));
     }
-    let gate = PlatformGate { platform, base: Path::new(&base).to_path_buf() };
-    let baseline = measure_baseline(&gate, &epf_bytes, &original)?;
+    let gate = PlatformGate { platform: platform.clone(), base: Path::new(&base).to_path_buf() };
+    let runtime_gate = runtime.then(|| RuntimeGate { platform, base: Path::new(&base).to_path_buf() });
+    let mut baseline = measure_baseline(&gate, &epf_bytes, &original)?;
     let base_dir = corpus.join("baseline");
     fs::create_dir_all(&base_dir).map_err(|e| ExtractionError::new(IO_ERROR, format!("cannot create {}: {e}", base_dir.display())))?;
     fs::write(base_dir.join("baseline-diff.json"), serde_json::to_string_pretty(&diff_to_json(&baseline.rows)).unwrap())?;
+    if let Some(rg) = &runtime_gate {
+        let rt = rg.run(&epf_bytes, &original)?;
+        fs::write(
+            base_dir.join("baseline-runtime.json"),
+            serde_json::to_string_pretty(&rt.snapshot).unwrap(),
+        )?;
+        baseline.runtime = Some(rt.snapshot);
+    }
     fs::write(
         base_dir.join("manifest.json"),
         serde_json::to_string_pretty(&serde_json::json!({"schema": 1, "id": "baseline", "volatile": baseline.volatile})).unwrap(),
@@ -887,7 +1252,7 @@ fn execute_run(args: &[String]) -> Result<String> {
         baseline.volatile.len()
     )];
     for spec in &specs {
-        let outcome = run_experiment(Some(&gate), &epf_bytes, &original, spec, &baseline, &corpus, "8.3")?;
+        let outcome = run_experiment_with_runtime(Some(&gate), runtime_gate.as_ref(), &epf_bytes, &original, spec, &baseline, &corpus, "8.3")?;
         lines.push(format!("{}: {}", spec.id, outcome.as_str()));
     }
     Ok(lines.join("\n") + "\n")
@@ -1068,5 +1433,41 @@ mod tests {
     assert!(info_len(&mutated) > info_len(&truncated));
         // a control absent from the mutated stream is a caller error, not a silent drop
         assert!(control_survives(&mutated, &mutated, "НетТакого").is_err());
+    }
+
+    #[test]
+    fn runtime_probe_repack_and_snapshot_diff() {
+        let epf = donor_epf();
+        let form = epf_form_stream(&epf).unwrap();
+        let out_path = Path::new(r"C:\temp\probe_out.txt");
+        let probed = repack_epf_form_with_probe(&epf, &form, out_path).unwrap();
+        assert_eq!(epf_form_stream(&probed).unwrap(), form);
+        // Verify the inner module entry now contains our generated ПриОткрытии probe and UTF-8 BOM.
+        let limits = Limits::default();
+        let outer = parse_container(&probed, &limits, 0, None).unwrap();
+        let mut found_mod = None;
+        for e in &outer.entries {
+            if let Ok(inner_raw) = inflate(&e.raw, &limits, None) {
+                if let Ok(sub) = parse_container(&inner_raw, &limits, 1, None) {
+                    if let (Some(_), Some(m)) = (sub.get("form"), sub.get("module")) {
+                        found_mod = Some(m.raw.clone());
+                    }
+                }
+            }
+        }
+        let mod_raw = found_mod.expect("instrumented module entry present");
+        assert!(mod_raw.starts_with(&[0xEF, 0xBB, 0xBF]));
+        let mod_str = String::from_utf8_lossy(&mod_raw[3..]);
+        assert!(mod_str.contains(r"C:\temp\probe_out.txt"), "{mod_str}");
+        assert!(mod_str.contains("КодировкаТекста.UTF8"), "{mod_str}");
+        assert!(mod_str.contains("Попытка Т.ДобавитьСтроку(Э.Имя + \".Доступность=\""), "{mod_str}");
+
+        let snap_a = parse_runtime_snapshot("\u{feff}ПолеВвода1.Доступность=Да\r\nПолеВвода1.ТолькоПросмотр=Нет\r\nКнопка1.Доступность=Да\r\n".as_bytes());
+        let snap_b = parse_runtime_snapshot("ПолеВвода1.Доступность=Нет\r\nПолеВвода1.ТолькоПросмотр=Нет\r\nКнопка1.Доступность=Нет\r\n".as_bytes());
+        assert_eq!(
+            diff_runtime(&snap_a, &snap_b, Some("ПолеВвода1")),
+            vec![("ПолеВвода1.Доступность".to_string(), "Да".to_string(), "Нет".to_string())]
+        );
+        assert_eq!(diff_runtime(&snap_a, &snap_b, None).len(), 2);
     }
 }

@@ -103,6 +103,27 @@ fn corpus_fixtures_replay_without_the_platform() {
         // The semantic observation is deterministic and platform-free: recompute and compare.
         let decoded = oneform::explore::decoded_control_diff(&original, &mutated, spec.control.as_str()).unwrap();
         assert_eq!(decoded, rows(&dir.join("decoded-diff.json")), "{name}: decoded-diff.json");
+
+        // When runtime introspection was run, manifest["runtime"] summarizes runtime-diff.json.
+        let rt_file = dir.join("runtime-diff.json");
+        if manifest["runtime"].is_object() {
+            assert!(rt_file.is_file(), "{name}: runtime object in manifest requires runtime-diff.json");
+            let rt_rows = rows(&rt_file);
+            assert_eq!(
+                manifest["runtime"]["changedCount"].as_u64(),
+                Some(rt_rows.len() as u64),
+                "{name}: runtime.changedCount"
+            );
+            for (path, _, _) in &rt_rows {
+                assert!(
+                    path.starts_with(&format!("{}.", spec.control)),
+                    "{name}: runtime diff path {path} must belong to {}",
+                    spec.control
+                );
+            }
+        } else {
+            assert!(manifest["runtime"].is_null(), "{name}: runtime must be object or null");
+        }
     }
 }
 

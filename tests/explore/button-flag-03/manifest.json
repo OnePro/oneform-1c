@@ -16,7 +16,11 @@
   "controlSurvived": true,
   "designer": {
     "platform": "8.3",
-    "durationMs": 5781
+    "durationMs": 5052
   },
-  "runtime": null
+  "runtime": {
+    "platform": "8.3",
+    "durationMs": 7933,
+    "changedCount": 0
+  }
 }
