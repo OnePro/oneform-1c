@@ -2156,3 +2156,74 @@ fn universal_border_style_and_document_schema_field_properties_round_trip() {
 
     let _ = structural_round_trip("DonorForm", &edited);
 }
+
+#[test]
+fn font_shortcut_picture_and_remaining_control_slots_round_trip() {
+    let mut edited = baseline("DonorForm");
+    edited = edit_ctl(
+        &edited,
+        "Кнопка1",
+        &[(
+            "<TabOrder>2</TabOrder>",
+            "<TabOrder>2</TabOrder>\n          <Font bold=\"true\" italic=\"true\" underline=\"true\" strikeout=\"true\" scale=\"120\" face=\"Arial\" size=\"11\"/>\n          <MenuMode>false</MenuMode>\n          <Shortcut key=\"3\" shift=\"true\" ctrl=\"true\"/>\n          <Picture kind=\"1\" refGuid=\"785362cb-3756-48ed-87d2-292ded17054a\"/>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Надпись1",
+        &[(
+            "<TabOrder>3</TabOrder>",
+            "<TabOrder>3</TabOrder>\n          <Shortcut key=\"4\" alt=\"true\"/>\n          <ScrollingText>Slow</ScrollingText>\n          <Picture kind=\"2\" stdId=\"42\"/>\n          <LabelPictureLocation>Right</LabelPictureLocation>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "Панель1",
+        &[(
+            "<TabOrder>15</TabOrder>",
+            "<TabOrder>15</TabOrder>\n          <Picture kind=\"1\" refGuid=\"785362cb-3756-48ed-87d2-292ded17054a\"/>\n          <PictureSize>Proportionally</PictureSize>\n          <PanelPictureLocation>TopLeft</PanelPictureLocation>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеКартинки1",
+        &[(
+            "<TabOrder>13</TabOrder>",
+            "<TabOrder>13</TabOrder>\n          <PictureSize>AutoSize</PictureSize>\n          <Hyperlink>true</Hyperlink>\n          <Picture kind=\"2\" stdId=\"7\"/>\n          <Shortcut key=\"5\"/>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода2",
+        &[(
+            "<OpenButton>false</OpenButton>",
+            "<OpenButton>false</OpenButton>\n          <ChoiceListHeight>12</ChoiceListHeight>\n          <Picture kind=\"2\" stdId=\"9\"/>\n          <ChoiceButtonPicture kind=\"2\" stdId=\"10\"/>\n          <Shortcut key=\"2\" ctrl=\"true\"/>",
+        )],
+    );
+    let added = "<ChoiceField name=\"ПолеВыбораНовое\" id=\"999\">\n          <Left>500</Left><Top>500</Top><Width>150</Width><Height>20</Height>\n          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>\n          <ChoiceListHeight>15</ChoiceListHeight>\n          <Picture kind=\"0\"/>\n          <ChoiceButtonPicture kind=\"1\" refGuid=\"785362cb-3756-48ed-87d2-292ded17054a\"/>\n          <Shortcut key=\"6\" mods=\"3\"/>\n        </ChoiceField>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(added.to_string() + anchor), 1);
+    edited = edit_ctl(
+        &edited,
+        "ПолеТабличногоДокумента1",
+        &[(
+            "<TabOrder>19</TabOrder>",
+            "<TabOrder>19</TabOrder>\n          <ShowSelection>Always</ShowSelection>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеКалендаря1",
+        &[(
+            "<TabOrder>7</TabOrder>",
+            "<TabOrder>7</TabOrder>\n          <BeginOfDisplayPeriod>20260101000000</BeginOfDisplayPeriod>\n          <EndOfDisplayPeriod>20261231000000</EndOfDisplayPeriod>",
+        )],
+    );
+
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    assert!(text.contains("{7,1,60,\"Arial\",{-22},700,1,1,1,0,120}"));
+    assert!(text.contains("{3,3,0}"));
+    assert!(text.contains("{4,1,{0,785362cb-3756-48ed-87d2-292ded17054a},\"\",-1,-1,1,0,\"\"}"));
+    assert!(text.contains("20260101000000,20261231000000"));
+}

@@ -42,7 +42,7 @@ pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 pub const CONTROL_STUB: &str = "#control";
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
-const SUPPORTED_TAGS: [&str; 112] = [
+const SUPPORTED_TAGS: [&str; 123] = [
     "DataPath",
     "Caption",
     "Left",
@@ -155,6 +155,17 @@ const SUPPORTED_TAGS: [&str; 112] = [
     "FooterHeight",
     "HeaderFont",
     "FooterFont",
+    "Shortcut",
+    "Picture",
+    "ChoiceButtonPicture",
+    "MenuMode",
+    "ScrollingText",
+    "LabelPictureLocation",
+    "PanelPictureLocation",
+    "ChoiceListHeight",
+    "ShowSelection",
+    "BeginOfDisplayPeriod",
+    "EndOfDisplayPeriod",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -478,9 +489,13 @@ fn read_color_spec(item: &Item) -> Option<ColorSpec> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FontSpec {
     pub bold: bool,
+    pub italic: bool,
+    pub underline: bool,
+    pub strikeout: bool,
     pub style_source: bool,
     pub face: Option<String>,
     pub size: Option<i64>,
+    pub scale: Option<i64>,
 }
 
 fn parse_font_elem(e: &XmlElement) -> Option<FontSpec> {
@@ -488,15 +503,18 @@ fn parse_font_elem(e: &XmlElement) -> Option<FontSpec> {
         return None;
     }
     for k in e.attrs.keys() {
-        if !matches!(k.as_str(), "bold" | "source" | "face" | "size") {
+        if !matches!(k.as_str(), "bold" | "italic" | "underline" | "strikeout" | "source" | "face" | "size" | "scale") {
             return None;
         }
     }
-    let bold = match e.attrs.get("bold").map(String::as_str) {
-        Some("true") => true,
-        Some("false") | None => false,
-        _ => return None,
+    let flag = |name: &str| -> Option<bool> {
+        match e.attrs.get(name).map(String::as_str) {
+            Some("true") => Some(true),
+            Some("false") | None => Some(false),
+            _ => None,
+        }
     };
+    let (bold, italic, underline, strikeout) = (flag("bold")?, flag("italic")?, flag("underline")?, flag("strikeout")?);
     let style_source = match e.attrs.get("source").map(String::as_str) {
         Some("style") => true,
         Some("bin") | None => false,
@@ -507,36 +525,167 @@ fn parse_font_elem(e: &XmlElement) -> Option<FontSpec> {
         Some(s) => Some(s.trim().parse::<i64>().ok().filter(|&v| v > 0)?),
         None => None,
     };
-    if !bold && face.is_none() && size.is_none() {
+    let scale = match e.attrs.get("scale") {
+        Some(s) => Some(s.trim().parse::<i64>().ok().filter(|&v| v > 0)?).filter(|&v| v != 100),
+        None => None,
+    };
+    if !bold && !italic && !underline && !strikeout && face.is_none() && size.is_none() && scale.is_none() {
         return None;
     }
-    Some(FontSpec { bold, style_source: style_source && face.is_none() && size.is_none(), face, size })
+    Some(FontSpec {
+        bold,
+        italic,
+        underline,
+        strikeout,
+        style_source: style_source && !italic && !underline && !strikeout && face.is_none() && size.is_none() && scale.is_none(),
+        face,
+        size,
+        scale,
+    })
 }
 
 fn format_font_node(f: Option<&FontSpec>) -> String {
     let Some(f) = f else {
         return "{7,3,0,1,100}".to_string();
     };
-    if f.style_source && f.bold && f.face.is_none() && f.size.is_none() {
+    if f.style_source
+        && f.bold
+        && !f.italic
+        && !f.underline
+        && !f.strikeout
+        && f.face.is_none()
+        && f.size.is_none()
+        && f.scale.is_none()
+    {
         return "{7,2,0,{0,5477b48d-c6e4-4ba3-a715-24bd7ad690bd},1,100}".to_string();
     }
-    if f.bold && f.face.is_none() && f.size.is_none() {
-        return "{7,1,60,{0},700,0,0,0,0,100}".to_string();
-    }
-    let mask = if f.bold { 60 } else { 0 };
+    let mask = if f.bold || f.italic || f.underline || f.strikeout { 60 } else { 0 };
     let weight = if f.bold { 700 } else { 400 };
+    let (it, ul, st) = (i32::from(f.italic), i32::from(f.underline), i32::from(f.strikeout));
+    let sc = f.scale.unwrap_or(100);
     let h = f.size.map(|s| -(s * 2)).unwrap_or(0);
     let face_part = f.face.as_deref().map(|fc| format!("{},", quote(fc))).unwrap_or_default();
-    format!("{{7,1,{mask},{face_part}{{{h}}},{weight},0,0,0,0,100}}")
+    format!("{{7,1,{mask},{face_part}{{{h}}},{weight},{it},{ul},{st},0,{sc}}}")
 }
 
 fn read_font_spec(item: &Item) -> Option<FontSpec> {
     let m = crate::oof_props::decode_font(item).ok()??;
-    let bold = m.get("bold").and_then(|v| v.as_bool()).unwrap_or(false);
+    let flag = |key: &str| m.get(key).and_then(|v| v.as_bool()).unwrap_or(false);
     let style_source = m.get("source").and_then(|v| v.as_str()) == Some("style");
     let face = m.get("face").and_then(|v| v.as_str()).map(str::to_string);
     let size = m.get("size").and_then(|v| v.as_i64());
-    Some(FontSpec { bold, style_source, face, size })
+    let scale = m.get("scale").and_then(|v| v.as_i64());
+    Some(FontSpec {
+        bold: flag("bold"),
+        italic: flag("italic"),
+        underline: flag("underline"),
+        strikeout: flag("strikeout"),
+        style_source,
+        face,
+        size,
+        scale,
+    })
+}
+
+/// `<Shortcut key=".." [mods=".."] [shift|ctrl|alt="true|false"]/>`: virtual key code and modifier bit set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShortcutSpec {
+    pub key: i64,
+    pub mods: i64,
+}
+
+fn parse_shortcut_elem(e: &XmlElement) -> Option<ShortcutSpec> {
+    if !e.children.is_empty() || !e.text.trim().is_empty() {
+        return None;
+    }
+    if !e.attrs.keys().all(|k| matches!(k.as_str(), "key" | "mods" | "shift" | "ctrl" | "alt")) {
+        return None;
+    }
+    let key = e.attrs.get("key")?.trim().parse::<i64>().ok().filter(|k| (0..=65535).contains(k))?;
+    let flag = |name: &str| -> Option<i64> {
+        match e.attrs.get(name).map(String::as_str) {
+            Some("true") => Some(1),
+            Some("false") | None => Some(0),
+            _ => None,
+        }
+    };
+    let mods = match e.attrs.get("mods") {
+        Some(m) => {
+            if ["shift", "ctrl", "alt"].iter().any(|k| e.attrs.contains_key(*k)) {
+                return None;
+            }
+            m.trim().parse::<i64>().ok().filter(|m| *m >= 0)?
+        }
+        None => flag("shift")? | (flag("ctrl")? << 1) | (flag("alt")? << 2),
+    };
+    Some(ShortcutSpec { key, mods })
+}
+
+fn format_shortcut_node(s: &ShortcutSpec) -> String {
+    format!("{{{},{},0}}", s.key, s.mods)
+}
+
+fn read_shortcut_spec(item: &Item) -> Option<ShortcutSpec> {
+    let n = item.as_node().filter(|n| n.len() == 3)?;
+    let num = |i: usize| strict_int(&n.atom(i)?.value);
+    Some(ShortcutSpec { key: num(0)?, mods: num(1)? })
+}
+
+/// `<Picture kind="0|1|2" [refGuid=".."] [stdId=".."]/>`: none, a configuration picture or a standard picture.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PictureSpec {
+    pub kind: i64,
+    pub ref_guid: Option<String>,
+    pub std_id: Option<i64>,
+}
+
+fn parse_picture_elem(e: &XmlElement) -> Option<PictureSpec> {
+    if !e.children.is_empty() || !e.text.trim().is_empty() {
+        return None;
+    }
+    if !e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "refGuid" | "stdId")) {
+        return None;
+    }
+    let kind = e.attrs.get("kind")?.trim().parse::<i64>().ok()?;
+    let ref_guid = e.attrs.get("refGuid").map(|g| g.trim().to_lowercase());
+    let std_id = match e.attrs.get("stdId") {
+        Some(s) => Some(s.trim().parse::<i64>().ok()?),
+        None => None,
+    };
+    match kind {
+        0 if ref_guid.is_none() && std_id.is_none() => Some(PictureSpec { kind, ref_guid, std_id }),
+        1 if std_id.is_none() && ref_guid.as_deref().is_some_and(is_uuid) => Some(PictureSpec { kind, ref_guid, std_id }),
+        2 if ref_guid.is_none() && std_id.is_some() => Some(PictureSpec { kind, ref_guid, std_id }),
+        _ => None,
+    }
+}
+
+fn format_picture_node(p: &PictureSpec) -> String {
+    match p.kind {
+        1 => format!("{{4,1,{{0,{}}},\"\",-1,-1,1,0,\"\"}}", p.ref_guid.as_deref().unwrap_or_default().to_lowercase()),
+        2 => format!("{{4,2,{{1,{}}},\"\",-1,-1,1,0,\"\"}}", p.std_id.unwrap_or_default()),
+        _ => "{4,0,{0},\"\",-1,-1,1,0,\"\"}".to_string(),
+    }
+}
+
+/// The picture record `{4|3,kind,ref,...}` as a [`PictureSpec`]; `None` for shapes that are not recognised.
+fn read_picture_spec(item: &Item) -> Option<PictureSpec> {
+    let n = item.as_node().filter(|n| n.len() >= 3)?;
+    if !matches!(n.atom(0)?.value.as_str(), "4" | "3") {
+        return None;
+    }
+    let kind = strict_int(&n.atom(1)?.value)?;
+    let reference = n.node(2)?;
+    match kind {
+        0 => Some(PictureSpec { kind, ref_guid: None, std_id: None }),
+        1 if reference.atom(0)?.value == "0" => {
+            Some(PictureSpec { kind, ref_guid: Some(reference.atom(1)?.value.to_lowercase()), std_id: None })
+        }
+        2 if reference.atom(0)?.value == "1" => {
+            Some(PictureSpec { kind, ref_guid: None, std_id: Some(strict_int(&reference.atom(1)?.value)?) })
+        }
+        _ => None,
+    }
 }
 
 /// One anchored edge of a control: the `{2,target,side,offset}` record of `geom[6..9]`.
@@ -827,6 +976,17 @@ pub struct ControlValues {
     pub footer_height: Option<i64>,
     pub header_font: Option<FontSpec>,
     pub footer_font: Option<FontSpec>,
+    pub shortcut: Option<ShortcutSpec>,
+    pub picture: Option<PictureSpec>,
+    pub choice_button_picture: Option<PictureSpec>,
+    pub menu_mode: Option<bool>,
+    pub scrolling_text: Option<String>,
+    pub label_picture_location: Option<String>,
+    pub panel_picture_location: Option<String>,
+    pub choice_list_height: Option<i64>,
+    pub show_selection: Option<String>,
+    pub begin_of_display_period: Option<i64>,
+    pub end_of_display_period: Option<i64>,
 }
 
 /// `<TypeLink>` of an `InputField`: the attribute (and optional field GUID) whose type the field follows.
@@ -956,6 +1116,17 @@ impl ControlValues {
             footer_height: None,
             header_font: None,
             footer_font: None,
+            shortcut: None,
+            picture: None,
+            choice_button_picture: None,
+            menu_mode: None,
+            scrolling_text: None,
+            label_picture_location: None,
+            panel_picture_location: None,
+            choice_list_height: None,
+            show_selection: None,
+            begin_of_display_period: None,
+            end_of_display_period: None,
         }
     }
 }
@@ -1077,6 +1248,17 @@ pub enum Property {
     FooterHeight,
     HeaderFont,
     FooterFont,
+    Shortcut,
+    Picture,
+    ChoiceButtonPicture,
+    MenuMode,
+    ScrollingText,
+    LabelPictureLocation,
+    PanelPictureLocation,
+    ChoiceListHeight,
+    ShowSelection,
+    BeginOfDisplayPeriod,
+    EndOfDisplayPeriod,
 }
 
 impl Property {
@@ -1197,6 +1379,17 @@ impl Property {
             Property::FooterHeight => "FooterHeight",
             Property::HeaderFont => "HeaderFont",
             Property::FooterFont => "FooterFont",
+            Property::Shortcut => "Shortcut",
+            Property::Picture => "Picture",
+            Property::ChoiceButtonPicture => "ChoiceButtonPicture",
+            Property::MenuMode => "MenuMode",
+            Property::ScrollingText => "ScrollingText",
+            Property::LabelPictureLocation => "LabelPictureLocation",
+            Property::PanelPictureLocation => "PanelPictureLocation",
+            Property::ChoiceListHeight => "ChoiceListHeight",
+            Property::ShowSelection => "ShowSelection",
+            Property::BeginOfDisplayPeriod => "BeginOfDisplayPeriod",
+            Property::EndOfDisplayPeriod => "EndOfDisplayPeriod",
         }
     }
 }
@@ -1323,6 +1516,17 @@ impl ControlValues {
             (self.footer_height == other.footer_height, Property::FooterHeight),
             (self.header_font == other.header_font, Property::HeaderFont),
             (self.footer_font == other.footer_font, Property::FooterFont),
+            (self.shortcut == other.shortcut, Property::Shortcut),
+            (self.picture == other.picture, Property::Picture),
+            (self.choice_button_picture == other.choice_button_picture, Property::ChoiceButtonPicture),
+            (self.menu_mode == other.menu_mode, Property::MenuMode),
+            (self.scrolling_text == other.scrolling_text, Property::ScrollingText),
+            (self.label_picture_location == other.label_picture_location, Property::LabelPictureLocation),
+            (self.panel_picture_location == other.panel_picture_location, Property::PanelPictureLocation),
+            (self.choice_list_height == other.choice_list_height, Property::ChoiceListHeight),
+            (self.show_selection == other.show_selection, Property::ShowSelection),
+            (self.begin_of_display_period == other.begin_of_display_period, Property::BeginOfDisplayPeriod),
+            (self.end_of_display_period == other.end_of_display_period, Property::EndOfDisplayPeriod),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -1517,6 +1721,17 @@ impl FormXml {
             c.values.footer_height = None;
             c.values.header_font = None;
             c.values.footer_font = None;
+            c.values.shortcut = None;
+            c.values.picture = None;
+            c.values.choice_button_picture = None;
+            c.values.menu_mode = None;
+            c.values.scrolling_text = None;
+            c.values.label_picture_location = None;
+            c.values.panel_picture_location = None;
+            c.values.choice_list_height = None;
+            c.values.show_selection = None;
+            c.values.begin_of_display_period = None;
+            c.values.end_of_display_period = None;
             for col in &mut c.values.columns {
                 col.ext = ColumnExt::default();
             }
@@ -1529,8 +1744,23 @@ impl FormXml {
                 c.values.font = None;
                 c.values.tooltip.clear();
             }
+            // The decoder writes only `bold`, `source`, `face` and `size` of a font; a font that keeps none of
+            // them is written as an opaque `<Font>` element.
+            if let Some(f) = c.values.font.take() {
+                let plain = FontSpec { italic: false, underline: false, strikeout: false, scale: None, ..f.clone() };
+                if plain.bold || plain.face.is_some() || plain.size.is_some() {
+                    c.values.font = Some(plain);
+                } else {
+                    let mut opaque = XmlElement::new("Font", 0);
+                    if f.italic || f.underline || f.strikeout {
+                        opaque.attrs.insert("source".into(), "bin".into());
+                    }
+                    c.rest.children.push(opaque);
+                }
+            }
             match c.type_name.as_str() {
                 "LabelDecoration" => c.values.mark_negatives = false,
+                "PictureField" | "PictureDecoration" => c.values.hyperlink = false,
                 "RadioButton" => {
                     c.values.title_location.clear();
                     c.values.value_type = None;
@@ -1625,7 +1855,7 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
             type_name,
             "LabelDecoration" | "CommandBar" | "InputField" | "Button" | "CheckBox" | "RadioButton"
         ),
-        "Hyperlink" => type_name == "LabelDecoration",
+        "Hyperlink" => matches!(type_name, "LabelDecoration" | "PictureField" | "PictureDecoration"),
         "ThreeState" => type_name == "CheckBox",
         "TitleLocation" => matches!(type_name, "CheckBox" | "RadioButton"),
         "ChoiceList" => type_name == "ChoiceField",
@@ -1639,7 +1869,7 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
                 || matches!(type_name, "SpreadsheetDocumentField" | "HTMLDocumentField")
         }
         "PictureLocation" => type_name == "Button",
-        "PictureSize" => matches!(type_name, "Button" | "LabelDecoration"),
+        "PictureSize" => matches!(type_name, "Button" | "LabelDecoration" | "PictureField" | "PictureDecoration" | "Panel"),
         "Format" => matches!(type_name, "LabelDecoration" | "InputField"),
         "SelectionValue" => type_name == "RadioButton",
         "ChoiceListWidth" => matches!(type_name, "InputField" | "ChoiceField"),
@@ -1663,6 +1893,20 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "ShowStyle" | "ShowPercent" => type_name == "ProgressBar",
         "SelectionBackColor" | "SelectionTextColor" => matches!(type_name, "CalendarField" | "Table"),
         "HolidayColor" | "ShowCurrentDate" | "CalendarNavigation" => type_name == "CalendarField",
+        "Shortcut" => matches!(
+            type_name,
+            "Button" | "LabelDecoration" | "PictureField" | "PictureDecoration" | "InputField" | "ChoiceField"
+        ),
+        "Picture" => matches!(
+            type_name,
+            "Button" | "InputField" | "ChoiceField" | "LabelDecoration" | "PictureField" | "PictureDecoration" | "Panel"
+        ),
+        "ChoiceButtonPicture" | "ChoiceListHeight" => matches!(type_name, "InputField" | "ChoiceField"),
+        "MenuMode" => type_name == "Button",
+        "ScrollingText" | "LabelPictureLocation" => type_name == "LabelDecoration",
+        "PanelPictureLocation" => type_name == "Panel",
+        "ShowSelection" => type_name == "SpreadsheetDocumentField",
+        "BeginOfDisplayPeriod" | "EndOfDisplayPeriod" => type_name == "CalendarField",
         _ => false,
     }
 }
@@ -1768,7 +2012,9 @@ impl Parser<'_> {
         rest.attrs.remove("name");
         let mut found: HashMap<&str, &XmlElement> = HashMap::new();
         for c in &inner.children {
-            if let Some(tag) = SUPPORTED_TAGS.iter().find(|t| **t == c.tag && tag_supported_for(&type_name, t)) {
+            // `<Picture>true</Picture>` is the decoder's marker that a label has a picture, not a `PictureSpec`.
+            let marker = c.tag == "Picture" && !c.attrs.contains_key("kind");
+            if let Some(tag) = SUPPORTED_TAGS.iter().find(|t| !marker && **t == c.tag && tag_supported_for(&type_name, t)) {
                 if found.insert(tag, c).is_some() {
                     return Err(self.bad(c.line, format!("{who}: duplicate <{tag}> element")));
                 }
@@ -2405,6 +2651,22 @@ impl Parser<'_> {
                 }
             },
         };
+        fn spec_of<T>(
+            found: &HashMap<&str, &XmlElement>,
+            tag: &str,
+            rest: &mut XmlElement,
+            parse: fn(&XmlElement) -> Option<T>,
+        ) -> Option<T> {
+            let e = found.get(tag)?;
+            let spec = parse(e);
+            if spec.is_none() {
+                rest.children.push((*e).clone());
+            }
+            spec
+        }
+        let shortcut = spec_of(&found, "Shortcut", &mut rest, parse_shortcut_elem);
+        let picture = spec_of(&found, "Picture", &mut rest, parse_picture_elem);
+        let choice_button_picture = spec_of(&found, "ChoiceButtonPicture", &mut rest, parse_picture_elem);
         let mut choice_list: Vec<ChoiceItemSpec> = Vec::new();
         if let Some(e) = found.get("ChoiceList") {
             let mut valid = e.attrs.is_empty() && e.text.trim().is_empty();
@@ -2684,6 +2946,17 @@ impl Parser<'_> {
             footer_height: opt_int_of("FooterHeight")?,
             header_font,
             footer_font,
+            shortcut,
+            picture,
+            choice_button_picture,
+            menu_mode: opt_bool_of("MenuMode")?,
+            scrolling_text: opt_enum_of("ScrollingText", &["DontUse", "VerySlow", "Slow", "Normal", "Fast", "VeryFast"])?,
+            label_picture_location: opt_enum_of("LabelPictureLocation", &["Left", "Right", "Top", "Bottom"])?,
+            panel_picture_location: opt_enum_of("PanelPictureLocation", &["TopLeft", "Center"])?,
+            choice_list_height: opt_int_of("ChoiceListHeight")?,
+            show_selection: opt_enum_of("ShowSelection", &["WhenActive", "Always"])?,
+            begin_of_display_period: opt_int_of("BeginOfDisplayPeriod")?,
+            end_of_display_period: opt_int_of("EndOfDisplayPeriod")?,
         };
         Ok((values, rest))
     }
@@ -3870,6 +4143,16 @@ const SHOW_STYLE: CodeTable = &[("Broken", 0), ("Smooth", 1)];
 const ROW_INPUT_MODE: CodeTable = &[("AtListEnd", 0), ("AtWindowBottom", 1), ("AfterCurrentRow", 2), ("BeforeCurrentRow", 3)];
 const ROW_SELECTION_MODE: CodeTable = &[("Cell", 0), ("Row", 1)];
 const CALENDAR_SELECTION: CodeTable = &[("Single", 0), ("Multi", 1), ("Interval", 2)];
+const SCROLLING_TEXT: CodeTable = &[
+    ("DontUse", 0),
+    ("VerySlow", 1),
+    ("Slow", 2),
+    ("Normal", 3),
+    ("Fast", 4),
+    ("VeryFast", 5),
+];
+const PANEL_PICTURE_LOCATION: CodeTable = &[("TopLeft", 0), ("Center", 1)];
+const SHOW_SELECTION: CodeTable = &[("WhenActive", 0), ("Always", 1)];
 
 /// Properties that live in a fixed `info` slot (`ext_slot`); the others keep their dedicated mapping.
 const EXT_PROPS: &[Property] = &[
@@ -3936,6 +4219,17 @@ const EXT_PROPS: &[Property] = &[
     Property::Output,
     Property::HorizontalScrollBar,
     Property::VerticalScrollBar,
+    Property::Shortcut,
+    Property::Picture,
+    Property::ChoiceButtonPicture,
+    Property::MenuMode,
+    Property::ScrollingText,
+    Property::LabelPictureLocation,
+    Property::PanelPictureLocation,
+    Property::ChoiceListHeight,
+    Property::ShowSelection,
+    Property::BeginOfDisplayPeriod,
+    Property::EndOfDisplayPeriod,
 ];
 
 struct ExtSlot {
@@ -3951,6 +4245,8 @@ enum Want {
     Color(Option<ColorSpec>),
     Font(Option<FontSpec>),
     Loc(LocItems),
+    Shortcut(ShortcutSpec),
+    Picture(PictureSpec),
 }
 
 /// Index of the `Page` list inside the panel parameters `info[1]` (after the six counted anchor lists).
@@ -3991,8 +4287,10 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
     let (path, idx, table): (&[usize], usize, CodeTable) = match (type_name, prop) {
         ("SpreadsheetDocumentField", P::BorderColor) => (&[], 9, &[]),
         ("HTMLDocumentField", P::BorderColor) => (&[], 3, &[]),
-        ("SpreadsheetDocumentField", P::EnableStartDrag) => (&[], 15, &[]),
-        ("SpreadsheetDocumentField", P::EnableDrag) => (&[], 16, &[]),
+        ("SpreadsheetDocumentField", P::EnableStartDrag) => (&[], 25, &[]),
+        ("SpreadsheetDocumentField", P::EnableDrag) => (&[], 26, &[]),
+        ("SpreadsheetDocumentField", P::ShowSelection) => (&[], 27, SHOW_SELECTION),
+        ("SpreadsheetDocumentField", P::Output) => (&[], 28, &[]),
         ("SpreadsheetDocumentField", P::HorizontalScrollBar) => (&[], 31, &[]),
         ("SpreadsheetDocumentField", P::VerticalScrollBar) => (&[], 32, &[]),
         ("ListBox", P::ReadOnly) => (&[1], 6, &[]),
@@ -4006,20 +4304,40 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
         ("Button" | "LabelDecoration", P::VerticalAlign) => (&[1], 4, V_ALIGN),
         ("CheckBox", P::VerticalAlign) => (&[1, 0], 5, V_ALIGN),
         ("RadioButton", P::VerticalAlign) => (&[2, 0], 5, V_ALIGN),
+        ("Button", P::MenuMode) => (&[1], 5, &[]),
+        ("Button", P::Picture) => (&[1], 8, &[]),
+        ("Button", P::Shortcut) => (&[1], 9, &[]),
         ("Button", P::MultiLine) => (&[1], 10, &[]),
         ("LabelDecoration", P::MarkNegatives) => (&[1], 6, &[]),
+        ("LabelDecoration", P::Shortcut) => (&[1], 8, &[]),
+        ("LabelDecoration", P::ScrollingText) => (&[1], 9, SCROLLING_TEXT),
+        ("LabelDecoration", P::Picture) => (&[1, 12], 2, &[]),
+        ("LabelDecoration", P::LabelPictureLocation) => (&[1, 12], 6, PICTURE_LOCATION),
         ("RadioButton", P::TitleLocation) => (&[2, 0], 3, &[]),
         ("ChoiceField", P::ChoiceButton) => (&[1], 7, &[]),
         ("ChoiceField", P::ClearButton) => (&[1], 8, &[]),
         ("ChoiceField", P::SpinButton) => (&[1], 9, &[]),
         ("ChoiceField", P::OpenButton) => (&[1], 10, &[]),
         ("ChoiceField", P::ReadOnly) => (&[1], 13, &[]),
+        ("ChoiceField", P::Picture) => (&[1], 28, &[]),
+        ("ChoiceField", P::ChoiceButtonPicture) => (&[1], 29, &[]),
+        ("ChoiceField", P::ChoiceListHeight) => (&[1], 31, &[]),
         ("ChoiceField", P::ChoiceListWidth) => (&[1], 32, &[]),
+        ("ChoiceField", P::Shortcut) => (&[1], 33, &[]),
+        ("InputField", P::Picture) => (&[2, 0], 28, &[]),
+        ("InputField", P::ChoiceButtonPicture) => (&[2, 0], 29, &[]),
+        ("InputField", P::ChoiceListHeight) => (&[2, 0], 31, &[]),
         ("InputField", P::ChoiceListWidth) => (&[2, 0], 32, &[]),
+        ("InputField", P::Shortcut) => (&[2, 0], 33, &[]),
+        ("CalendarField", P::BeginOfDisplayPeriod) => (&[1], 5, &[]),
+        ("CalendarField", P::EndOfDisplayPeriod) => (&[1], 6, &[]),
         ("CalendarField", P::SelectionMode) => (&[1], 9, CALENDAR_SELECTION),
         ("Button", P::PictureLocation) => (&[1], 6, PICTURE_LOCATION),
         ("Button", P::PictureSize) => (&[1], 7, BUTTON_PICTURE_SIZE),
         ("LabelDecoration", P::PictureSize) => (&[1], 13, LABEL_PICTURE_SIZE),
+        ("PictureDecoration" | "PictureField", P::PictureSize) => (&[1], 2, LABEL_PICTURE_SIZE),
+        ("PictureDecoration" | "PictureField", P::Picture) => (&[1, 4], 2, &[]),
+        ("PictureDecoration" | "PictureField", P::Shortcut) => (&[1], 5, &[]),
         ("LabelDecoration", P::Format) => (&[1], 10, &[]),
         ("InputField", P::Format) => (&[2, 0], 34, &[]),
         ("RadioButton", P::SelectionValue) => (&[], 4, &[]),
@@ -4032,10 +4350,10 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
         ("ProgressBar", P::Orientation) => (&[1], 7, ORIENTATION),
         ("CommandBar", P::Secondary) => (&[1], 5, &[]),
         ("PictureDecoration" | "PictureField", P::Zoomable) => (&[1], 6, &[]),
+        ("PictureDecoration" | "PictureField", P::UseContextMenu) => (&[1], 7, &[]),
         ("PictureDecoration" | "PictureField", P::EnableStartDrag) => (&[1], 8, &[]),
         ("PictureDecoration" | "PictureField", P::EnableDrag) => (&[1], 9, &[]),
         ("PictureDecoration" | "PictureField", P::NonselectedPictureText) => (&[1], 10, &[]),
-        ("PictureDecoration" | "PictureField", P::UseContextMenu) => (&[1], 12, &[]),
         ("CalendarField", P::EnableStartDrag) => (&[1], 10, &[]),
         ("CalendarField", P::EnableDrag) => (&[1], 11, &[]),
         ("CalendarField", P::SelectionBackColor) => (&[1], 2, &[]),
@@ -4066,6 +4384,15 @@ fn ext_slot(type_name: &str, prop: Property, info: &Node) -> Option<ExtSlot> {
         ("TrackBar", P::MarkingStep) => (&[1], 8, &[]),
         ("ProgressBar", P::ShowStyle) => (&[1], 5, SHOW_STYLE),
         ("ProgressBar", P::ShowPercent) => (&[1], 6, &[]),
+        ("Panel", P::Picture | P::PictureSize | P::PanelPictureLocation) => {
+            let base = panel_page_list_idx(info.children.get(1)?.as_node()?)?.checked_sub(3)?;
+            let (idx, table): (usize, CodeTable) = match prop {
+                P::Picture => (2, &[]),
+                P::PictureSize => (6, LABEL_PICTURE_SIZE),
+                _ => (7, PANEL_PICTURE_LOCATION),
+            };
+            return Some(ExtSlot { path: vec![1, base], idx, table });
+        }
         ("Panel", P::SeparateByPage | P::AutoTabOrder | P::ScrollPageMode) => {
             let page = panel_page_list_idx(info.children.get(1)?.as_node()?)?;
             let off = match prop {
@@ -4181,6 +4508,17 @@ fn ext_want(v: &ControlValues, prop: Property, slot: &ExtSlot) -> Option<Want> {
             v.vertical_scroll_bar.as_str(),
             "Use" | "Auto"
         )))),
+        P::Shortcut => v.shortcut.map(Want::Shortcut),
+        P::Picture => v.picture.clone().map(Want::Picture),
+        P::ChoiceButtonPicture => v.choice_button_picture.clone().map(Want::Picture),
+        P::MenuMode => flag(v.menu_mode),
+        P::ScrollingText => code(v.scrolling_text.as_deref()),
+        P::LabelPictureLocation => code(v.label_picture_location.as_deref()),
+        P::PanelPictureLocation => code(v.panel_picture_location.as_deref()),
+        P::ChoiceListHeight => int(v.choice_list_height),
+        P::ShowSelection => code(v.show_selection.as_deref()),
+        P::BeginOfDisplayPeriod => int(v.begin_of_display_period),
+        P::EndOfDisplayPeriod => int(v.end_of_display_period),
         _ => None,
     }
 }
@@ -4200,6 +4538,8 @@ fn ext_pieces(site: &Site, prop: Property, slot: &ExtSlot) -> Result<Vec<Piece>>
         Want::Node(text) => vec![piece(ext_child(site, slot, prop)?.span.span, text, &[prop])],
         Want::Color(c) => vec![piece(ext_child(site, slot, prop)?.span.span, format_color_node(c.as_ref()), &[prop])],
         Want::Font(f) => vec![piece(ext_child(site, slot, prop)?.span.span, format_font_node(f.as_ref()), &[prop])],
+        Want::Shortcut(s) => vec![piece(ext_child(site, slot, prop)?.span.span, format_shortcut_node(&s), &[prop])],
+        Want::Picture(p) => vec![piece(ext_child(site, slot, prop)?.span.span, format_picture_node(&p), &[prop])],
         Want::Loc(new) => {
             let node = ext_child(site, slot, prop)?;
             let items = strict_localized(node)
@@ -4227,6 +4567,14 @@ fn ext_matches(site: &Site, prop: Property, slot: &ExtSlot) -> Result<bool> {
             let parent = info_node_at(site, &slot.path, prop)?;
             parent.node.children.get(slot.idx).is_some_and(|item| read_font_spec(item) == f)
         }
+        Want::Shortcut(s) => {
+            let parent = info_node_at(site, &slot.path, prop)?;
+            parent.node.children.get(slot.idx).is_some_and(|item| read_shortcut_spec(item) == Some(s))
+        }
+        Want::Picture(p) => {
+            let parent = info_node_at(site, &slot.path, prop)?;
+            parent.node.children.get(slot.idx).is_some_and(|item| read_picture_spec(item) == Some(p))
+        }
         Want::Loc(new) => {
             let node = ext_child(site, slot, prop)?;
             strict_localized(node)
@@ -4251,6 +4599,12 @@ fn set_clone_ext(info: &mut Node, type_name: &str, v: &ControlValues) -> Result<
             ),
             Some(Want::Font(f)) => Item::Node(
                 crate::brace::parse_metadata(format_font_node(f.as_ref()).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+            ),
+            Some(Want::Shortcut(s)) => Item::Node(
+                crate::brace::parse_metadata(format_shortcut_node(&s).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+            ),
+            Some(Want::Picture(p)) => Item::Node(
+                crate::brace::parse_metadata(format_picture_node(&p).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
             ),
             Some(Want::Loc(l)) => Item::Node(localized_node(&l)),
         };
@@ -4454,6 +4808,10 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 let b = nav_mut(info, &[1, 3])?;
                 b.children[3] = bare(bs);
             }
+        }
+        "PictureField" | "PictureDecoration" => {
+            let p = nav_mut(info, &[1])?;
+            p.children[3] = bare(i64::from(v.hyperlink));
         }
         _ => {}
     }
@@ -6097,7 +6455,12 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 out.push(piece(node.span.span, format_type_link(tl), &[prop]));
             }
             Property::Hyperlink => {
-                out.push(info_bool_piece(site, &[1], 5, Some(old.hyperlink), new.hyperlink, prop)?);
+                let (idx, exp) = if matches!(site.entry.type_name, "PictureField" | "PictureDecoration") {
+                    (3, None)
+                } else {
+                    (5, Some(old.hyperlink))
+                };
+                out.push(info_bool_piece(site, &[1], idx, exp, new.hyperlink, prop)?);
             }
             Property::ThreeState => {
                 out.push(info_bool_piece(site, &[1], 2, Some(old.three_state), new.three_state, prop)?);
@@ -6614,7 +6977,14 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                     cur == new.horizontal_align
                 }
             }
-            Property::Hyperlink => (info_int_slot(site, &[1], 5, p)?.0 != 0) == new.hyperlink,
+            Property::Hyperlink => {
+                let idx = if matches!(site.entry.type_name, "PictureField" | "PictureDecoration") {
+                    3
+                } else {
+                    5
+                };
+                (info_int_slot(site, &[1], idx, p)?.0 != 0) == new.hyperlink
+            }
             Property::ThreeState => (info_int_slot(site, &[1], 2, p)?.0 != 0) == new.three_state,
             Property::TitleLocation => {
                 let cur = if info_int_slot(site, &[1, 0], 3, p)?.0 == 0 { "Left" } else { "" };

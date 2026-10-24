@@ -396,6 +396,25 @@ pub fn decode_font(n: &Item) -> Result<Option<Map<String, Value>>, OofError> {
                 }
             }
         }
+        // `{7,1,mask,[face,]{h},weight,italic,underline,strikeout,auto,scale}`: the flags follow the `{h}` node
+        if let Some(h_pos) = n.children[3..].iter().position(|c| matches!(c, Item::Node(_))) {
+            let after_h = &n.children[3 + h_pos + 1..];
+            if after_h.len() >= 4 {
+                for (bit, idx, key) in [(8, 1, "italic"), (16, 2, "underline"), (32, 3, "strikeout")] {
+                    if mask & bit != 0 && is_bare(&after_h[idx], "1") {
+                        font.insert(key.into(), true.into());
+                        font.insert("source".into(), "bin".into());
+                    }
+                }
+            }
+        }
+    }
+    if let Some(Item::Atom(a)) = n.children.last() {
+        if a.kind == BARE {
+            if let Some(s) = py_int(&a.value).filter(|s| *s != 100 && *s > 0) {
+                font.insert("scale".into(), s.into());
+            }
+        }
     }
     Ok(if font.is_empty() { None } else { Some(font) })
 }
