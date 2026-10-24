@@ -12,6 +12,7 @@ use serde_json::{json, Map, Value};
 use crate::brace::{Item, Node, BARE, QUOTED};
 use crate::canonical::py_round;
 use crate::errors::ExtractionError;
+use crate::metaref::{ANY_REF_GUID, VALUE_LIST_GUID, VALUE_TABLE_GUID, VALUE_TREE_GUID};
 use crate::naming::is_uuid;
 
 pub const EVENT_GUID: &str = "e1692cc2-605b-4535-84dd-28440238746c";
@@ -401,7 +402,11 @@ pub fn decode_font(n: &Item) -> Result<Option<Map<String, Value>>, OofError> {
 
 // ---------------------------------------------------------------- value types
 
-/// `{"Pattern",{type}...}` -> `{kind, fractionDigits?, composite}`; `None` for an empty pattern.
+/// `{"Pattern",{type}...}` -> `{kind, composite, ...qualifiers}`; `None` for an empty pattern.
+///
+/// Qualifiers: `digits` (non-default `Number` precision), `fractionDigits`, `nonNegative`, `length`, `fixed`;
+/// `refGuid`/`refGuids` for concrete references (`;`-joined for a composite of references only);
+/// `mixedComposite` for a composite that is not a plain list of concrete references.
 pub fn decode_pattern(pattern: &Item) -> Result<Option<Map<String, Value>>, OofError> {
     let pattern = node(pattern, "type pattern", 1)?;
     if str_val(&pattern.children[0], "type pattern")? != "Pattern" {
@@ -425,36 +430,37 @@ pub fn decode_pattern(pattern: &Item) -> Result<Option<Map<String, Value>>, OofE
     } else if code == "N" {
         vt.insert("kind".into(), "Number".into());
         if first.len() > 1 {
-            if let Ok(d) = int(&first.children[1], "number digits") {
-                if d != 10 && d > 0 {
-                    vt.insert("digits".into(), d.into());
-                }
+            let digits = int(&first.children[1], "number digits")?;
+            if digits != 10 && digits > 0 {
+                vt.insert("digits".into(), digits.into());
             }
         }
         if first.len() > 2 {
             vt.insert("fractionDigits".into(), int(&first.children[2], "fraction digits")?.into());
         }
+        if first.len() > 3 && int(&first.children[3], "number sign")? != 0 {
+            vt.insert("nonNegative".into(), true.into());
+        }
     } else if code == "#" {
         let ref_guid = if first.len() > 1 { atom(&first.children[1]).to_lowercase() } else { String::new() };
         let kind = match ref_guid.as_str() {
-            "acf6192e-81ca-46ef-93a6-5a6968b78663" => "ValueTable",
-            "e603c0f2-92fb-4d47-8f38-a44a381cf235" => "ValueTree",
-            "4772b3b4-f4a3-49c0-a1a5-8cb5961511a3" => "ValueList",
+            VALUE_TABLE_GUID => "ValueTable",
+            VALUE_TREE_GUID => "ValueTree",
+            VALUE_LIST_GUID => "ValueList",
             _ => "Ref",
         };
         vt.insert("kind".into(), kind.into());
-        if kind == "Ref" && is_uuid(&ref_guid) && ref_guid != "e61ef7b8-f3e1-4f4b-8ac7-676e90524997" && ref_guid != "ca89d867-93a8-44a6-a694-8e544ce907fd" {
-            vt.insert("refGuid".into(), ref_guid.into());
-        }
     } else {
         let kind = match code {
             "S" => {
                 if first.len() > 1 {
-                    if let Ok(l) = int(&first.children[1], "string length") {
-                        if l > 0 {
-                            vt.insert("length".into(), l.into());
-                        }
+                    let length = int(&first.children[1], "string length")?;
+                    if length > 0 {
+                        vt.insert("length".into(), length.into());
                     }
+                }
+                if first.len() > 2 && int(&first.children[2], "string fixed")? != 0 {
+                    vt.insert("fixed".into(), true.into());
                 }
                 "String"
             }
@@ -463,27 +469,33 @@ pub fn decode_pattern(pattern: &Item) -> Result<Option<Map<String, Value>>, OofE
         };
         vt.insert("kind".into(), kind.into());
     }
-    let is_any_ref = code == "#" && first.len() > 1 && atom(&first.children[1]).eq_ignore_ascii_case("e61ef7b8-f3e1-4f4b-8ac7-676e90524997");
+    let is_any_ref = code == "#" && first.len() > 1 && atom(&first.children[1]).eq_ignore_ascii_case(ANY_REF_GUID);
     vt.insert("composite".into(), (branches.len() > 1 || is_any_ref).into());
 
-    // For composite references with multiple branches: collect all refGuids
-    if branches.len() > 1 {
-        let mut r_guids = Vec::new();
-        for b in branches {
-            if let Ok(b_node) = node(b, "type branch", 1) {
-                if str_val(&b_node.children[0], "branch code").unwrap_or("") == "#" && b_node.len() > 1 {
-                    let g = atom(&b_node.children[1]).to_lowercase();
-                    if is_uuid(&g) && !matches!(g.as_str(), "acf6192e-81ca-46ef-93a6-5a6968b78663" | "e603c0f2-92fb-4d47-8f38-a44a381cf235" | "4772b3b4-f4a3-49c0-a1a5-8cb5961511a3" | "e61ef7b8-f3e1-4f4b-8ac7-676e90524997" | "ca89d867-93a8-44a6-a694-8e544ce907fd") {
-                        r_guids.push(Value::String(g));
-                    }
-                }
-            }
+    // Concrete references: `{"#", <uuid>}` branches with a uuid that is not a platform built-in type.
+    let concrete: Vec<Option<String>> = branches.iter().map(concrete_ref_guid).collect();
+    if concrete.iter().all(Option::is_some) {
+        let guids: Vec<String> = concrete.into_iter().flatten().collect();
+        if guids.len() == 1 {
+            vt.insert("refGuid".into(), guids[0].clone().into());
+        } else {
+            vt.insert("refGuid".into(), guids.join(";").into());
+            vt.insert("refGuids".into(), Value::Array(guids.into_iter().map(Value::String).collect()));
         }
-        if !r_guids.is_empty() {
-            vt.insert("refGuids".into(), Value::Array(r_guids));
-        }
+    } else if branches.len() > 1 {
+        vt.insert("mixedComposite".into(), true.into());
     }
     Ok(Some(vt))
+}
+
+/// Lowercase uuid of a `{"#", <uuid>}` branch that is a concrete (not platform built-in) reference type.
+fn concrete_ref_guid(branch: &Item) -> Option<String> {
+    let b = branch.as_node()?;
+    if b.len() < 2 || str_val(&b.children[0], "branch code").ok()? != "#" {
+        return None;
+    }
+    let g = atom(&b.children[1]).to_lowercase();
+    (is_uuid(&g) && !matches!(g.as_str(), VALUE_TABLE_GUID | VALUE_TREE_GUID | VALUE_LIST_GUID | ANY_REF_GUID)).then_some(g)
 }
 
 // ---------------------------------------------------------------- per-control decoding
@@ -1134,7 +1146,23 @@ mod tests {
         assert_eq!(vt("{\"Pattern\",{\"B\"}}").unwrap()["kind"], "Boolean");
         assert_eq!(
             vt("{\"Pattern\",{\"#\",0b635ac9-cea4-4531-88db-24fe88ba0690},{\"S\"}}"),
-            Some(json!({"kind": "Ref", "refGuid": "0b635ac9-cea4-4531-88db-24fe88ba0690", "composite": true, "refGuids": ["0b635ac9-cea4-4531-88db-24fe88ba0690"]}))
+            Some(json!({"kind": "Ref", "composite": true, "mixedComposite": true}))
+        );
+        assert_eq!(
+            vt("{\"Pattern\",{\"#\",0b635ac9-cea4-4531-88db-24fe88ba0690},{\"#\",1b635ac9-cea4-4531-88db-24fe88ba0690}}"),
+            Some(json!({"kind": "Ref", "composite": true, "refGuid": "0b635ac9-cea4-4531-88db-24fe88ba0690;1b635ac9-cea4-4531-88db-24fe88ba0690", "refGuids": ["0b635ac9-cea4-4531-88db-24fe88ba0690", "1b635ac9-cea4-4531-88db-24fe88ba0690"]}))
+        );
+        assert_eq!(
+            vt("{\"Pattern\",{\"#\",0b635ac9-cea4-4531-88db-24fe88ba0690}}"),
+            Some(json!({"kind": "Ref", "composite": false, "refGuid": "0b635ac9-cea4-4531-88db-24fe88ba0690"}))
+        );
+        assert_eq!(
+            vt("{\"Pattern\",{\"N\",12,2,1}}"),
+            Some(json!({"kind": "Number", "digits": 12, "fractionDigits": 2, "nonNegative": true, "composite": false}))
+        );
+        assert_eq!(
+            vt("{\"Pattern\",{\"S\",20,1}}"),
+            Some(json!({"kind": "String", "length": 20, "fixed": true, "composite": false}))
         );
         assert_eq!(vt("{\"Pattern\"}"), None);
     }

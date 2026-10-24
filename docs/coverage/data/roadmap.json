@@ -2,30 +2,30 @@
   {
     "milestone": "Спринт 1 (P0): Ссылочные типы ValueType и квалификаторы",
     "target_coverage": "89.2%",
-    "status": "in_progress",
+    "status": "done",
     "tasks": [
       {
         "title": "Конкретные ссылки в ValueType (СправочникСсылка.*, ДокументСсылка.*)",
-        "status": "in_progress",
-        "impact": "Критично для 99.2% форм с реквизитами. Открывает нормальную работу со справочниками и документами через ConfigDumpInfo.xml.",
+        "status": "done",
+        "impact": "Критично для 99.2% форм с реквизитами. Открывает нормальную работу со справочниками и документами через <xr:GeneratedType>.",
         "change": "pack-ref-valuetypes-and-typelink"
       },
       {
         "title": "Квалификаторы типов String (длина) и Number (разрядность)",
-        "status": "in_progress",
+        "status": "done",
         "impact": "Предотвращает потерю ограничений длины строки и точности чисел.",
         "change": "pack-ref-valuetypes-and-typelink"
       }
     ]
   },
   {
-    "milestone": "Спринт 2 (P0): Привязка границ (Anchors: geom[6..11])",
+    "milestone": "Спринт 2 (P0): Привязка границ (Anchors: geom[6..9])",
     "target_coverage": "91.5% (ЦЕЛЬ 90% ПРЕОДОЛЕНА)",
-    "status": "planned",
+    "status": "done",
     "tasks": [
       {
-        "title": "Привязка границ (Anchors: geom[6..11])",
-        "status": "planned",
+        "title": "Привязка границ (Anchors: geom[6..9])",
+        "status": "done",
         "impact": "Критично для ресайза форм. 56% форм имеют таблицы и кнопки с авто-растягиванием к краям.",
         "change": "pack-control-anchors"
       }

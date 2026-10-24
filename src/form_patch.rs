@@ -24,20 +24,23 @@
 //! All errors use [`GENERATED_FILE_MODIFIED`] (the code pack already uses for rejected `Form.xml` edits)
 //! with `kind`, `form`, `source` and a `problems` list; each problem names control, property and line.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
+use std::sync::Arc;
 
 use serde_json::Value;
 
 use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
 use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
+use crate::metaref::{ConfigTypeLookup, ANY_REF_GUID, VALUE_LIST_GUID, VALUE_TABLE_GUID, VALUE_TREE_GUID};
 use crate::naming::is_uuid;
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
-use crate::oof_props::{app_path, caption_path, localized};
+use crate::oof_props::{app_path, atom, caption_path, localized};
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
-const SUPPORTED_TAGS: [&str; 43] = [
+const SUPPORTED_TAGS: [&str; 44] = [
     "DataPath",
     "Caption",
     "Left",
@@ -47,6 +50,7 @@ const SUPPORTED_TAGS: [&str; 43] = [
     "Visible",
     "ZOrder",
     "TabOrder",
+    "Anchors",
     "Events",
     "Enabled",
     "TransparentBack",
@@ -141,6 +145,9 @@ pub struct ValueTypeSpec {
     pub digits: Option<i64>,
     pub length: Option<i64>,
     pub ref_guids: Vec<String>,
+    /// Read from a binary pattern that carries flags `<ValueType>` cannot express (`nonNegative`, `fixed`,
+    /// `mixedComposite`); such a value never equals one parsed from `Form.xml`.
+    pub lossy: bool,
 }
 
 impl ValueTypeSpec {
@@ -172,6 +179,13 @@ pub struct FormAttribute {
     pub digits: Option<i64>,
     pub length: Option<i64>,
     pub ref_guids: Vec<String>,
+}
+
+impl FormAttribute {
+    fn same_value_type(&self, other: &FormAttribute) -> bool {
+        (&self.kind, self.composite, self.fraction_digits, self.digits, self.length, &self.ref_guids)
+            == (&other.kind, other.composite, other.fraction_digits, other.digits, other.length, &other.ref_guids)
+    }
 }
 
 fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
@@ -210,76 +224,116 @@ fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
     }
 }
 
+type LookupStack = Vec<Arc<ConfigTypeLookup>>;
+
+// Type lookups that resolve `ref="..."` names of `<ValueType>` while a configuration form is packed.
+thread_local! {
+    // The initializer already is `const`; clippy 0.1.99 still reports this static.
+    #[allow(clippy::missing_const_for_thread_local)]
+    static ACTIVE_TYPE_LOOKUP: RefCell<LookupStack> = const { RefCell::new(Vec::new()) };
+}
+
+/// Runs `f` with `lookup` resolving the `ref="..."` names of `<ValueType>` elements parsed meanwhile
+/// (without it only the platform built-in names resolve).
+pub fn with_type_lookup<R>(lookup: Arc<ConfigTypeLookup>, f: impl FnOnce() -> R) -> R {
+    struct Pop;
+    impl Drop for Pop {
+        fn drop(&mut self) {
+            ACTIVE_TYPE_LOOKUP.with(|l| l.borrow_mut().pop());
+        }
+    }
+    ACTIVE_TYPE_LOOKUP.with(|l| l.borrow_mut().push(lookup));
+    let _pop = Pop;
+    f()
+}
+
+fn resolve_type_name(name: &str) -> Option<String> {
+    ACTIVE_TYPE_LOOKUP.with(|l| match l.borrow().last() {
+        Some(lookup) => lookup.resolve_name(name).map(str::to_string),
+        None => ConfigTypeLookup::new().resolve_name(name).map(str::to_string),
+    })
+}
+
+fn is_builtin_type_guid(guid: &str) -> bool {
+    matches!(guid, VALUE_TABLE_GUID | VALUE_TREE_GUID | VALUE_LIST_GUID | ANY_REF_GUID)
+}
+
+fn parse_opt_int(e: &XmlElement, attr: &str) -> Option<Option<i64>> {
+    match e.attrs.get(attr) {
+        Some(s) => Some(Some(s.trim().parse::<i64>().ok()?)),
+        None => Some(None),
+    }
+}
+
+/// Parses a `<ValueType>` element; `None` when it is not a plain, fully supported type
+/// (the element then stays an opaque, unchangeable part of the form).
 fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
     if !e.children.is_empty() || !e.text.trim().is_empty() {
         return None;
     }
+    if !e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits" | "digits" | "length" | "ref" | "refGuid" | "title")) {
+        return None;
+    }
     let kind = e.attrs.get("kind")?.clone();
-    let comp_s = e.attrs.get("composite")?;
-    let composite = match comp_s.as_str() {
+    let composite = match e.attrs.get("composite")?.as_str() {
         "true" => true,
         "false" => false,
         _ => return None,
     };
-    let fraction_digits = match e.attrs.get("fractionDigits") {
-        Some(s) => Some(s.trim().parse::<i64>().ok()?),
-        None => None,
-    };
-    let digits = match e.attrs.get("digits") {
-        Some(s) => Some(s.trim().parse::<i64>().ok()?),
-        None => None,
-    };
-    let length = match e.attrs.get("length") {
-        Some(s) => Some(s.trim().parse::<i64>().ok()?),
-        None => None,
-    };
-    let mut ref_guids = Vec::new();
-    if let Some(rg) = e.attrs.get("refGuid") {
-        for part in rg.split(';') {
-            let part = part.trim();
-            if !part.is_empty() {
-                if is_uuid(part) {
-                    ref_guids.push(part.to_lowercase());
-                } else {
-                    return None;
-                }
-            }
-        }
-    } else if let Some(r) = e.attrs.get("title").or_else(|| e.attrs.get("ref")) {
-        let lookup = crate::metaref::ConfigTypeLookup::new();
-        for part in r.split(';') {
-            let part = part.trim();
-            if !part.is_empty() {
-                if is_uuid(part) {
-                    ref_guids.push(part.to_lowercase());
-                } else {
-                    let g = lookup.resolve_name(part)?;
-                    ref_guids.push(g.to_string());
-                }
-            }
-        }
-    }
-    let attrs_ok = e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits" | "digits" | "length" | "ref" | "refGuid" | "title"));
-    if !attrs_ok {
+    let fraction_digits = parse_opt_int(e, "fractionDigits")?;
+    let mut digits = parse_opt_int(e, "digits")?;
+    let length = parse_opt_int(e, "length")?;
+    if length.is_some_and(|l| l <= 0 || kind != "String") {
         return None;
     }
-    let spec = ValueTypeSpec {
-        kind,
-        composite,
-        fraction_digits,
-        digits,
-        length,
-        ref_guids,
-    };
-    if format_attr_pattern(&spec.to_attr()).is_some() {
-        Some(spec)
-    } else {
-        None
+    if digits.is_some() || fraction_digits.is_some() {
+        if kind != "Number" || digits.is_some_and(|d| d <= 0) || fraction_digits.is_some_and(|f| f < 0) {
+            return None;
+        }
+        if digits == Some(10) {
+            digits = None;
+        }
     }
+    let has_ref_attr = e.attrs.contains_key("refGuid") || e.attrs.contains_key("ref") || e.attrs.contains_key("title");
+    if has_ref_attr && kind != "Ref" {
+        return None;
+    }
+    let mut ref_guids = Vec::new();
+    if let Some(rg) = e.attrs.get("refGuid") {
+        // `title` is an output annotation only; the GUIDs are authoritative.
+        for part in rg.split(';').map(str::trim).filter(|p| !p.is_empty()) {
+            if !is_uuid(part) {
+                return None;
+            }
+            ref_guids.push(part.to_lowercase());
+        }
+    } else if let Some(names) = e.attrs.get("ref").or_else(|| e.attrs.get("title")) {
+        for part in names.split(';').map(str::trim).filter(|p| !p.is_empty()) {
+            ref_guids.push(resolve_type_name(part)?);
+        }
+    }
+    if ref_guids.iter().any(|g| is_builtin_type_guid(g)) {
+        return None;
+    }
+    let composite_ok = match (kind.as_str(), ref_guids.len()) {
+        ("Ref", 1) => !composite,
+        ("Ref", _) => composite,
+        _ => !composite,
+    };
+    if !composite_ok {
+        return None;
+    }
+    let spec = ValueTypeSpec { kind, composite, fraction_digits, digits, length, ref_guids, lossy: false };
+    format_attr_pattern(&spec.to_attr()).map(|_| spec)
 }
 
-fn format_attr_record(a: &FormAttribute) -> Result<String> {
-    let pat = format_attr_pattern(a).ok_or_else(|| layout_err(format!("unsupported attribute ValueType '{}' (composite={})", a.kind, a.composite)))?;
+/// `raw_pattern` is the unchanged original pattern text of the attribute; it is kept byte for byte
+/// (flags such as `nonNegative`/`fixed` or mixed composites are not representable in `Form.xml`).
+fn format_attr_record(a: &FormAttribute, raw_pattern: Option<&str>) -> Result<String> {
+    let pat = match raw_pattern {
+        Some(raw) => raw.to_string(),
+        None => format_attr_pattern(a).ok_or_else(|| layout_err(format!("unsupported attribute ValueType '{}' (composite={})", a.kind, a.composite)))?,
+    };
     Ok(format!("{{{{{}}},{},{},1,{},{}}}", a.id, i32::from(a.main), i32::from(a.stored), quote(&a.name), pat))
 }
 
@@ -415,6 +469,90 @@ fn read_font_spec(item: &Item) -> Option<FontSpec> {
     Some(FontSpec { bold, style_source, face, size })
 }
 
+/// One anchored edge of a control: the `{2,target,side,offset}` record of `geom[6..9]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AnchorEdge {
+    /// Id of the control the edge is attached to; `0` is the form, `-1` marks an unattached edge.
+    pub target: i64,
+    /// Side of the target: `0` Top, `1` Bottom, `2` Left, `3` Right, `6` none.
+    pub side: i64,
+    pub offset: i64,
+}
+
+impl AnchorEdge {
+    pub const UNATTACHED: Self = Self { target: -1, side: 6, offset: 0 };
+}
+
+/// `<Anchors .../>`: only the edges that are present are written; absent edges stay as they are in the form.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct AnchorsSpec {
+    pub top: Option<AnchorEdge>,
+    pub bottom: Option<AnchorEdge>,
+    pub left: Option<AnchorEdge>,
+    pub right: Option<AnchorEdge>,
+}
+
+impl AnchorsSpec {
+    /// `(geom index, requested edge)` of the four edges.
+    fn edges(&self) -> [(usize, Option<AnchorEdge>); 4] {
+        [(6, self.top), (7, self.bottom), (8, self.left), (9, self.right)]
+    }
+}
+
+fn format_edge_target(e: &AnchorEdge) -> String {
+    format!("{{2,{},{},{}}}", e.target, e.side, e.offset)
+}
+
+/// The `{2,target,side,offset}` sub-record of the edge record `geom[idx]` (`6` top, `7` bottom, `8` left, `9` right).
+pub fn read_anchor_edge(geom: &Node, idx: usize) -> Option<AnchorEdge> {
+    let t = geom.children.get(idx)?.as_node()?.children.get(1)?.as_node()?;
+    if t.children.len() < 4 {
+        return None;
+    }
+    let num = |i: usize| atom(&t.children[i]).parse::<i64>().ok();
+    Some(AnchorEdge { target: num(1)?, side: num(2)?, offset: num(3)? })
+}
+
+fn parse_anchors_elem(e: &XmlElement) -> Option<AnchorsSpec> {
+    const EDGES: [&str; 4] = ["top", "bottom", "left", "right"];
+    if !e.children.is_empty() || !e.text.trim().is_empty() {
+        return None;
+    }
+    let known = |k: &str| {
+        k == "target"
+            || EDGES.iter().any(|edge| k == *edge || k.strip_prefix(edge).is_some_and(|rest| rest == "Offset" || rest == "Target"))
+    };
+    if !e.attrs.keys().all(|k| known(k)) || !EDGES.iter().any(|edge| e.attrs.contains_key(*edge)) {
+        return None;
+    }
+    let default_target = parse_opt_int(e, "target")?.unwrap_or(0);
+    let edge = |name: &str| -> Option<Option<AnchorEdge>> {
+        let (offset_attr, target_attr) = (format!("{name}Offset"), format!("{name}Target"));
+        let Some(side) = e.attrs.get(name) else {
+            // Offset/target of an edge that is not requested would be silently ignored.
+            return if e.attrs.contains_key(&offset_attr) || e.attrs.contains_key(&target_attr) { None } else { Some(None) };
+        };
+        let side = match side.trim() {
+            "Top" | "0" => 0,
+            "Bottom" | "1" => 1,
+            "Left" | "2" => 2,
+            "Right" | "3" => 3,
+            "None" | "6" => {
+                return if e.attrs.contains_key(&offset_attr) || e.attrs.contains_key(&target_attr) {
+                    None
+                } else {
+                    Some(Some(AnchorEdge::UNATTACHED))
+                };
+            }
+            _ => return None,
+        };
+        let target = parse_opt_int(e, &target_attr)?.unwrap_or(default_target);
+        let offset = parse_opt_int(e, &offset_attr)?.unwrap_or(0);
+        Some(Some(AnchorEdge { target, side, offset }))
+    };
+    Some(AnchorsSpec { top: edge("top")?, bottom: edge("bottom")?, left: edge("left")?, right: edge("right")? })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChoiceItemSpec {
     pub value: String,
@@ -523,6 +661,7 @@ pub struct ControlValues {
     pub auto_fill: Option<bool>,
     pub buttons: Vec<CommandBarButton>,
     pub border_style: Option<i64>,
+    pub anchors: Option<AnchorsSpec>,
 }
 
 impl ControlValues {
@@ -574,6 +713,7 @@ impl ControlValues {
             auto_fill: None,
             buttons: Vec::new(),
             border_style: None,
+            anchors: None,
         }
     }
 }
@@ -626,6 +766,7 @@ pub enum Property {
     AutoFill,
     Buttons,
     BorderStyle,
+    Anchors,
 }
 
 impl Property {
@@ -677,6 +818,7 @@ impl Property {
             Property::AutoFill => "AutoFill",
             Property::Buttons => "Buttons",
             Property::BorderStyle => "BorderStyle",
+            Property::Anchors => "Anchors",
         }
     }
 }
@@ -731,6 +873,7 @@ impl ControlValues {
             (self.auto_fill == other.auto_fill, Property::AutoFill),
             (self.buttons == other.buttons, Property::Buttons),
             (self.border_style == other.border_style, Property::BorderStyle),
+            (self.anchors == other.anchors, Property::Anchors),
         ]
         .into_iter()
         .filter(|(same, _)| !same)
@@ -859,12 +1002,13 @@ impl FormXml {
         reorder(&mut out.shell, &z);
         for c in &mut out.controls {
             reorder(&mut c.rest, &z);
-            // Write-only InputField flags (verified in binary by read_back, not emitted by render_form_xml
+            // Write-only flags and anchors (verified in binary by read_back, not emitted by render_form_xml
             // so existing golden Form.xml files stay byte-identical) are cleared before XML comparison.
             c.values.drop_list_button = None;
             c.values.spin_button = None;
             c.values.auto_choice_incomplete = None;
             c.values.auto_cell_height = None;
+            c.values.anchors = None;
         }
         out
     }
@@ -872,7 +1016,7 @@ impl FormXml {
 
 fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
-        "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" => true,
+        "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" | "Anchors" => true,
         "Events" => crate::donor::has_event_list(type_name),
         "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" => {
             app_path(type_name).is_some()
@@ -1480,6 +1624,14 @@ impl Parser<'_> {
                 rest.children.push((*e).clone());
             }
         }
+        let mut anchors: Option<AnchorsSpec> = None;
+        if let Some(e) = found.get("Anchors") {
+            if let Some(spec) = parse_anchors_elem(e) {
+                anchors = Some(spec);
+            } else {
+                rest.children.push((*e).clone());
+            }
+        }
         fn parse_cb_buttons(
             e: &XmlElement,
             parse_loc: &dyn Fn(&XmlElement) -> Option<LocItems>,
@@ -1626,6 +1778,7 @@ impl Parser<'_> {
             } else {
                 None
             },
+            anchors,
         };
         Ok((values, rest))
     }
@@ -2662,6 +2815,21 @@ fn set_clone_caption(n: &mut Node, type_name: &str, caption: &[(String, String)]
     }
 }
 
+fn clone_geom_mut(n: &mut Node) -> Result<&mut Node> {
+    let owned = Item::Node(Node { children: n.children.clone() });
+    let geom_index = {
+        let parts = control_parts(&owned).map_err(|e| layout_err(e.to_string()))?;
+        let on = owned.as_node().unwrap();
+        on.children
+            .iter()
+            .position(|c| matches!(c, Item::Node(x) if std::ptr::eq(x, parts.geom)))
+            .ok_or_else(|| layout_err("prototype: geom node not found"))?
+    };
+    n.children[geom_index]
+        .as_node_mut()
+        .ok_or_else(|| layout_err("prototype: geom is not a node"))
+}
+
 fn clone_info_mut(n: &mut Node) -> Result<&mut Node> {
     let owned = Item::Node(Node { children: n.children.clone() });
     let info_index = {
@@ -2690,6 +2858,21 @@ fn nav_mut<'a>(mut cur: &'a mut Node, path: &[usize]) -> Result<&'a mut Node> {
 
 /// Apply all non-geometry, non-caption `ControlValues` properties to a donor-cloned control node.
 fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
+    if let Some(anchors) = &v.anchors {
+        let geom = clone_geom_mut(n)?;
+        for (idx, edge) in anchors.edges() {
+            let Some(edge) = edge else { continue };
+            let rec = geom
+                .children
+                .get_mut(idx)
+                .and_then(Item::as_node_mut)
+                .filter(|r| r.children.len() > 1)
+                .ok_or_else(|| layout_err(format!("prototype: geometry edge record {idx} missing")))?;
+            rec.children[1] = Item::Node(
+                crate::brace::parse_metadata(format_edge_target(&edge).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+            );
+        }
+    }
     let info = clone_info_mut(n)?;
     if let Some(ap) = app_path(type_name) {
         let path: Vec<usize> = ap.iter().map(|&i| i as usize).collect();
@@ -3794,24 +3977,14 @@ fn read_input_value_type(info: &Node) -> Option<ValueTypeSpec> {
     let fraction_digits = vt.get("fractionDigits").and_then(|v| v.as_i64());
     let digits = vt.get("digits").and_then(|v| v.as_i64());
     let length = vt.get("length").and_then(|v| v.as_i64());
-    let mut ref_guids = Vec::new();
-    if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
-        ref_guids.push(rg.to_string());
-    } else if let Some(arr) = vt.get("refGuids").and_then(|v| v.as_array()) {
-        for item in arr {
-            if let Some(s) = item.as_str() {
-                ref_guids.push(s.to_string());
-            }
-        }
-    }
-    Some(ValueTypeSpec {
-        kind,
-        composite,
-        fraction_digits,
-        digits,
-        length,
-        ref_guids,
-    })
+    let flag = |key: &str| vt.get(key) == Some(&Value::Bool(true));
+    let lossy = flag("mixedComposite") || flag("nonNegative") || flag("fixed");
+    let ref_guids = match (vt.get("refGuids").and_then(|v| v.as_array()), vt.get("refGuid").and_then(|v| v.as_str())) {
+        (Some(arr), _) => arr.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
+        (None, Some(rg)) => rg.split(';').map(str::to_string).collect(),
+        (None, None) => Vec::new(),
+    };
+    Some(ValueTypeSpec { kind, composite, fraction_digits, digits, length, ref_guids, lossy })
 }
 
 fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
@@ -4027,7 +4200,8 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             | Property::Height
             | Property::Visible
             | Property::ZOrder
-            | Property::TabOrder => {}
+            | Property::TabOrder
+            | Property::Anchors => {}
             Property::Name => {
                 let meta = site
                     .entry
@@ -4392,7 +4566,29 @@ fn is_geom_prop(p: Property) -> bool {
             | Property::Visible
             | Property::ZOrder
             | Property::TabOrder
+            | Property::Anchors
     )
+}
+
+fn anchors_pieces(site: &Site) -> Result<Vec<Piece>> {
+    let mut out = Vec::new();
+    if !site.edit.changed.contains(&Property::Anchors) {
+        return Ok(out);
+    }
+    let Some(anchors) = &site.edit.new.anchors else { return Ok(out) };
+    let g = site
+        .entry
+        .geom()
+        .ok_or_else(|| site.layout("unexpected-shape", "geometry", "geometry node missing".into()))?;
+    for (idx, edge) in anchors.edges() {
+        let Some(edge) = edge else { continue };
+        let target = g
+            .child(idx)
+            .and_then(|rec| rec.child(1))
+            .ok_or_else(|| site.layout("unexpected-shape", "Anchors", format!("geometry edge record {idx} missing")))?;
+        out.push(piece(target.span.span, format_edge_target(&edge), &[Property::Anchors]));
+    }
+    Ok(out)
 }
 
 // ---- orchestration
@@ -4407,6 +4603,7 @@ fn control_pieces(site: &Site) -> Result<Vec<Piece>> {
         out.extend(geometry_pieces(site, &g)?);
         out.extend(visible_pieces(site, &g)?);
         out.extend(order_pieces(site, &g)?);
+        out.extend(anchors_pieces(site)?);
     }
     out.extend(info_pieces(site)?);
     Ok(out)
@@ -4433,6 +4630,16 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 Property::Visible => (g.visible.0 != 0) == new.visible,
                 Property::ZOrder => g.z_order.0 == new.z_order,
                 Property::TabOrder => g.tab_order.0 == new.tab_order,
+                Property::Anchors => {
+                    let geom_node = site
+                        .entry
+                        .geom()
+                        .ok_or_else(|| layout_err("geometry node missing after patching"))?
+                        .node;
+                    new.anchors
+                        .as_ref()
+                        .is_some_and(|a| a.edges().into_iter().all(|(idx, want)| want.is_none() || read_anchor_edge(geom_node, idx) == want))
+                }
                 _ => true,
             };
             if !ok {
@@ -4708,6 +4915,7 @@ impl FormPatchPlan<'_> {
                 .ok_or_else(|| layout_err("form stream: attributes list missing at root[2][2]"))?;
             let (_k, acount) = list_entry(attr_list)?;
             let mut orig_by_id: HashMap<i64, Span> = HashMap::new();
+            let mut orig_pattern_by_id: HashMap<i64, Span> = HashMap::new();
             let mut kept_records: Vec<String> = Vec::new();
             let mut max_attr_id: i64 = 0;
             let old_ids: std::collections::HashSet<i64> = self.diff.old_attributes.iter().map(|a| a.id).collect();
@@ -4722,6 +4930,9 @@ impl FormPatchPlan<'_> {
                     .ok_or_else(|| layout_err("form stream: attribute record id missing"))?;
                 let aid = crate::oof_props::int_or_first(id_item, "attribute id").map_err(|e| layout_err(e.to_string()))?;
                 orig_by_id.insert(aid, rec.span.span);
+                if let Some(pat) = rec.child(5) {
+                    orig_pattern_by_id.insert(aid, pat.span.span);
+                }
                 if !old_ids.contains(&aid) {
                     max_attr_id = max_attr_id.max(aid);
                     let raw_slice = std::str::from_utf8(&self.source.source()[rec.span.span.start..rec.span.span.end])
@@ -4739,7 +4950,15 @@ impl FormPatchPlan<'_> {
                         continue;
                     }
                 }
-                kept_records.push(format_attr_record(a)?);
+                // A renamed/re-flagged attribute keeps its original pattern bytes when its type is unchanged.
+                let raw_pattern = match (self.diff.old_attributes.iter().find(|old| old.id == a.id), orig_pattern_by_id.get(&a.id)) {
+                    (Some(old), Some(sp)) if old.same_value_type(a) => Some(
+                        std::str::from_utf8(&self.source.source()[sp.start..sp.end])
+                            .map_err(|_| layout_err("form stream: non-utf8 attribute pattern"))?,
+                    ),
+                    _ => None,
+                };
+                kept_records.push(format_attr_record(a, raw_pattern)?);
             }
             let mut list_text = format!("{{{}" , kept_records.len());
             for r in &kept_records {

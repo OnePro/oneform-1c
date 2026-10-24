@@ -24,6 +24,7 @@ use crate::errors::{
     FORM_XML_EXTRACTION_FAILED,
 };
 use crate::metadata::FormInfo;
+use crate::metaref::ConfigTypeLookup;
 pub use crate::oof_props::{
     at, at_n, atom, child, control_caption, decode_color, decode_column_props, decode_font, decode_pattern,
     decode_props, int, int_or_first, is_bare, is_guid, localized, localized_value, node, node_opt, num,
@@ -542,7 +543,13 @@ fn diag_component(form_uuid: &str) -> String {
     format!("Forms/{form_uuid}")
 }
 
-fn control(n: &Item, warnings: &mut Vec<Value>, form_uuid: &str, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
+fn control(
+    n: &Item,
+    warnings: &mut Vec<Value>,
+    form_uuid: &str,
+    meta_lookup: Option<&MetaLookup>,
+    type_lookup: Option<&ConfigTypeLookup>,
+) -> Res<Value> {
     let ControlParts { node: n, type_name, info, geom, meta, children: children_node } = control_parts(n)?;
     let guid = atom(&n.children[0]);
     let name = str_val(&meta.children[1], "control name")?;
@@ -603,26 +610,11 @@ fn control(n: &Item, warnings: &mut Vec<Value>, form_uuid: &str, meta_lookup: Op
         None => Map::new(),
     };
     if let Some(Value::Object(vt)) = props.get_mut("valueType") {
-        if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
-            if let Some(ml) = meta_lookup {
-                if let Some(ref_name) = ml.get(rg) {
-                    vt.insert("title".into(), ref_name.clone().into());
-                }
-            }
-        } else if let Some(arr) = vt.get("refGuids").and_then(|v| v.as_array()) {
-            let guid_strs: Vec<String> = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
-            if !guid_strs.is_empty() {
-                vt.insert("refGuid".into(), guid_strs.join(";").into());
-                if let Some(ml) = meta_lookup {
-                    let titles: Vec<String> = guid_strs.iter().map(|g| ml.get(g).cloned().unwrap_or_else(|| g.clone())).collect();
-                    vt.insert("title".into(), titles.join("; ").into());
-                }
-            }
-        }
+        annotate_value_type(vt, type_lookup, false);
     }
     let mut children = Vec::new();
     for c in table(Some(children_node), "control children")? {
-        children.push(control(c, warnings, form_uuid, meta_lookup)?);
+        children.push(control(c, warnings, form_uuid, meta_lookup, type_lookup)?);
     }
     let mut ctrl = Map::new();
     ctrl.insert("id".into(), id.into());
@@ -650,9 +642,28 @@ fn control(n: &Item, warnings: &mut Vec<Value>, form_uuid: &str, meta_lookup: Op
     Ok(Value::Object(ctrl))
 }
 
+/// Adds the display `title` of a concrete reference `ValueType`; the main attribute of the form
+/// (the object itself) keeps a plain `Ref` without a GUID. The sign/fixed-length flags that `Form.xml`
+/// cannot express are dropped from the model (`form_patch` reads them from the binary pattern itself).
+fn annotate_value_type(vt: &mut Map<String, Value>, type_lookup: Option<&ConfigTypeLookup>, is_main_attr: bool) {
+    vt.remove("nonNegative");
+    vt.remove("fixed");
+    if is_main_attr {
+        vt.remove("refGuid");
+        vt.remove("refGuids");
+        return;
+    }
+    let (Some(tl), Some(rg)) = (type_lookup, vt.get("refGuid").and_then(Value::as_str)) else { return };
+    let names: Vec<&str> = rg.split(';').filter_map(|g| tl.resolve_guid(g)).collect();
+    if !names.is_empty() && names.len() == rg.split(';').count() {
+        let title = names.join("; ");
+        vt.insert("title".into(), title.into());
+    }
+}
+
 type Attributes = (Option<i64>, Vec<Value>, HashMap<i64, Value>);
 
-fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Attributes> {
+fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Option<&ConfigTypeLookup>) -> Res<Attributes> {
     let main_id = int_or_first(child(section, 0)?, "main attribute id")?;
     let mut attrs: Vec<Value> = Vec::new();
     for rec in table(Some(child(section, 2)?), "attributes")? {
@@ -668,22 +679,7 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Attribute
         attr.insert("stored".into(), stored.into());
         if rec.len() > 5 {
             if let Ok(Some(mut vt)) = decode_pattern(&rec.children[5]) {
-                if let Some(rg) = vt.get("refGuid").and_then(|v| v.as_str()) {
-                    if let Some(ml) = meta_lookup {
-                        if let Some(ref_name) = ml.get(rg) {
-                            vt.insert("title".into(), ref_name.clone().into());
-                        }
-                    }
-                } else if let Some(arr) = vt.get("refGuids").and_then(|v| v.as_array()) {
-                    let guid_strs: Vec<String> = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
-                    if !guid_strs.is_empty() {
-                        vt.insert("refGuid".into(), guid_strs.join(";").into());
-                        if let Some(ml) = meta_lookup {
-                            let titles: Vec<String> = guid_strs.iter().map(|g| ml.get(g).cloned().unwrap_or_else(|| g.clone())).collect();
-                            vt.insert("title".into(), titles.join("; ").into());
-                        }
-                    }
-                }
+                annotate_value_type(&mut vt, type_lookup, main_id > 0 && attr_id == main_id);
                 attr.insert("valueType".into(), Value::Object(vt));
             }
         }
@@ -746,7 +742,16 @@ fn apply_links(ctrls: &mut [Value], links: &HashMap<i64, Value>) {
 }
 
 pub fn decode_form(info: &FormInfo, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
-    decode_oof_stream(&info.layout_payload.raw, &info.uuid, meta_lookup)
+    decode_form_with_types(info, meta_lookup, None)
+}
+
+/// [`decode_form`] that also resolves concrete reference `ValueType` titles through `type_lookup`.
+pub fn decode_form_with_types(
+    info: &FormInfo,
+    meta_lookup: Option<&MetaLookup>,
+    type_lookup: Option<&ConfigTypeLookup>,
+) -> Res<Value> {
+    decode_oof_stream_with_types(&info.layout_payload.raw, &info.uuid, meta_lookup, type_lookup)
 }
 
 /// Decode a `{27,{18,...}}` form stream; `meta_lookup` maps lowercase metadata uuids to names.
@@ -754,6 +759,16 @@ pub fn decode_form(info: &FormInfo, meta_lookup: Option<&MetaLookup>) -> Res<Val
 /// The returned model has the keys `caption, width, height, mainAttribute, extension, events, attributes,
 /// controls, warnings` (the last one holds the `FORM_CONTROL_UNKNOWN`/`FORM_PROPERTY_UNREADABLE` diagnostics).
 pub fn decode_oof_stream(raw: &[u8], form_uuid: &str, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
+    decode_oof_stream_with_types(raw, form_uuid, meta_lookup, None)
+}
+
+/// [`decode_oof_stream`] that also resolves concrete reference `ValueType` titles through `type_lookup`.
+pub fn decode_oof_stream_with_types(
+    raw: &[u8],
+    form_uuid: &str,
+    meta_lookup: Option<&MetaLookup>,
+    type_lookup: Option<&ConfigTypeLookup>,
+) -> Res<Value> {
     let root = parse_metadata(raw)?;
     if root.len() < 5 || !(is_bare(&root.children[0], "27") || is_bare(&root.children[0], "26")) {
         return Err(OofError::new("form stream does not start with {27,...}"));
@@ -772,13 +787,13 @@ pub fn decode_oof_stream(raw: &[u8], form_uuid: &str, meta_lookup: Option<&MetaL
     let mut warnings: Vec<Value> = Vec::new();
     let mut controls: Vec<Value> = Vec::new();
     for c in table(Some(&panel.children[2]), "root panel children")? {
-        controls.push(control(c, &mut warnings, form_uuid, meta_lookup)?);
+        controls.push(control(c, &mut warnings, form_uuid, meta_lookup, type_lookup)?);
     }
     let (root_show_tabs, root_pages) = match &panel.children[1] {
         Item::Node(pinfo) => panel_pages(pinfo, width, height),
         Item::Atom(_) => (0, Vec::new()),
     };
-    let (main_id, attrs, links) = attributes(node(&root.children[2], "attributes section", 3)?, meta_lookup)?;
+    let (main_id, attrs, links) = attributes(node(&root.children[2], "attributes section", 3)?, meta_lookup, type_lookup)?;
     apply_links(&mut controls, &links);
     let ext = node(&root.children[3], "extension section", 1)?;
     let is_dp_ext = is_bare(&ext.children[0], EXTENSION_GUID);
@@ -969,8 +984,6 @@ impl Writer {
         }
         if let Some(t) = vt.get("title").and_then(|v| v.as_str()) {
             attrs.push(("title", t.to_string()));
-        } else if let Some(r) = vt.get("ref").and_then(|v| v.as_str()) {
-            attrs.push(("title", r.to_string()));
         }
         if let Some(l) = vt.get("length") {
             attrs.push(("length", pystr(l)));
@@ -1561,6 +1574,17 @@ fn run_external_in(tmp: &std::path::Path, container: &[u8], oof_path: &str) -> R
 
 /// Build `Form.xml` for one form; failures are warnings in `diagnostics` and `xml` is `None`.
 pub fn build_oof(info: &FormInfo, alias: &str, oof_path: Option<&str>, meta_lookup: Option<&MetaLookup>) -> OofResult {
+    build_oof_with_types(info, alias, oof_path, meta_lookup, None)
+}
+
+/// [`build_oof`] that also resolves concrete reference `ValueType` titles through `type_lookup`.
+pub fn build_oof_with_types(
+    info: &FormInfo,
+    alias: &str,
+    oof_path: Option<&str>,
+    meta_lookup: Option<&MetaLookup>,
+    type_lookup: Option<&ConfigTypeLookup>,
+) -> OofResult {
     let component = diag_component(&info.uuid);
     let mut diags: Vec<Value> = Vec::new();
     if let Some(path) = oof_path.filter(|p| !p.is_empty()) {
@@ -1589,7 +1613,7 @@ pub fn build_oof(info: &FormInfo, alias: &str, oof_path: Option<&str>, meta_look
             }
         }
     }
-    let built = decode_form(info, meta_lookup).and_then(|model| render_form_xml(info, &model).map(|xml| (model, xml)));
+    let built = decode_form_with_types(info, meta_lookup, type_lookup).and_then(|model| render_form_xml(info, &model).map(|xml| (model, xml)));
     match built {
         Err(e) => {
             diags.push(diagnostic(

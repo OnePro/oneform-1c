@@ -1738,48 +1738,134 @@ fn remaining_colors_fonts_scrollbars_valuetype_buttons_and_form_header_round_tri
     assert_eq!(cf.values.choice_list[0].value, "Зн1");
 }
 
+const GUID_A: &str = "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38";
+const GUID_B: &str = "44a01d39-c2b6-4751-85e6-06fdc2f23043";
+
 #[test]
 fn concrete_reference_and_qualified_valuetypes_round_trip() {
     let mut edited = baseline("DonorForm");
-    // 1. Add a concrete reference attribute
-    let new_attr = "    <Attribute id=\"16\" name=\"КонтрагентРеквизит\">\n      <Main>false</Main>\n      <ValueType kind=\"Ref\" composite=\"false\" ref=\"Справочник.Контрагенты\"/>\n    </Attribute>\n  </Attributes>";
-    edited = edited.replacen("  </Attributes>", new_attr, 1);
+    let new_attrs = format!(
+        "    <Attribute id=\"16\" name=\"ОднаСсылка\">\n      <ValueType kind=\"Ref\" composite=\"false\" refGuid=\"{GUID_A}\"/>\n    </Attribute>\n\
+         \x20   <Attribute id=\"17\" name=\"НесколькоСсылок\">\n      <ValueType kind=\"Ref\" composite=\"true\" refGuid=\"{GUID_A};{GUID_B}\"/>\n    </Attribute>\n\
+         \x20   <Attribute id=\"18\" name=\"Сумма\">\n      <ValueType kind=\"Number\" composite=\"false\" digits=\"15\" fractionDigits=\"2\"/>\n    </Attribute>\n\
+         \x20   <Attribute id=\"19\" name=\"Строка\">\n      <ValueType kind=\"String\" composite=\"false\" length=\"50\"/>\n    </Attribute>\n  </Attributes>"
+    );
+    edited = edited.replacen("  </Attributes>", &new_attrs, 1);
+    let vt = |from: &str, to: String| (from.to_string(), to);
+    let ctl_edits: [(&str, (String, String)); 4] = [
+        ("ПолеВвода1", vt("<ValueType kind=\"ValueList\" composite=\"false\"/>", format!("<ValueType kind=\"Ref\" composite=\"false\" refGuid=\"{GUID_A}\"/>"))),
+        ("ПолеВвода7", vt("<ValueType kind=\"String\" composite=\"false\"/>", "<ValueType kind=\"String\" composite=\"false\" length=\"50\"/>".to_string())),
+        ("ПолеВвода2", vt("<ValueType kind=\"Number\" composite=\"false\" fractionDigits=\"0\"/>", "<ValueType kind=\"Number\" composite=\"false\" digits=\"15\" fractionDigits=\"2\"/>".to_string())),
+        ("ПолеВвода6", vt("<ValueType kind=\"Ref\" composite=\"true\"/>", format!("<ValueType kind=\"Ref\" composite=\"true\" refGuid=\"{GUID_A};{GUID_B}\"/>"))),
+    ];
+    for (name, (from, to)) in &ctl_edits {
+        edited = edit_ctl(&edited, name, &[(from, to)]);
+    }
 
-    // 2. Patch InputField ПолеВвода1 to concrete reference by refGuid
+    let (_, got) = structural_round_trip("DonorForm", &edited);
+    let attr = |id: i64| got.attributes.iter().find(|a| a.id == id).unwrap();
+    assert_eq!((attr(16).kind.as_str(), attr(16).composite), ("Ref", false));
+    assert_eq!(attr(16).ref_guids, vec![GUID_A]);
+    assert_eq!((attr(17).kind.as_str(), attr(17).composite), ("Ref", true));
+    assert_eq!(attr(17).ref_guids, vec![GUID_A, GUID_B]);
+    assert_eq!((attr(18).digits, attr(18).fraction_digits), (Some(15), Some(2)));
+    assert_eq!(attr(19).length, Some(50));
+
+    let value_type = |id: i64| got.control(id).unwrap().values.value_type.clone().unwrap();
+    let (vt7, vt33, vt28, vt32) = (value_type(7), value_type(33), value_type(28), value_type(32));
+    assert_eq!((vt7.kind.as_str(), vt7.composite), ("Ref", false));
+    assert_eq!(vt7.ref_guids, vec![GUID_A]);
+    assert_eq!((vt33.kind.as_str(), vt33.length), ("String", Some(50)));
+    assert_eq!((vt28.digits, vt28.fraction_digits), (Some(15), Some(2)));
+    assert_eq!((vt32.composite, vt32.ref_guids), (true, vec![GUID_A.to_string(), GUID_B.to_string()]));
+}
+
+#[test]
+fn inconsistent_valuetype_qualifiers_are_not_editable() {
+    let base = baseline("DonorForm");
+    let from = "<ValueType kind=\"String\" composite=\"false\"/>";
+    for bad in [
+        "<ValueType kind=\"String\" composite=\"false\" digits=\"5\"/>",
+        "<ValueType kind=\"String\" composite=\"false\" length=\"0\"/>",
+        "<ValueType kind=\"String\" composite=\"false\" length=\"x\"/>",
+        "<ValueType kind=\"String\" composite=\"false\" refGuid=\"47e6dd42-cd5c-4e3a-9bc4-14816ed53d38\"/>",
+        "<ValueType kind=\"Ref\" composite=\"true\" refGuid=\"47e6dd42-cd5c-4e3a-9bc4-14816ed53d38\"/>",
+        "<ValueType kind=\"Ref\" composite=\"false\" refGuid=\"acf6192e-81ca-46ef-93a6-5a6968b78663\"/>",
+    ] {
+        let (kind, text) = patch_rejected("DonorForm", &edit_ctl(&base, "ПолеВвода7", &[(from, bad)]));
+        assert_eq!(kind, "unsupported-property", "{bad}: {text}");
+    }
+}
+
+/// `(target, side, offset)` of the four anchor edges (top, bottom, left, right) of control `id` in `bytes`.
+fn anchor_edges(bytes: &[u8], id: i64) -> [Option<(i64, i64, i64)>; 4] {
+    let s = parse_spanned(bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    let geom = idx.get(id).unwrap().geom().unwrap().node;
+    [6, 7, 8, 9].map(|i| oneform::form_patch::read_anchor_edge(geom, i).map(|e| (e.target, e.side, e.offset)))
+}
+
+#[test]
+fn control_anchors_round_trip() {
+    let before = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+
+    let mut edited = baseline("DonorForm");
+    edited = edit_ctl(
+        &edited,
+        "ТабличноеПоле1",
+        &[("<ZOrder>4</ZOrder>", "<ZOrder>4</ZOrder>\n          <Anchors left=\"Left\" top=\"Top\" right=\"Right\" bottom=\"Bottom\" leftOffset=\"6\" topOffset=\"24\" rightOffset=\"-6\" bottomOffset=\"-6\"/>")],
+    );
     edited = edit_ctl(
         &edited,
         "ПолеВвода1",
-        &[(
-            "<ValueType kind=\"ValueList\" composite=\"false\"/>",
-            "<ValueType kind=\"Ref\" composite=\"false\" refGuid=\"47e6dd42-cd5c-4e3a-9bc4-14816ed53d38\"/>",
-        )],
+        &[("<ZOrder>5</ZOrder>", "<ZOrder>5</ZOrder>\n          <Anchors right=\"Right\" rightOffset=\"-10\"/>")],
     );
+    let button = "<Button name=\"Добавленная\" id=\"999\">\n          <Caption><Item language=\"ru\">ОК</Item></Caption>\n          <Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>\n          <ZOrder>50</ZOrder><TabOrder>50</TabOrder>\n          <Anchors top=\"Bottom\" bottom=\"Bottom\" left=\"Right\" right=\"Right\" topOffset=\"-25\" bottomOffset=\"-5\" leftOffset=\"-80\" rightOffset=\"-5\"/>\n        </Button>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(button.to_string() + anchor), 1);
 
-    // 3. Patch InputField ПолеВвода7 to qualified String length="50"
-    edited = edit_ctl(
-        &edited,
-        "ПолеВвода7",
-        &[(
-            "<ValueType kind=\"String\" composite=\"false\"/>",
-            "<ValueType kind=\"String\" composite=\"false\" length=\"50\"/>",
-        )],
-    );
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let table = anchor_edges(&pf.bytes, 6);
+    assert_eq!(table, [Some((0, 0, 24)), Some((0, 1, -6)), Some((0, 2, 6)), Some((0, 3, -6))]);
 
-    let (_, got) = structural_round_trip("DonorForm", &edited);
-    let attr16 = got.attributes.iter().find(|a| a.id == 16).unwrap();
-    assert_eq!(attr16.kind, "Ref");
-    assert!(!attr16.composite);
-    assert_eq!(attr16.ref_guids, vec!["47e6dd42-cd5c-4e3a-9bc4-14816ed53d38"]);
+    // Partial: only the right edge of ПолеВвода1 changes.
+    let (old, new) = (anchor_edges(&before, 7), anchor_edges(&pf.bytes, 7));
+    assert_eq!(new[3], Some((0, 3, -10)));
+    assert_eq!(new[..3], old[..3]);
 
-    let inp1 = got.control(7).unwrap();
-    let vt1 = inp1.values.value_type.as_ref().unwrap();
-    assert_eq!(vt1.kind, "Ref");
-    assert!(!vt1.composite);
-    assert_eq!(vt1.ref_guids, vec!["47e6dd42-cd5c-4e3a-9bc4-14816ed53d38"]);
-
-    let inp7 = got.control(33).unwrap();
-    let vt7 = inp7.values.value_type.as_ref().unwrap();
-    assert_eq!(vt7.kind, "String");
-    assert_eq!(vt7.length, Some(50));
+    let added = pf.allocated[0].1;
+    assert_eq!(anchor_edges(&pf.bytes, added), [Some((0, 1, -25)), Some((0, 1, -5)), Some((0, 3, -80)), Some((0, 3, -5))]);
 }
 
+#[test]
+fn malformed_anchors_are_not_editable() {
+    let base = baseline("DonorForm");
+    let from = "<ZOrder>5</ZOrder>";
+    for bad in [
+        "<Anchors/>",
+        "<Anchors rightOffset=\"-10\"/>",
+        "<Anchors right=\"Right\" rightOffset=\"x\"/>",
+        "<Anchors right=\"Right\" target=\"x\"/>",
+        "<Anchors right=\"Middle\"/>",
+        "<Anchors right=\"None\" rightOffset=\"3\"/>",
+    ] {
+        let xml = edit_ctl(&base, "ПолеВвода1", &[(from, &format!("{from}\n          {bad}"))]);
+        let (kind, text) = patch_rejected("DonorForm", &xml);
+        assert_eq!(kind, "unsupported-unknown-element", "{bad}: {text}");
+    }
+}
+
+#[test]
+fn edited_attribute_keeps_the_original_type_pattern_bytes() {
+    // The stream pattern `{"N",10,0,1}` carries a sign flag that `<ValueType>` cannot express.
+    let edited = replace_once(
+        &baseline("DonorForm"),
+        "<Attribute id=\"7\" name=\"ПолосаРегулирования1\">\n      <Main>true</Main>",
+        "<Attribute id=\"7\" name=\"ПолосаРегулирования1\">\n      <Main>true</Main>\n      <StoredData>true</StoredData>",
+    );
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    let at = text.find("{{7},1,1,1,\"ПолосаРегулирования1\",").expect("stored flag not set");
+    let tail: String = text[at..].chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(tail.contains("\"ПолосаРегулирования1\",{\"Pattern\",{\"N\",10,0,1}}"), "pattern bytes changed");
+}

@@ -8,6 +8,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde_json::{json, Map, Value};
 
@@ -22,10 +23,12 @@ use crate::errors::{
     IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING, PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
 use crate::form_basic::{build_form_definition, MODULE_NAME, STREAM_PATH};
+use crate::form_patch::with_type_lookup;
 use crate::manifest::{module_record, sort_diagnostics, GENERATOR_VERSION, MANIFEST_PATH};
 use crate::metadata::{FormInfo, Payload};
+use crate::metaref::ConfigTypeLookup;
 use crate::naming::{is_uuid, resolve_1c_aliases, safe_join};
-use crate::oof::{apply_projection, build_oof, MetaLookup, FORM_XML_NAME};
+use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, FORM_XML_NAME};
 use crate::pack::{atomic_write, encode_text, plan_layout_patch, LayoutPatch, PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES};
 use crate::preview::{render_form_preview_html, FORM_PREVIEW_NAME};
 use crate::stage::{ExtractionResult, STATUS_PARTIAL};
@@ -196,31 +199,18 @@ fn meta_of_doc(doc: &roxmltree::Document<'_>) -> Option<Meta> {
     Some(meta)
 }
 
-/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included),
-/// as well as all configuration metadata type references discovered in ancestor directories.
+/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included).
 pub fn read_meta_lookup(path: &Path) -> MetaLookup {
-    let mut lookup = HashMap::new();
-    if let Some(text) = read_xml_text(path) {
-        if let Some(doc) = open_doc(&text) {
-            lookup = lookup_of_doc(&doc);
-        }
-    }
-    if let Some(cfg_root) = crate::metaref::ConfigTypeLookup::find_config_root(path) {
-        let cfg_lookup = crate::metaref::ConfigTypeLookup::from_config_dir(&cfg_root);
-        for (guid, name) in cfg_lookup.all_guid_names() {
-            lookup.entry(guid.to_string()).or_insert_with(|| name.to_string());
-        }
-    }
-    lookup
+    let Some(text) = read_xml_text(path) else { return HashMap::new() };
+    open_doc(&text).map(|doc| lookup_of_doc(&doc)).unwrap_or_default()
 }
 
 /// `(_read_meta(path), read_meta_lookup(path))` from one parse of the file.
 fn read_meta_and_lookup(path: &Path) -> (Meta, MetaLookup) {
-    let lookup = read_meta_lookup(path);
-    let Some(text) = read_xml_text(path) else { return (Default::default(), lookup) };
+    let Some(text) = read_xml_text(path) else { return Default::default() };
     match open_doc(&text) {
-        Some(doc) => (meta_of_doc(&doc).unwrap_or_default(), lookup),
-        None => (Default::default(), lookup),
+        Some(doc) => (meta_of_doc(&doc).unwrap_or_default(), lookup_of_doc(&doc)),
+        None => Default::default(),
     }
 }
 
@@ -333,6 +323,7 @@ fn stage_config_object_hashed(
         (None, Some(x)) => read_meta_and_lookup(x),
     };
     let meta_lookup = meta_lookup.unwrap_or(&owned_lookup);
+    let type_lookup = ConfigTypeLookup::for_config_root(root);
     let obj_uuid = uuid_or_fallback(&ometa.uuid, &obj.rel);
     let obj_name = if ometa.name.is_empty() { name_of(&base) } else { ometa.name.clone() };
     let obj_synonym = ometa.synonym.clone();
@@ -423,7 +414,7 @@ fn stage_config_object_hashed(
         let mut layout_status = "unsupported";
         let mut xml_path: Option<String> = None;
         let mut preview_path: Option<String> = None;
-        let oof = build_oof(info, alias, oof_path, Some(meta_lookup));
+        let oof = build_oof_with_types(info, alias, oof_path, Some(meta_lookup), Some(type_lookup.as_ref()));
         diags.extend(oof.diagnostics.clone());
         let component = format!("Forms/{}", info.uuid);
         if let Some(xml) = &oof.xml {
@@ -816,6 +807,7 @@ pub fn stage_config_pack(
     let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut packed: Vec<String> = Vec::new();
     let mut layouts: Vec<LayoutPatch> = Vec::new();
+    let type_lookup = ConfigTypeLookup::for_config_root(root);
     for rec in cur["forms"].as_array().map(Vec::as_slice).unwrap_or_default() {
         let alias = rec["alias"].as_str().unwrap_or("");
         let bin = cur["source"]["forms"][alias]["binPath"].as_str().unwrap_or("");
@@ -831,7 +823,8 @@ pub fn stage_config_pack(
         }
         let stream_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
         let ex_stream = existing_file(existing, stream_path)?;
-        if let Some(lp) = plan_layout_patch(&rec["layout"], existing, &current.files)? {
+        let planned = with_type_lookup(Arc::clone(&type_lookup), || plan_layout_patch(&rec["layout"], existing, &current.files))?;
+        if let Some(lp) = planned {
             edits.entry(name.as_str()).or_default().push(("form", lp.patched.bytes.clone()));
             expected.insert(stream_path.to_string(), lp.patched.bytes.clone());
             packed.push(lp.xml_path.clone());

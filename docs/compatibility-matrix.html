@@ -139,18 +139,18 @@
 </header>
 <div class="container">
   <div class="kpi-grid">
-    <div class="kpi"><div class="num">83</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
+    <div class="kpi"><div class="num">84</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
     <div class="kpi"><div class="num">0</div><div class="label">🔵 Найдено в бинарнике через <code>explore</code> (готово к проводке)</div></div>
     <div class="kpi"><div class="num">3</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
-    <div class="kpi"><div class="num">4</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
+    <div class="kpi"><div class="num">3</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
   </div>
   <div class="toolbar">
     <div class="filters">
       <button class="filter-btn active" data-filter="all">Все статусы</button>
-      <button class="filter-btn" data-filter="rw">🟢 R/W (83)</button>
+      <button class="filter-btn" data-filter="rw">🟢 R/W (84)</button>
       <button class="filter-btn" data-filter="bin">🔵 Bin (0)</button>
       <button class="filter-btn" data-filter="ro">🟡 R/O (3)</button>
-      <button class="filter-btn" data-filter="unk">⚪ Unk (4)</button>
+      <button class="filter-btn" data-filter="unk">⚪ Unk (3)</button>
     </div>
     <input type="search" id="searchInput" class="search-box" placeholder="Поиск по свойству, XML-тегу, слоту info[...] или типу..." />
   </div>
@@ -218,7 +218,7 @@
 <tr data-status="rw"><td>Все элементы</td><td>Порядок отрисовки (<code>ZOrder</code>)</td><td><code>&lt;ZOrder&gt;</code></td><td><code>geom[21]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полная поддержка чтения и записи</td></tr>
 <tr data-status="rw"><td>Все элементы</td><td><code>ПорядокОбхода</code> (<code>TabOrder</code>)</td><td><code>&lt;TabOrder&gt;</code></td><td><code>geom[22]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полная поддержка чтения и записи</td></tr>
 <tr data-status="rw"><td>Дети <code>Panel</code></td><td>Индекс страницы панели</td><td>Вложенность в <code>&lt;Page&gt;</code></td><td><code>geom[19]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Новые контролы внутри <code>&lt;Page&gt;</code> получают правильный индекс страницы</td></tr>
-<tr data-status="unk"><td>Все элементы</td><td>Привязки границ (<code>Anchors</code>)</td><td><em>(не выводится)</em></td><td><code>geom[6..11]</code></td><td><span class="badge unk">⚪ Unk</span></td><td>4 узла привязки краёв элемента к форме или соседним контролам</td></tr>
+<tr data-status="rw"><td>Все элементы</td><td><strong>Привязки границ (<code>Anchors</code>)</strong></td><td><code>&lt;Anchors left=&quot;...&quot; top=&quot;...&quot; right=&quot;...&quot; bottom=&quot;...&quot;/&gt;</code></td><td><code>geom[6..9]</code> (<code>{0,{2,target,side,offset},...}</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Патчится для существующих и добавляемых из донора элементов (<code>Left</code>/<code>Top</code>/<code>Right</code>/<code>Bottom</code>/<code>None</code>, per-edge <code><em>Target</code>/<code></em>Offset</code>)</td></tr>
 <tr data-status="unk"><td>Все элементы</td><td><code>АвтоПорядокОбхода</code> / <code>ПропускПриВводе</code></td><td><em>(не выводится)</em></td><td><code>geom[20..24]</code> / <code>info</code></td><td><span class="badge unk">⚪ Unk</span></td><td>Кандидаты в хвосте <code>geom</code> (<code>geom[20]</code>, <code>geom[23]</code>, <code>geom[24]</code>)</td></tr>
 </tbody></table>
 <h3>3.2. Идентификация, Заголовок и События</h3>

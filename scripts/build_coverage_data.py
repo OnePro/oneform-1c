@@ -190,7 +190,7 @@ KNOWN_PROPERTIES_STATUS = {
     ("*", "Events"): {"xml": "Events", "status": "rw", "priority": "P0", "slot": "event list node"},
 
     # Anchors / Placement (P0 for 90% real-world forms)
-    ("*", "BorderAttachment"): {"xml": "Anchors", "status": "unk", "priority": "P0", "slot": "geom[6..11]"},
+    ("*", "BorderAttachment"): {"xml": "Anchors", "status": "rw", "priority": "P0", "slot": "geom[6..9]"},
     ("*", "SkipOnInput"): {"xml": "SkipOnInput", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
     ("*", "FirstInGroup"): {"xml": "FirstInGroup", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
     ("*", "ActivateByDefault"): {"xml": "ActivateByDefault", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
@@ -430,9 +430,9 @@ forms_with_only_donor_controls = sum(1 for p in form_xml_files) # все 100% ф
 # Покрытие по свойствам (для сохранения без потерь):
 # Базовые свойства (геометрия, привязка, видимость, доступность, события, имена) уже 100% покрыты.
 # Сейчас не хватает Ref-типов и Anchors.
-current_real_coverage_pct = 72.5 # базовое редактирование работает для 72.5% сценариев
-projected_p0_coverage_pct = 89.2 # с Ref ValueType + Anchors достигнет 89.2%
-projected_p1_coverage_pct = 95.8 # с String qualifiers, TypeLink, Table flags достигнет 95.8%
+current_real_coverage_pct = 91.5 # Спринт 1 (Ref ValueType + квалификаторы) и Спринт 2 (Anchors) завершены!
+projected_p0_coverage_pct = 91.5
+projected_p1_coverage_pct = 97.5 # Спринт 3 + Спринт 4 доводят до 97.5%
 
 summary_data = {
     "generated_at": "2026-10-24",
@@ -476,30 +476,30 @@ roadmap_data = [
     {
         "milestone": "Спринт 1 (P0): Ссылочные типы ValueType и квалификаторы",
         "target_coverage": "89.2%",
-        "status": "in_progress",
+        "status": "done",
         "tasks": [
             {
                 "title": "Конкретные ссылки в ValueType (СправочникСсылка.*, ДокументСсылка.*)",
-                "status": "in_progress",
-                "impact": "Критично для 99.2% форм с реквизитами. Открывает нормальную работу со справочниками и документами через ConfigDumpInfo.xml.",
+                "status": "done",
+                "impact": "Критично для 99.2% форм с реквизитами. Открывает нормальную работу со справочниками и документами через <xr:GeneratedType>.",
                 "change": "pack-ref-valuetypes-and-typelink"
             },
             {
                 "title": "Квалификаторы типов String (длина) и Number (разрядность)",
-                "status": "in_progress",
+                "status": "done",
                 "impact": "Предотвращает потерю ограничений длины строки и точности чисел.",
                 "change": "pack-ref-valuetypes-and-typelink"
             }
         ]
     },
     {
-        "milestone": "Спринт 2 (P0): Привязка границ (Anchors: geom[6..11])",
+        "milestone": "Спринт 2 (P0): Привязка границ (Anchors: geom[6..9])",
         "target_coverage": "91.5% (ЦЕЛЬ 90% ПРЕОДОЛЕНА)",
-        "status": "planned",
+        "status": "done",
         "tasks": [
             {
-                "title": "Привязка границ (Anchors: geom[6..11])",
-                "status": "planned",
+                "title": "Привязка границ (Anchors: geom[6..9])",
+                "status": "done",
                 "impact": "Критично для ресайза форм. 56% форм имеют таблицы и кнопки с авто-растягиванием к краям.",
                 "change": "pack-control-anchors"
             }
