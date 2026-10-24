@@ -139,17 +139,17 @@
 </header>
 <div class="container">
   <div class="kpi-grid">
-    <div class="kpi"><div class="num">62</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
+    <div class="kpi"><div class="num">65</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
     <div class="kpi"><div class="num">3</div><div class="label">🔵 Найдено в бинарнике через <code>explore</code> (готово к проводке)</div></div>
-    <div class="kpi"><div class="num">21</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
+    <div class="kpi"><div class="num">18</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
     <div class="kpi"><div class="num">4</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
   </div>
   <div class="toolbar">
     <div class="filters">
       <button class="filter-btn active" data-filter="all">Все статусы</button>
-      <button class="filter-btn" data-filter="rw">🟢 R/W (62)</button>
+      <button class="filter-btn" data-filter="rw">🟢 R/W (65)</button>
       <button class="filter-btn" data-filter="bin">🔵 Bin (3)</button>
-      <button class="filter-btn" data-filter="ro">🟡 R/O (21)</button>
+      <button class="filter-btn" data-filter="ro">🟡 R/O (18)</button>
       <button class="filter-btn" data-filter="unk">⚪ Unk (4)</button>
     </div>
     <input type="search" id="searchInput" class="search-box" placeholder="Поиск по свойству, XML-тегу, слоту info[...] или типу..." />
@@ -272,7 +272,7 @@
 <h3>4.3. Панель (<code>Panel</code>) и страницы вкладок (<code>&lt;Page&gt;</code>)</h3>
 <table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
 <tr data-status="rw"><td><code>Panel</code></td><td><strong>Отображение закладок (<code>ShowTabs</code>)</strong></td><td><code>&lt;ShowTabs code=&quot;...&quot; member=&quot;...&quot;/&gt;</code></td><td><code>info[1][base+1]</code> (<code>0</code>=None, <code>1</code>=Top, ...)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи с пересчётом страниц</td></tr>
-<tr data-status="ro"><td><code>Panel / Page</code></td><td>Заголовок, Видимость, Доступность вкладки</td><td><code>&lt;Page name=&quot;...&quot;&gt;&lt;Title&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;Enabled&gt;</code></td><td><code>info[1][13]</code> (список страниц)</td><td><span class="badge ro">🟡 R/O</span></td><td>Читается в <code>Form.xml</code> и рендерится в превью; патч заголовков и добавление/удаление страниц пока не реализованы</td></tr>
+<tr data-status="rw"><td><code>Panel / Page</code></td><td><strong>Заголовок, Видимость, Доступность вкладки</strong></td><td><code>&lt;Page name=&quot;...&quot;&gt;&lt;Title&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;Enabled&gt;</code></td><td><code>info[1][base+3]</code> (<code>rec[1]</code>, <code>rec[4]</code>, <code>rec[5]</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи заголовков, видимости и доступности вкладок</td></tr>
 </tbody></table>
 <h3>4.4. Табличное поле (<code>Table</code>) и его колонки (<code>&lt;Columns&gt;&lt;Column&gt;</code>)</h3>
 <table class="matrix-table"><thead><tr><th>Контрол / Блок</th><th>Свойство в 1С</th><th>Тег в <code>Form.xml</code></th><th>Слот в <code>FormStream.bin</code></th><th>Статус</th><th>Детали</th></tr></thead><tbody>
@@ -280,8 +280,8 @@
 <tr data-status="rw"><td><code>Table</code></td><td><strong><code>РежимВыделения</code> (<code>SelectionMode</code>)</strong></td><td><code>&lt;SelectionMode&gt;</code></td><td><strong><code>info[2][1][15]</code></strong> (<code>0</code>=Одиночный, <code>1</code>=Множественный)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>table-flag-04</code>)</td></tr>
 <tr data-status="bin"><td><code>Table</code></td><td><strong><code>НачальноеОтображениеДерева</code></strong></td><td><code>&lt;InitialTreeView&gt;</code> <em>(предстоит)</em></td><td><strong><code>info[2][1][21]</code></strong></td><td><span class="badge bin">🔵 Bin</span></td><td>Доказано через <code>ENTERPRISE /Execute</code> (<code>table-flag-07</code>)</td></tr>
 <tr data-status="unk"><td><code>Table</code></td><td><code>ТолькоПросмотр</code>, линии сетки, полосы прокрутки</td><td><em>(не выводится)</em></td><td><code>info[2][1][...]</code></td><td><span class="badge unk">⚪ Unk</span></td><td>Кандидаты в <code>info[2][1]</code></td></tr>
-<tr data-status="ro"><td><code>Table / Column</code></td><td>Имя, Заголовок, ТекстПодвала, Подсказка колонки</td><td><code>&lt;Column name=&quot;...&quot;&gt;&lt;Header&gt;</code>, <code>&lt;FooterText&gt;</code>, <code>&lt;Tooltip&gt;</code></td><td>Список колонок внутри <code>Table.info</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code> и рендерятся в превью</td></tr>
-<tr data-status="ro"><td><code>Table / Column</code></td><td>Ширина, Видимость, ТолькоПросмотр, Редактор колонки</td><td><code>&lt;Width&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;ReadOnly&gt;</code>, <code>&lt;Editor&gt;</code></td><td><code>col_props[4]</code>, <code>col_props[25]</code>, <code>col_props[38]</code></td><td><span class="badge ro">🟡 R/O</span></td><td>Слоты уже декодируются в <code>decode_column_props</code> (<code>src/oof_props.rs</code>)</td></tr>
+<tr data-status="rw"><td><code>Table / Column</code></td><td><strong>Имя, Заголовок, ТекстПодвала, Подсказка колонки</strong></td><td><code>&lt;Column name=&quot;...&quot;&gt;&lt;Header&gt;</code>, <code>&lt;FooterText&gt;</code>, <code>&lt;Tooltip&gt;</code></td><td><code>col_props[30]</code>, <code>col_props[1..=3]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи</td></tr>
+<tr data-status="rw"><td><code>Table / Column</code></td><td><strong>Ширина, Видимость, ТолькоПросмотр, Редактор колонки</strong></td><td><code>&lt;Width&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;ReadOnly&gt;</code>, <code>&lt;Editor&gt;</code></td><td><code>col_props[4]</code>, <code>col_props[25]</code>, <code>col_props[38]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи (<code>decode_column_props</code> + <code>form_patch</code>)</td></tr>
 <tr data-status="ro"><td><code>Table / Column</code></td><td><code>DataPath</code> и события колонки</td><td><code>&lt;DataPath&gt;</code>, <code>&lt;Events&gt;</code></td><td>Привязка к полю ТЧ/ТЗ + список событий</td><td><span class="badge ro">🟡 R/O</span></td><td>Читаются в <code>Form.xml</code></td></tr>
 </tbody></table>
 <h3>4.5. Командная панель (<code>CommandBar</code>) и её кнопки (<code>&lt;Buttons&gt;&lt;Button&gt;</code>)</h3>
@@ -294,7 +294,7 @@
 <ol class="roadmap-list">
 <li>✅ <strong>Шаг А — Перевод всех найденных флагов и простых свойств (🔵 + 🟡 -&gt; 🟢 R/W): ВЫПОЛНЕНО</strong> (<code>pack-discovered-control-properties</code>). Подключены <code>&lt;Enabled&gt;</code>, <code>&lt;TransparentBack&gt;</code>, <code>&lt;Tooltip&gt;</code>, <code>&lt;ReadOnly&gt;</code>, все 5 кнопок <code>InputField</code>, <code>&lt;AutoMarkIncomplete&gt;</code>, <code>&lt;AutoChoiceIncomplete&gt;</code>, <code>&lt;MarkNegatives&gt;</code>, <code>&lt;AutoCellHeight&gt;</code>, <code>&lt;ChoiceListMode&gt;</code>, <code>&lt;ThreeState&gt;</code>, <code>&lt;TitleLocation&gt;</code>, <code>&lt;Hyperlink&gt;</code>, <code>&lt;HorizontalAlign&gt;</code>, <code>&lt;ShowTabs&gt;</code>, <code>&lt;Footer&gt;</code>, <code>&lt;SelectionMode&gt;</code>, <code>&lt;AutoFill&gt;</code>.</li>
 <li>✅ <strong>Шаг Б — События и переименование существующих элементов: ВЫПОЛНЕНО</strong> (<code>pack-existing-control-events-and-renames</code>). Разрешено редактировать <code>&lt;Events&gt;</code> и переименовывать <code>name</code> (при сохранении <code>id</code>) у уже существующих элементов на форме.</li>
-<li><strong>Шаг В — Патч колонок <code>Table</code> и вкладок <code>Panel</code>:</strong> разрешить менять ширину, заголовок, видимость и <code>ReadOnly</code> существующих колонок <code>&lt;Column&gt;</code> табличного поля и заголовки вкладок <code>&lt;Page&gt;</code> у <code>Panel</code>, а затем — добавлять и удалять колонки и вкладки.</li>
+<li>✅ <strong>Шаг В — Патч колонок <code>Table</code> и вкладок <code>Panel</code>: ВЫПОЛНЕНО</strong> (<code>pack-table-columns-and-panel-pages</code>). Разрешено менять имя, ширину, заголовок, текст подвала, подсказку, видимость, <code>ReadOnly</code> и <code>Editor</code> существующих колонок <code>&lt;Column&gt;</code> табличного поля и заголовки, видимость и доступность вкладок <code>&lt;Page&gt;</code> у <code>Panel</code>.</li>
 <li><strong>Шаг Г — Донор 27/27 и Реквизиты формы + <code>DataPath</code>:</strong> добавить в <code>donor.epf</code> недостающие 3 типа (<code>UsualGroup</code>, <code>ChoiceField</code>, <code>ActiveXControl</code>) и научить <code>form_patch.rs</code> добавлять реквизиты в <code>root[2][2]</code> и привязывать их к контролам в <code>root[2][3]</code> (<code>&lt;DataPath&gt;</code>).</li>
 </ol>
 </section>

@@ -142,7 +142,7 @@
 | Контрол / Блок | Свойство в 1С | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус | Детали |
 |---|---|---|---|---|---|
 | `Panel` | **Отображение закладок (`ShowTabs`)** | `<ShowTabs code="..." member="..."/>` | `info[1][base+1]` (`0`=None, `1`=Top, ...) | 🟢 R/W | Полный цикл чтения, превью и записи с пересчётом страниц |
-| `Panel / Page` | Заголовок, Видимость, Доступность вкладки | `<Page name="..."><Title>`, `<Visible>`, `<Enabled>` | `info[1][13]` (список страниц) | 🟡 R/O | Читается в `Form.xml` и рендерится в превью; патч заголовков и добавление/удаление страниц пока не реализованы |
+| `Panel / Page` | **Заголовок, Видимость, Доступность вкладки** | `<Page name="..."><Title>`, `<Visible>`, `<Enabled>` | `info[1][base+3]` (`rec[1]`, `rec[4]`, `rec[5]`) | 🟢 R/W | Полный цикл чтения, превью и записи заголовков, видимости и доступности вкладок |
 
 ### 4.4. Табличное поле (`Table`) и его колонки (`<Columns><Column>`)
 
@@ -152,8 +152,8 @@
 | `Table` | **`РежимВыделения` (`SelectionMode`)** | `<SelectionMode>` | **`info[2][1][15]`** (`0`=Одиночный, `1`=Множественный) | 🟢 R/W | Полный цикл чтения и записи (`table-flag-04`) |
 | `Table` | **`НачальноеОтображениеДерева`** | `<InitialTreeView>` *(предстоит)* | **`info[2][1][21]`** | 🔵 Bin | Доказано через `ENTERPRISE /Execute` (`table-flag-07`) |
 | `Table` | `ТолькоПросмотр`, линии сетки, полосы прокрутки | *(не выводится)* | `info[2][1][...]` | ⚪ Unk | Кандидаты в `info[2][1]` |
-| `Table / Column` | Имя, Заголовок, ТекстПодвала, Подсказка колонки | `<Column name="..."><Header>`, `<FooterText>`, `<Tooltip>` | Список колонок внутри `Table.info` | 🟡 R/O | Читаются в `Form.xml` и рендерятся в превью |
-| `Table / Column` | Ширина, Видимость, ТолькоПросмотр, Редактор колонки | `<Width>`, `<Visible>`, `<ReadOnly>`, `<Editor>` | `col_props[4]`, `col_props[25]`, `col_props[38]` | 🟡 R/O | Слоты уже декодируются в `decode_column_props` (`src/oof_props.rs`) |
+| `Table / Column` | **Имя, Заголовок, ТекстПодвала, Подсказка колонки** | `<Column name="..."><Header>`, `<FooterText>`, `<Tooltip>` | `col_props[30]`, `col_props[1..=3]` | 🟢 R/W | Полный цикл чтения, превью и записи |
+| `Table / Column` | **Ширина, Видимость, ТолькоПросмотр, Редактор колонки** | `<Width>`, `<Visible>`, `<ReadOnly>`, `<Editor>` | `col_props[4]`, `col_props[25]`, `col_props[38]` | 🟢 R/W | Полный цикл чтения, превью и записи (`decode_column_props` + `form_patch`) |
 | `Table / Column` | `DataPath` и события колонки | `<DataPath>`, `<Events>` | Привязка к полю ТЧ/ТЗ + список событий | 🟡 R/O | Читаются в `Form.xml` |
 
 ### 4.5. Командная панель (`CommandBar`) и её кнопки (`<Buttons><Button>`)
@@ -169,7 +169,6 @@
 
 1. ✅ **Шаг А — Перевод всех найденных флагов и простых свойств (🔵 + 🟡 -> 🟢 R/W): ВЫПОЛНЕНО** (`pack-discovered-control-properties`). Подключены `<Enabled>`, `<TransparentBack>`, `<Tooltip>`, `<ReadOnly>`, все 5 кнопок `InputField`, `<AutoMarkIncomplete>`, `<AutoChoiceIncomplete>`, `<MarkNegatives>`, `<AutoCellHeight>`, `<ChoiceListMode>`, `<ThreeState>`, `<TitleLocation>`, `<Hyperlink>`, `<HorizontalAlign>`, `<ShowTabs>`, `<Footer>`, `<SelectionMode>`, `<AutoFill>`.
 2. ✅ **Шаг Б — События и переименование существующих элементов: ВЫПОЛНЕНО** (`pack-existing-control-events-and-renames`). Разрешено редактировать `<Events>` и переименовывать `name` (при сохранении `id`) у уже существующих элементов на форме.
-3. **Шаг В — Патч колонок `Table` и вкладок `Panel`:**
-   разрешить менять ширину, заголовок, видимость и `ReadOnly` существующих колонок `<Column>` табличного поля и заголовки вкладок `<Page>` у `Panel`, а затем — добавлять и удалять колонки и вкладки.
+3. ✅ **Шаг В — Патч колонок `Table` и вкладок `Panel`: ВЫПОЛНЕНО** (`pack-table-columns-and-panel-pages`). Разрешено менять имя, ширину, заголовок, текст подвала, подсказку, видимость, `ReadOnly` и `Editor` существующих колонок `<Column>` табличного поля и заголовки, видимость и доступность вкладок `<Page>` у `Panel`.
 4. **Шаг Г — Донор 27/27 и Реквизиты формы + `DataPath`:**
    добавить в `donor.epf` недостающие 3 типа (`UsualGroup`, `ChoiceField`, `ActiveXControl`) и научить `form_patch.rs` добавлять реквизиты в `root[2][2]` и привязывать их к контролам в `root[2][3]` (`<DataPath>`).

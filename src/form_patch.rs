@@ -117,6 +117,27 @@ impl XmlElement {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PageValues {
+    pub name: String,
+    pub title: Vec<(String, String)>,
+    pub visible: bool,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ColumnValues {
+    pub id: Option<i64>,
+    pub name: String,
+    pub header: Vec<(String, String)>,
+    pub footer_text: Vec<(String, String)>,
+    pub tooltip: Vec<(String, String)>,
+    pub width: i64,
+    pub visible: bool,
+    pub read_only: bool,
+    pub editor: Option<String>,
+}
+
 /// Values of the supported property set, with the projection defaults applied
 /// (`Visible` true, `TabOrder` 0, empty `Caption` when the element is absent).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -151,8 +172,10 @@ pub struct ControlValues {
     pub three_state: bool,
     pub title_location: String,
     pub show_tabs: Option<i64>,
+    pub pages: Vec<PageValues>,
     pub footer: Option<bool>,
     pub selection_mode: String,
+    pub columns: Vec<ColumnValues>,
     pub auto_fill: Option<bool>,
 }
 
@@ -188,8 +211,10 @@ impl ControlValues {
             three_state: false,
             title_location: String::new(),
             show_tabs: None,
+            pages: Vec::new(),
             footer: None,
             selection_mode: String::new(),
+            columns: Vec::new(),
             auto_fill: None,
         }
     }
@@ -226,8 +251,10 @@ pub enum Property {
     ThreeState,
     TitleLocation,
     ShowTabs,
+    Pages,
     Footer,
     SelectionMode,
+    Columns,
     AutoFill,
 }
 
@@ -263,8 +290,10 @@ impl Property {
             Property::ThreeState => "ThreeState",
             Property::TitleLocation => "TitleLocation",
             Property::ShowTabs => "ShowTabs",
+            Property::Pages => "Pages",
             Property::Footer => "Footer",
             Property::SelectionMode => "SelectionMode",
+            Property::Columns => "Columns",
             Property::AutoFill => "AutoFill",
         }
     }
@@ -303,8 +332,10 @@ impl ControlValues {
             (self.three_state == other.three_state, Property::ThreeState),
             (self.title_location == other.title_location, Property::TitleLocation),
             (self.show_tabs == other.show_tabs, Property::ShowTabs),
+            (self.pages == other.pages, Property::Pages),
             (self.footer == other.footer, Property::Footer),
             (self.selection_mode == other.selection_mode, Property::SelectionMode),
+            (self.columns == other.columns, Property::Columns),
             (self.auto_fill == other.auto_fill, Property::AutoFill),
         ]
         .into_iter()
@@ -670,6 +701,263 @@ impl Parser<'_> {
                 rest.children.push((*e).clone());
             }
         }
+        let parse_loc_elem = |e: &XmlElement| -> Option<Vec<(String, String)>> {
+            if !e.attrs.is_empty() || !e.text.trim().is_empty() {
+                return None;
+            }
+            let mut items = Vec::new();
+            for it in &e.children {
+                let lang = it.attrs.get("language")?;
+                if it.tag != "Item" || it.attrs.len() != 1 || !it.children.is_empty() {
+                    return None;
+                }
+                if items.iter().any(|(l, _)| l == lang) {
+                    return None;
+                }
+                items.push((lang.clone(), it.text.clone()));
+            }
+            Some(items)
+        };
+        let parse_bool_elem = |e: &XmlElement| -> Option<bool> {
+            if !e.children.is_empty() || !e.attrs.is_empty() {
+                return None;
+            }
+            match e.text.trim() {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
+            }
+        };
+        let mut pages: Vec<PageValues> = Vec::new();
+        if type_name == "Panel" {
+            if let Some(ci) = rest.children.iter_mut().find(|e| e.tag == "ChildItems") {
+                let mut ok = true;
+                let mut extracted = Vec::new();
+                for p in &ci.children {
+                    if p.tag != "Page" {
+                        continue;
+                    }
+                    let Some(pname) = p.attrs.get("name").filter(|n| !n.trim().is_empty()).cloned() else {
+                        ok = false;
+                        break;
+                    };
+                    let mut title = Vec::new();
+                    let mut visible = true;
+                    let mut enabled = true;
+                    let mut seen_tags = std::collections::HashSet::new();
+                    for ch in &p.children {
+                        match ch.tag.as_str() {
+                            "Title" => {
+                                if !seen_tags.insert("Title") {
+                                    ok = false;
+                                    break;
+                                }
+                                let Some(t) = parse_loc_elem(ch) else {
+                                    ok = false;
+                                    break;
+                                };
+                                title = t;
+                            }
+                            "Visible" => {
+                                if !seen_tags.insert("Visible") {
+                                    ok = false;
+                                    break;
+                                }
+                                let Some(v) = parse_bool_elem(ch) else {
+                                    ok = false;
+                                    break;
+                                };
+                                visible = v;
+                            }
+                            "Enabled" => {
+                                if !seen_tags.insert("Enabled") {
+                                    ok = false;
+                                    break;
+                                }
+                                let Some(v) = parse_bool_elem(ch) else {
+                                    ok = false;
+                                    break;
+                                };
+                                enabled = v;
+                            }
+                            _ => {}
+                        }
+                    }
+                    if !ok {
+                        break;
+                    }
+                    extracted.push(PageValues { name: pname, title, visible, enabled });
+                }
+                if ok {
+                    for p in &mut ci.children {
+                        if p.tag == "Page" {
+                            p.children.retain(|ch| !matches!(ch.tag.as_str(), "Title" | "Visible" | "Enabled"));
+                        }
+                    }
+                    pages = extracted;
+                }
+            }
+        }
+        let mut columns: Vec<ColumnValues> = Vec::new();
+        if type_name == "Table" {
+            if let Some(cols_el) = rest.children.iter_mut().find(|e| e.tag == "Columns") {
+                let mut ok = cols_el.attrs.is_empty() && cols_el.text.trim().is_empty();
+                let mut extracted = Vec::new();
+                let mut seen_col_names = std::collections::HashSet::new();
+                if ok {
+                    for col_el in &cols_el.children {
+                        if col_el.tag != "Column" {
+                            ok = false;
+                            break;
+                        }
+                        let Some(cname) = col_el.attrs.get("name").filter(|n| !n.trim().is_empty()).cloned() else {
+                            ok = false;
+                            break;
+                        };
+                        if !seen_col_names.insert(cname.clone()) {
+                            ok = false;
+                            break;
+                        }
+                        let cid = match col_el.attrs.get("id") {
+                            Some(s) => match s.trim().parse::<i64>() {
+                                Ok(v) => Some(v),
+                                Err(_) => {
+                                    ok = false;
+                                    break;
+                                }
+                            },
+                            None => None,
+                        };
+                        if col_el.attrs.keys().any(|k| k != "name" && k != "id") {
+                            ok = false;
+                            break;
+                        }
+                        let mut header = Vec::new();
+                        let mut footer_text = Vec::new();
+                        let mut tooltip = Vec::new();
+                        let mut width: Option<i64> = None;
+                        let mut visible = true;
+                        let mut read_only = false;
+                        let mut editor: Option<String> = None;
+                        let mut seen_tags = std::collections::HashSet::new();
+                        for ch in &col_el.children {
+                            match ch.tag.as_str() {
+                                "Header" => {
+                                    if !seen_tags.insert("Header") {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Some(t) = parse_loc_elem(ch) else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    header = t;
+                                }
+                                "FooterText" => {
+                                    if !seen_tags.insert("FooterText") {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Some(t) = parse_loc_elem(ch) else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    footer_text = t;
+                                }
+                                "Tooltip" => {
+                                    if !seen_tags.insert("Tooltip") {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Some(t) = parse_loc_elem(ch) else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    tooltip = t;
+                                }
+                                "Width" => {
+                                    if !seen_tags.insert("Width") || !ch.children.is_empty() || !ch.attrs.is_empty() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Ok(w) = ch.text.trim().parse::<i64>() else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    width = Some(w);
+                                }
+                                "Visible" => {
+                                    if !seen_tags.insert("Visible") {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Some(v) = parse_bool_elem(ch) else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    visible = v;
+                                }
+                                "ReadOnly" => {
+                                    if !seen_tags.insert("ReadOnly") {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let Some(v) = parse_bool_elem(ch) else {
+                                        ok = false;
+                                        break;
+                                    };
+                                    read_only = v;
+                                }
+                                "Editor" => {
+                                    if !seen_tags.insert("Editor") || !ch.children.is_empty() || !ch.attrs.is_empty() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let ed = ch.text.trim();
+                                    if !CONTROL_GUIDS.iter().any(|(_, n)| *n == ed) {
+                                        ok = false;
+                                        break;
+                                    }
+                                    editor = Some(ed.to_string());
+                                }
+                                _ => {}
+                            }
+                        }
+                        let Some(width) = width else {
+                            ok = false;
+                            break;
+                        };
+                        if !ok {
+                            break;
+                        }
+                        extracted.push(ColumnValues {
+                            id: cid,
+                            name: cname,
+                            header,
+                            footer_text,
+                            tooltip,
+                            width,
+                            visible,
+                            read_only,
+                            editor,
+                        });
+                    }
+                }
+                if ok {
+                    for (idx, col_el) in cols_el.children.iter_mut().enumerate() {
+                        col_el.attrs.remove("name");
+                        col_el.attrs.insert("_col".into(), idx.to_string());
+                        col_el.children.retain(|ch| {
+                            !matches!(
+                                ch.tag.as_str(),
+                                "Header" | "FooterText" | "Tooltip" | "Width" | "Visible" | "ReadOnly" | "Editor"
+                            )
+                        });
+                    }
+                    columns = extracted;
+                }
+            }
+        }
         let values = ControlValues {
             name: ctrl_name,
             caption: loc_of("Caption")?,
@@ -700,8 +988,10 @@ impl Parser<'_> {
             three_state: bool_of("ThreeState", false)?,
             title_location: enum_of("TitleLocation", &["Left", "Right"], "Right")?,
             show_tabs,
+            pages,
             footer: if type_name == "Table" { Some(opt_bool_of("Footer")?.unwrap_or(false)) } else { None },
             selection_mode: enum_of("SelectionMode", &["Single", "Multi"], "Single")?,
+            columns,
             auto_fill: if type_name == "CommandBar" { Some(opt_bool_of("AutoFill")?.unwrap_or(true)) } else { None },
         };
         Ok((values, rest))
@@ -1112,7 +1402,11 @@ fn diff_elements(a: &XmlElement, b: &XmlElement, path: &str, out: &mut Vec<(Stri
 /// Identity of a child among its siblings: tag plus `name`/`language` (or the id of a control stub).
 fn key(e: &XmlElement) -> String {
     let attr = if e.tag == CONTROL_STUB { "id" } else { "name" };
-    let by = e.attrs.get(attr).or_else(|| e.attrs.get("language"));
+    let by = e
+        .attrs
+        .get(attr)
+        .or_else(|| e.attrs.get("_col"))
+        .or_else(|| e.attrs.get("language"));
     format!("{}\u{0}{}", e.tag, by.map(String::as_str).unwrap_or(""))
 }
 
@@ -1296,7 +1590,15 @@ pub fn diff_forms_full(
         for (path, msg) in diffs {
             problems.push(unsupported(&owner, Some(&b.type_name), c.line, &path, &msg));
         }
-        let changed = c.values.changed_from(&b.values);
+        let mut changed = c.values.changed_from(&b.values);
+        if skip_rest.contains(&c.id) {
+            if b.values.pages.is_empty() {
+                changed.retain(|p| *p != Property::Pages);
+            }
+            if b.values.columns.is_empty() {
+                changed.retain(|p| *p != Property::Columns);
+            }
+        }
         if !changed.is_empty() {
             edits.push(ControlEdit {
                 id: c.id,
@@ -2404,6 +2706,150 @@ fn read_control_events(entry: &ControlEntry) -> Result<Vec<(i64, String)>> {
     Ok(out)
 }
 
+fn panel_page_records<'a>(site: &Site<'_, 'a>) -> Result<Vec<NodeRef<'a>>> {
+    let shape = |m: &str| site.layout("unexpected-shape", "Pages", m.to_string());
+    let info = panel_info(site)?;
+    let p = info.child(1).filter(|p| p.node.len() >= 4).ok_or_else(|| shape("the panel record (info item 1) is missing"))?;
+    let mut idx = 2usize;
+    for _ in 0..6 {
+        let n = panel_count(site, p, idx, "counted list size", p.node.len())?;
+        idx = idx
+            .checked_add(1 + n)
+            .filter(|i| *i <= p.node.len())
+            .ok_or_else(|| shape("a counted list runs past the end of the panel record"))?;
+    }
+    let table = p.child(idx + 3).filter(|t| t.node.len() >= 2).ok_or_else(|| shape("the page table is missing"))?;
+    let page_count = panel_count(site, table, 1, "page count", table.node.len())?;
+    let mut out = Vec::with_capacity(page_count);
+    for i in 0..page_count {
+        let rec = table.child(2 + i).filter(|r| r.node.len() >= 7).ok_or_else(|| shape("page record missing or too short"))?;
+        out.push(rec);
+    }
+    Ok(out)
+}
+
+fn read_panel_page_values(site: &Site) -> Result<Vec<PageValues>> {
+    let recs = panel_page_records(site)?;
+    let mut out = Vec::with_capacity(recs.len());
+    for rec in recs {
+        let name = rec
+            .atom(6)
+            .map(|(a, _)| a.value.clone())
+            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page name atom missing".into()))?;
+        let title_node = rec
+            .child(1)
+            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page title node missing".into()))?;
+        let title = strict_localized(title_node)
+            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page title not localized".into()))?
+            .into_iter()
+            .map(|i| (i.lang, i.text))
+            .collect();
+        let visible = int_slot(site, rec, 4, "Pages", "Visible")?.0 != 0;
+        let enabled = int_slot(site, rec, 5, "Pages", "Enabled")?.0 != 0;
+        out.push(PageValues { name, title, visible, enabled });
+    }
+    Ok(out)
+}
+
+fn table_column_props<'a>(site: &Site<'_, 'a>) -> Result<Vec<NodeRef<'a>>> {
+    fn walk<'a>(site: &Site<'_, 'a>, nr: NodeRef<'a>, out: &mut Vec<NodeRef<'a>>) -> Result<()> {
+        if !nr.node.is_empty() && crate::oof::is_column_guid(&nr.node.children[0]) {
+            let col_guid = nr.atom(0).map(|(a, _)| a.value.as_str()).unwrap_or("");
+            let wrapper = nr
+                .child(1)
+                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column wrapper missing".into()))?;
+            let props = if col_guid == crate::oof::VL_COLUMN_GUID {
+                wrapper
+                    .child(1)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Columns", "VL column props missing".into()))?
+            } else {
+                wrapper
+                    .child(1)
+                    .and_then(|x| x.child(1))
+                    .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column props missing".into()))?
+            };
+            if props.node.len() < 39 {
+                return Err(site.layout("unexpected-shape", "Columns", "column props too short".into()));
+            }
+            out.push(props);
+            return Ok(());
+        }
+        for i in 0..nr.node.len() {
+            if let Some(ch) = nr.child(i) {
+                walk(site, ch, out)?;
+            }
+        }
+        Ok(())
+    }
+    let info = site
+        .entry
+        .info()
+        .ok_or_else(|| site.layout("unexpected-shape", "Columns", "table info missing".into()))?;
+    let mut out = Vec::new();
+    walk(site, info, &mut out)?;
+    Ok(out)
+}
+
+fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
+    let cols = table_column_props(site)?;
+    let mut out = Vec::with_capacity(cols.len());
+    for cp in cols {
+        let id = cp.atom(5).and_then(|(a, _)| a.value.parse::<i64>().ok());
+        let name = cp
+            .atom(30)
+            .map(|(a, _)| a.value.clone())
+            .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column name atom missing".into()))?;
+        let loc_at = |idx: usize| -> Result<Vec<(String, String)>> {
+            let n = cp
+                .child(idx)
+                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column localized node missing".into()))?;
+            Ok(strict_localized(n)
+                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column localized node malformed".into()))?
+                .into_iter()
+                .map(|i| (i.lang, i.text))
+                .collect())
+        };
+        let header = loc_at(1)?;
+        let footer_text = loc_at(2)?;
+        let tooltip = loc_at(3)?;
+        let width_item = cp
+            .node
+            .children
+            .get(4)
+            .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column width missing".into()))?;
+        let width = crate::canonical::py_round(
+            crate::oof_props::num(width_item)
+                .map_err(|_| site.layout("unexpected-shape", "Columns", "column width is not a number".into()))?,
+        );
+        let visible = int_slot(site, cp, 25, "Columns", "Visible")?.0 != 0;
+        let ro_flag = int_slot(site, cp, 26, "Columns", "ReadOnly")?.0 != 0;
+        let ed_atom = cp
+            .child(38)
+            .and_then(|e| e.atom(1))
+            .or_else(|| cp.atom(38))
+            .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column editor guid missing".into()))?
+            .0;
+        let read_only = ro_flag || ed_atom.value == "00000000-0000-0000-0000-000000000000";
+        let editor = if ed_atom.value == "00000000-0000-0000-0000-000000000000" {
+            None
+        } else {
+            control_type(&ed_atom.value).map(str::to_string)
+        };
+        out.push(ColumnValues {
+            id,
+            name,
+            header,
+            footer_text,
+            tooltip,
+            width,
+            visible,
+            read_only,
+            editor,
+        });
+    }
+    Ok(out)
+}
+
 fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
     let (old, new) = (&site.edit.old, &site.edit.new);
     let mut out = Vec::new();
@@ -2562,6 +3008,35 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = new.show_tabs.unwrap_or(0);
                 out.push(piece(layout.show_tabs.1, in_i32(site, prop, want)?, &[prop]));
             }
+            Property::Pages => {
+                let recs = panel_page_records(site)?;
+                let cur_pages = read_panel_page_values(site)?;
+                if cur_pages != old.pages {
+                    return Err(site.mismatch("Pages", &format!("{:?}", old.pages), &format!("{cur_pages:?}")));
+                }
+                if recs.len() != new.pages.len() {
+                    return Err(site.layout("unexpected-shape", "Pages", "page count mismatch".into()));
+                }
+                for (i, rec) in recs.into_iter().enumerate() {
+                    let (op, np) = (&old.pages[i], &new.pages[i]);
+                    if op.title != np.title {
+                        let title_node = rec
+                            .child(1)
+                            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page title node missing".into()))?;
+                        let items = strict_localized(title_node)
+                            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page title not localized".into()))?;
+                        out.extend(localized_pieces(site, title_node, &items, &op.title, &np.title, prop)?);
+                    }
+                    if op.visible != np.visible {
+                        let (_, span) = int_slot(site, rec, 4, "Pages", "Visible")?;
+                        out.push(piece(span, i32::from(np.visible), &[prop]));
+                    }
+                    if op.enabled != np.enabled {
+                        let (_, span) = int_slot(site, rec, 5, "Pages", "Enabled")?;
+                        out.push(piece(span, i32::from(np.enabled), &[prop]));
+                    }
+                }
+            }
             Property::Footer => {
                 let (flags, span) = info_int_slot(site, &[2, 1], 1, prop)?;
                 let cur = (flags & 2) != 0;
@@ -2579,6 +3054,71 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 }
                 let want = if new.selection_mode == "Multi" { 1 } else { 0 };
                 out.push(piece(span, want, &[prop]));
+            }
+            Property::Columns => {
+                let cols = table_column_props(site)?;
+                let cur_cols = read_table_column_values(site)?;
+                if cur_cols != old.columns {
+                    return Err(site.mismatch("Columns", &format!("{:?}", old.columns), &format!("{cur_cols:?}")));
+                }
+                if cols.len() != new.columns.len() {
+                    return Err(site.layout("unexpected-shape", "Columns", "column count mismatch".into()));
+                }
+                for (i, cp) in cols.into_iter().enumerate() {
+                    let (oc, nc) = (&old.columns[i], &new.columns[i]);
+                    if oc.name != nc.name {
+                        let (_, span) = cp
+                            .atom(30)
+                            .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column name atom missing".into()))?;
+                        out.push(piece(span, quote(&nc.name), &[prop]));
+                    }
+                    for (idx, o_loc, n_loc) in [
+                        (1usize, &oc.header, &nc.header),
+                        (2usize, &oc.footer_text, &nc.footer_text),
+                        (3usize, &oc.tooltip, &nc.tooltip),
+                    ] {
+                        if o_loc != n_loc {
+                            let n = cp
+                                .child(idx)
+                                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column localized node missing".into()))?;
+                            let items = strict_localized(n)
+                                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column localized node malformed".into()))?;
+                            out.extend(localized_pieces(site, n, &items, o_loc, n_loc, prop)?);
+                        }
+                    }
+                    if oc.width != nc.width {
+                        if nc.width <= 0 {
+                            return Err(site.invalid("invalid-geometry", "Columns", "column Width must be positive".into()));
+                        }
+                        let (_, span) = cp
+                            .atom(4)
+                            .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column width atom missing".into()))?;
+                        out.push(piece(span, in_i32(site, prop, nc.width)?, &[prop]));
+                    }
+                    if oc.visible != nc.visible {
+                        let (_, span) = int_slot(site, cp, 25, "Columns", "Visible")?;
+                        out.push(piece(span, i32::from(nc.visible), &[prop]));
+                    }
+                    if oc.read_only != nc.read_only {
+                        let (_, span) = int_slot(site, cp, 26, "Columns", "ReadOnly")?;
+                        out.push(piece(span, i32::from(nc.read_only), &[prop]));
+                    }
+                    if oc.editor != nc.editor {
+                        if let Some(ed) = &nc.editor {
+                            let (_, span) = cp
+                                .child(38)
+                                .and_then(|e| e.atom(1))
+                                .or_else(|| cp.atom(38))
+                                .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column editor guid missing".into()))?;
+                            let guid = CONTROL_GUIDS
+                                .iter()
+                                .find(|(_, n)| *n == ed.as_str())
+                                .map(|(g, _)| *g)
+                                .unwrap_or("381ed624-9217-4e63-85db-c4c3cb87daae");
+                            out.push(piece(span, guid, &[prop]));
+                        }
+                    }
+                }
             }
             Property::AutoFill => {
                 let want = new.auto_fill.unwrap_or(false);
@@ -2703,11 +3243,13 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 cur == new.title_location
             }
             Property::ShowTabs => Some(read_panel(site)?.show_tabs.0) == new.show_tabs,
+            Property::Pages => read_panel_page_values(site)? == new.pages,
             Property::Footer => Some((info_int_slot(site, &[2, 1], 1, p)?.0 & 2) != 0) == new.footer,
             Property::SelectionMode => {
                 let cur = if info_int_slot(site, &[2, 1], 15, p)?.0 == 1 { "Multi" } else { "" };
                 cur == new.selection_mode
             }
+            Property::Columns => read_table_column_values(site)? == new.columns,
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
             _ => true,
         };

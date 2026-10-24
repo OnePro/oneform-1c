@@ -276,9 +276,10 @@ fn event_differences_are_rejected() {
 #[test]
 fn panel_table_and_command_bar_differences_are_rejected() {
     assert_unsupported(
-        mutate(
-            "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Страница2</Item>",
-            "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Стр</Item>",
+        mutate_in(
+            "<Panel name=\"Панель1\"",
+            "<Page name=\"Страница2\">",
+            "<Page name=\"Страница2\" extra=\"1\">",
         ),
         "unsupported-panel",
         &["Панель1", "Page[name=Страница2]"],
@@ -291,13 +292,7 @@ fn panel_table_and_command_bar_differences_are_rejected() {
         "unsupported-panel",
         &["Панель1"],
     );
-    assert_unsupported(mutate("              <Visible>false</Visible>\n", ""), "unsupported-panel", &["Visible"]);
     assert_unsupported(mutate_in("<Table name=\"ТабличноеПоле1\"", "<Editor>InputField</Editor>", "<Editor>Other</Editor>"), "unsupported-table", &["ТабличноеПоле1", "Columns"]);
-    assert_unsupported(
-        mutate("<Item language=\"ru\">Колонка1</Item>\n              </Header>", "<Item language=\"ru\">К</Item>\n              </Header>"),
-        "unsupported-table",
-        &["Columns"],
-    );
     assert_unsupported(
         mutate(
             "<Item language=\"ru\">Выполнить</Item>\n                <Item language=\"ro\">Выполнить</Item>",
@@ -1561,5 +1556,50 @@ fn existing_control_rename_and_events_round_trip() {
     let pf2 = patch_form(&step1_src, step1_xml.as_bytes(), re_added.as_bytes()).unwrap();
     let got2 = parse_form_xml(decode_xml("DonorForm", &pf2.bytes).as_bytes(), "decoded").unwrap();
     assert_eq!(got2.control(4).unwrap().values.events, vec![(0, "Кнопка1СноваНажатие".to_string())]);
+}
+
+#[test]
+fn panel_pages_and_table_columns_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // Edit Панель1 Page Страница2: change Title, make Visible=true (remove <Visible>false</Visible>), set Enabled=false
+    edited = edited.replacen(
+        "<Page name=\"Страница2\">\r\n              <Title>\r\n                <Item language=\"ru\">Страница2</Item>",
+        "<Page name=\"Страница2\">\r\n              <Title>\r\n                <Item language=\"ru\">Вкладка 2</Item>",
+        1,
+    );
+    if !edited.contains("Вкладка 2") {
+        edited = edited.replacen(
+            "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Страница2</Item>",
+            "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Вкладка 2</Item>",
+            1,
+        );
+    }
+    edited = edited.replacen("              <Visible>false</Visible>", "              <Enabled>false</Enabled>", 1);
+
+    // Edit ТабличноеПоле1 Column Колонка1: rename, change Header, FooterText, Tooltip, Width, Visible, ReadOnly
+    edited = edited
+        .replacen(r#"<Column name="Колонка1" id="0">"#, r#"<Column name="КолонкаОсновная" id="0">"#, 1)
+        .replacen("<Item language=\"ru\">Колонка1</Item>", "<Item language=\"ru\">Заголовок 1</Item>", 1)
+        .replacen(
+            "<Width>100</Width>",
+            "<FooterText><Item language=\"ru\">Итого</Item></FooterText><Tooltip><Item language=\"ru\">Подсказка колонки</Item></Tooltip><Width>155</Width><Visible>false</Visible><ReadOnly>true</ReadOnly>",
+            1,
+        );
+    let pf = round_trip("DonorForm", &edited);
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    let pnl = got.control(13).unwrap();
+    assert_eq!(pnl.values.pages[1].title, vec![("ru".to_string(), "Вкладка 2".to_string())]);
+    assert!(pnl.values.pages[0].visible);
+    assert!(!pnl.values.pages[0].enabled);
+
+    let tbl = got.control(6).unwrap();
+    let col = &tbl.values.columns[0];
+    assert_eq!(col.name, "КолонкаОсновная");
+    assert_eq!(col.header, vec![("ru".to_string(), "Заголовок 1".to_string())]);
+    assert_eq!(col.footer_text, vec![("ru".to_string(), "Итого".to_string())]);
+    assert_eq!(col.tooltip, vec![("ru".to_string(), "Подсказка колонки".to_string())]);
+    assert_eq!(col.width, 155);
+    assert!(!col.visible);
+    assert!(col.read_only);
 }
 

@@ -951,3 +951,58 @@ fn epf_existing_control_rename_and_events_pack() {
 fn config_existing_control_rename_and_events_pack() {
     assert_rename_and_events_pack(Target::Config);
 }
+
+fn assert_panel_pages_and_table_columns_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    // Edit Панель1 Page Страница2 title and Страница1 Enabled/Visible
+    xml = xml
+        .replacen(
+            "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Страница2</Item>",
+            "<Page name=\"Страница2\">\n              <Title>\n                <Item language=\"ru\">Вкладка 2</Item>",
+            1,
+        )
+        .replacen("              <Visible>false</Visible>", "              <Enabled>false</Enabled>", 1);
+    // Edit ТабличноеПоле1 Column Колонка1
+    xml = xml
+        .replacen(r#"<Column name="Колонка1" id="0">"#, r#"<Column name="КолонкаОсновная" id="0">"#, 1)
+        .replacen("<Item language=\"ru\">Колонка1</Item>", "<Item language=\"ru\">Заголовок 1</Item>", 1)
+        .replacen(
+            "<Width>100</Width>",
+            "<FooterText>\n                <Item language=\"ru\">Итого</Item>\n              </FooterText>\n              <Tooltip>\n                <Item language=\"ru\">Подсказка колонки</Item>\n              </Tooltip>\n              <Width>155</Width>\n              <Visible>false</Visible>\n              <ReadOnly>true</ReadOnly>",
+            1,
+        );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
+    for needle in [
+        "<Item language=\"ru\">Вкладка 2</Item>",
+        "<Enabled>false</Enabled>",
+        r#"<Column name="КолонкаОсновная" id="0">"#,
+        "<Item language=\"ru\">Заголовок 1</Item>",
+        "<Item language=\"ru\">Итого</Item>",
+        "<Item language=\"ru\">Подсказка колонки</Item>",
+        "<Width>155</Width>",
+        "<ReadOnly>true</ReadOnly>",
+    ] {
+        assert!(packed_xml.contains(needle), "{target:?}: missing {needle} in:\n{packed_xml}");
+    }
+}
+
+#[test]
+fn epf_panel_pages_and_table_columns_pack() {
+    assert_panel_pages_and_table_columns_pack(Target::Epf);
+}
+
+#[test]
+fn config_panel_pages_and_table_columns_pack() {
+    assert_panel_pages_and_table_columns_pack(Target::Config);
+}

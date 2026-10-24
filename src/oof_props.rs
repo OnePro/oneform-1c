@@ -948,7 +948,7 @@ pub fn decode_column_props(props: &Node) -> Result<Map<String, Value>, OofError>
             editor = &e.children[1];
         }
     }
-    if atom(editor) == ZERO_GUID {
+    if atom(editor) == ZERO_GUID || is_bare(at_n(props, &[26])?, "1") {
         out.insert("readOnly".into(), true.into());
     }
     Ok(out)
