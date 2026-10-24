@@ -42,7 +42,7 @@ pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 pub const CONTROL_STUB: &str = "#control";
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
-const SUPPORTED_TAGS: [&str; 55] = [
+const SUPPORTED_TAGS: [&str; 64] = [
     "DataPath",
     "Caption",
     "Left",
@@ -98,6 +98,15 @@ const SUPPORTED_TAGS: [&str; 55] = [
     "TextEdit",
     "VerticalAlign",
     "TypeLink",
+    "Header",
+    "HorizontalLines",
+    "VerticalLines",
+    "AutoInsertNewRow",
+    "ChangeRowSet",
+    "ChangePositionOfColumns",
+    "ChangeSettingOfColumns",
+    "InitialListView",
+    "Output",
 ];
 const MAX_REPORTED: usize = 50;
 
@@ -668,6 +677,15 @@ pub struct ControlValues {
     pub show_tabs: Option<i64>,
     pub pages: Vec<PageValues>,
     pub footer: Option<bool>,
+    pub header: Option<bool>,
+    pub horizontal_lines: Option<bool>,
+    pub vertical_lines: Option<bool>,
+    pub auto_insert_new_row: Option<bool>,
+    pub change_row_set: Option<bool>,
+    pub change_position_of_columns: Option<bool>,
+    pub change_setting_of_columns: Option<bool>,
+    pub initial_list_view: Option<String>,
+    pub output: Option<String>,
     pub selection_mode: String,
     pub initial_tree_view: String,
     pub columns: Vec<ColumnValues>,
@@ -739,6 +757,15 @@ impl ControlValues {
             show_tabs: None,
             pages: Vec::new(),
             footer: None,
+            header: None,
+            horizontal_lines: None,
+            vertical_lines: None,
+            auto_insert_new_row: None,
+            change_row_set: None,
+            change_position_of_columns: None,
+            change_setting_of_columns: None,
+            initial_list_view: None,
+            output: None,
             selection_mode: String::new(),
             initial_tree_view: String::new(),
             columns: Vec::new(),
@@ -803,6 +830,15 @@ pub enum Property {
     ShowTabs,
     Pages,
     Footer,
+    Header,
+    HorizontalLines,
+    VerticalLines,
+    AutoInsertNewRow,
+    ChangeRowSet,
+    ChangePositionOfColumns,
+    ChangeSettingOfColumns,
+    InitialListView,
+    Output,
     SelectionMode,
     InitialTreeView,
     Columns,
@@ -866,6 +902,15 @@ impl Property {
             Property::ShowTabs => "ShowTabs",
             Property::Pages => "Pages",
             Property::Footer => "Footer",
+            Property::Header => "Header",
+            Property::HorizontalLines => "HorizontalLines",
+            Property::VerticalLines => "VerticalLines",
+            Property::AutoInsertNewRow => "AutoInsertNewRow",
+            Property::ChangeRowSet => "ChangeRowSet",
+            Property::ChangePositionOfColumns => "ChangePositionOfColumns",
+            Property::ChangeSettingOfColumns => "ChangeSettingOfColumns",
+            Property::InitialListView => "InitialListView",
+            Property::Output => "Output",
             Property::SelectionMode => "SelectionMode",
             Property::InitialTreeView => "InitialTreeView",
             Property::Columns => "Columns",
@@ -932,6 +977,15 @@ impl ControlValues {
             (self.show_tabs == other.show_tabs, Property::ShowTabs),
             (self.pages == other.pages, Property::Pages),
             (self.footer == other.footer, Property::Footer),
+            (self.header == other.header, Property::Header),
+            (self.horizontal_lines == other.horizontal_lines, Property::HorizontalLines),
+            (self.vertical_lines == other.vertical_lines, Property::VerticalLines),
+            (self.auto_insert_new_row == other.auto_insert_new_row, Property::AutoInsertNewRow),
+            (self.change_row_set == other.change_row_set, Property::ChangeRowSet),
+            (self.change_position_of_columns == other.change_position_of_columns, Property::ChangePositionOfColumns),
+            (self.change_setting_of_columns == other.change_setting_of_columns, Property::ChangeSettingOfColumns),
+            (self.initial_list_view == other.initial_list_view, Property::InitialListView),
+            (self.output == other.output, Property::Output),
             (self.selection_mode == other.selection_mode, Property::SelectionMode),
             (self.initial_tree_view == other.initial_tree_view, Property::InitialTreeView),
             (self.columns == other.columns, Property::Columns),
@@ -1099,6 +1153,20 @@ impl FormXml {
             if c.type_name == "InputField" {
                 c.values.horizontal_align = String::new();
             }
+            if c.type_name == "Table" {
+                c.values.header = None;
+                c.values.vertical_lines = None;
+                c.values.horizontal_lines = None;
+                c.values.auto_insert_new_row = None;
+                c.values.change_setting_of_columns = None;
+                c.values.change_position_of_columns = None;
+                c.values.change_row_set = None;
+                c.values.initial_list_view = None;
+                c.values.output = None;
+                c.values.read_only = false;
+                c.values.horizontal_scroll_bar.clear();
+                c.values.vertical_scroll_bar.clear();
+            }
         }
         out
     }
@@ -1115,6 +1183,9 @@ fn tag_supported_for(type_name: &str, tag: &str) -> bool {
         "Enabled" | "TransparentBack" | "BackColor" | "TextColor" | "BorderColor" | "Font" | "Tooltip" => {
             app_path(type_name).is_some()
         }
+        "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" if type_name == "Table" => true,
+        "Header" | "HorizontalLines" | "VerticalLines" | "AutoInsertNewRow" | "ChangeRowSet" | "ChangePositionOfColumns"
+        | "ChangeSettingOfColumns" | "InitialListView" | "Output" => type_name == "Table",
         "ValueType" | "HorizontalScrollBar" | "VerticalScrollBar" | "ReadOnly" | "ChoiceButton" | "ClearButton"
         | "OpenButton" | "DropListButton" | "SpinButton" | "AutoMarkIncomplete" | "AutoChoiceIncomplete"
         | "MarkNegatives" | "AutoCellHeight" | "ChoiceListMode" => type_name == "InputField",
@@ -1294,6 +1365,14 @@ impl Parser<'_> {
             }
             Ok(if v == default { String::new() } else { v.to_string() })
         };
+        let opt_enum_of = |tag: &str, allowed: &[&str]| -> Result<Option<String>> {
+            if found.contains_key(tag) {
+                Ok(Some(enum_of(tag, allowed, " ")?))
+            } else {
+                Ok(None)
+            }
+        };
+        let scroll_default = if type_name == "Table" { " " } else { "DontUse" };
         let is_inp = type_name == "InputField";
         let horizontal_align = match type_name.as_str() {
             "LabelDecoration" => enum_of("HorizontalAlign", &["Left", "Center", "Right"], "Left")?,
@@ -1866,8 +1945,8 @@ impl Parser<'_> {
             font,
             tooltip: loc_of("Tooltip")?,
             value_type,
-            horizontal_scroll_bar: enum_of("HorizontalScrollBar", &["DontUse", "Use", "Auto"], "DontUse")?,
-            vertical_scroll_bar: enum_of("VerticalScrollBar", &["DontUse", "Use", "Auto"], "DontUse")?,
+            horizontal_scroll_bar: enum_of("HorizontalScrollBar", &["DontUse", "Use", "Auto"], scroll_default)?,
+            vertical_scroll_bar: enum_of("VerticalScrollBar", &["DontUse", "Use", "Auto"], scroll_default)?,
             read_only: bool_of("ReadOnly", false)?,
             choice_button: if is_inp { Some(opt_bool_of("ChoiceButton")?.unwrap_or(false)) } else { None },
             clear_button: if is_inp { Some(opt_bool_of("ClearButton")?.unwrap_or(false)) } else { None },
@@ -1887,6 +1966,15 @@ impl Parser<'_> {
             show_tabs,
             pages,
             footer: if type_name == "Table" { Some(opt_bool_of("Footer")?.unwrap_or(false)) } else { None },
+            header: opt_bool_of("Header")?,
+            horizontal_lines: opt_bool_of("HorizontalLines")?,
+            vertical_lines: opt_bool_of("VerticalLines")?,
+            auto_insert_new_row: opt_bool_of("AutoInsertNewRow")?,
+            change_row_set: opt_bool_of("ChangeRowSet")?,
+            change_position_of_columns: opt_bool_of("ChangePositionOfColumns")?,
+            change_setting_of_columns: opt_bool_of("ChangeSettingOfColumns")?,
+            initial_list_view: opt_enum_of("InitialListView", &["Begin", "End", "Auto"])?,
+            output: opt_enum_of("Output", &["Auto", "Enable", "Disable"])?,
             selection_mode: enum_of("SelectionMode", &["Single", "Multi"], "Single")?,
             initial_tree_view: enum_of("InitialTreeView", &["NoExpand", "ExpandTopLevel", "ExpandAllLevels"], "NoExpand")?,
             columns,
@@ -2556,6 +2644,8 @@ fn category(owner_type: Option<&str>, path: &str) -> &'static str {
             Some(_),
             "DataPath" | "TextColor" | "BackColor" | "BorderColor" | "Font" | "Tooltip" | "HorizontalAlign" | "Hyperlink" | "Picture"
             | "BorderStyle" | "ValueType" | "ChoiceButton" | "ClearButton" | "OpenButton" | "AutoMarkIncomplete" | "ChoiceList" | "Footer"
+            | "Header" | "HorizontalLines" | "VerticalLines" | "AutoInsertNewRow" | "ChangeRowSet" | "ChangePositionOfColumns"
+            | "ChangeSettingOfColumns" | "InitialListView" | "Output"
             | "AutoFill" | "Buttons" | "Columns",
         ) => "property",
         _ => "unknown-element",
@@ -3213,12 +3303,32 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
         }
         "Table" => {
             let t = nav_mut(info, &[2, 1])?;
-            if let Some(footer) = v.footer {
-                let cur: i64 = t.children[1]
-                    .as_atom()
-                    .and_then(|a| a.value.parse().ok())
-                    .unwrap_or(0);
-                t.children[1] = bare(if footer { cur | 2 } else { cur & !2 });
+            let mut flags: i64 = t.children[1]
+                .as_atom()
+                .and_then(|a| a.value.parse().ok())
+                .unwrap_or(0);
+            for p in TABLE_FLAGS {
+                if let Some((bit, want)) = table_flag_bit(p).zip(table_flag_value(v, p)) {
+                    let set = if p == Property::ReadOnly { !want } else { want };
+                    flags = if set { flags | bit } else { flags & !bit };
+                }
+            }
+            t.children[1] = bare(flags);
+            let sb = |s: &str| match s {
+                "Use" => 1,
+                "Auto" => 2,
+                _ => 0,
+            };
+            t.children[9] = bare(sb(&v.horizontal_scroll_bar));
+            t.children[10] = bare(sb(&v.vertical_scroll_bar));
+            if let Some(s) = &v.initial_list_view {
+                t.children[20] = bare(initial_list_view_code(s));
+            }
+            if let Some(b) = v.change_row_set {
+                t.children[22] = bare(i64::from(b));
+            }
+            if let Some(s) = &v.output {
+                t.children[24] = bare(output_code(s));
             }
             t.children[15] = bare(if v.selection_mode == "Multi" { 1 } else { 0 });
             if t.len() > 21 {
@@ -4044,6 +4154,98 @@ fn info_atom_span(site: &Site, path: &[usize], idx: usize, prop: Property) -> Re
         .ok_or_else(|| site.layout("unexpected-shape", prop.xml_name(), format!("info slot {idx} is not an atom")))
 }
 
+const TABLE_FLAGS: [Property; 8] = [
+    Property::Header,
+    Property::Footer,
+    Property::VerticalLines,
+    Property::HorizontalLines,
+    Property::ReadOnly,
+    Property::AutoInsertNewRow,
+    Property::ChangeSettingOfColumns,
+    Property::ChangePositionOfColumns,
+];
+
+/// Bit of the coalesced `Table` flag word `info[2][1][1]`; `ReadOnly` is stored inverted.
+fn table_flag_bit(p: Property) -> Option<i64> {
+    Some(match p {
+        Property::Header => 1,
+        Property::Footer => 2,
+        Property::VerticalLines => 4,
+        Property::HorizontalLines => 8,
+        Property::ReadOnly => 1 << 10,
+        Property::AutoInsertNewRow => 1 << 15,
+        Property::ChangeSettingOfColumns => 1 << 25,
+        Property::ChangePositionOfColumns => 1 << 26,
+        _ => return None,
+    })
+}
+
+fn is_table_flag(p: Property) -> bool {
+    table_flag_bit(p).is_some()
+}
+
+/// Wanted value of a flag-word property (`None` when the model does not set it).
+fn table_flag_value(v: &ControlValues, p: Property) -> Option<bool> {
+    match p {
+        Property::Header => v.header,
+        Property::Footer => v.footer,
+        Property::VerticalLines => v.vertical_lines,
+        Property::HorizontalLines => v.horizontal_lines,
+        Property::ReadOnly => Some(v.read_only),
+        Property::AutoInsertNewRow => v.auto_insert_new_row,
+        Property::ChangeSettingOfColumns => v.change_setting_of_columns,
+        Property::ChangePositionOfColumns => v.change_position_of_columns,
+        _ => None,
+    }
+}
+
+fn table_flag_read(flags: i64, p: Property) -> bool {
+    let set = table_flag_bit(p).is_some_and(|b| flags & b != 0);
+    if p == Property::ReadOnly { !set } else { set }
+}
+
+fn initial_list_view_code(s: &str) -> i64 {
+    match s {
+        "Begin" => 2,
+        "End" => 1,
+        _ => 4_294_967_295,
+    }
+}
+
+fn output_code(s: &str) -> i64 {
+    match s {
+        "Enable" => 1,
+        "Disable" => 2,
+        _ => 0,
+    }
+}
+
+/// All flag-word properties share one atom: emit a single piece (for the first changed one) covering all.
+fn table_flag_piece(site: &Site, p: Property, out: &mut Vec<Piece>) -> Result<()> {
+    let (old, new) = (&site.edit.old, &site.edit.new);
+    if site.edit.changed.iter().copied().find(|&c| is_table_flag(c)) != Some(p) {
+        return Ok(());
+    }
+    let touched: Vec<Property> = TABLE_FLAGS.iter().copied().filter(|c| site.edit.changed.contains(c)).collect();
+    let (flags, span) = info_int_slot(site, &[2, 1], 1, p)?;
+    let mut want = flags;
+    for &t in &touched {
+        let bit = table_flag_bit(t).unwrap_or(0);
+        let on = table_flag_value(new, t)
+            .ok_or_else(|| site.invalid("invalid-xml", t.xml_name(), format!("cannot remove {}", t.xml_name())))?;
+        if t == Property::Footer {
+            let cur = table_flag_read(flags, t);
+            if Some(cur) != old.footer {
+                return Err(site.mismatch("Footer", &format!("{:?}", old.footer), &cur.to_string()));
+            }
+        }
+        let set = if t == Property::ReadOnly { !on } else { on };
+        want = if set { want | bit } else { want & !bit };
+    }
+    out.push(piece(span, want, &touched));
+    Ok(())
+}
+
 fn info_bool_piece(site: &Site, path: &[usize], idx: usize, old: Option<bool>, new: bool, prop: Property) -> Result<Piece> {
     let (cur, span) = info_int_slot(site, path, idx, prop)?;
     if let Some(expected) = old {
@@ -4587,12 +4789,14 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 out.push(piece(pat_node.span.span, pat, &[prop]));
             }
             Property::HorizontalScrollBar | Property::VerticalScrollBar => {
-                let (idx, want_s) = if prop == Property::HorizontalScrollBar {
-                    (2usize, new.horizontal_scroll_bar.as_str())
-                } else {
-                    (3usize, new.vertical_scroll_bar.as_str())
+                let is_table = site.entry.type_name == "Table";
+                let (idx, want_s) = match (prop == Property::HorizontalScrollBar, is_table) {
+                    (true, false) => (2usize, new.horizontal_scroll_bar.as_str()),
+                    (false, false) => (3usize, new.vertical_scroll_bar.as_str()),
+                    (true, true) => (9usize, new.horizontal_scroll_bar.as_str()),
+                    (false, true) => (10usize, new.vertical_scroll_bar.as_str()),
                 };
-                let (_, span) = info_int_slot(site, &[2, 0], idx, prop)?;
+                let (_, span) = info_int_slot(site, if is_table { &[2, 1] } else { &[2, 0] }, idx, prop)?;
                 let want = match want_s {
                     "Use" => 1,
                     "Auto" => 2,
@@ -4624,6 +4828,7 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = new.open_button.unwrap_or(false);
                 out.push(info_bool_piece(site, &[2, 0], 10, old.open_button, want, prop)?);
             }
+            Property::ReadOnly if site.entry.type_name == "Table" => table_flag_piece(site, prop, &mut out)?,
             Property::ReadOnly => {
                 out.push(info_bool_piece(site, &[2, 0], 13, Some(old.read_only), new.read_only, prop)?);
             }
@@ -4775,14 +4980,26 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     }
                 }
             }
-            Property::Footer => {
-                let (flags, span) = info_int_slot(site, &[2, 1], 1, prop)?;
-                let cur = (flags & 2) != 0;
-                if Some(cur) != old.footer {
-                    return Err(site.mismatch("Footer", &format!("{:?}", old.footer), &cur.to_string()));
-                }
-                let want = if new.footer.unwrap_or(false) { flags | 2 } else { flags & !2 };
-                out.push(piece(span, want, &[prop]));
+            Property::Header
+            | Property::Footer
+            | Property::VerticalLines
+            | Property::HorizontalLines
+            | Property::AutoInsertNewRow
+            | Property::ChangeSettingOfColumns
+            | Property::ChangePositionOfColumns => table_flag_piece(site, prop, &mut out)?,
+            Property::ChangeRowSet => {
+                let want = new.change_row_set.ok_or_else(|| site.invalid("invalid-xml", "ChangeRowSet", "cannot remove ChangeRowSet".into()))?;
+                out.push(info_bool_piece(site, &[2, 1], 22, old.change_row_set, want, prop)?);
+            }
+            Property::InitialListView => {
+                let want = new.initial_list_view.as_deref().ok_or_else(|| site.invalid("invalid-xml", "InitialListView", "cannot remove InitialListView".into()))?;
+                let (_, span) = info_int_slot(site, &[2, 1], 20, prop)?;
+                out.push(piece(span, initial_list_view_code(want), &[prop]));
+            }
+            Property::Output => {
+                let want = new.output.as_deref().ok_or_else(|| site.invalid("invalid-xml", "Output", "cannot remove Output".into()))?;
+                let (_, span) = info_int_slot(site, &[2, 1], 24, prop)?;
+                out.push(piece(span, output_code(want), &[prop]));
             }
             Property::SelectionMode => {
                 let (cur, span) = info_int_slot(site, &[2, 1], 15, prop)?;
@@ -5031,6 +5248,44 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 items == new.tooltip
             }
             Property::ValueType => read_input_value_type(site.entry.info().unwrap().node) == new.value_type,
+            Property::HorizontalScrollBar | Property::VerticalScrollBar if site.entry.type_name == "Table" => {
+                let idx = if p == Property::HorizontalScrollBar { 9 } else { 10 };
+                let want = if p == Property::HorizontalScrollBar { &new.horizontal_scroll_bar } else { &new.vertical_scroll_bar };
+                let cur = match info_int_slot(site, &[2, 1], idx, p)?.0 {
+                    1 => "Use",
+                    2 => "Auto",
+                    _ => "DontUse",
+                };
+                cur == want || (want.is_empty() && cur == "DontUse")
+            }
+            Property::ReadOnly if site.entry.type_name == "Table" => {
+                table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p) == new.read_only
+            }
+            Property::Header
+            | Property::VerticalLines
+            | Property::HorizontalLines
+            | Property::AutoInsertNewRow
+            | Property::ChangeSettingOfColumns
+            | Property::ChangePositionOfColumns => {
+                Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == table_flag_value(new, p)
+            }
+            Property::ChangeRowSet => Some(info_int_slot(site, &[2, 1], 22, p)?.0 != 0) == new.change_row_set,
+            Property::InitialListView => {
+                let cur = match info_int_slot(site, &[2, 1], 20, p)?.0 {
+                    0 | 2 => "Begin",
+                    1 => "End",
+                    _ => "Auto",
+                };
+                new.initial_list_view.as_deref() == Some(cur)
+            }
+            Property::Output => {
+                let cur = match info_int_slot(site, &[2, 1], 24, p)?.0 {
+                    1 => "Enable",
+                    2 => "Disable",
+                    _ => "Auto",
+                };
+                new.output.as_deref() == Some(cur)
+            }
             Property::HorizontalScrollBar => {
                 let cur = match info_int_slot(site, &[2, 0], 2, p)?.0 {
                     1 => "Use",
@@ -5121,7 +5376,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             Property::ChoiceList => read_choice_list_values(site.entry.info().unwrap().node) == new.choice_list,
             Property::ShowTabs => Some(read_panel(site)?.show_tabs.0) == new.show_tabs,
             Property::Pages => read_panel_page_values(site)? == new.pages,
-            Property::Footer => Some((info_int_slot(site, &[2, 1], 1, p)?.0 & 2) != 0) == new.footer,
+            Property::Footer => Some(table_flag_read(info_int_slot(site, &[2, 1], 1, p)?.0, p)) == new.footer,
             Property::SelectionMode => {
                 let cur = if info_int_slot(site, &[2, 1], 15, p)?.0 == 1 { "Multi" } else { "" };
                 cur == new.selection_mode

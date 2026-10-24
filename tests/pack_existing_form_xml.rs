@@ -1318,3 +1318,37 @@ fn epf_inputfield_flags_and_typelink_pack() {
 fn config_inputfield_flags_and_typelink_pack() {
     assert_inputfield_flags_and_typelink_pack(Target::Config);
 }
+
+fn assert_table_grid_and_flags_pack(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let stream_file = w.src_file("FormStream.bin");
+    let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
+    xml = xml.replacen(
+        "<Footer>false</Footer>",
+        "<Footer>true</Footer>\n          <Header>false</Header>\n          <HorizontalLines>false</HorizontalLines>\n          <VerticalLines>false</VerticalLines>\n          <ReadOnly>true</ReadOnly>\n          <AutoInsertNewRow>true</AutoInsertNewRow>\n          <ChangeRowSet>false</ChangeRowSet>\n          <ChangePositionOfColumns>false</ChangePositionOfColumns>\n          <ChangeSettingOfColumns>false</ChangeSettingOfColumns>\n          <HorizontalScrollBar>DontUse</HorizontalScrollBar>\n          <VerticalScrollBar>Use</VerticalScrollBar>\n          <InitialListView>End</InitialListView>\n          <Output>Enable</Output>",
+        1,
+    );
+    fs::write(&xml_file, &xml).unwrap();
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success(), "{target:?}: {}", text(&out));
+    assert!(text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    assert_eq!(fresh[&rel(&w, &xml_file)], after[&rel(&w, &xml_file)], "{target:?}: re-extracted Form.xml differs");
+    let expected_flags = (117644301i64 | 2 | 32768) & !1 & !4 & !8 & !1024 & !33554432 & !67108864;
+    let stream_after = String::from_utf8_lossy(&after[&rel(&w, &stream_file)]);
+    assert!(stream_after.contains(&format!("{{19,{expected_flags},")), "{target:?}: table bitmask missing");
+}
+
+#[test]
+fn epf_table_grid_and_flags_pack() {
+    assert_table_grid_and_flags_pack(Target::Epf);
+}
+
+#[test]
+fn config_table_grid_and_flags_pack() {
+    assert_table_grid_and_flags_pack(Target::Config);
+}

@@ -139,18 +139,18 @@
 </header>
 <div class="container">
   <div class="kpi-grid">
-    <div class="kpi"><div class="num">89</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
+    <div class="kpi"><div class="num">91</div><div class="label">🟢 R/W позиций в матрице (Extract + Preview + Pack)</div></div>
     <div class="kpi"><div class="num">0</div><div class="label">🔵 Найдено в бинарнике через <code>explore</code> (готово к проводке)</div></div>
     <div class="kpi"><div class="num">3</div><div class="label">🟡 R/O позиций (уже в <code>Form.xml</code>, ждут записи в <code>pack</code>)</div></div>
-    <div class="kpi"><div class="num">1</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
+    <div class="kpi"><div class="num">0</div><div class="label">⚪ Не исследовано (кандидаты на <code>explore</code>)</div></div>
   </div>
   <div class="toolbar">
     <div class="filters">
       <button class="filter-btn active" data-filter="all">Все статусы</button>
-      <button class="filter-btn" data-filter="rw">🟢 R/W (89)</button>
+      <button class="filter-btn" data-filter="rw">🟢 R/W (91)</button>
       <button class="filter-btn" data-filter="bin">🔵 Bin (0)</button>
       <button class="filter-btn" data-filter="ro">🟡 R/O (3)</button>
-      <button class="filter-btn" data-filter="unk">⚪ Unk (1)</button>
+      <button class="filter-btn" data-filter="unk">⚪ Unk (0)</button>
     </div>
     <input type="search" id="searchInput" class="search-box" placeholder="Поиск по свойству, XML-тегу, слоту info[...] или типу..." />
   </div>
@@ -282,7 +282,8 @@
 <tr data-status="rw"><td><code>Table</code></td><td><strong>Подвал таблицы (<code>Footer</code>)</strong></td><td><code>&lt;Footer&gt;</code></td><td><code>info[2][1][1]</code> (бит <code>2</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и побитовой записи без затирания других флагов</td></tr>
 <tr data-status="rw"><td><code>Table</code></td><td><strong><code>РежимВыделения</code> (<code>SelectionMode</code>)</strong></td><td><code>&lt;SelectionMode&gt;</code></td><td><strong><code>info[2][1][15]</code></strong> (<code>0</code>=Одиночный, <code>1</code>=Множественный)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>table-flag-04</code>)</td></tr>
 <tr data-status="rw"><td><code>Table</code></td><td><strong><code>НачальноеОтображениеДерева</code></strong></td><td><code>&lt;InitialTreeView&gt;</code></td><td><strong><code>info[2][1][21]</code></strong> (<code>0</code>=NoExpand, <code>1</code>=ExpandTopLevel, <code>2</code>=ExpandAllLevels)</td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи (<code>table-flag-07</code>)</td></tr>
-<tr data-status="unk"><td><code>Table</code></td><td><code>ТолькоПросмотр</code>, линии сетки, полосы прокрутки</td><td><em>(не выводится)</em></td><td><code>info[2][1][...]</code></td><td><span class="badge unk">⚪ Unk</span></td><td>Кандидаты в <code>info[2][1]</code></td></tr>
+<tr data-status="rw"><td><code>Table</code></td><td><strong>Шапка, линии сетки, <code>ТолькоПросмотр</code>, авто-ввод, колонки</strong></td><td><code>&lt;Header&gt;</code>, <code>&lt;VerticalLines&gt;</code>, <code>&lt;HorizontalLines&gt;</code>, <code>&lt;ReadOnly&gt;</code>, <code>&lt;AutoInsertNewRow&gt;</code>, <code>&lt;ChangeSettingOfColumns&gt;</code>, <code>&lt;ChangePositionOfColumns&gt;</code></td><td><code>info[2][1][1]</code> (биты <code>0, 2, 3, 10(инв.), 15, 25, 26</code>)</td><td><span class="badge rw">🟢 R/W</span></td><td>Коалесцированный патч 32-битной маски флагов таблицы (<code>tbl-bit0..26</code>)</td></tr>
+<tr data-status="rw"><td><code>Table</code></td><td><strong>Полосы прокрутки, <code>InitialListView</code>, <code>ChangeRowSet</code>, <code>Output</code></strong></td><td><code>&lt;HorizontalScrollBar&gt;</code>, <code>&lt;VerticalScrollBar&gt;</code>, <code>&lt;InitialListView&gt;</code>, <code>&lt;ChangeRowSet&gt;</code>, <code>&lt;Output&gt;</code></td><td><code>info[2][1][9, 10, 20, 22, 24]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Подтверждены через <code>ENTERPRISE /Execute</code> (<code>tbl-t09/10/20/22/24</code>)</td></tr>
 <tr data-status="rw"><td><code>Table / Column</code></td><td><strong>Имя, Заголовок, ТекстПодвала, Подсказка колонки</strong></td><td><code>&lt;Column name=&quot;...&quot;&gt;&lt;Header&gt;</code>, <code>&lt;FooterText&gt;</code>, <code>&lt;Tooltip&gt;</code></td><td><code>col_props[30]</code>, <code>col_props[1..=3]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи</td></tr>
 <tr data-status="rw"><td><code>Table / Column</code></td><td><strong>Ширина, Видимость, ТолькоПросмотр, Редактор колонки</strong></td><td><code>&lt;Width&gt;</code>, <code>&lt;Visible&gt;</code>, <code>&lt;ReadOnly&gt;</code>, <code>&lt;Editor&gt;</code></td><td><code>col_props[4]</code>, <code>col_props[25]</code>, <code>col_props[38]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения, превью и записи (<code>decode_column_props</code> + <code>form_patch</code>)</td></tr>
 <tr data-status="rw"><td><code>Table / Column</code></td><td><strong><code>DataPath</code> и события колонки</strong></td><td><code>&lt;DataPath&gt;</code>, <code>&lt;Events&gt;</code></td><td><code>wrapper[2]</code> + base64+deflate <code>col_props[39]</code></td><td><span class="badge rw">🟢 R/W</span></td><td>Полный цикл чтения и записи привязки к полю ТЗ и событий редактора колонки</td></tr>

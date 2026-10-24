@@ -459,8 +459,8 @@
                   <div class="flex items-start justify-between gap-2">
                     <h4 class="font-medium text-white text-sm" x-text="t.title"></h4>
                     <span class="text-[11px] px-2 py-0.5 rounded-full font-medium shrink-0"
-                          :class="t.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-400'"
-                          x-text="t.status === 'in_progress' ? '🟡 В работе' : '⚪ Запланировано'"></span>
+                          :class="t.status === 'done' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : (t.status === 'in_progress' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-400')"
+                          x-text="t.status === 'done' ? '🟢 Выполнено' : (t.status === 'in_progress' ? '🟡 В работе' : '⚪ Запланировано')"></span>
                   </div>
                   <p class="text-xs text-slate-300 leading-relaxed" x-text="t.impact"></p>
                   <div class="pt-1 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-800/80">

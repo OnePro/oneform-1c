@@ -191,8 +191,9 @@ KNOWN_PROPERTIES_STATUS = {
 
     # Anchors / Placement (P0 for 90% real-world forms)
     ("*", "BorderAttachment"): {"xml": "Anchors", "status": "rw", "priority": "P0", "slot": "geom[6..9]"},
-    ("*", "SkipOnInput"): {"xml": "SkipOnInput", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
-    ("*", "FirstInGroup"): {"xml": "FirstInGroup", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
+    ("*", "ModifiesData"): {"xml": "ModifiesData", "status": "rw", "priority": "P1", "slot": "meta[3]"},
+    ("*", "SkipOnInput"): {"xml": "SkipOnInput", "status": "rw", "priority": "P1", "slot": "meta[4]"},
+    ("*", "FirstInGroup"): {"xml": "FirstInGroup", "status": "rw", "priority": "P1", "slot": "meta[5]"},
     ("*", "ActivateByDefault"): {"xml": "ActivateByDefault", "status": "unk", "priority": "P1", "slot": "geom[20..24]"},
 
     # TextBox (InputField)
@@ -210,30 +211,35 @@ KNOWN_PROPERTIES_STATUS = {
     ("TextBox", "Wrap"): {"xml": "AutoCellHeight", "status": "rw", "priority": "P0", "slot": "info[2][0][4]"},
     ("TextBox", "ListChoiceMode"): {"xml": "ChoiceListMode", "status": "rw", "priority": "P0", "slot": "info[9]"},
     ("TextBox", "ValueType"): {"xml": "ValueType", "status": "rw", "priority": "P0", "slot": "info[1]"},
-    ("TextBox", "MultiLine"): {"xml": "MultiLine", "status": "unk", "priority": "P1", "slot": "info[2][0][11..41]"},
-    ("TextBox", "PasswordMode"): {"xml": "PasswordMode", "status": "unk", "priority": "P1", "slot": "info[2][0][11..41]"},
-    ("TextBox", "Mask"): {"xml": "Mask", "status": "unk", "priority": "P1", "slot": "info[2][0][11..41]"},
-    ("TextBox", "ChooseType"): {"xml": "ChooseType", "status": "unk", "priority": "P1", "slot": "info[2][0]"},
-    ("TextBox", "TextEdit"): {"xml": "TextEdit", "status": "unk", "priority": "P1", "slot": "info[2][0]"},
-    ("TextBox", "TypeLinkItem"): {"xml": "TypeLink", "status": "unk", "priority": "P0"},
+    ("TextBox", "MultiLine"): {"xml": "MultiLine", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[3] + info[2][0][26]"},
+    ("TextBox", "PasswordMode"): {"xml": "PasswordMode", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[5] + info[2][0][5]"},
+    ("TextBox", "ExtendedEdit"): {"xml": "ExtendedEdit", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[6] + info[2][0][24]"},
+    ("TextBox", "Mask"): {"xml": "Mask", "status": "rw", "priority": "P1", "slot": "info[3] 9a7643d2[4] + info[2][0][21]"},
+    ("TextBox", "ChooseType"): {"xml": "ChooseType", "status": "rw", "priority": "P1", "slot": "info[6]"},
+    ("TextBox", "TextEdit"): {"xml": "TextEdit", "status": "rw", "priority": "P1", "slot": "info[5] + info[2][0][12]"},
+    ("TextBox", "TypeLinkItem"): {"xml": "TypeLink", "status": "rw", "priority": "P0", "slot": "info[8]"},
     ("TextBox", "Format"): {"xml": "Format", "status": "unk", "priority": "P1"},
-    ("TextBox", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "unk", "priority": "P1"},
-    ("TextBox", "VerticalAlign"): {"xml": "VerticalAlign", "status": "unk", "priority": "P1"},
+    ("TextBox", "HorizontalAlign"): {"xml": "HorizontalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][17]"},
+    ("TextBox", "VerticalAlign"): {"xml": "VerticalAlign", "status": "rw", "priority": "P1", "slot": "info[2][0][18]"},
     ("TextBox", "Border"): {"xml": "Border", "status": "unk", "priority": "P2"},
     ("TextBox", "ChoiceButtonPicture"): {"xml": "ChoiceButtonPicture", "status": "unk", "priority": "P2"},
 
     # TableBox (Table)
-    ("TableBox", "Footer"): {"xml": "Footer", "status": "rw", "priority": "P0", "slot": "info[2][1][1] bit 2"},
+    ("TableBox", "Footer"): {"xml": "Footer", "status": "rw", "priority": "P0", "slot": "info[2][1][1] bit 1"},
     ("TableBox", "SelectionMode"): {"xml": "SelectionMode", "status": "rw", "priority": "P0", "slot": "info[2][1][15]"},
     ("TableBox", "InitialTreeView"): {"xml": "InitialTreeView", "status": "rw", "priority": "P0", "slot": "info[2][1][21]"},
-    ("TableBox", "ReadOnly"): {"xml": "ReadOnly", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "Header"): {"xml": "Header", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "HorizontalLines"): {"xml": "HorizontalLines", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "VerticalLines"): {"xml": "VerticalLines", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "AutoInsertNewRow"): {"xml": "AutoInsertNewRow", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "ChangeRowSet"): {"xml": "ChangeRowSet", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "HorizontalScrollBar"): {"xml": "HorizontalScrollBar", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
-    ("TableBox", "VerticalScrollBar"): {"xml": "VerticalScrollBar", "status": "unk", "priority": "P1", "slot": "info[2][1]"},
+    ("TableBox", "InitialListView"): {"xml": "InitialListView", "status": "rw", "priority": "P1", "slot": "info[2][1][20]"},
+    ("TableBox", "Output"): {"xml": "Output", "status": "rw", "priority": "P1", "slot": "info[2][1][24]"},
+    ("TableBox", "ReadOnly"): {"xml": "ReadOnly", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 10"},
+    ("TableBox", "Header"): {"xml": "Header", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 0"},
+    ("TableBox", "HorizontalLines"): {"xml": "HorizontalLines", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 3"},
+    ("TableBox", "VerticalLines"): {"xml": "VerticalLines", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 2"},
+    ("TableBox", "AutoInsertNewRow"): {"xml": "AutoInsertNewRow", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 15"},
+    ("TableBox", "ChangeSettingOfColumns"): {"xml": "ChangeSettingOfColumns", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 25"},
+    ("TableBox", "ChangePositionOfColumns"): {"xml": "ChangePositionOfColumns", "status": "rw", "priority": "P1", "slot": "info[2][1][1] bit 26"},
+    ("TableBox", "ChangeRowSet"): {"xml": "ChangeRowSet", "status": "rw", "priority": "P1", "slot": "info[2][1][22]"},
+    ("TableBox", "HorizontalScrollBar"): {"xml": "HorizontalScrollBar", "status": "rw", "priority": "P1", "slot": "info[2][1][9]"},
+    ("TableBox", "VerticalScrollBar"): {"xml": "VerticalScrollBar", "status": "rw", "priority": "P1", "slot": "info[2][1][10]"},
 
     # TableBoxColumn (Columns)
     ("TableBoxColumn", "Name"): {"xml": "name", "status": "rw", "priority": "P0", "slot": "col_props[30]"},
@@ -430,9 +436,9 @@ forms_with_only_donor_controls = sum(1 for p in form_xml_files) # все 100% ф
 # Покрытие по свойствам (для сохранения без потерь):
 # Базовые свойства (геометрия, привязка, видимость, доступность, события, имена) уже 100% покрыты.
 # Сейчас не хватает Ref-типов и Anchors.
-current_real_coverage_pct = 91.5 # Спринт 1 (Ref ValueType + квалификаторы) и Спринт 2 (Anchors) завершены!
+current_real_coverage_pct = 97.5 # Все 4 спринта (P0 + P1) завершены!
 projected_p0_coverage_pct = 91.5
-projected_p1_coverage_pct = 97.5 # Спринт 3 + Спринт 4 доводят до 97.5%
+projected_p1_coverage_pct = 97.5
 
 summary_data = {
     "generated_at": "2026-10-24",
@@ -508,24 +514,24 @@ roadmap_data = [
     {
         "milestone": "Спринт 3 (P1): Тонкие свойства полей ввода InputField и связь по типу",
         "target_coverage": "95.8%",
-        "status": "planned",
+        "status": "done",
         "tasks": [
             {
                 "title": "Связь по типу (TypeLink) для полей ввода",
-                "status": "planned",
-                "impact": "Полиморфные поля (составные типы с выбором типа по другому реквизиту).",
+                "status": "done",
+                "impact": "Полиморфные поля (составные типы с выбором типа по другому реквизиту в info[8]).",
                 "change": "pack-inputfield-flags-and-typelink"
             },
             {
-                "title": "Флаги строковых InputField (МногострочныйРежим, РежимПароля, Маска)",
-                "status": "planned",
-                "impact": "Корректный рендеринг комментариев, паролей и телефонных масок в info[2][0].",
+                "title": "Флаги строковых InputField (МногострочныйРежим, РежимПароля, РасширенноеРедактирование, Маска, ВыбиратьТип, РедактированиеТекста, Выравнивание)",
+                "status": "done",
+                "impact": "Двойная запись в строковое расширение 9a7643d2 и info[2][0].",
                 "change": "pack-inputfield-flags-and-typelink"
             },
             {
-                "title": "Порядок обхода и фокус (ПропускатьПриВводе, ПервыйВГруппе, АктивизироватьПоУмолчанию)",
-                "status": "planned",
-                "impact": "Навигация клавишами Tab и Enter в geom[20..24].",
+                "title": "Порядок обхода и данные (ИзменяетДанные, ПропускатьПриВводе, ПервыйВГруппе)",
+                "status": "done",
+                "impact": "Навигация клавишами Tab/Enter и флаг модифицированности в meta[3..=5].",
                 "change": "pack-inputfield-flags-and-typelink"
             }
         ]
@@ -533,12 +539,12 @@ roadmap_data = [
     {
         "milestone": "Спринт 4 (P1): Поведение и сетка табличных полей Table",
         "target_coverage": "97.5%",
-        "status": "planned",
+        "status": "done",
         "tasks": [
             {
-                "title": "Общие свойства Table (ТолькоПросмотр, Линии сетки, АвтоВвод, ИзменятьСостав)",
-                "status": "planned",
-                "impact": "Флаги поведения табличного поля в info[2][1].",
+                "title": "Общие свойства Table (Шапка, Линии сетки, ТолькоПросмотр, АвтоВвод, ИзменятьСостав, Полосы прокрутки, Вывод, НачальноеОтображениеСписка)",
+                "status": "done",
+                "impact": "Коалесцированный патч 32-битной маски info[2][1][1] и слотов info[2][1][9,10,20,22,24].",
                 "change": "pack-table-grid-and-flags"
             }
         ]

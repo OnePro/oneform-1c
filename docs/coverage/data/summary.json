@@ -12,23 +12,23 @@
   "catalog_totals": {
     "total_properties": 610,
     "status_counts": {
-      "rw": 174,
+      "rw": 200,
       "ro": 3,
       "bin": 0,
-      "unk": 417,
+      "unk": 391,
       "runtime": 16,
       "excluded": 0
     },
     "priority_counts": {
       "p0": 112,
-      "p1": 155,
+      "p1": 157,
       "p2": 51,
-      "p3": 276,
+      "p3": 274,
       "p4": 16
     }
   },
   "coverage_progress": {
-    "current_coverage_pct": 91.5,
+    "current_coverage_pct": 97.5,
     "projected_with_p0_pct": 91.5,
     "projected_with_p1_pct": 97.5,
     "target_pct": 90.0

@@ -1923,3 +1923,26 @@ fn invalid_typelink_and_vertical_align_are_rejected() {
         );
     }
 }
+
+#[test]
+fn table_grid_flags_scrollbars_and_behavior_round_trip() {
+    let mut edited = baseline("DonorForm");
+    // 1. Patch existing ТабличноеПоле1 (id 6): multiple bitmask flags simultaneously + discrete slots
+    edited = edit_ctl(
+        &edited,
+        "ТабличноеПоле1",
+        &[(
+            "<Footer>false</Footer>",
+            "<Footer>true</Footer>\n          <Header>false</Header>\n          <HorizontalLines>false</HorizontalLines>\n          <VerticalLines>false</VerticalLines>\n          <ReadOnly>true</ReadOnly>\n          <AutoInsertNewRow>true</AutoInsertNewRow>\n          <ChangeRowSet>false</ChangeRowSet>\n          <ChangePositionOfColumns>false</ChangePositionOfColumns>\n          <ChangeSettingOfColumns>false</ChangeSettingOfColumns>\n          <HorizontalScrollBar>DontUse</HorizontalScrollBar>\n          <VerticalScrollBar>Use</VerticalScrollBar>\n          <InitialListView>End</InitialListView>\n          <Output>Enable</Output>",
+        )],
+    );
+    // 2. Add a new Table from donor with custom flags
+    let added = "<Table name=\"ТаблицаНовая\" id=\"999\">\n          <Left>500</Left><Top>500</Top><Width>200</Width><Height>100</Height>\n          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>\n          <Footer>true</Footer>\n          <Header>false</Header>\n          <ReadOnly>true</ReadOnly>\n          <ChangeRowSet>false</ChangeRowSet>\n          <InitialListView>Auto</InitialListView>\n          <Output>Disable</Output>\n        </Table>\n        ";
+    let anchor = "        <Table name=\"ТабличноеПоле1\"";
+    edited = edited.replacen(anchor, &(added.to_string() + anchor), 1);
+
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let expected_flags = (117644301i64 | 2 | 32768) & !1 & !4 & !8 & !1024 & !33554432 & !67108864;
+    let text = String::from_utf8(pf.bytes).unwrap();
+    assert!(text.contains(&format!("{{19,{expected_flags},")), "coalesced table bitmask not patched: expected {expected_flags}");
+}
