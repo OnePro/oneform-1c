@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "inputfield-flag-06",
+  "control": "ПолеВвода1",
+  "slot": "info[2][0][8]",
+  "oldValue": {
+    "kind": "bare",
+    "value": "1"
+  },
+  "newValue": {
+    "kind": "bare",
+    "value": "0"
+  },
+  "hypothesis": "flag candidate (Enabled/ReadOnly tier-1)",
+  "outcome": "accept",
+  "controlSurvived": true,
+  "designer": {
+    "platform": "8.3",
+    "durationMs": 5795
+  },
+  "runtime": null
+}

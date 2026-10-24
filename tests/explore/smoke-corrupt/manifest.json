@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "smoke-corrupt",
+  "control": "Надпись1",
+  "slot": "geom[0]",
+  "oldValue": {
+    "kind": "bare",
+    "value": "8"
+  },
+  "newValue": {
+    "kind": "bare",
+    "value": "junk"
+  },
+  "hypothesis": "corrupt the geometry version marker",
+  "outcome": "reject",
+  "controlSurvived": true,
+  "designer": {
+    "platform": "8.3",
+    "durationMs": 2700
+  },
+  "runtime": null
+}

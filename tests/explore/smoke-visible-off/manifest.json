@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "smoke-visible-off",
+  "control": "Надпись1",
+  "slot": "geom[5]",
+  "oldValue": {
+    "kind": "bare",
+    "value": "1"
+  },
+  "newValue": {
+    "kind": "bare",
+    "value": "0"
+  },
+  "hypothesis": "Visible flag",
+  "outcome": "accept",
+  "controlSurvived": true,
+  "designer": {
+    "platform": "8.3",
+    "durationMs": 5732
+  },
+  "runtime": null
+}

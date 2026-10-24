@@ -63,6 +63,23 @@ oneform preview <PATH>
 
 # Инспекция и сравнение низкоуровневых свойств элементов FormStream.bin / Form.bin
 oneform props <FormStream.bin|Form.bin> [--control <Имя>] [--diff <Other.bin>]
+
+# Исследование неизвестных свойств: точечная мутация одного слота потока
+oneform explore mutate --spec <exp.json> --stream <FormStream.bin> --out <dir>
+
+# Кандидатные флаговые слоты (bare 0/1) контрола для построения матрицы экспериментов
+oneform explore candidates --stream <FormStream.bin> --control <Имя>
+
+# Конвейер экспериментов: baseline + Designer gate (нужна установленная платформа 1С и база-копия)
+oneform explore run --matrix <spec.json|dir> --epf <donor.epf> --base <infobase> --platform <bin-1cv8> [--corpus <dir>]
+```
+
+### Конвейер исследования свойств (`explore`)
+
+Эксперимент — JSON-спецификация точечной мутации (`id`, `control`, `slot` вида `info[2][0][3]`, `newValue {kind: bare|quoted, value}`, `hypothesis`). `explore run` прогоняет baseline (два прогона немутированного донора; строки, нестабильные между прогонами, помечаются volatile и исключаются из чистого diff, UUID маскируются), затем каждый эксперимент: мутация одного leaf-слота с сохранением всех остальных байтов, валидация платформой (`/DumpExternalDataProcessorOrReportToFiles` + `/LoadExternalDataProcessorOrReportFromFiles` против временной копии базы), проверка выживания контрола (`accept` / `reject` / `silent-drop`) и запись фикстуры в корпус (`tests/explore/<id>/`: `original.bin`, `mutated.bin`, `normalized.bin`, `observed.json`, `net-diff.json`, `decoded-diff.json`, `manifest.json` со `schema: 1`).
+
+Корпус воспроизводится тестом `tests/explore_corpus.rs` **без платформы** (мутация пересчитывается из manifest и сравнивается побайтово); регенерация через платформу — только явным opt-in (`ONEFORM_EXPLORE=1`, `ONEFORM_EXPLORE_BASE`, `ONEFORM_EXPLORE_PLATFORM`). Известные находки по слотам свойств: `docs/property-exploration.md`.
+
 ```
 
 ### Цикл редактирования формы через XML

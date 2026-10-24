@@ -10,6 +10,7 @@ pub mod container;
 pub mod discovery;
 pub mod encoding;
 pub mod errors;
+pub mod explore;
 pub mod form_basic;
 pub mod form_patch;
 pub mod formbin;

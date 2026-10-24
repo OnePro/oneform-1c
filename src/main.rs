@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use oneform::{cli_epf, cli_oneform, props};
+use oneform::{cli_epf, cli_oneform, explore, props};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -22,6 +22,11 @@ fn main() {
         }
     } else if rest.first().map(String::as_str) == Some("props") {
         let (code, out, err) = props::run(&rest[1..]);
+        print!("{out}");
+        eprint!("{err}");
+        code
+    } else if rest.first().map(String::as_str) == Some("explore") {
+        let (code, out, err) = explore::run(&rest[1..]);
         print!("{out}");
         eprint!("{err}");
         code
