@@ -130,8 +130,7 @@ impl Work {
         let xml = fs::read_to_string(&p).unwrap();
         let at = xml.find("<Width>").expect("Width") + "<Width>".len();
         let end = at + xml[at..].find('<').unwrap();
-        let width: u32 = xml[at..end].parse().unwrap();
-        fs::write(&p, format!("{}{}{}", &xml[..at], width + 1, &xml[end..])).unwrap();
+        fs::write(&p, format!("{}-1{}", &xml[..at], &xml[end..])).unwrap();
     }
 
     fn edit_bsl(&self) {

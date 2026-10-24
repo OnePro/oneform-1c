@@ -258,9 +258,11 @@ pub struct ValueTypeSpec {
     pub fraction_digits: Option<i64>,
     pub digits: Option<i64>,
     pub length: Option<i64>,
+    pub non_negative: bool,
+    pub fixed: bool,
     pub ref_guids: Vec<String>,
-    /// Read from a binary pattern that carries flags `<ValueType>` cannot express (`nonNegative`, `fixed`,
-    /// `mixedComposite`); such a value never equals one parsed from `Form.xml`.
+    /// Read from a binary pattern that carries flags `<ValueType>` cannot express (`mixedComposite`);
+    /// such a value never equals one parsed from `Form.xml`.
     pub lossy: bool,
 }
 
@@ -276,6 +278,8 @@ impl ValueTypeSpec {
             fraction_digits: self.fraction_digits,
             digits: self.digits,
             length: self.length,
+            non_negative: self.non_negative,
+            fixed: self.fixed,
             ref_guids: self.ref_guids.clone(),
         }
     }
@@ -292,13 +296,32 @@ pub struct FormAttribute {
     pub fraction_digits: Option<i64>,
     pub digits: Option<i64>,
     pub length: Option<i64>,
+    pub non_negative: bool,
+    pub fixed: bool,
     pub ref_guids: Vec<String>,
 }
 
 impl FormAttribute {
     fn same_value_type(&self, other: &FormAttribute) -> bool {
-        (&self.kind, self.composite, self.fraction_digits, self.digits, self.length, &self.ref_guids)
-            == (&other.kind, other.composite, other.fraction_digits, other.digits, other.length, &other.ref_guids)
+        (
+            &self.kind,
+            self.composite,
+            self.fraction_digits,
+            self.digits,
+            self.length,
+            self.non_negative,
+            self.fixed,
+            &self.ref_guids,
+        ) == (
+            &other.kind,
+            other.composite,
+            other.fraction_digits,
+            other.digits,
+            other.length,
+            other.non_negative,
+            other.fixed,
+            &other.ref_guids,
+        )
     }
 }
 
@@ -307,16 +330,18 @@ fn format_attr_pattern(a: &FormAttribute) -> Option<String> {
         ("", false) => Some("{\"Pattern\"}".to_string()),
         ("String", false) => {
             if let Some(l) = a.length {
-                Some(format!("{{\"Pattern\",{{\"S\",{l},0}}}}"))
-            } else {
+                Some(format!("{{\"Pattern\",{{\"S\",{l},{}}}}}", i32::from(a.fixed)))
+            } else if !a.fixed {
                 Some("{\"Pattern\",{\"S\"}}".to_string())
+            } else {
+                None
             }
         }
         ("Boolean", false) => Some("{\"Pattern\",{\"B\"}}".to_string()),
         ("Number", false) => {
             let d = a.digits.unwrap_or(10);
             let f = a.fraction_digits.unwrap_or(0);
-            Some(format!("{{\"Pattern\",{{\"N\",{d},{f},0}}}}"))
+            Some(format!("{{\"Pattern\",{{\"N\",{d},{f},{}}}}}", i32::from(a.non_negative)))
         }
         ("DateTime", false) => Some("{\"Pattern\",{\"D\"}}".to_string()),
         ("Date", false) => Some("{\"Pattern\",{\"D\",\"D\"}}".to_string()),
@@ -385,7 +410,12 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
     if !e.children.is_empty() || !e.text.trim().is_empty() {
         return None;
     }
-    if !e.attrs.keys().all(|k| matches!(k.as_str(), "kind" | "composite" | "fractionDigits" | "digits" | "length" | "ref" | "refGuid" | "title")) {
+    if !e.attrs.keys().all(|k| {
+        matches!(
+            k.as_str(),
+            "kind" | "composite" | "fractionDigits" | "digits" | "length" | "nonNegative" | "fixed" | "ref" | "refGuid" | "title"
+        )
+    }) {
         return None;
     }
     let kind = e.attrs.get("kind")?.clone();
@@ -394,10 +424,22 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
         "false" => false,
         _ => return None,
     };
+    let bool_attr = |attr: &str| -> Option<bool> {
+        match e.attrs.get(attr).map(String::as_str) {
+            Some("true") => Some(true),
+            Some("false") | None => Some(false),
+            _ => None,
+        }
+    };
+    let non_negative = bool_attr("nonNegative")?;
+    let fixed = bool_attr("fixed")?;
     let fraction_digits = parse_opt_int(e, "fractionDigits")?;
     let mut digits = parse_opt_int(e, "digits")?;
     let length = parse_opt_int(e, "length")?;
-    if length.is_some_and(|l| l <= 0 || kind != "String") {
+    if length.is_some_and(|l| l <= 0 || kind != "String") || (fixed && (kind != "String" || length.is_none())) {
+        return None;
+    }
+    if non_negative && kind != "Number" {
         return None;
     }
     if digits.is_some() || fraction_digits.is_some() {
@@ -437,7 +479,7 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
     if !composite_ok {
         return None;
     }
-    let spec = ValueTypeSpec { kind, composite, fraction_digits, digits, length, ref_guids, lossy: false };
+    let spec = ValueTypeSpec { kind, composite, fraction_digits, digits, length, non_negative, fixed, ref_guids, lossy: false };
     format_attr_pattern(&spec.to_attr()).map(|_| spec)
 }
 
@@ -1820,6 +1862,8 @@ pub struct FormXml {
     pub label: String,
     pub name: String,
     pub form_caption: Vec<(String, String)>,
+    pub form_width: Option<i64>,
+    pub form_height: Option<i64>,
     pub form_events: Vec<(i64, String)>,
     pub form_props: FormRootProps,
     /// Non-main form attributes with deterministic ValueType patterns.
@@ -1841,6 +1885,20 @@ impl FormXml {
     /// not match is left untouched, so a real mismatch still shows up as a difference.
     pub fn with_derived_pages(&self, derived: &[DerivedPage]) -> FormXml {
         let mut out = self.clone();
+        let root_mine: Vec<&DerivedPage> = derived.iter().filter(|d| d.panel_id == 0).collect();
+        if !root_mine.is_empty() {
+            for items in out.shell.children.iter_mut().filter(|e| e.tag == "ChildItems") {
+                let mut pages = items.children.iter_mut().filter(|e| e.tag == "Page");
+                for d in &root_mine {
+                    let Some(page) = pages.next().filter(|p| p.attrs.get("name") == Some(&d.name)) else { continue };
+                    for (tag, v) in [("Left", d.left), ("Top", d.top), ("Width", d.width), ("Height", d.height)] {
+                        if let Some(e) = page.children.iter_mut().find(|e| e.tag == tag) {
+                            e.text = v.to_string();
+                        }
+                    }
+                }
+            }
+        }
         for c in &mut out.controls {
             let mine: Vec<&DerivedPage> = derived.iter().filter(|d| d.panel_id == c.id).collect();
             for items in c.rest.children.iter_mut().filter(|e| e.tag == "ChildItems") {
@@ -1905,9 +1963,17 @@ impl FormXml {
         let z: HashMap<i64, i64> = self.controls.iter().map(|c| (c.id, c.values.z_order)).collect();
         let mut out = self.clone();
         out.form_props = FormRootProps::default();
+        for a in &mut out.attributes {
+            a.non_negative = false;
+            a.fixed = false;
+        }
         reorder(&mut out.shell, &z);
         for c in &mut out.controls {
             reorder(&mut c.rest, &z);
+            if let Some(vt) = &mut c.values.value_type {
+                vt.non_negative = false;
+                vt.fixed = false;
+            }
             // Write-only flags and anchors (verified in binary by read_back, not emitted by render_form_xml
             // so existing golden Form.xml files stay byte-identical) are cleared before XML comparison.
             c.values.drop_list_button = None;
@@ -3563,6 +3629,8 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
             fraction_digits: vt.fraction_digits,
             digits: vt.digits,
             length: vt.length,
+            non_negative: vt.non_negative,
+            fixed: vt.fixed,
             ref_guids: vt.ref_guids,
         };
         if format_attr_pattern(&fa).is_none() {
@@ -3581,7 +3649,7 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
     }
 }
 
-fn extract_form_header(root: &mut XmlElement) -> (LocItems, EventItems) {
+fn extract_form_header(root: &mut XmlElement) -> (LocItems, Option<i64>, Option<i64>, EventItems) {
     let mut form_caption = Vec::new();
     let mut cap_ok = false;
     if let Some(cap_el) = root.children.iter().find(|e| e.tag == "Caption") {
@@ -3607,6 +3675,21 @@ fn extract_form_header(root: &mut XmlElement) -> (LocItems, EventItems) {
     if cap_ok {
         root.children.retain(|e| e.tag != "Caption");
     }
+
+    let dim_of = |tag: &str, root: &mut XmlElement| -> Option<i64> {
+        if root.children.iter().filter(|e| e.tag == tag).count() != 1 {
+            return None;
+        }
+        let el = root.children.iter().find(|e| e.tag == tag)?;
+        if !el.attrs.is_empty() || !el.children.is_empty() {
+            return None;
+        }
+        let v = strict_int(el.text.trim()).filter(|&v| v > 0 && i32::try_from(v).is_ok())?;
+        root.children.retain(|e| e.tag != tag);
+        Some(v)
+    };
+    let form_width = dim_of("Width", root);
+    let form_height = dim_of("Height", root);
 
     let mut form_events = Vec::new();
     let mut ev_ok = false;
@@ -3639,7 +3722,7 @@ fn extract_form_header(root: &mut XmlElement) -> (LocItems, EventItems) {
     if ev_ok {
         root.children.retain(|e| e.tag != "Events");
     }
-    (form_caption, form_events)
+    (form_caption, form_width, form_height, form_events)
 }
 
 fn extract_form_root_props(root: &mut XmlElement) -> FormRootProps {
@@ -3759,12 +3842,23 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         let p = Parser { label, form: form_name, attr_names: HashMap::new(), controls: Vec::new() };
         return Err(p.bad(root.line, format!("root element must be <Form>, found <{}>", root.tag)));
     }
-    let (form_caption, form_events) = extract_form_header(&mut root);
+    let (form_caption, form_width, form_height, form_events) = extract_form_header(&mut root);
     let form_props = extract_form_root_props(&mut root);
     let (attr_names, attributes) = extract_form_attributes(&mut root);
     let mut p = Parser { label, form: form_name, attr_names, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
-    Ok(FormXml { label: label.to_string(), name: p.form, form_caption, form_events, form_props, attributes, controls: p.controls, shell })
+    Ok(FormXml {
+        label: label.to_string(),
+        name: p.form,
+        form_caption,
+        form_width,
+        form_height,
+        form_events,
+        form_props,
+        attributes,
+        controls: p.controls,
+        shell,
+    })
 }
 
 // ------------------------------------------------------------------ 3.2 control identity index
@@ -4070,6 +4164,9 @@ pub struct FormDiff {
     pub deletions: Vec<ControlXml>,
     pub form_caption_changed: bool,
     pub new_form_caption: Vec<(String, String)>,
+    pub form_size_changed: bool,
+    pub old_form_size: (Option<i64>, Option<i64>),
+    pub new_form_size: (Option<i64>, Option<i64>),
     pub form_events_changed: bool,
     pub old_form_events: Vec<(i64, String)>,
     pub new_form_events: Vec<(i64, String)>,
@@ -4086,6 +4183,7 @@ impl FormDiff {
             && self.additions.is_empty()
             && self.deletions.is_empty()
             && !self.form_caption_changed
+            && !self.form_size_changed
             && !self.form_events_changed
             && !self.attributes_changed
             && !self.form_props_changed
@@ -4383,6 +4481,9 @@ pub fn diff_forms_full(
         }
     }
     let form_caption_changed = baseline.form_caption != edited.form_caption;
+    let old_form_size = (baseline.form_width, baseline.form_height);
+    let new_form_size = (edited.form_width, edited.form_height);
+    let form_size_changed = old_form_size != new_form_size && new_form_size.0.is_some() && new_form_size.1.is_some();
     let form_events_changed = baseline.form_events != edited.form_events;
     let attributes_changed = baseline.attributes != edited.attributes;
     let form_props_changed = baseline.form_props != edited.form_props;
@@ -4393,6 +4494,9 @@ pub fn diff_forms_full(
             deletions,
             form_caption_changed,
             new_form_caption: edited.form_caption.clone(),
+            form_size_changed,
+            old_form_size,
+            new_form_size,
             form_events_changed,
             old_form_events: baseline.form_events.clone(),
             new_form_events: edited.form_events.clone(),
@@ -6684,13 +6788,15 @@ fn read_input_value_type(info: &Node) -> Option<ValueTypeSpec> {
     let digits = vt.get("digits").and_then(|v| v.as_i64());
     let length = vt.get("length").and_then(|v| v.as_i64());
     let flag = |key: &str| vt.get(key) == Some(&Value::Bool(true));
-    let lossy = flag("mixedComposite") || flag("nonNegative") || flag("fixed");
+    let non_negative = flag("nonNegative");
+    let fixed = flag("fixed");
+    let lossy = flag("mixedComposite");
     let ref_guids = match (vt.get("refGuids").and_then(|v| v.as_array()), vt.get("refGuid").and_then(|v| v.as_str())) {
         (Some(arr), _) => arr.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
         (None, Some(rg)) => rg.split(';').map(str::to_string).collect(),
         (None, None) => Vec::new(),
     };
-    Some(ValueTypeSpec { kind, composite, fraction_digits, digits, length, ref_guids, lossy })
+    Some(ValueTypeSpec { kind, composite, fraction_digits, digits, length, non_negative, fixed, ref_guids, lossy })
 }
 
 fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
@@ -8108,6 +8214,7 @@ impl FormPatchPlan<'_> {
         if self.diff.additions.is_empty()
             && self.diff.deletions.is_empty()
             && !self.diff.form_caption_changed
+            && !self.diff.form_size_changed
             && !self.diff.form_events_changed
             && !self.diff.attributes_changed
             && !self.diff.form_props_changed
@@ -8115,6 +8222,75 @@ impl FormPatchPlan<'_> {
             && default_buttons.is_empty()
         {
             return Ok(allocated);
+        }
+
+        // ---- form size (root[1][3..=4], root[1][11..=12], and root panel boundary rows)
+        if self.diff.form_size_changed {
+            let (Some(new_w), Some(new_h)) = self.diff.new_form_size else {
+                return Err(layout_err("form stream: new form Width and Height must be present"));
+            };
+            let h1 = self.index.at_path(&[1])?;
+            let (cur_w, span_w) = h1
+                .atom(3)
+                .and_then(|(a, s)| Some((strict_int(&a.value)?, s)))
+                .ok_or_else(|| layout_err("form stream: root[1][3] width atom missing"))?;
+            let (cur_h, span_h) = h1
+                .atom(4)
+                .and_then(|(a, s)| Some((strict_int(&a.value)?, s)))
+                .ok_or_else(|| layout_err("form stream: root[1][4] height atom missing"))?;
+            if self.diff.old_form_size != (Some(cur_w), Some(cur_h)) {
+                return Err(ExtractionError::new(
+                    GENERATED_FILE_MODIFIED,
+                    format!("form size mismatch: XML has {:?}, stream has ({cur_w}, {cur_h})", self.diff.old_form_size),
+                )
+                .with("kind", "baseline-mismatch"));
+            }
+            if cur_w != new_w {
+                out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: span_w, bytes: new_w.to_string().into_bytes() });
+                if let Some((a11, sp11)) = h1.atom(11) {
+                    if strict_int(&a11.value) == Some(cur_w) {
+                        out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: sp11, bytes: new_w.to_string().into_bytes() });
+                    }
+                }
+            }
+            if cur_h != new_h {
+                out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: span_h, bytes: new_h.to_string().into_bytes() });
+                if let Some((a12, sp12)) = h1.atom(12) {
+                    if strict_int(&a12.value) == Some(cur_h) {
+                        out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: sp12, bytes: new_h.to_string().into_bytes() });
+                    }
+                }
+            }
+            let dw = new_w - cur_w;
+            let dh = new_h - cur_h;
+            if let Ok(p) = self.index.at_path(&[1, 2, 1, 1]) {
+                if let Some(page_idx) = panel_page_list_idx(p.node) {
+                    let rows_idx = page_idx + 4;
+                    if let Some(rows) = p.atom(rows_idx).and_then(|(a, _)| a.value.parse::<usize>().ok()) {
+                        for r in 0..rows {
+                            let Some(row) = p.child(rows_idx + 1 + r) else { continue };
+                            let Some(edge) = row.atom(4).and_then(|(a, _)| strict_int(&a.value)) else { continue };
+                            let Some((coord, sp)) = row.atom(1).and_then(|(a, s)| Some((strict_int(&a.value)?, s))) else { continue };
+                            let delta = match edge {
+                                3 => dw,
+                                4 => dh,
+                                _ => 0,
+                            };
+                            if delta != 0 {
+                                let updated = coord + delta;
+                                if updated < 1 {
+                                    return Err(ExtractionError::new(
+                                        GENERATED_FILE_MODIFIED,
+                                        "form resize would shrink a root page client area below 1".to_string(),
+                                    )
+                                    .with("kind", "invalid-geometry"));
+                                }
+                                out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: sp, bytes: updated.to_string().into_bytes() });
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // ---- default button (root[1][1][2])
@@ -8663,6 +8839,22 @@ impl FormPatchPlan<'_> {
             self.verify_form_props(&index)?;
         }
         let mut derived_pages = Vec::new();
+        if self.diff.form_size_changed {
+            let (Some(new_w), Some(new_h)) = self.diff.new_form_size else {
+                return Err(layout_err("form stream: new form size missing"));
+            };
+            let h1 = index.at_path(&[1])?;
+            let got_w = h1.atom(3).and_then(|(a, _)| strict_int(&a.value));
+            let got_h = h1.atom(4).and_then(|(a, _)| strict_int(&a.value));
+            if (got_w, got_h) != (Some(new_w), Some(new_h)) {
+                return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, "patched form size did not read back")
+                    .with("kind", "verification-failed"));
+            }
+            if let Ok(pinfo) = index.at_path(&[1, 2, 1]) {
+                let actual = panel_pages(pinfo.node, new_w, new_h);
+                derived_pages.extend(crate::form_patch::derived_pages(0, &actual.1));
+            }
+        }
         for (edit, entry) in self.targets() {
             let patched = index.get(edit.id).expect("layout compared above");
             let original = Site { source: self.source, edit, entry };

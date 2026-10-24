@@ -6,8 +6,8 @@
 
 | Статус | Кол-во | % от всех (610) | % от сериализуемых в `FormStream.bin` (482) |
 |---|---:|---:|---:|
-| **🟢 Полная поддержка (`rw`: `extract` + `pack` + read-back)** | **477** | **78.2%** | **99.0%** |
-| **🟡 Чтение (`ro`)** | **5** | **0.8%** | **1.0%** |
+| **🟢 Полная поддержка (`rw`: `extract` + `pack` + read-back)** | **481** | **78.9%** | **99.8%** |
+| **🟡 Чтение (`ro`)** | **1** | **0.2%** | **0.2%** |
 | **⚙️ Только рантайм 1С (`runtime`)** | **128** | **21.0%** | — |
 | **⚪ Не покрыто (`unk`)** | **0** | **0.0%** | **0.0%** |
 | **ИТОГО покрыто сериализуемых (`rw` + `ro`)** | **482 / 482** | — | **100.0%** |
@@ -21,7 +21,7 @@
 | `Table` (`TableBox`) | 46 | 40 | 0 | 6 | 0 | **100.0%** (40/40) |
 | `SpreadsheetDocument` (`SpreadsheetDocument`) | 53 | 27 | 0 | 26 | 0 | **100.0%** (27/27) |
 | `ChoiceField` (`ComboBox`) | 21 | 21 | 0 | 0 | 0 | **100.0%** (21/21) |
-| `Form` (`Form`) | 38 | 19 | 2 | 17 | 0 | **100.0%** (21/21) |
+| `Form` (`Form`) | 38 | 21 | 0 | 17 | 0 | **100.0%** (21/21) |
 | `CalendarField` (`CalendarBox`) | 21 | 19 | 0 | 2 | 0 | **100.0%** (19/19) |
 | `LabelDecoration` (`Label`) | 19 | 19 | 0 | 0 | 0 | **100.0%** (19/19) |
 | `Panel` (`Panel`) | 18 | 17 | 0 | 1 | 0 | **100.0%** (17/17) |
@@ -49,10 +49,10 @@
 | `ValueListItem` (`ValueListItem`) | 4 | 4 | 0 | 0 | 0 | **100.0%** (4/4) |
 | `Border` (`Border`) | 3 | 3 | 0 | 0 | 0 | **100.0%** (3/3) |
 | `HTMLDocumentField` (`HTMLDocumentField`) | 4 | 3 | 0 | 1 | 0 | **100.0%** (3/3) |
-| `NumberQualifiers` (`NumberQualifiers`) | 3 | 2 | 1 | 0 | 0 | **100.0%** (3/3) |
+| `NumberQualifiers` (`NumberQualifiers`) | 3 | 3 | 0 | 0 | 0 | **100.0%** (3/3) |
 | `TypeDescription` (`TypeDescription`) | 4 | 3 | 0 | 1 | 0 | **100.0%** (3/3) |
 | `Picture` (`Picture`) | 2 | 1 | 1 | 0 | 0 | **100.0%** (2/2) |
-| `StringQualifiers` (`StringQualifiers`) | 2 | 1 | 1 | 0 | 0 | **100.0%** (2/2) |
+| `StringQualifiers` (`StringQualifiers`) | 2 | 2 | 0 | 0 | 0 | **100.0%** (2/2) |
 | `TextDocument` (`TextDocument`) | 6 | 2 | 0 | 4 | 0 | **100.0%** (2/2) |
 | `ValueList` (`ValueList`) | 2 | 2 | 0 | 0 | 0 | **100.0%** (2/2) |
 | `DateQualifiers` (`DateQualifiers`) | 1 | 1 | 0 | 0 | 0 | **100.0%** (1/1) |
@@ -75,6 +75,7 @@
 
 | Элемент / Группа | Свойства | Поведение в 1С и обработка в `oneform` |
 |---|---|---|
+| **`Form` (`Форма`)** | `Width` (`Ширина`) и `Height` (`Высота`) | Хранятся одновременно в `root[1][3..=4]`, дублируются в `root[1][11..=12]` и определяют правые (`edge = 3`) и нижние (`edge = 4`) границы страниц корневой панели `root[1][2][1][1]`. При изменении `<Width>`/`<Height>` формы синхронно обновляются все три структуры и пересчитываются `DerivedPage` корневых страниц (`panel_id = 0`). |
 | **`Button` + `Form`** | `DefaultButton` (`КнопкаПоУмолчанию`) | Двойная привязка: флаг `info[1][5] = 1` на самой кнопке **и** ID кнопки в заголовке формы `root[1][1][2]`. При установке `<DefaultButton>true</DefaultButton>` синхронно обновляются оба слота. |
 | **`InputField` (`ПолеВвода`)** | `MultiLine`, `PasswordMode`, `ExtendedEdit`, `Mask` | Дублируются в строковом расширении `9a7643d2-19e9-45e2-8893-280bc9195a97` (`info[3]`) и в базовом блоке `info[2][0][26, 5, 24, 21]`. Записываются синхронно в оба места; `info[3]` коалесцируется в один `Piece`. |
 | **`InputField` (`ПолеВвода`)** | `TextEdit` (`РедактированиеТекста`) | Хранится инвертированно (`0 = Да`, `1 = Нет`) одновременно в `info[5]` и `info[2][0][12]`. Патчится и проверяется в обоих слотах. |
@@ -320,7 +321,7 @@
 | `Подсказка` | `ToolTip` | `Tooltip` | `<base>[12]` | 🟢 R/W |
 | `ПрозрачныйФон` | `Transparent` | `TransparentBack` | `<base>[5]` | 🟢 R/W |
 
-### `Form` (`Form`) — 19 R/W, 2 R/O, 17 Runtime, 0 Unk
+### `Form` (`Form`) — 21 R/W, 0 R/O, 17 Runtime, 0 Unk
 
 | Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
@@ -337,14 +338,14 @@
 | `СоединяемоеОкно` | `ConnectableWindow` | `ConnectableWindow` | `root[9]` | 🟢 R/W |
 | `РежимРабочегоСтола` | `DesktopMode` | `DesktopMode` | `root[17]` | 🟢 R/W |
 | `ПоведениеКлавишиEnter` | `EnterKeyBehavior` | `EnterKeyBehavior` | `root[19]` | 🟢 R/W |
+| `Высота` | `Height` | `Height` | `root[1][4], root[1][12], root[1][2][1]` | 🟢 R/W |
 | `ИзменениеРазмера` | `SizeChange` | `SizeChange` | `root[8]` | 🟢 R/W |
 | `Стиль` | `Style` | `Style` | `root[12]` | 🟢 R/W |
+| `Ширина` | `Width` | `Width` | `root[1][3], root[1][11], root[1][2][1]` | 🟢 R/W |
 | `СпособОтображенияОкна` | `WindowAppearanceMode` | `WindowAppearanceMode` | `root[14]` | 🟢 R/W |
 | `ПоложениеПрикрепленногоОкна` | `WindowDockLocation` | `WindowDockLocation` | `root[1][9]` | 🟢 R/W |
 | `ПоложениеОкна` | `WindowLocation` | `WindowLocation` | `root[15]` | 🟢 R/W |
 | `СостояниеОкна` | `WindowState` | `WindowState` | `root[6]` | 🟢 R/W |
-| `Высота` | `Height` | `Height` | `root[1][4]` | 🟡 R/O |
-| `Ширина` | `Width` | `Width` | `root[1][3]` | 🟡 R/O |
 | `<Имя реквизита>` | `<Attribute name>` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 | `НачальноеЗначениеВыбора` | `ChoiceInitialValue` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 | `РежимВыбора` | `ChoiceMode` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
@@ -781,13 +782,13 @@
 | `Вывод` | `Output` | `Output` | `info[6]` | 🟢 R/W |
 | `Документ` | `Document` | `-` | `Runtime-only (память 1С)` | ⚙️ Runtime |
 
-### `NumberQualifiers` (`NumberQualifiers`) — 2 R/W, 1 R/O, 0 Runtime, 0 Unk
+### `NumberQualifiers` (`NumberQualifiers`) — 3 R/W, 0 R/O, 0 Runtime, 0 Unk
 
 | Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
+| `ДопустимыйЗнак` | `AllowedSign` | `ValueType@nonNegative` | `{"N",d,f,sign}` | 🟢 R/W |
 | `Разрядность` | `Digits` | `ValueType@digits` | `{"N",d,f,sign}` | 🟢 R/W |
 | `РазрядностьДробнойЧасти` | `FractionDigits` | `ValueType@fractionDigits` | `{"N",d,f,sign}` | 🟢 R/W |
-| `ДопустимыйЗнак` | `AllowedSign` | `ValueType@nonNegative` | `{"N",d,f,sign}` | 🟡 R/O |
 
 ### `TypeDescription` (`TypeDescription`) — 3 R/W, 0 R/O, 1 Runtime, 0 Unk
 
@@ -805,12 +806,12 @@
 | `Вид` | `Type` | `Picture@kind` | `{4,kind,ref,...}` | 🟢 R/W |
 | `НаборВариантов` | `VariantSet` | `Picture` | `{8,ver,pic1,pic2,pic3,...}` | 🟡 R/O |
 
-### `StringQualifiers` (`StringQualifiers`) — 1 R/W, 1 R/O, 0 Runtime, 0 Unk
+### `StringQualifiers` (`StringQualifiers`) — 2 R/W, 0 R/O, 0 Runtime, 0 Unk
 
 | Свойство (RU) | Свойство (EN) | Тег в `Form.xml` | Слот в `FormStream.bin` | Статус |
 |---|---|---|---|---|
+| `ДопустимаяДлина` | `AllowedLength` | `ValueType@fixed` | `{"S",len,fixed}` | 🟢 R/W |
 | `Длина` | `Length` | `ValueType@length` | `{"S",len,fixed}` | 🟢 R/W |
-| `ДопустимаяДлина` | `AllowedLength` | `ValueType@fixed` | `{"S",len,fixed}` | 🟡 R/O |
 
 ### `TextDocument` (`TextDocument`) — 2 R/W, 0 R/O, 4 Runtime, 0 Unk
 

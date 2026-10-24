@@ -990,6 +990,21 @@
     "source_excerpt": "Содержит текст подсказки в шапке колонки."
   },
   {
+    "id": "Form.Height",
+    "owner_api": "Form",
+    "owner_xml": "Form",
+    "name_ru": "Высота",
+    "name_en": "Height",
+    "type_ru": "Число",
+    "xml_tag": "Height",
+    "status": "rw",
+    "priority": "P0",
+    "slot": "root[1][4], root[1][12], root[1][2][1]",
+    "dental_count": 0,
+    "api_access": "read_write",
+    "source_excerpt": "Содержит высоту окна формы (в логических единицах)."
+  },
+  {
     "id": "Panel controls extension.Height",
     "owner_api": "Panel controls extension",
     "owner_xml": "Panel controls extension",
@@ -1845,6 +1860,21 @@
     "source_excerpt": "Определяет признак видимости элемента управления."
   },
   {
+    "id": "Form.Width",
+    "owner_api": "Form",
+    "owner_xml": "Form",
+    "name_ru": "Ширина",
+    "name_en": "Width",
+    "type_ru": "Число",
+    "xml_tag": "Width",
+    "status": "rw",
+    "priority": "P0",
+    "slot": "root[1][3], root[1][11], root[1][2][1]",
+    "dental_count": 0,
+    "api_access": "read_write",
+    "source_excerpt": "Содержит ширину окна формы (в логических единицах)."
+  },
+  {
     "id": "TableBoxColumn.Width",
     "owner_api": "TableBoxColumn",
     "owner_xml": "TableColumn",
@@ -2227,7 +2257,7 @@
     "name_en": "AllowedLength",
     "type_ru": "ДопустимаяДлина",
     "xml_tag": "ValueType@fixed",
-    "status": "ro",
+    "status": "rw",
     "priority": "P1",
     "slot": "{\"S\",len,fixed}",
     "dental_count": 0,
@@ -2242,7 +2272,7 @@
     "name_en": "AllowedSign",
     "type_ru": "ДопустимыйЗнак",
     "xml_tag": "ValueType@nonNegative",
-    "status": "ro",
+    "status": "rw",
     "priority": "P1",
     "slot": "{\"N\",d,f,sign}",
     "dental_count": 0,
@@ -4755,21 +4785,6 @@
     "source_excerpt": "Содержит цвет текста шапки колонки."
   },
   {
-    "id": "Form.Height",
-    "owner_api": "Form",
-    "owner_xml": "Form",
-    "name_ru": "Высота",
-    "name_en": "Height",
-    "type_ru": "Число",
-    "xml_tag": "Height",
-    "status": "ro",
-    "priority": "P1",
-    "slot": "root[1][4]",
-    "dental_count": 0,
-    "api_access": "read_write",
-    "source_excerpt": "Содержит высоту окна формы (в логических единицах)."
-  },
-  {
     "id": "CalendarBox.HolidayColor",
     "owner_api": "CalendarBox",
     "owner_xml": "CalendarField",
@@ -6958,21 +6973,6 @@
     "dental_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия у поля табличного документа вертикальной полосы прокрутки."
-  },
-  {
-    "id": "Form.Width",
-    "owner_api": "Form",
-    "owner_xml": "Form",
-    "name_ru": "Ширина",
-    "name_en": "Width",
-    "type_ru": "Число",
-    "xml_tag": "Width",
-    "status": "ro",
-    "priority": "P1",
-    "slot": "root[1][3]",
-    "dental_count": 0,
-    "api_access": "read_write",
-    "source_excerpt": "Содержит ширину окна формы (в логических единицах)."
   },
   {
     "id": "Form.WindowAppearanceMode",

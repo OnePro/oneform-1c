@@ -12,16 +12,16 @@
   "catalog_totals": {
     "total_properties": 610,
     "status_counts": {
-      "rw": 477,
-      "ro": 5,
+      "rw": 481,
+      "ro": 1,
       "bin": 0,
       "unk": 0,
       "runtime": 128,
       "excluded": 0
     },
     "priority_counts": {
-      "p0": 129,
-      "p1": 340,
+      "p0": 131,
+      "p1": 338,
       "p2": 13,
       "p3": 0,
       "p4": 128

@@ -254,7 +254,7 @@ fn assert_unsupported(edited: String, kind: &str, needles: &[&str]) {
 
 #[test]
 fn form_level_differences_are_rejected() {
-    assert_unsupported(mutate("<Width>937</Width>", "<Width>938</Width>"), "unsupported-form-value", &["form 'Форма'", "Width"]);
+    assert_unsupported(mutate("<Width>937</Width>", "<Width>-1</Width>"), "unsupported-form-value", &["form 'Форма'", "Width"]);
     assert_unsupported(
         mutate("<Item language=\"ru\">Обработка  ВнешняяОбработка1</Item>", "<Item>X</Item>"),
         "unsupported-form-value",
@@ -2226,6 +2226,38 @@ fn font_shortcut_picture_and_remaining_control_slots_round_trip() {
     assert!(text.contains("{3,3,0}"));
     assert!(text.contains("{4,1,{0,785362cb-3756-48ed-87d2-292ded17054a},\"\",-1,-1,1,0,\"\"}"));
     assert!(text.contains("20260101000000,20261231000000"));
+}
+
+#[test]
+fn form_resize_and_qualifier_flags_round_trip() {
+    let mut edited = baseline("DonorForm");
+    edited = edited.replacen(
+        "<Width>937</Width>\n  <Height>693</Height>",
+        "<Width>1020</Width>\n  <Height>760</Height>",
+        1,
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода2",
+        &[(
+            "<ValueType kind=\"Number\" composite=\"false\" fractionDigits=\"0\"/>",
+            "<ValueType kind=\"Number\" composite=\"false\" digits=\"12\" fractionDigits=\"2\" nonNegative=\"true\"/>",
+        )],
+    );
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода7",
+        &[(
+            "<ValueType kind=\"String\" composite=\"false\"/>",
+            "<ValueType kind=\"String\" composite=\"false\" length=\"25\" fixed=\"true\"/>",
+        )],
+    );
+
+    let pf = round_trip("DonorForm", &edited);
+    let text = String::from_utf8(pf.bytes).unwrap();
+    let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+    assert!(compact.contains("{\"N\",12,2,1}"), "Number nonNegative not patched");
+    assert!(compact.contains("{\"S\",25,1}"), "String fixed not patched");
 }
 
 #[test]

@@ -160,8 +160,8 @@ print(f"Всего контролов в базе dental: {total_controls_in_db}
 KNOWN_PROPERTIES_STATUS = {
     # Form
     ("Form", "Caption"): {"xml": "Caption", "status": "rw", "priority": "P0", "slot": "root[1][1][0]"},
-    ("Form", "Width"): {"xml": "Width", "status": "ro", "priority": "P1", "slot": "root[1][3]"},
-    ("Form", "Height"): {"xml": "Height", "status": "ro", "priority": "P1", "slot": "root[1][4]"},
+    ("Form", "Width"): {"xml": "Width", "status": "rw", "priority": "P0", "slot": "root[1][3], root[1][11], root[1][2][1]"},
+    ("Form", "Height"): {"xml": "Height", "status": "rw", "priority": "P0", "slot": "root[1][4], root[1][12], root[1][2][1]"},
     ("Form", "Events"): {"xml": "Events", "status": "rw", "priority": "P0", "slot": "root[4], root[1][2][1], root[3]"},
     ("<Attribute name>", ""): {"xml": "Attributes/Attribute", "status": "rw", "priority": "P0", "slot": "root[2][1..2]"},
     ("Form", "AutoTitle"): {"xml": "AutoTitle", "status": "rw", "priority": "P1", "slot": "root[5]"},
@@ -553,10 +553,10 @@ KNOWN_PROPERTIES_STATUS = {
     ("TypeDescription", "NumberQualifiers"): {"xml": "ValueType@digits,fractionDigits", "status": "rw", "priority": "P0", "slot": "{\"N\",d,f,sign}"},
     ("TypeDescription", "DateQualifiers"): {"xml": "ValueType@kind", "status": "rw", "priority": "P0", "slot": "{\"D\",\"D\"|\"T\"}"},
     ("StringQualifiers", "Length"): {"xml": "ValueType@length", "status": "rw", "priority": "P0", "slot": "{\"S\",len,fixed}"},
-    ("StringQualifiers", "AllowedLength"): {"xml": "ValueType@fixed", "status": "ro", "priority": "P1", "slot": "{\"S\",len,fixed}"},
+    ("StringQualifiers", "AllowedLength"): {"xml": "ValueType@fixed", "status": "rw", "priority": "P1", "slot": "{\"S\",len,fixed}"},
     ("NumberQualifiers", "Digits"): {"xml": "ValueType@digits", "status": "rw", "priority": "P0", "slot": "{\"N\",d,f,sign}"},
     ("NumberQualifiers", "FractionDigits"): {"xml": "ValueType@fractionDigits", "status": "rw", "priority": "P0", "slot": "{\"N\",d,f,sign}"},
-    ("NumberQualifiers", "AllowedSign"): {"xml": "ValueType@nonNegative", "status": "ro", "priority": "P1", "slot": "{\"N\",d,f,sign}"},
+    ("NumberQualifiers", "AllowedSign"): {"xml": "ValueType@nonNegative", "status": "rw", "priority": "P1", "slot": "{\"N\",d,f,sign}"},
     ("DateQualifiers", "DateFractions"): {"xml": "ValueType@kind", "status": "rw", "priority": "P0", "slot": "{\"D\",\"D\"|\"T\"}"},
     ("ValueList", "AvailableValues"): {"xml": "ChoiceList", "status": "rw", "priority": "P1", "slot": "info[1][26][2][6]"},
     ("System enumeration text box extension", "AvailableValues"): {"xml": "ChoiceList", "status": "rw", "priority": "P1", "slot": "info[1][26][2][6]"},
