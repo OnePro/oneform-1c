@@ -273,7 +273,8 @@
       "events": [],
       "columns": [],
       "props": {
-        "autoFill": true
+        "autoFill": true,
+        "actionSource": 0
       },
       "children": []
     },
@@ -360,7 +361,8 @@
             "representation": "Text",
             "hasPicture": false
           }
-        ]
+        ],
+        "actionSource": 0
       },
       "children": []
     },
@@ -391,7 +393,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -421,7 +425,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -635,7 +641,8 @@
         }
       ],
       "props": {
-        "footer": false
+        "footer": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -713,7 +720,8 @@
         "choiceButton": true,
         "clearButton": true,
         "openButton": true,
-        "autoMarkIncomplete": true
+        "autoMarkIncomplete": true,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -748,7 +756,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [],
       "dataPath": {
         "attributeId": 4,
@@ -782,7 +792,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -817,7 +829,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [],
       "dataPath": {
         "attributeId": 5,
@@ -866,7 +880,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -997,7 +1013,8 @@
               }
             ]
           }
-        ]
+        ],
+        "actionSource": 4294967295
       },
       "children": []
     },
@@ -1023,7 +1040,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [
         {
           "id": 34,
@@ -1063,7 +1082,8 @@
             }
           ],
           "props": {
-            "footer": false
+            "footer": false,
+            "contextMenu": 4294967295
           },
           "children": [],
           "dataPath": {
@@ -1088,7 +1108,8 @@
           "events": [],
           "columns": [],
           "props": {
-            "autoFill": true
+            "autoFill": true,
+            "actionSource": 34
           },
           "children": []
         }
@@ -1143,7 +1164,9 @@
       "tabOrder": 6,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1162,7 +1185,9 @@
       "tabOrder": 19,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1222,7 +1247,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [],
       "dataPath": {
         "attributeId": 6,
@@ -1245,7 +1272,9 @@
       "tabOrder": 8,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1270,7 +1299,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [],
       "dataPath": {
         "attributeId": 7,
@@ -1293,7 +1324,9 @@
       "tabOrder": 16,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [],
       "dataPath": {
         "attributeId": 8,
@@ -1322,7 +1355,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1352,7 +1387,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1382,7 +1419,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1422,7 +1461,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1487,7 +1528,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1506,7 +1549,9 @@
       "tabOrder": 4,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1536,7 +1581,9 @@
         }
       ],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1555,7 +1602,9 @@
       "tabOrder": 6,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": []
     },
     {
@@ -1582,7 +1631,8 @@
         },
         "choiceButton": false,
         "clearButton": false,
-        "openButton": false
+        "openButton": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -1613,7 +1663,8 @@
         },
         "choiceButton": true,
         "clearButton": false,
-        "openButton": false
+        "openButton": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -1644,7 +1695,8 @@
         },
         "choiceButton": false,
         "clearButton": false,
-        "openButton": false
+        "openButton": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -1675,7 +1727,8 @@
         },
         "choiceButton": true,
         "clearButton": true,
-        "openButton": false
+        "openButton": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -1706,7 +1759,8 @@
         },
         "choiceButton": true,
         "clearButton": true,
-        "openButton": false
+        "openButton": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -1737,7 +1791,8 @@
         },
         "choiceButton": false,
         "clearButton": false,
-        "openButton": false
+        "openButton": false,
+        "contextMenu": 4294967295
       },
       "children": [],
       "dataPath": {
@@ -1761,7 +1816,9 @@
       "tabOrder": 20,
       "events": [],
       "columns": [],
-      "props": {},
+      "props": {
+        "contextMenu": 4294967295
+      },
       "children": [],
       "showTabs": 3,
       "pages": [

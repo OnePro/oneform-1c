@@ -418,6 +418,7 @@
                   <Height>27</Height>
                   <ZOrder>1</ZOrder>
                   <TabOrder>1</TabOrder>
+                  <ActionSource>34</ActionSource>
                   <AutoFill>true</AutoFill>
                 </CommandBar>
               </ChildItems>

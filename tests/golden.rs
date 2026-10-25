@@ -2,7 +2,7 @@
 //! (the Python Reference) and compares exit code, stdout, stderr and the resulting tree byte for byte.
 //!
 //! Corpus contract: see the module docstring of `scripts/gen_golden.py`.
-//! Env: `GOLDEN_FORCE=1` runs cases listed in `rust/golden-pending.txt` too; `GOLDEN_FILTER=substr` selects cases.
+//! Env: `GOLDEN_BLESS=1` rewrites the expectations of differing cases; `GOLDEN_FORCE=1` runs cases listed in `rust/golden-pending.txt` too; `GOLDEN_FILTER=substr` selects cases.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -271,6 +271,25 @@ fn run_case(c: &Case) -> Result<(), String> {
         problems.push(format!("deleted files: expected {want_deleted:?}, actual {deleted:?}"));
     }
 
+    if !problems.is_empty() && std::env::var("GOLDEN_BLESS").is_ok_and(|v| v == "1") {
+        // Rewrite the expectations of a case whose output changed on purpose (OpenSpec-reviewed schema extension).
+        fs::write(c.dir.join("stdout.txt"), stdout.as_bytes()).unwrap();
+        if !c.ignores("stderr") {
+            fs::write(c.dir.join("stderr.txt"), normalize(&String::from_utf8_lossy(&out.stderr), &root).as_bytes()).unwrap();
+        }
+        fs::write(c.dir.join("exit_code"), format!("{code}\n")).unwrap();
+        for (p, g) in &got_changed {
+            if !want_changed.get(p).is_some_and(|w| same_file(pack, p, w, g)) {
+                let path = c.dir.join("expected").join(p);
+                fs::create_dir_all(path.parent().unwrap()).unwrap();
+                fs::write(path, g).unwrap();
+            }
+        }
+        for p in want_changed.keys().filter(|p| !got_changed.contains_key(*p)) {
+            fs::remove_file(c.dir.join("expected").join(p)).unwrap();
+        }
+        return Ok(());
+    }
     if problems.is_empty() {
         Ok(())
     } else {

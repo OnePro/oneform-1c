@@ -612,6 +612,14 @@ fn control(
     if let Some(Value::Object(vt)) = props.get_mut("valueType") {
         annotate_value_type(vt, type_lookup, false);
     }
+    // meta[2]: for a command bar the id of the control whose actions it shows, for any other control the id of its
+    // context menu bar (0xFFFFFFFF = none, the platform default).
+    if let Some(Item::Atom(a)) = meta.children.get(2) {
+        if let Ok(id) = a.value.parse::<i64>() {
+            let key = if type_name == Some("CommandBar") { "actionSource" } else { "contextMenu" };
+            props.insert(key.into(), id.into());
+        }
+    }
     let mut children = Vec::new();
     for c in table(Some(children_node), "control children")? {
         children.push(control(c, warnings, form_uuid, meta_lookup, type_lookup)?);
@@ -1231,6 +1239,16 @@ impl Writer {
         }
         if !truthy(c.get("visible")) {
             self.leaf("Visible", Some("false"), &[]);
+        }
+        // Raw `meta[2]`: the control id of the context menu / of a command bar's action source. Only a real control
+        // id is written; 0xFFFFFFFF (unset - a bar then fills itself from the platform's automatic source) and 0
+        // (no control) are left out, and an unchanged slot is never rewritten by `pack`.
+        for (key, tagname) in [("contextMenu", "ContextMenu"), ("actionSource", "ActionSource")] {
+            if let Some(id) = c.get("props").and_then(|p| p.get(key)).and_then(Value::as_i64) {
+                if id != 4_294_967_295 && id != 0 {
+                    self.leaf(tagname, Some(&id.to_string()), &[]);
+                }
+            }
         }
         let pages: &[Value] = if tag == "Panel" { arr(c, "pages") } else { &[] };
         if !pages.is_empty() {

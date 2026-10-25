@@ -173,14 +173,14 @@
     {
       "path": "Forms/MainForm/Form.xml",
       "role": "form-xml",
-      "size": 32235,
-      "sha256": "0db40fdc24564bf1026343197237377db898a9ddb1eceb0031b9ab13c7bc771f"
+      "size": 32285,
+      "sha256": "f4881d0c04806fd26943ce906922916296b846288421d7c82288dce7c423c9ff"
     },
     {
       "path": "Forms/MainForm/FormDefinition.json",
       "role": "form-definition",
-      "size": 44337,
-      "sha256": "fcc38ad1ee6dddc3fb31ccf50c4187602a17ec248b082a0b26b32ad39b0ae3df"
+      "size": 45680,
+      "sha256": "8df2af3029802d8dbbab25071fad6d6ebe0981f638bb05cbb24bfef964f07ae9"
     },
     {
       "path": "Forms/MainForm/FormModule.bsl",
@@ -191,8 +191,8 @@
     {
       "path": "Forms/MainForm/FormPreview.html",
       "role": "form-preview",
-      "size": 267590,
-      "sha256": "4848a5c3c909db9e31e345499b289c83c6932bbdd71994eecab6f7f82cdb9b49"
+      "size": 267661,
+      "sha256": "db60857a80b2aaa405e12778026ac3356b9ba78ca1e74544e6dd219a2dd7746c"
     },
     {
       "path": "Forms/MainForm/Reference/FormStream.bin",

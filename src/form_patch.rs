@@ -40,6 +40,8 @@ use crate::oof_props::{atom, caption_path, localized};
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
+/// `meta[2]` of a control without a context menu / a command bar without an explicit action source.
+const UNSET_CONTROL_REF: i64 = 4_294_967_295;
 const STRING_EXT_GUID: &str = "9a7643d2-19e9-45e2-8893-280bc9195a97";
 const TYPE_LINK_GUID: &str = "c866d8e7-76ff-4334-9d02-144f1efe5e1d";
 const SUPPORTED_TAGS: [&str; 156] = [
@@ -2071,8 +2073,6 @@ impl FormXml {
                 it.picture_id = None;
             }
             c.values.default_button = None;
-            c.values.context_menu = None;
-            c.values.action_source = None;
             c.values.auto_context_menu = None;
             c.values.collapse = None;
             c.values.embedded_into_cell = None;
@@ -7793,8 +7793,8 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             }
             Property::ContextMenu | Property::ActionSource => {
                 let name = prop.xml_name();
-                let want = if prop == Property::ContextMenu { new.context_menu } else { new.action_source }
-                    .ok_or_else(|| site.invalid("invalid-xml", name, format!("cannot remove {name}")))?;
+                // An absent element is the unset default (0xFFFFFFFF) the decoder leaves out of Form.xml.
+                let want = if prop == Property::ContextMenu { new.context_menu } else { new.action_source }.unwrap_or(UNSET_CONTROL_REF);
                 let meta = site
                     .entry
                     .meta()
@@ -7933,8 +7933,8 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             }
             Property::ContextMenu | Property::ActionSource => {
                 let meta = site.entry.meta().ok_or_else(|| wrong(p))?;
-                let want = if p == Property::ContextMenu { new.context_menu } else { new.action_source };
-                Some(int_slot(site, meta, 2, p.xml_name(), p.xml_name())?.0) == want
+                let want = if p == Property::ContextMenu { new.context_menu } else { new.action_source }.unwrap_or(UNSET_CONTROL_REF);
+                int_slot(site, meta, 2, p.xml_name(), p.xml_name())?.0 == want
             }
             Property::Name => site.entry.name == new.name,
             Property::DataPath => read_control_data_path(site.source, site.edit.id) == new.data_path.as_ref().map(|(id, _)| *id),
