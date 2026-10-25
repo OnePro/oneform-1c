@@ -1,6 +1,7 @@
 //! EPF metadata inventory (port of the inventory half of `metadata.py`).
 
 use serde_json::Value;
+use std::collections::HashMap;
 
 use crate::brace::{parse_metadata, Atom, AtomKind, Item, Node, BARE, QUOTED};
 use crate::canonical::sha256_hex;
@@ -72,6 +73,9 @@ pub struct ProcessorInventory {
     pub object_module: Payload,
     pub forms: Vec<FormInfo>,
     pub templates: Vec<TemplateInfo>,
+    /// `lowercase metadata uuid -> name` of the object, its attributes, tabular sections and
+    /// their fields; used to resolve dotted `DataPath` steps when extracting ordinary forms.
+    pub meta_lookup: crate::oof::MetaLookup,
 }
 
 // ---------------------------------------------------------------- navigation
@@ -137,6 +141,32 @@ fn uuid_at(parent: &Node, idx: usize, path: &str) -> Result<String> {
 }
 
 /// `{3,{1,0,<uuid>},"<Name>",{1,"ru","<Synonym>"}|{0},...}` -> (uuid, name, synonym).
+/// Recursively collect `uuid -> name` from every `{3,{1,0,<uuid>},"<Name>",{syn}}` descriptor
+/// in the object metadata tree (the object itself, its attributes, tabular sections and their
+/// fields). This is the `meta_lookup` source for EPF/ERF containers, which have no sibling
+/// `<Object>.xml` (config objects use `formbin::read_meta_lookup` instead).
+pub fn metadata_lookup_tree(node: &Node, out: &mut HashMap<String, String>) {
+    let is_descriptor = node.len() >= 4
+        && matches!(&node.children[0], Item::Atom(a) if a.kind == BARE && a.value == "3")
+        && matches!(&node.children[1], Item::Node(ident) if ident.len() >= 3
+            && matches!(&ident.children[0], Item::Atom(a) if a.kind == BARE && a.value == "1")
+            && matches!(&ident.children[1], Item::Atom(a) if a.kind == BARE && a.value == "0")
+            && matches!(&ident.children[2], Item::Atom(a) if a.kind == BARE && is_uuid(&a.value)))
+        && matches!(&node.children[2], Item::Atom(a) if a.kind == QUOTED);
+    if is_descriptor {
+        let Item::Node(ident) = &node.children[1] else { return };
+        let Item::Atom(uid) = &ident.children[2] else { return };
+        let Item::Atom(name) = &node.children[2] else { return };
+        out.entry(uid.value.clone()).or_insert_with(|| name.value.clone());
+        return;
+    }
+    for ch in &node.children {
+        if let Item::Node(ch) = ch {
+            metadata_lookup_tree(ch, out);
+        }
+    }
+}
+
 fn object_descriptor(node: &Node, path: &str) -> Result<(String, String, String)> {
     expect(node, 0, path, "3")?;
     let ident = node_at(node, 1, path)?;
@@ -436,6 +466,9 @@ pub fn discover(
             .with("entries", Value::Array(orphans)));
     }
 
+    let mut meta_lookup = crate::oof::MetaLookup::new();
+    metadata_lookup_tree(&meta, &mut meta_lookup);
+
     Ok(ProcessorInventory {
         processor: ProcessorInfo {
             object_uuid: obj_uuid,
@@ -447,6 +480,7 @@ pub fn discover(
         object_module,
         forms,
         templates,
+        meta_lookup,
     })
 }
 

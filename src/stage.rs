@@ -141,7 +141,7 @@ pub fn stage_processor(
             diags.push(diagnostic(MANAGED_FORM_SKIPPED, "warning", &format!("Forms/{}", f.uuid), &[("alias", alias.as_str().into())]));
         }
         let oof = if cfg.form_backend == "oof" && f.kind != "ManagedForm" {
-            Some(build_oof(f, alias, opts.oof_path, None))
+            Some(build_oof(f, alias, opts.oof_path, Some(&inv.meta_lookup)))
         } else {
             None
         };

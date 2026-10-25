@@ -552,7 +552,7 @@ fn representation(code: &str) -> &'static str {
     }
 }
 
-fn std_element(code: i64) -> Option<&'static str> {
+pub(crate) fn std_element(code: i64) -> Option<&'static str> {
     Some(match code {
         -2 => "Номер",
         -3 => "Дата",

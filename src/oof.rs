@@ -30,7 +30,7 @@ pub use crate::oof_props::{
     decode_props, int, int_or_first, is_bare, is_guid, localized, localized_value, node, node_opt, num,
     resolve_column_step, resolve_data_path, str_val, OofError, EVENT_GUID,
 };
-use crate::oof_props::{index_error, py_get, py_slice};
+use crate::oof_props::{index_error, py_get, py_slice, std_element};
 
 pub const FORM_XML_NAME: &str = "Form.xml";
 pub const ORDINARY_FORM_VERSION: &str = "2.1";
@@ -711,6 +711,37 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Opt
                 let attr_id = int_or_first(&body.children[1], "attribute id")?;
                 let step = body.children.get(2);
                 let resolved = resolve_data_path(attr_id, step, &names, meta_lookup);
+                links.insert(int(&link.children[0], "control id")?, resolved);
+            } else if is_bare(&body.children[0], "4") {
+                // Nested display path through a reference field:
+                // {4,{aid},{-60001},{0,<field uuid>},{<std code>}} -> "Attr.Field.StdField"
+                let attr_id = int_or_first(&body.children[1], "attribute id")?;
+                let mut resolved = resolve_data_path(attr_id, None, &names, meta_lookup);
+                let root_path = resolved.get("path").and_then(Value::as_str).map(str::to_string);
+                if let Some(root_path) = root_path {
+                    let mut parts = vec![root_path];
+                    if let Some(Item::Node(f)) = body.children.get(3) {
+                        if f.len() > 1 {
+                            let u = atom(&f.children[1]).to_lowercase();
+                            if let Some(n) = meta_lookup.and_then(|m| m.get(&u)) {
+                                parts.push(n.clone());
+                            }
+                        }
+                    }
+                    let std_part = match body.children.get(4) {
+                        Some(Item::Node(s)) if !s.is_empty() => atom(&s.children[0]).parse::<i64>().ok().and_then(std_element),
+                        Some(Item::Atom(a)) => a.value.parse::<i64>().ok().and_then(std_element),
+                        _ => None,
+                    };
+                    if let Some(code) = std_part {
+                        parts.push(code.to_string());
+                    }
+                    if parts.len() > 1 {
+                        if let Value::Object(map) = &mut resolved {
+                            map.insert("path".into(), parts.join(".").into());
+                        }
+                    }
+                }
                 links.insert(int(&link.children[0], "control id")?, resolved);
             }
         }
