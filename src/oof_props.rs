@@ -325,7 +325,12 @@ fn app<'a>(type_name: &str, info: &'a Node) -> Result<Option<&'a Node>, OofError
     let Some(path) = app_path(type_name) else { return Ok(None) };
     let found = at_n(info, path)?;
     match found {
-        Item::Node(n) if !n.is_empty() && matches!(atom(&n.children[0]), "16" | "13") => Ok(Some(n)),
+        Item::Node(n)
+            if !n.is_empty()
+                && matches!(atom(&n.children[0]), "10" | "11" | "12" | "13" | "14" | "15" | "16") =>
+        {
+            Ok(Some(n))
+        }
         _ => Err(OofError::new("appearance block: unexpected version")),
     }
 }
@@ -409,10 +414,12 @@ pub fn decode_font(n: &Item) -> Result<Option<Map<String, Value>>, OofError> {
             }
         }
     }
-    if let Some(Item::Atom(a)) = n.children.last() {
-        if a.kind == BARE {
-            if let Some(s) = py_int(&a.value).filter(|s| *s != 100 && *s > 0) {
-                font.insert("scale".into(), s.into());
+    if n.len() >= 5 && is_bare(&n.children[0], "7") {
+        if let Some(Item::Atom(a)) = n.children.last() {
+            if a.kind == BARE {
+                if let Some(s) = py_int(&a.value).filter(|s| *s != 100 && *s > 0) {
+                    font.insert("scale".into(), s.into());
+                }
             }
         }
     }
@@ -811,7 +818,7 @@ fn buttons(table: &Item, root: Option<(&str, &str)>) -> Result<Vec<Value>, OofEr
         for i in 0..n.max(0) {
             let guid = atom(at_n(g, &[5 + 2 * i])?);
             let b = node(at_n(g, &[6 + 2 * i])?, "button", 13)?;
-            if !is_bare(&b.children[0], "8") {
+            if !matches!(atom(&b.children[0]), "7" | "8") {
                 return Err(OofError::new("button: unexpected structure"));
             }
             let ainfo = actions.get(guid).cloned().unwrap_or_default();

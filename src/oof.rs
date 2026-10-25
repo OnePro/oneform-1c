@@ -666,20 +666,29 @@ type Attributes = (Option<i64>, Vec<Value>, HashMap<i64, Value>);
 fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Option<&ConfigTypeLookup>) -> Res<Attributes> {
     let main_id = int_or_first(child(section, 0)?, "main attribute id")?;
     let mut attrs: Vec<Value> = Vec::new();
+    let mut has_main = main_id > 0;
     for rec in table(Some(child(section, 2)?), "attributes")? {
         let rec = node(rec, "attribute", 5)?;
         let attr_id = int_or_first(&rec.children[0], "attribute id")?;
-        let name = str_val(&rec.children[4], "attribute name")?;
-        let main = (main_id > 0 && attr_id == main_id) || int(&rec.children[1], "main flag")? != 0;
+        let (name_idx, pat_idx) = if matches!(&rec.children[3], Item::Atom(a) if a.kind != BARE) {
+            (3, 4)
+        } else {
+            (4, 5)
+        };
+        let name = str_val(&rec.children[name_idx], "attribute name")?;
+        let main = attr_id == main_id || int(&rec.children[1], "main flag")? != 0;
+        if main && attr_id == main_id {
+            has_main = true;
+        }
         let stored = int(&rec.children[2], "stored flag")? != 0;
         let mut attr = Map::new();
         attr.insert("id".into(), attr_id.into());
         attr.insert("name".into(), name.into());
         attr.insert("main".into(), main.into());
         attr.insert("stored".into(), stored.into());
-        if rec.len() > 5 {
-            if let Ok(Some(mut vt)) = decode_pattern(&rec.children[5]) {
-                annotate_value_type(&mut vt, type_lookup, main_id > 0 && attr_id == main_id);
+        if rec.len() > pat_idx {
+            if let Ok(Some(mut vt)) = decode_pattern(&rec.children[pat_idx]) {
+                annotate_value_type(&mut vt, type_lookup, main && attr_id == main_id);
                 attr.insert("valueType".into(), Value::Object(vt));
             }
         }
@@ -706,7 +715,7 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Opt
             }
         }
     }
-    Ok((if main_id > 0 { Some(main_id) } else { None }, attrs, links))
+    Ok((if has_main { Some(main_id) } else { None }, attrs, links))
 }
 
 fn apply_links(ctrls: &mut [Value], links: &HashMap<i64, Value>) {
@@ -770,7 +779,9 @@ pub fn decode_oof_stream_with_types(
     type_lookup: Option<&ConfigTypeLookup>,
 ) -> Res<Value> {
     let root = parse_metadata(raw)?;
-    if root.len() < 5 || !(is_bare(&root.children[0], "27") || is_bare(&root.children[0], "26")) {
+    let root_ver_ok = root.len() >= 5
+        && matches!(&root.children[0], Item::Atom(a) if a.kind == BARE && matches!(a.value.as_str(), "24" | "25" | "26" | "27"));
+    if !root_ver_ok {
         return Err(OofError::new("form stream does not start with {27,...}"));
     }
     let section = node(&root.children[1], "form section", 5)?;
