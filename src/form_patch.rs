@@ -4670,13 +4670,24 @@ fn diff_elements(a: &XmlElement, b: &XmlElement, path: &str, out: &mut Vec<(Stri
             _ => {}
         }
     }
-    if a.text != b.text {
+    // A container that lost its last child keeps the whitespace between its tags as text: that is not a change.
+    let blank_container = |x: &XmlElement, y: &XmlElement| {
+        x.text.trim().is_empty()
+            && y.text.is_empty()
+            && (!(x.children.is_empty() && y.children.is_empty())
+                || matches!(x.tag.as_str(), "ChildItems" | "Buttons" | "Events" | "Attributes" | "Columns" | "Pages"))
+    };
+    if a.text != b.text && !blank_container(a, b) && !blank_container(b, a) {
         out.push((path.into(), format!("text changed {} -> {}", show(&a.text), show(&b.text))));
     }
     // Align children by identity key (longest common subsequence) so an insertion or removal is reported
     // once instead of shifting every following sibling.
-    let ka: Vec<String> = a.children.iter().map(key).collect();
-    let kb: Vec<String> = b.children.iter().map(key).collect();
+    // An empty <ChildItems> says the same as no <ChildItems> (the extractor writes none for a container without children).
+    let present = |e: &&XmlElement| !(e.tag == "ChildItems" && e.children.is_empty() && e.text.trim().is_empty() && e.attrs.is_empty());
+    let ca: Vec<&XmlElement> = a.children.iter().filter(present).collect();
+    let cb: Vec<&XmlElement> = b.children.iter().filter(present).collect();
+    let ka: Vec<String> = ca.iter().map(|e| key(e)).collect();
+    let kb: Vec<String> = cb.iter().map(|e| key(e)).collect();
     let (n, m) = (ka.len(), kb.len());
     let mut lcs = vec![vec![0usize; m + 1]; n + 1];
     for i in (0..n).rev() {
@@ -4687,15 +4698,15 @@ fn diff_elements(a: &XmlElement, b: &XmlElement, path: &str, out: &mut Vec<(Stri
     let (mut i, mut j) = (0, 0);
     while i < n || j < m {
         if i < n && j < m && ka[i] == kb[j] {
-            diff_elements(&a.children[i], &b.children[j], &join(path, &seg(&a.children[i])), out);
+            diff_elements(ca[i], cb[j], &join(path, &seg(ca[i])), out);
             i += 1;
             j += 1;
         } else if i < n && (j == m || lcs[i + 1][j] >= lcs[i][j + 1]) {
-            let x = &a.children[i];
+            let x = ca[i];
             out.push((join(path, &seg(x)), format!("element <{}> removed", x.tag)));
             i += 1;
         } else {
-            let y = &b.children[j];
+            let y = cb[j];
             out.push((join(path, &seg(y)), format!("element <{}> added", y.tag)));
             j += 1;
         }
@@ -8391,7 +8402,12 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
     let new = &site.edit.new;
     let original_page = original.entry.page;
     let wrong = |p: Property| {
-        site.layout("verification-failed", p.xml_name(), "the patched stream does not hold the requested value".to_string())
+        let hint = if p == Property::Columns {
+            " (a read-only column has no editor, so <ReadOnly>false</ReadOnly> on a <Column> is not supported)"
+        } else {
+            ""
+        };
+        site.layout("verification-failed", p.xml_name(), format!("the patched stream does not hold the requested value{hint}"))
     };
     if site.edit.changed.iter().copied().any(is_geom_prop) {
         let g = read_geom(site)?;
@@ -9369,6 +9385,13 @@ impl FormPatchPlan<'_> {
         let edits: Vec<Replacement> = replacements.iter().map(|r| Replacement { range: r.range, bytes: r.bytes.clone() }).collect();
         let bytes = self.source.apply(&edits)?;
         verify_preserved(self.source.source(), &bytes, &replacements)?;
+        if let Some(at) = empty_list_item(&bytes) {
+            return Err(ExtractionError::new(
+                GENERATED_FILE_MODIFIED,
+                format!("the patched stream has an empty list item at byte {at}; 1C would refuse it as a stream format error"),
+            )
+            .with("kind", "verification-failed"));
+        }
 
         let reparsed = parse_spanned(&bytes)?;
         let index = ControlIndex::build(&reparsed)?;
@@ -9505,6 +9528,39 @@ pub fn patch_form(source: &SpannedMetadata, baseline_xml: &[u8], edited_xml: &[u
     plan_form_patch(source, baseline_xml, edited_xml)?.apply()
 }
 
+/// Byte offset of the first `,}` or `{,` outside quoted strings, if any (`{0,}`: a list without items but with a
+/// separator). The brace parser is lenient about them, 1C is not (it answers with a stream format error). `,,` is a
+/// legal empty atom in real streams and is not reported.
+fn empty_list_item(bytes: &[u8]) -> Option<usize> {
+    let (mut in_quote, mut prev) = (false, 0u8);
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if in_quote {
+            if c == b'"' {
+                if bytes.get(i + 1) == Some(&b'"') {
+                    i += 2;
+                    continue;
+                }
+                in_quote = false;
+                prev = c;
+            }
+        } else {
+            match c {
+                b'"' => in_quote = true,
+                b'}' if prev == b',' => return Some(i),
+                b',' if prev == b'{' => return Some(i),
+                _ => {}
+            }
+            if c != b'\r' && c != b'\n' {
+                prev = c;
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
 #[cfg(test)]
 mod removal_range_tests {
     use super::*;
@@ -9532,5 +9588,16 @@ mod removal_range_tests {
         assert_eq!(cut(l, &[0, 1, 2, 3]), "{4}");
         assert_eq!(cut("{1,{a}}", &[0]), "{1}");
         assert_eq!(cut("{2,{a},{b}}", &[0, 1]), "{2}");
+    }
+
+    #[test]
+    fn empty_list_items_are_found_outside_quotes_only() {
+        assert_eq!(empty_list_item(b"{0}"), None);
+        assert_eq!(empty_list_item(b"{1,{a},\"x,}\",{b}}"), None);
+        assert_eq!(empty_list_item(b"{1,\"q\"\"},\",{b}}"), None);
+        assert!(empty_list_item(b"{0,}").is_some());
+        assert_eq!(empty_list_item(b"{1,,{a}}"), None);
+        assert!(empty_list_item(b"{,1}").is_some());
+        assert_eq!(empty_list_item(b"{1,\r\n{a},\r\n{b}\r\n}"), None);
     }
 }

@@ -70,6 +70,15 @@ def mutate(lines, rng):
                f'      <ZOrder>{z}</ZOrder><TabOrder>{t}</TabOrder>',
                '    </LabelDecoration>']
         return lines[:end] + new + lines[end:], f"add LabelDecoration {nid}"
+    if kind in ("removemany", "removeall"):
+        leaves = [b for b in bl if not any(lines[k].strip() == "<ChildItems>" for k in range(b[0], b[1]))]
+        if len(leaves) < 2:
+            return None
+        pick = leaves if kind == "removeall" else rng.sample(leaves, min(len(leaves), rng.randint(2, 5)))
+        drop = set()
+        for st, en, *_rest in pick:
+            drop |= set(range(st, en + 1))
+        return [l for i, l in enumerate(lines) if i not in drop], f"{kind} {len(pick)} controls"
     s, e, ind, tag, name, cid = rng.choice(bl)
     if kind == "remove":
         if any(lines[k].strip() == "<ChildItems>" for k in range(s, e)):
