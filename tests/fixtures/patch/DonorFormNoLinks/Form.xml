@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="250de08a-81ce-43bb-8de9-316e00a8ca38" name="ФормаОписанияТовара" ordinaryFormVersion="2.1" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Описание товара</Item>
+  </Caption>
+  <Width>400</Width>
+  <Height>300</Height>
+  <MainAttribute attributeId="0"/>
+  <FormExtension guid="00000000-0000-0000-0000-000000000000"/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+  </Events>
+  <Attributes>
+    <Attribute id="0" name="ОбработкаОбъект">
+      <Main>true</Main>
+      <ValueType kind="String" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <HTMLDocumentField name="ВебСтраница" id="4">
+      <Left>8</Left>
+      <Top>8</Top>
+      <Width>384</Width>
+      <Height>284</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Bottom" bottomOffset="-8" right="Right" rightOffset="-8"/>
+      <Events>
+        <Event id="19">ВебСтраницаonerrorupdate</Event>
+      </Events>
+    </HTMLDocumentField>
+  </ChildItems>
+</Form>

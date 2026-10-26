@@ -9377,11 +9377,10 @@ impl FormPatchPlan<'_> {
             }
             if !edit.inserts.is_empty() {
                 let mut text = Vec::new();
-                let existing_after = count - edit.removals.len();
-                for (i, ins) in edit.inserts.iter().enumerate() {
-                    if existing_after + i > 0 {
-                        text.push(b',');
-                    }
+                // Every inserted item follows either the count atom (empty or emptied list) or another item,
+                // so each one needs its own separator.
+                for ins in &edit.inserts {
+                    text.push(b',');
                     text.extend_from_slice(ins);
                 }
                 // Insert right after the last item COVERED BY THE COUNT: trailing nodes beyond the

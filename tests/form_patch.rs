@@ -14,7 +14,9 @@ use oneform::form_patch::{
 use oneform::oof::{decode_oof_stream, render_form_xml};
 
 fn dir(name: &str) -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/forms").join(name)
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let forms = root.join("forms").join(name);
+    if forms.is_dir() { forms } else { root.join("patch").join(name) }
 }
 
 fn stream(name: &str) -> SpannedMetadata {
@@ -3036,6 +3038,29 @@ mod object_binding {
 
             let pf = patch_with(kind, &rebind_existing(name));
             assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some(format!("{{2,{{1}},{{{code}}}}}").as_str()), "{kind}.{name}");
+        }
+    }
+
+    /// A form whose links list is empty (`{0}`): the first inserted link needs its own separator.
+    #[test]
+    fn a_link_can_be_inserted_into_an_empty_links_list() {
+        let base = baseline("DonorFormNoLinks");
+        let s = stream("DonorFormNoLinks");
+        for (path, expect) in [("ИНН", format!("{{2,{{0}},{{0,{INN}}}}}")), ("", "{1,{0}}".to_string())] {
+            let text = if path.is_empty() { "ОбработкаОбъект".to_string() } else { format!("ОбработкаОбъект.{path}") };
+            let block = format!(
+                "    <InputField name=\"Новое\" id=\"900\">
+      <DataPath attributeId=\"0\">{text}</DataPath>
+      <Left>8</Left><Top>270</Top><Width>200</Width><Height>19</Height>
+      <ZOrder>5</ZOrder><TabOrder>5</TabOrder>
+    </InputField>
+  </ChildItems>"
+            );
+            let edited = replace_once(&base, "  </ChildItems>", &block);
+            let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), edited.as_bytes())).unwrap();
+            assert_only_authorized_changes(s.source(), &pf);
+            let id = pf.allocated[0].1;
+            assert_eq!(link_of(&pf.bytes, id).as_deref(), Some(expect.as_str()), "{text}");
         }
     }
 
