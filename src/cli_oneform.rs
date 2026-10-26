@@ -262,11 +262,13 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
         if plan_.status == PACK_UNCHANGED {
             return Ok(outcome(name, "UNCHANGED", String::new(), Vec::new()));
         }
-        let packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
+        let mut packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
+
+        packed.extend(plan_.edit_notes.iter().cloned());
         let (added, updated, deleted) = plan(&plan_.existing, &plan_.result.files);
         if opts.dry_run {
             if !packed.is_empty() {
-                return Ok(outcome(name, "WOULD_PACK", format!("{} file(s)", packed.len()), packed));
+                return Ok(outcome(name, "WOULD_PACK", format!("{} file(s)", plan_.packed_paths.len()), packed));
             }
             return Ok(outcome(
                 name,
@@ -284,7 +286,7 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
             if opts.backup {
                 lines.push(format!("  backup {}.bak", file_name(&epf_path)));
             }
-            return Ok(outcome(name, "PACKED", format!("{} file(s), {summary}", packed.len()), lines));
+            return Ok(outcome(name, "PACKED", format!("{} file(s), {summary}", plan_.packed_paths.len()), lines));
         }
         return Ok(outcome(name, "UPDATED", summary, Vec::new()));
     }

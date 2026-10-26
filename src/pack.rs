@@ -110,6 +110,35 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
 }
 
 impl LayoutPatch {
+    /// What the edit does, one line per control and one for each form-level change.
+    pub fn summary(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) else { return out };
+        let at = &self.xml_path;
+        for e in &d.edits {
+            let props: Vec<&str> = e.changed.iter().map(|p| p.xml_name()).collect();
+            out.push(format!("  edit {at}: {} '{}' (id {}): {}", e.type_name, e.name, e.id, props.join(", ")));
+        }
+        for a in &d.additions {
+            out.push(format!("  edit {at}: add {} '{}'", a.type_name, a.name));
+        }
+        for x in &d.deletions {
+            out.push(format!("  edit {at}: remove {} '{}' (id {})", x.type_name, x.name, x.id));
+        }
+        for (changed, what) in [
+            (d.form_caption_changed, "form caption"),
+            (d.form_size_changed, "form size"),
+            (d.form_events_changed, "form events"),
+            (d.attributes_changed, "form attributes"),
+            (d.form_props_changed, "form window properties"),
+        ] {
+            if changed {
+                out.push(format!("  edit {at}: {what}"));
+            }
+        }
+        out
+    }
+
     /// Verify the normally staged result before anything is published: the staged stream is the original with
     /// exactly the authorized replacements, and the `Form.xml` the normal decoder produces from it holds every
     /// requested edit (with the derived panel pages and decoder control order) and nothing else.
@@ -182,6 +211,8 @@ pub struct PackPlan {
     /// `PACK_UNCHANGED` | `PACK_PACKED` | `PACK_SRC_ONLY`
     pub status: &'static str,
     pub packed_paths: Vec<String>,
+    /// One line per detected `Form.xml` edit (control, properties), for the pack report.
+    pub edit_notes: Vec<String>,
     pub new_epf: Vec<u8>,
     /// Extraction of `new_epf` (the new src tree).
     pub result: ExtractionResult,
@@ -441,6 +472,7 @@ pub fn stage_pack(
         return Ok(PackPlan {
             status,
             packed_paths: vec![],
+            edit_notes: Vec::new(),
             new_epf: epf_bytes.to_vec(),
             result: current,
             existing: existing_src.clone(),
@@ -487,6 +519,7 @@ pub fn stage_pack(
     Ok(PackPlan {
         status: PACK_PACKED,
         packed_paths: packed.into_iter().collect(),
+        edit_notes: layouts.iter().flat_map(|lp| lp.summary()).collect(),
         new_epf,
         result: new,
         existing: existing_src.clone(),

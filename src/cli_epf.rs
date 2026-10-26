@@ -320,7 +320,8 @@ fn pack_one(
 ) -> Result<Outcome> {
     let plan_ = stage_pack(&snap.data, epf_name, &read_tree(src)?, proc_cfg, root_cfg, tools_lock, opts)?;
     let summary = describe(&plan_.result.files, &plan_.result.status);
-    let packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
+    let mut packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
+    packed.extend(plan_.edit_notes.iter().cloned());
     if plan_.status == PACK_UNCHANGED {
         let mut out = Outcome::new(proc_rel, "UNCHANGED");
         out.lines = notes;
@@ -330,7 +331,7 @@ fn pack_one(
     if args.dry_run {
         if !packed.is_empty() {
             let mut out = Outcome::new(proc_rel, "WOULD_PACK");
-            out.summary = plural(packed.len(), "file");
+            out.summary = plural(plan_.packed_paths.len(), "file");
             notes.extend(packed);
             out.lines = notes;
             return Ok(out);
@@ -347,7 +348,7 @@ fn pack_one(
     }
     if !packed.is_empty() {
         let mut out = Outcome::new(proc_rel, "PACKED");
-        out.summary = format!("{}, {summary}", plural(packed.len(), "file"));
+        out.summary = format!("{}, {summary}", plural(plan_.packed_paths.len(), "file"));
         notes.extend(packed);
         if args.backup {
             notes.push(format!("  backup {epf_name}.bak"));

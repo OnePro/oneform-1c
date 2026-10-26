@@ -704,6 +704,8 @@ pub struct ConfigPackPlan {
     /// `PACK_UNCHANGED` | `PACK_PACKED` | `PACK_SRC_ONLY`
     pub status: &'static str,
     pub packed_paths: Vec<String>,
+    /// One line per detected `Form.xml` edit (control, properties), for the pack report.
+    pub edit_notes: Vec<String>,
     /// Form name -> new `Form.bin` (only changed forms).
     pub new_sources: Sources,
     /// Staging of the (new) `Form.bin` files = the new src tree.
@@ -841,6 +843,7 @@ pub fn stage_config_pack(
         return Ok(ConfigPackPlan {
             status,
             packed_paths: Vec::new(),
+            edit_notes: Vec::new(),
             new_sources: Sources::new(),
             result: current,
             existing: existing.clone(),
@@ -864,7 +867,8 @@ pub fn stage_config_pack(
         lp.verify_staged(&new.files)?;
     }
     packed.sort();
-    Ok(ConfigPackPlan { status: PACK_PACKED, packed_paths: packed, new_sources, result: new, existing: existing.clone() })
+    let edit_notes = layouts.iter().flat_map(|lp| lp.summary()).collect();
+    Ok(ConfigPackPlan { status: PACK_PACKED, packed_paths: packed, edit_notes, new_sources, result: new, existing: existing.clone() })
 }
 
 /// Write edited `FormModule.bsl` / `FormStream.bin` back into `Ext/Form.bin` and refresh `src/`.
@@ -884,11 +888,12 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
     if plan_.status == PACK_UNCHANGED {
         return Ok(outcome(&obj.rel, "UNCHANGED", String::new(), notes));
     }
-    let packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
+    let mut packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
+    packed.extend(plan_.edit_notes.iter().cloned());
     if opts.dry_run {
         if !packed.is_empty() {
             notes.extend(packed.iter().cloned());
-            return Ok(outcome(&obj.rel, "WOULD_PACK", format!("{} file(s)", packed.len()), notes));
+            return Ok(outcome(&obj.rel, "WOULD_PACK", format!("{} file(s)", plan_.packed_paths.len()), notes));
         }
         let (added, updated, deleted) = plan(&plan_.existing, &plan_.result.files);
         notes.extend(plan_lines(&added, &updated, &deleted));
@@ -931,7 +936,7 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
         notes.push(format!("work kept: {}", rd.display()));
     }
     if !packed.is_empty() {
-        let text = format!("{} file(s), {summary}", packed.len());
+        let text = format!("{} file(s), {summary}", plan_.packed_paths.len());
         notes.extend(packed);
         if opts.backup {
             notes.push("  backup Form.bin.bak".to_string());
