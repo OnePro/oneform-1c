@@ -83,6 +83,7 @@ fn fixture_forms_are_byte_identical_to_the_reference() {
         let model = decode_oof_stream(&raw, fid, Some(&lookup)).unwrap();
         let info = common::form_info(fid, fname, &raw);
         let xml = render_form_xml(&info, &model).unwrap();
+        let xml = oneform::form_patch::enrich_ext_properties(&raw, &xml).unwrap();
         // The fixtures are stored LF-normalized (`*.xml text eol=lf`), while text values with embedded
         // CRLF (tooltips) are emitted verbatim by the Reference; so compare with CRLF folded to LF.
         let xml = String::from_utf8(xml).unwrap().replace("\r\n", "\n");

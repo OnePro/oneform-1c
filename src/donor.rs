@@ -13,7 +13,7 @@ use crate::form_patch::ControlIndex;
 pub static DONOR_STREAM: &[u8] = include_bytes!("../tests/fixtures/forms/DonorFormV2/FormStream.bin");
 
 /// Lazily parsed donor (parsed once per process; the embedded bytes are 'static).
-fn donor() -> &'static SpannedMetadata {
+pub(crate) fn donor() -> &'static SpannedMetadata {
     use std::sync::OnceLock;
     static DONOR: OnceLock<SpannedMetadata> = OnceLock::new();
     DONOR.get_or_init(|| parse_spanned(DONOR_STREAM).expect("embedded donor stream parses"))

@@ -579,8 +579,28 @@ const FORM_SIG_PLACEHOLDER: &str = "@@FORM-SIG@@";
 /// Carriers of verbatim records: never part of a canonical text.
 const CARRIERS: [&str; 5] = ["ColumnProps", "Appearance", "InfoRecord", "PanelRecord", "FormRecord"];
 /// Children of a control that the information record does not hold (geometry, links, children).
-const NOT_IN_INFO: [&str; 11] =
-    ["Left", "Top", "Width", "Height", "ZOrder", "TabOrder", "Visible", "Anchors", "ChildItems", "DataPath", "ContextMenu"];
+const NOT_IN_INFO: &[&str] = &[
+    "Left", "Top", "Width", "Height", "ZOrder", "TabOrder", "Visible", "Anchors", "ChildItems", "DataPath",
+    "ContextMenu", "ModifiesData", "SkipOnInput", "FirstInGroup", "ChooseType", "TextEdit", "PasswordMode",
+    "ExtendedEdit", "MultiLine", "Mask", "AutoCellHeight", "DropListButton", "SpinButton",
+    "AutoChoiceIncomplete", "VerticalAlign", "Format", "ChoiceListWidth", "ChoiceListHeight", "MinValue",
+    "MaxValue", "FieldBackColor", "FieldTextColor", "ButtonBackColor", "ButtonTextColor", "Shortcut",
+    "ChoiceButtonPicture", "SelectionValue", "MenuMode", "PictureLocation", "PictureSize", "ScrollingText",
+    "LabelPictureLocation", "PanelPictureLocation", "SeparateByPage", "AutoTabOrder", "ScrollPageMode",
+    "Orientation", "Secondary", "Zoomable", "UseContextMenu", "NonselectedPictureText", "EnableStartDrag",
+    "EnableDrag", "ShowPicture", "ShowCheckBox", "Step", "LargeStep", "MarkingStep", "MarkingAppearance",
+    "ShowStyle", "ShowPercent", "SelectionBackColor", "SelectionTextColor", "HolidayColor", "ShowCurrentDate",
+    "CalendarNavigation", "BeginOfDisplayPeriod", "EndOfDisplayPeriod", "Header", "HorizontalLines",
+    "VerticalLines", "AutoInsertNewRow", "ChangeRowSet", "ChangePositionOfColumns", "ChangeSettingOfColumns",
+    "InitialListView", "Output", "ChoiceMode", "UseAlternationRowColor", "HeaderBackColor", "HeaderTextColor",
+    "FooterBackColor", "FooterTextColor", "AlternationRowBackColor", "FixedLeft", "FixedRight",
+    "RowInputMode", "RowSelectionMode", "HeaderHeight", "FooterHeight", "HeaderFont", "FooterFont",
+    "ShowSelection", "AutoContextMenu", "Collapse", "EmbeddedIntoCell", "Print", "Protection", "ShowGrid",
+    "ShowHeaders", "ShowGroups", "BlackAndWhiteView", "TotalsRight", "TotalsBelow", "PrintScale", "FitToPage",
+    "BlackAndWhite", "Collate", "Copies", "PerPage", "PageOrientation", "BottomMargin", "TopMargin",
+    "LeftMargin", "RightMargin", "HeaderSize", "FooterSize", "DuplexPrinting", "PrintAccuracy",
+    "StepDirection", "SaveViewProperties", "FixedBackground",
+];
 
 /// Canonical text of an element: tag, sorted attributes, trimmed text and the children in order (without the
 /// `ColumnProps` carrier). The compiler computes the same text from the XML.
@@ -604,12 +624,22 @@ fn fnv(text: &str) -> String {
     format!("{h:016x}")
 }
 
+/// Whether child `c` of control `n` is left out of the information record's canonical text: the names in
+/// `NOT_IN_INFO`, plus the elements that share a name with an element the record does hold (a `Table`'s `ReadOnly`
+/// flag, a `Picture` property with a `kind` attribute as opposed to the label's `<Picture>true</Picture>` marker).
+fn not_in_info(n: roxmltree::Node, c: roxmltree::Node) -> bool {
+    let name = c.tag_name().name();
+    NOT_IN_INFO.contains(&name)
+        || (name == "ReadOnly" && n.tag_name().name() == "Table")
+        || (name == "Picture" && c.attribute("kind").is_some())
+}
+
 /// Canonical text of what a control's information record holds: its children without the geometry, links and
 /// children (`NOT_IN_INFO`), the carriers and the action-source element.
 fn info_canon(n: roxmltree::Node) -> String {
     let kids: Vec<String> = n
         .children()
-        .filter(|c| c.is_element() && !CARRIERS.contains(&c.tag_name().name()) && !NOT_IN_INFO.contains(&c.tag_name().name()) && c.tag_name().name() != "ActionSource")
+        .filter(|c| c.is_element() && !CARRIERS.contains(&c.tag_name().name()) && !not_in_info(n, *c) && c.tag_name().name() != "ActionSource")
         .map(canon_element)
         .collect();
     format!("{}{{{}}}", n.tag_name().name(), kids.join(","))
@@ -1176,7 +1206,7 @@ pub fn decode_oof_stream_with_types(
 // ---------------------------------------------------------------- XML writer
 
 /// `xml.sax.saxutils.escape`.
-fn escape(s: &str) -> String {
+pub(crate) fn escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
@@ -1190,7 +1220,7 @@ fn escape(s: &str) -> String {
 }
 
 /// `xml.sax.saxutils.quoteattr`.
-fn quoteattr(s: &str) -> String {
+pub(crate) fn quoteattr(s: &str) -> String {
     let mut data = String::with_capacity(s.len() + 2);
     for c in s.chars() {
         match c {
@@ -2087,7 +2117,13 @@ pub fn build_oof_with_types(
             }
         }
     }
-    let built = decode_form_with_types(info, meta_lookup, type_lookup).and_then(|model| render_form_xml(info, &model).map(|xml| (model, xml)));
+    let built = decode_form_with_types(info, meta_lookup, type_lookup).and_then(|model| {
+        render_form_xml(info, &model).map(|xml| {
+            // Best effort: a stream that `enrich_ext_properties` cannot index keeps the decoder's plain projection.
+            let xml = crate::form_patch::enrich_ext_properties(&info.layout_payload.raw, &xml).unwrap_or(xml);
+            (model, xml)
+        })
+    });
     match built {
         Err(e) => {
             diags.push(diagnostic(

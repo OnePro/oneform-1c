@@ -1300,6 +1300,45 @@ fn config_anchors_pack() {
     assert_anchors_pack(Target::Config);
 }
 
+/// `extract` now shows the extended properties, so a test that inserts a property line next to the baseline's own
+/// would duplicate it: of two identical-tag single-line properties of one control the later (the edit) wins.
+fn dedupe_control_properties(xml: &str) -> String {
+    let lines: Vec<&str> = xml.split('\n').collect();
+    let indent = |l: &str| l.len() - l.trim_start().len();
+    let mut stack: Vec<(usize, usize)> = Vec::new();
+    let mut last: std::collections::HashMap<(usize, String), usize> = std::collections::HashMap::new();
+    let mut keys: Vec<Option<(usize, String)>> = vec![None; lines.len()];
+    for (n, l) in lines.iter().enumerate() {
+        let t = l.trim_start();
+        if !t.starts_with('<') || t.starts_with("</") || t.starts_with("<?") {
+            continue;
+        }
+        let ind = indent(l);
+        while stack.last().is_some_and(|&(i, _)| i >= ind) {
+            stack.pop();
+        }
+        let single = t.ends_with("/>") || (t.contains("</") && !t.starts_with("<!--"));
+        if let Some(&(pi, pn)) = stack.last() {
+            let parent = lines[pn];
+            if ind == pi + 2 && single && parent.contains(" name=\"") && parent.contains(" id=\"") {
+                let tag: String = t[1..].chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+                keys[n] = Some((pn, tag.clone()));
+                last.insert((pn, tag), n);
+            }
+        }
+        if !single {
+            stack.push((ind, n));
+        }
+    }
+    let kept: Vec<&str> = lines
+        .iter()
+        .enumerate()
+        .filter(|(n, _)| keys[*n].as_ref().is_none_or(|k| last[k] == *n))
+        .map(|(_, l)| *l)
+        .collect();
+    kept.join("\n")
+}
+
 fn assert_inputfield_flags_and_typelink_pack(target: Target) {
     let w = Work::new(target);
     let xml_file = w.src_file("Form.xml");
@@ -1317,6 +1356,7 @@ fn assert_inputfield_flags_and_typelink_pack(target: Target) {
             "\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>\n          <TypeLink attributeId=\"14\">ПолеВвода7</TypeLink>",
             1,
     );
+    xml = dedupe_control_properties(&xml);
     fs::write(&xml_file, &xml).unwrap();
 
     let out = run(w.root(), &["pack", "."]);
@@ -1399,6 +1439,7 @@ fn assert_extended_catalog_properties_pack(target: Target) {
         "<OnChange id=\"2147483647\">Переключатель1ПриИзменении</OnChange>\n          </Events>\n          <TitleLocation>Left</TitleLocation>\n          <HorizontalAlign>Right</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>\n          <SelectionValue>1</SelectionValue>",
         1,
     );
+    xml = dedupe_control_properties(&xml);
     fs::write(&xml_file, &xml).unwrap();
 
     let out = run(w.root(), &["pack", "."]);

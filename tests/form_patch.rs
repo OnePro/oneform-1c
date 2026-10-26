@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use oneform::brace::{parse_spanned, Replacement, SpannedMetadata};
 use oneform::errors::{ExtractionError, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
 use oneform::form_patch::{
-    diff_forms, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, FormXml, NodeRef, PatchedForm, Property,
+    diff_forms, enrich_ext_properties, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, FormXml, NodeRef, PatchedForm, Property,
 };
 use oneform::oof::{decode_oof_stream, render_form_xml};
 
@@ -381,6 +381,20 @@ fn edit_ctl(xml: &str, name: &str, subs: &[(&str, &str)]) -> String {
     let mut block = xml[at..end].to_string();
     for (from, to) in subs {
         assert_eq!(block.matches(from).count(), 1, "anchor {from:?} in control {name}");
+        // `extract` now shows the extended properties: a property line the edit inserts replaces the baseline's own
+        let prop_indent = format!("{indent}  ");
+        for l in to.split('\n') {
+            let Some(rest) = l.strip_prefix(prop_indent.as_str()).and_then(|r| r.strip_prefix('<')) else { continue };
+            let tag: String = rest.chars().take_while(|c| c.is_ascii_alphabetic()).collect();
+            if tag.is_empty() || from.contains(&format!("<{tag}")) {
+                continue;
+            }
+            let line = regex::Regex::new(&format!(r"\n{prop_indent}<{tag}( [^>]*)?(/>|>[^<]*</{tag}>)")).unwrap();
+            let found = line.find(&block).map(|m| m.range());
+            if let Some(r) = found {
+                block.replace_range(r, "");
+            }
+        }
         block = block.replacen(from, to, 1);
     }
     format!("{}{}{}", &xml[..at], block, &xml[end..])
@@ -404,7 +418,8 @@ fn decode_xml(name: &str, raw: &[u8]) -> String {
     let lookup = common::read_meta_lookup(&dir(name).join("Document.xml"));
     let model = decode_oof_stream(raw, id, Some(&lookup)).unwrap();
     assert_eq!(model["warnings"], serde_json::json!([]), "{name}");
-    String::from_utf8(render_form_xml(&common::form_info(id, fname, raw), &model).unwrap()).unwrap().replace("\r\n", "\n")
+    let xml = render_form_xml(&common::form_info(id, fname, raw), &model).unwrap();
+    String::from_utf8(enrich_ext_properties(raw, &xml).unwrap()).unwrap().replace("\r\n", "\n")
 }
 
 /// Independent byte-range check: the patched stream is the original with exactly `replacements` spliced in.

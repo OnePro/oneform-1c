@@ -82,8 +82,8 @@
     {
       "path": "Forms/ОбщаяФорма/Form.xml",
       "role": "form-xml",
-      "size": 132539,
-      "sha256": "c4aa532cadd29c4ad5f03592c2e5580b20df63ebf0eca5663da80fe445b55ea8"
+      "size": 133820,
+      "sha256": "c008f880bbd5769c29925d917fc6c0a7950e3fce29c5dff4ec5866f018f0a3e0"
     },
     {
       "path": "Forms/ОбщаяФорма/FormDefinition.json",
@@ -100,8 +100,8 @@
     {
       "path": "Forms/ОбщаяФорма/FormPreview.html",
       "role": "form-preview",
-      "size": 346561,
-      "sha256": "fecdd142a0b84f2335110ba32d43fed2be3f71a9f6a483f2397a8f23a6c82f8a"
+      "size": 348409,
+      "sha256": "2ecf12dae4abc4bd5f28d1421573921d1053c235b9992355e67f9e24ae693c6b"
     },
     {
       "path": "Forms/ОбщаяФорма/Reference/FormStream.bin",

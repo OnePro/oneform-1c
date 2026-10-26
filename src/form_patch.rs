@@ -37,6 +37,9 @@ use crate::naming::is_uuid;
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
 use crate::oof_props::{atom, caption_path, localized};
 
+mod ext_read;
+pub use ext_read::enrich_ext_properties;
+
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
 pub const CONTROL_STUB: &str = "#control";
@@ -2044,72 +2047,14 @@ impl FormXml {
                 vt.non_negative = false;
                 vt.fixed = false;
             }
-            // Write-only flags (verified in binary by read_back, not emitted by render_form_xml
-            // so existing golden Form.xml files stay byte-identical) are cleared before XML comparison.
-            c.values.drop_list_button = None;
-            c.values.spin_button = None;
-            c.values.auto_choice_incomplete = None;
-            c.values.auto_cell_height = None;
-            c.values.modifies_data = None;
-            c.values.skip_on_input = None;
-            c.values.first_in_group = None;
-            c.values.multi_line = None;
-            c.values.password_mode = None;
-            c.values.extended_edit = None;
-            c.values.mask = None;
-            c.values.choose_type = None;
-            c.values.text_edit = None;
-            c.values.vertical_align = None;
+            // The extended properties are written sparsely (only when they differ from the donor prototype of the
+            // type): a requested value equal to the donor's reads back as absent.
+            if let Some(d) = ext_read::defaults(&c.type_name) {
+                ext_read::drop_defaults(&mut c.values, d);
+            }
             c.values.type_link = None;
-            c.values.field_back_color = None;
-            c.values.field_text_color = None;
-            c.values.button_back_color = None;
-            c.values.button_text_color = None;
-            c.values.picture_location = None;
-            c.values.picture_size = None;
             c.values.format.clear();
-            c.values.selection_value = None;
-            c.values.choice_list_width = None;
-            c.values.min_value = None;
-            c.values.max_value = None;
-            c.values.separate_by_page = None;
-            c.values.auto_tab_order = None;
-            c.values.scroll_page_mode = None;
-            c.values.orientation = None;
-            c.values.secondary = None;
-            c.values.zoomable = None;
-            c.values.use_context_menu = None;
             c.values.nonselected_picture_text.clear();
-            c.values.enable_start_drag = None;
-            c.values.enable_drag = None;
-            c.values.choice_mode = None;
-            c.values.show_picture = None;
-            c.values.show_check_box = None;
-            c.values.step = None;
-            c.values.large_step = None;
-            c.values.marking_step = None;
-            c.values.marking_appearance = None;
-            c.values.show_style = None;
-            c.values.show_percent = None;
-            c.values.selection_back_color = None;
-            c.values.selection_text_color = None;
-            c.values.holiday_color = None;
-            c.values.show_current_date = None;
-            c.values.calendar_navigation = None;
-            c.values.use_alternation_row_color = None;
-            c.values.header_back_color = None;
-            c.values.header_text_color = None;
-            c.values.footer_back_color = None;
-            c.values.footer_text_color = None;
-            c.values.alternation_row_back_color = None;
-            c.values.fixed_left = None;
-            c.values.fixed_right = None;
-            c.values.row_input_mode = None;
-            c.values.row_selection_mode = None;
-            c.values.header_height = None;
-            c.values.footer_height = None;
-            c.values.header_font = None;
-            c.values.footer_font = None;
             if c.type_name == "LabelDecoration" {
                 if let Some(pic) = &c.values.picture {
                     c.rest.children.retain(|ch| !(ch.tag == "Picture" && ch.attrs.is_empty()));
@@ -2124,51 +2069,11 @@ impl FormXml {
                     }
                 }
             }
-            c.values.shortcut = None;
-            c.values.picture = None;
-            c.values.choice_button_picture = None;
-            c.values.menu_mode = None;
-            c.values.scrolling_text = None;
-            c.values.label_picture_location = None;
-            c.values.panel_picture_location = None;
-            c.values.choice_list_height = None;
-            c.values.show_selection = None;
-            c.values.begin_of_display_period = None;
-            c.values.end_of_display_period = None;
             for it in &mut c.values.choice_list {
                 it.checked = None;
                 it.picture_id = None;
             }
             c.values.default_button = None;
-            c.values.auto_context_menu = None;
-            c.values.collapse = None;
-            c.values.embedded_into_cell = None;
-            c.values.print = None;
-            c.values.protection = None;
-            c.values.show_grid = None;
-            c.values.show_headers = None;
-            c.values.show_groups = None;
-            c.values.black_and_white_view = None;
-            c.values.totals_right = None;
-            c.values.totals_below = None;
-            c.values.print_scale = None;
-            c.values.fit_to_page = None;
-            c.values.black_and_white = None;
-            c.values.collate = None;
-            c.values.copies = None;
-            c.values.per_page = None;
-            c.values.page_orientation = None;
-            c.values.bottom_margin = None;
-            c.values.top_margin = None;
-            c.values.left_margin = None;
-            c.values.right_margin = None;
-            c.values.header_size = None;
-            c.values.footer_size = None;
-            c.values.duplex_printing = None;
-            c.values.print_accuracy = None;
-            c.values.step_direction = None;
-            c.values.save_view_properties = None;
-            c.values.fixed_background = None;
             for page in &mut c.values.pages {
                 page.title_picture = None;
             }
@@ -2210,7 +2115,6 @@ impl FormXml {
                 "ChoiceField" => {
                     c.values.choice_button = None;
                     c.values.clear_button = None;
-                    c.values.spin_button = None;
                     c.values.open_button = None;
                     c.values.read_only = false;
                 }
@@ -2231,26 +2135,10 @@ impl FormXml {
             if matches!(c.type_name.as_str(), "SpreadsheetDocumentField" | "HTMLDocumentField") {
                 c.values.border_color = None;
             }
-            if matches!(
-                c.type_name.as_str(),
-                "GraphicalSchemaField" | "TextDocumentField" | "HTMLDocumentField" | "SpreadsheetDocumentField"
-            ) {
-                c.values.output = None;
-            }
             if matches!(c.type_name.as_str(), "InputField" | "Button" | "CheckBox" | "RadioButton") {
                 c.values.horizontal_align = String::new();
             }
             if c.type_name == "Table" {
-                c.values.header = None;
-                c.values.vertical_lines = None;
-                c.values.horizontal_lines = None;
-                c.values.auto_insert_new_row = None;
-                c.values.change_setting_of_columns = None;
-                c.values.change_position_of_columns = None;
-                c.values.change_row_set = None;
-                c.values.initial_list_view = None;
-                c.values.output = None;
-                c.values.table_read_only = None;
                 c.values.horizontal_scroll_bar.clear();
                 c.values.vertical_scroll_bar.clear();
             }
@@ -4534,7 +4422,9 @@ pub fn diff_forms_full(
         for (path, msg) in diffs {
             problems.push(unsupported(&owner, Some(&b.type_name), c.line, &path, &msg));
         }
-        let mut changed = c.values.changed_from(&b.values);
+        let mut new_values = c.values.clone();
+        ext_read::keep_absent(&mut new_values, &b.values);
+        let mut changed = new_values.changed_from(&b.values);
         if skip_rest.contains(&c.id) {
             if b.values.pages.is_empty() {
                 changed.retain(|p| *p != Property::Pages);
@@ -4555,7 +4445,7 @@ pub fn diff_forms_full(
                 name: c.name.clone(),
                 type_name: c.type_name.clone(),
                 old: b.values.clone(),
-                new: c.values.clone(),
+                new: new_values,
                 changed,
             });
         }
