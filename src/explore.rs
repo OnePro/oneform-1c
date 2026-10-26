@@ -1142,7 +1142,7 @@ pub fn decoded_control_diff(original: &[u8], mutated: &[u8], control: &str) -> R
     let mut out = Vec::new();
     json_diff(&find(original)?, &find(mutated)?, control, &mut out);
     // Verbatim blocks carried for compilers are not decoded properties.
-    out.retain(|(path, _, _)| !["appearanceRaw", "buttonsRaw", "buttonsSig", "rowSource"].iter().any(|k| path.ends_with(&format!(".{k}"))));
+    out.retain(|(path, _, _)| !["appearanceRaw", "buttonsRaw", "buttonsSig", "rowSource", "infoRaw", "panelRaw", "formRaw", "geometryFlags"].iter().any(|k| path.ends_with(&format!(".{k}"))));
     Ok(out)
 }
 

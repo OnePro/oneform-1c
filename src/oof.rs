@@ -422,6 +422,16 @@ fn columns(info: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Vec<Value>> {
     Ok(cols)
 }
 
+/// `(flagA, flagB)` that follow `page, z, tab` in the geometry record.
+fn geom_flags(geom: &Node) -> Option<(i64, i64)> {
+    let mut idx = 12usize;
+    for _ in 0..6 {
+        idx += 1 + geom.children.get(idx)?.as_atom()?.value.parse::<usize>().ok()?;
+    }
+    let num = |i: usize| geom.children.get(i)?.as_atom()?.value.parse::<i64>().ok();
+    Some((num(idx + 3)?, num(idx + 4)?))
+}
+
 /// (page index, z-order, tab order) of a control; `(0, 0, 0)` when the geometry tail is unusual.
 ///
 /// The tail follows the six counted incoming lists: `page, z, tab, flagA, flagB`.
@@ -440,6 +450,20 @@ pub fn geom_page(geom: &Node) -> (i64, i64, i64) {
         Ok((v[0], v[1], v[2]))
     }
     inner(geom).unwrap_or((0, 0, 0))
+}
+
+/// The part of a panel record that follows its six incoming anchor lists (page pictures, page records, boundary
+/// rows), verbatim: `Form.xml` shows pages only as derived rectangles, titles and flags.
+fn panel_tail_raw(info: &Node) -> Option<String> {
+    let p = info.children.get(1)?.as_node()?;
+    let mut idx = 2usize;
+    for _ in 0..6 {
+        idx += 1 + p.children.get(idx)?.as_atom()?.value.parse::<usize>().ok()?;
+    }
+    let tail = Node { children: p.children.get(idx..)?.to_vec() };
+    let mut raw = Vec::new();
+    crate::donor::write_node(&tail, &mut raw);
+    Some(String::from_utf8_lossy(&raw).into_owned())
 }
 
 /// (showTabs, pages) of a `Panel` control; `(0, [])` when the panel has an unexpected shape.
@@ -549,6 +573,14 @@ fn diag_component(form_uuid: &str) -> String {
 }
 
 const COLUMN_SIG_PLACEHOLDER: &str = "@@COLUMN-SIG@@";
+const INFO_SIG_PLACEHOLDER: &str = "@@INFO-SIG@@";
+const PANEL_SIG_PLACEHOLDER: &str = "@@PANEL-SIG@@";
+const FORM_SIG_PLACEHOLDER: &str = "@@FORM-SIG@@";
+/// Carriers of verbatim records: never part of a canonical text.
+const CARRIERS: [&str; 5] = ["ColumnProps", "Appearance", "InfoRecord", "PanelRecord", "FormRecord"];
+/// Children of a control that the information record does not hold (geometry, links, children).
+const NOT_IN_INFO: [&str; 11] =
+    ["Left", "Top", "Width", "Height", "ZOrder", "TabOrder", "Visible", "Anchors", "ChildItems", "DataPath", "ContextMenu"];
 
 /// Canonical text of an element: tag, sorted attributes, trimmed text and the children in order (without the
 /// `ColumnProps` carrier). The compiler computes the same text from the XML.
@@ -557,37 +589,112 @@ fn canon_element(n: roxmltree::Node) -> String {
     attrs.sort();
     let text = n.text().map(str::trim).unwrap_or("");
     let kids: Vec<String> =
-        n.children().filter(|c| c.is_element() && c.tag_name().name() != "ColumnProps").map(canon_element).collect();
+        n.children().filter(|c| c.is_element() && !CARRIERS.contains(&c.tag_name().name())).map(canon_element).collect();
     format!("{}[{}]{}{{{}}}", n.tag_name().name(), attrs.join(";"), text, kids.join(","))
 }
 
 /// Replaces the placeholder `sig` of every `<ColumnProps>` by the FNV-1a 64 of its `<Column>`'s canonical text, so
 /// a compiler can tell whether the column was edited after extraction.
-fn fill_column_sigs(text: &str) -> Res<String> {
-    if !text.contains(COLUMN_SIG_PLACEHOLDER) {
+fn fnv(text: &str) -> String {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for byte in text.as_bytes() {
+        h ^= u64::from(*byte);
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    format!("{h:016x}")
+}
+
+/// Canonical text of what a control's information record holds: its children without the geometry, links and
+/// children (`NOT_IN_INFO`), the carriers and the action-source element.
+fn info_canon(n: roxmltree::Node) -> String {
+    let kids: Vec<String> = n
+        .children()
+        .filter(|c| c.is_element() && !CARRIERS.contains(&c.tag_name().name()) && !NOT_IN_INFO.contains(&c.tag_name().name()) && c.tag_name().name() != "ActionSource")
+        .map(canon_element)
+        .collect();
+    format!("{}{{{}}}", n.tag_name().name(), kids.join(","))
+}
+
+/// Canonical text of what a panel record is described by in `Form.xml`: the size, the tab placement and, per page,
+/// the name, title and flags (the page rectangles are derived from the record).
+fn panel_canon(n: roxmltree::Node) -> String {
+    let child = |tag: &str| n.children().find(|c| c.is_element() && c.tag_name().name() == tag);
+    let text_of = |e: Option<roxmltree::Node>, default: &str| e.and_then(|e| e.text()).map(str::trim).unwrap_or(default).to_string();
+    let mut t = format!(
+        "Panel|w={}|h={}|st={}",
+        text_of(child("Width"), ""),
+        text_of(child("Height"), ""),
+        child("ShowTabs").and_then(|e| e.attribute("code")).unwrap_or("")
+    );
+    if let Some(items) = child("ChildItems") {
+        for page in items.children().filter(|c| c.is_element() && c.tag_name().name() == "Page") {
+            let pc = |tag: &str| page.children().find(|c| c.is_element() && c.tag_name().name() == tag);
+            let title: Vec<String> = pc("Title")
+                .map(|e| {
+                    e.children()
+                        .filter(|c| c.is_element())
+                        .map(|i| format!("{}={}", i.attribute("language").unwrap_or(""), i.text().unwrap_or("")))
+                        .collect()
+                })
+                .unwrap_or_default();
+            t.push_str(&format!(
+                "|page:{}:{}:{}:{}",
+                page.attribute("name").unwrap_or(""),
+                text_of(pc("Visible"), "true"),
+                text_of(pc("Enabled"), "true"),
+                title.join(";")
+            ));
+        }
+    }
+    t
+}
+
+/// Canonical text of what the form-level record is described by: caption, size, main attribute and events.
+fn form_canon(n: roxmltree::Node) -> String {
+    let kids: Vec<String> = n
+        .children()
+        .filter(|c| c.is_element() && ["Caption", "Width", "Height", "MainAttribute", "Events"].contains(&c.tag_name().name()))
+        .map(canon_element)
+        .collect();
+    format!("Form{{{}}}", kids.join(","))
+}
+
+/// Replaces the placeholder `sig` of every `<ColumnProps>` and `<InfoRecord>` by the FNV-1a 64 of the canonical text
+/// of its `<Column>` / control, so a compiler can tell whether the element was edited after extraction.
+fn fill_sigs(text: &str) -> Res<String> {
+    if !text.contains(COLUMN_SIG_PLACEHOLDER) && !text.contains(INFO_SIG_PLACEHOLDER) && !text.contains(PANEL_SIG_PLACEHOLDER) && !text.contains(FORM_SIG_PLACEHOLDER) {
         return Ok(text.to_string());
     }
     let doc = roxmltree::Document::parse(text).map_err(|e| OofError(format!("rendered Form.xml is not well-formed: {e}")))?;
-    let mut sigs = Vec::new();
-    for col in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "Column") {
-        if col.children().any(|c| c.is_element() && c.tag_name().name() == "ColumnProps") {
-            let mut h: u64 = 0xcbf29ce484222325;
-            for byte in canon_element(col).as_bytes() {
-                h ^= u64::from(*byte);
-                h = h.wrapping_mul(0x100000001b3);
-            }
-            sigs.push(format!("{h:016x}"));
+    let (mut col_sigs, mut info_sigs, mut panel_sigs, mut form_sigs) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for el in doc.descendants().filter(|n| n.is_element()) {
+        let has = |tag: &str| el.children().any(|c| c.is_element() && c.tag_name().name() == tag);
+        if el.tag_name().name() == "Column" && has("ColumnProps") {
+            col_sigs.push(fnv(&canon_element(el)));
+        }
+        if has("InfoRecord") {
+            info_sigs.push(fnv(&info_canon(el)));
+        }
+        if has("PanelRecord") {
+            panel_sigs.push(fnv(&panel_canon(el)));
+        }
+        if has("FormRecord") {
+            form_sigs.push(fnv(&form_canon(el)));
         }
     }
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    for sig in sigs {
-        let Some(at) = rest.find(COLUMN_SIG_PLACEHOLDER) else { break };
-        out.push_str(&rest[..at]);
-        out.push_str(&sig);
-        rest = &rest[at + COLUMN_SIG_PLACEHOLDER.len()..];
+    let mut out = text.to_string();
+    for (placeholder, sigs) in [(COLUMN_SIG_PLACEHOLDER, col_sigs), (INFO_SIG_PLACEHOLDER, info_sigs), (PANEL_SIG_PLACEHOLDER, panel_sigs), (FORM_SIG_PLACEHOLDER, form_sigs)] {
+        let mut next = String::with_capacity(out.len());
+        let mut rest = out.as_str();
+        for sig in sigs {
+            let Some(at) = rest.find(placeholder) else { break };
+            next.push_str(&rest[..at]);
+            next.push_str(&sig);
+            rest = &rest[at + placeholder.len()..];
+        }
+        next.push_str(rest);
+        out = next;
     }
-    out.push_str(rest);
     Ok(out)
 }
 
@@ -748,6 +855,19 @@ fn control(
     if let Some(a) = decode_anchors(geom) {
         props.insert("anchors".into(), a);
     }
+    // The two flag words that end the geometry record after `page, z, tab`; their meaning is not decoded yet.
+    if let Some(flags) = geom_flags(geom) {
+        if flags != (0, 0) {
+            props.insert("geometryFlags".into(), json!([flags.0, flags.1]));
+        }
+    }
+    // The whole information record of a control (everything the typed decoders and `Form.xml` leave out: alignment,
+    // table flag words, field links...), kept verbatim; a panel keeps its page records separately.
+    if type_name.is_some() && type_name != Some("Panel") {
+        let mut raw = Vec::new();
+        crate::donor::write_node(info, &mut raw);
+        props.insert("infoRaw".into(), String::from_utf8_lossy(&raw).into_owned().into());
+    }
     let mut children = Vec::new();
     for c in table(Some(children_node), "control children")? {
         children.push(control(c, warnings, form_uuid, meta_lookup, type_lookup)?);
@@ -774,6 +894,9 @@ fn control(
         let (show_tabs, pages) = panel_pages(info, width, height);
         ctrl.insert("showTabs".into(), show_tabs.into());
         ctrl.insert("pages".into(), Value::Array(pages));
+        if let Some(raw) = panel_tail_raw(info) {
+            ctrl.insert("panelRaw".into(), raw.into());
+        }
     }
     Ok(Value::Object(ctrl))
 }
@@ -877,6 +1000,12 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Opt
                             map.insert("path".into(), parts.join(".").into());
                         }
                     }
+                }
+                // The nested path is only a readable name; the link record itself is kept verbatim.
+                if let Value::Object(map) = &mut resolved {
+                    let mut raw = Vec::new();
+                    crate::donor::write_node(body, &mut raw);
+                    map.insert("raw".into(), String::from_utf8_lossy(&raw).into_owned().into());
                 }
                 links.insert(int(&link.children[0], "control id")?, resolved);
             }
@@ -1028,6 +1157,18 @@ pub fn decode_oof_stream_with_types(
     if root_pages.len() > 1 || root_show_tabs != 0 {
         out.insert("showTabs".into(), root_show_tabs.into());
         out.insert("pages".into(), Value::Array(root_pages));
+    }
+    // The flag words after the event section (window behavior, control pair bindings): verbatim.
+    if root.children.len() > 5 {
+        let tail = Node { children: root.children[5..].to_vec() };
+        let mut raw = Vec::new();
+        crate::donor::write_node(&tail, &mut raw);
+        out.insert("formRaw".into(), String::from_utf8_lossy(&raw).into_owned().into());
+    }
+    if let Item::Node(_) = &panel.children[1] {
+        if let Some(raw) = panel_tail_raw(match &panel.children[1] { Item::Node(n) => n, Item::Atom(_) => unreachable!() }) {
+            out.insert("panelRaw".into(), raw.into());
+        }
     }
     Ok(Value::Object(out))
 }
@@ -1422,7 +1563,13 @@ impl Writer {
         self.open(tag, &attrs);
         if let Some(dp) = c.get("dataPath") {
             let path = dp.get("path").filter(|v| !v.is_null()).map(pystr);
-            self.leaf("DataPath", path.as_deref(), &[("attributeId", pystr(&dp["attributeId"]))]);
+            let mut attrs: Attrs = vec![("attributeId", pystr(&dp["attributeId"]))];
+            if let Some(raw) = dp.get("raw") {
+                // `sig` ties the verbatim link to the id and the path text written next to it.
+                attrs.push(("raw", pystr(raw)));
+                attrs.push(("sig", fnv(&format!("{}|{}", pystr(&dp["attributeId"]), path.as_deref().unwrap_or("")))));
+            }
+            self.leaf("DataPath", path.as_deref(), &attrs);
         }
         self.localized("Caption", arr(c, "caption"));
         for key in ["left", "top", "width", "height"] {
@@ -1472,6 +1619,9 @@ impl Writer {
             let attrs: Attrs = owned.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
             self.leaf("Anchors", None, &attrs);
         }
+        if let Some(f) = c.get("props").and_then(|p| p.get("geometryFlags")).and_then(Value::as_array) {
+            self.leaf("GeometryFlags", None, &[("a", pystr(&f[0])), ("b", pystr(&f[1]))]);
+        }
         for (key, tagname) in [("contextMenu", "ContextMenu"), ("actionSource", "ActionSource")] {
             if let Some(id) = c.get("props").and_then(|p| p.get(key)).and_then(Value::as_i64) {
                 if id != 4_294_967_295 && id != 0 {
@@ -1480,6 +1630,9 @@ impl Writer {
             }
         }
         let pages: &[Value] = if tag == "Panel" { arr(c, "pages") } else { &[] };
+        if let Some(raw) = c.get("panelRaw").filter(|_| tag == "Panel") {
+            self.leaf("PanelRecord", None, &[("raw", pystr(raw)), ("sig", PANEL_SIG_PLACEHOLDER.to_string())]);
+        }
         if !pages.is_empty() {
             let show_tabs = geti(c, "showTabs", 0);
             let member = match show_tabs {
@@ -1539,6 +1692,10 @@ impl Writer {
             self.close("Columns");
         }
         self.events(arr(c, "events"));
+        if let Some(raw) = c.get("props").and_then(|p| p.get("infoRaw")) {
+            // `sig` is filled in once the whole document is rendered (see `fill_sigs`).
+            self.leaf("InfoRecord", None, &[("raw", pystr(raw)), ("sig", INFO_SIG_PLACEHOLDER.to_string())]);
+        }
         let children = arr(c, "children");
         if !pages.is_empty() && (pages.len() > 1 || geti(c, "showTabs", 0) != 0 || !children.is_empty()) {
             self.pages(c, pages);
@@ -1649,6 +1806,12 @@ pub fn render_form_xml(info: &FormInfo, model: &Value) -> Res<Vec<u8>> {
     }
     let root_pages = arr(model, "pages");
     let controls = arr(model, "controls");
+    if let Some(raw) = model.get("formRaw") {
+        w.leaf("FormRecord", None, &[("raw", pystr(raw)), ("sig", FORM_SIG_PLACEHOLDER.to_string())]);
+    }
+    if let Some(raw) = model.get("panelRaw") {
+        w.leaf("PanelRecord", None, &[("raw", pystr(raw)), ("sig", PANEL_SIG_PLACEHOLDER.to_string())]);
+    }
     if !root_pages.is_empty() {
         let show_tabs = geti(model, "showTabs", 0);
         let member = match show_tabs {
@@ -1670,7 +1833,7 @@ pub fn render_form_xml(info: &FormInfo, model: &Value) -> Res<Vec<u8>> {
         w.close("ChildItems");
     }
     w.close("Form");
-    let text = fill_column_sigs(&(w.lines.join("\n") + "\n"))?;
+    let text = fill_sigs(&(w.lines.join("\n") + "\n"))?;
     check_well_formed(&text)?; // the output must be well-formed XML
     Ok(text.into_bytes())
 }

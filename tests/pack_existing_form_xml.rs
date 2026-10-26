@@ -318,6 +318,15 @@ fn replace_after_appearance(xml: &str, head: &str, from_tail: &str, to_tail: &st
     format!("{}{}{}", &xml[..tail_at], to_tail, &xml[tail_at + from_tail.len()..])
 }
 
+/// `Form.xml` without the verbatim carriers (`raw`/`sig` attributes and the record elements): `pack` writes them
+/// again from the packed stream, so an edited form is compared modulo them.
+fn no_carriers(bytes: &[u8]) -> String {
+    let text = String::from_utf8_lossy(bytes).replace("\r\n", "\n");
+    let elements = regex::Regex::new(r"(?m)^[ \t]*<(Appearance|InfoRecord|PanelRecord|FormRecord|ColumnProps)\b[^>]*/>\n").unwrap();
+    let attrs = regex::Regex::new(r#" (raw|sig)=("[^"]*"|'[^']*')"#).unwrap();
+    attrs.replace_all(&elements.replace_all(&text, ""), "").into_owned()
+}
+
 fn rel(w: &Work, p: &Path) -> String {
     p.strip_prefix(w.root())
         .unwrap()
@@ -413,7 +422,7 @@ fn assert_label_packed(target: Target, with_bsl: bool, backup: bool) {
         "{target:?}: target container was not rewritten"
     );
     // the user's XML (and BSL) edits are still in src, byte for byte
-    assert_eq!(after[&xml_path], edited[&xml_path], "{target:?}: Form.xml changed");
+    assert_eq!(no_carriers(&after[&xml_path]), no_carriers(&edited[&xml_path]), "{target:?}: Form.xml changed");
     assert_eq!(after[&bsl_path], edited[&bsl_path], "{target:?}: FormModule.bsl changed");
     // only the container, regenerated previews and (on request) the backup changed outside src
     let backup_path = format!("{target_path}.bak");
@@ -435,7 +444,7 @@ fn assert_label_packed(target: Target, with_bsl: bool, backup: bool) {
     // the packed target reproduces the requested XML (and BSL) after a fresh extraction
     let fresh = fresh_extract(&after);
     assert_eq!(
-        fresh[&xml_path], edited[&xml_path],
+        no_carriers(&fresh[&xml_path]), no_carriers(&edited[&xml_path]),
         "{target:?}: re-extracted Form.xml differs from the requested one"
     );
     assert_eq!(fresh[&bsl_path], edited[&bsl_path], "{target:?}: re-extracted BSL differs");
@@ -774,8 +783,8 @@ fn panel_resize_packs_with_derived_page_geometry() {
         let fresh = fresh_extract(&after);
         let xml_path = rel(&w, &p);
         assert_eq!(
-            String::from_utf8(fresh[&xml_path].clone()).unwrap(),
-            format!("{head}{derived_block}{tail}"),
+            no_carriers(&fresh[&xml_path]),
+            no_carriers(format!("{head}{derived_block}{tail}").as_bytes()),
             "{target:?}: re-extracted panel and page geometry"
         );
     }
