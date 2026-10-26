@@ -75,7 +75,7 @@ oneform extract <каталог выгрузки>      # новая форма �
 |---|---|
 | `invalid-xml`, `must be one of [...]` | недопустимое значение тега |
 | `duplicate control name` (baseline) | в исходной форме есть два элемента с одним именем (≈0,6 % форм УТ): правка XML такой формы не поддерживается, правьте только `FormModule.bsl` |
-| `Table ..., Columns: the baseline XML says ...` | смена `ReadOnly` табличного поля с колонками «только чтение» не поддерживается |
+| `Table ..., Columns: ... a read-only column has no editor` | колонку «только чтение» нельзя сделать редактируемой (`<ReadOnly>false</ReadOnly>` у `<Column>`); `ReadOnly` самой таблицы менять можно |
 | `CommandBar ..., Buttons: button action guid missing` / `the patched stream does not hold the requested value` | заголовок кнопки командной панели со стандартным действием менять нельзя |
 | `unexpected-shape` | в потоке встретилась запись неизвестной формы; форма не тронута |
 | `layout unsupported (basic)` в отчёте, нет `Form.xml` | форма в формате платформы 8.0 (корень потока `{20`): доступен только модуль |

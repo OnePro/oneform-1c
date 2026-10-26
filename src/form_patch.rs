@@ -7505,12 +7505,13 @@ fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[Comm
     Ok(out)
 }
 
-/// Columns of tabular-section and dynamic-list tables keep `0` where a value-table column keeps its field name:
+/// Columns of tabular-section and dynamic-list tables keep a link step number (`0`, `1`, ...) where a value-table
+/// column keeps its field name:
 /// the field is addressed by a link step instead, and `Form.xml` shows it as `DataPath`. For those columns the
 /// field name is not a patchable value, so it is masked on both sides of every comparison.
 fn mask_field_slots(stream: &[ColumnValues], other: &mut [ColumnValues]) {
     for (s, o) in stream.iter().zip(other.iter_mut()) {
-        if s.field_name.as_deref() == Some("0") {
+        if s.field_name.as_deref().is_some_and(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit())) {
             o.field_name = None;
         }
     }
@@ -8097,7 +8098,7 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     return Err(site.invalid(
                         "baseline-mismatch",
                         "Columns",
-                        "the table's columns do not match the baseline XML: changing <ReadOnly> of a table whose columns carry their own read-only state is not supported (if ReadOnly was not edited, re-extract the form)".to_string(),
+                        "the table's columns do not match the baseline XML: a read-only column has no editor, so making it editable (<ReadOnly>false</ReadOnly> on a <Column>) is not supported; other column edits are (if you did not edit the columns, re-extract the form)".to_string(),
                     ));
                 }
                 if cols.len() != new.columns.len() {
