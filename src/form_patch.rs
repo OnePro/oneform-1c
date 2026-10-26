@@ -2341,6 +2341,20 @@ impl ControlValues {
     }
 }
 
+/// Children of a `<Column>` that the parser takes into [`ColumnValues`] (they are not left in the control's `rest`).
+const COLUMN_VALUE_TAGS: [&str; 41] = ["DataPath", "Header", "FooterText", "Tooltip", "Width", "Visible", "ReadOnly", "Editor", "Events", "ShowHierarchy", "CheckBoxThreeState", "ShowInHeader", "ShowInFooter", "ChangeSetting", "ChangePosition", "MarkNegatives", "ChangeVisible", "AutoMarkIncomplete", "AutoCellHeight", "Hyperlink", "CheckData", "RowsPictures", "HeaderPicture", "FooterPicture", "Location", "SizeChange", "EditMode", "FieldBackColor", "FieldTextColor", "HeaderBackColor", "HeaderTextColor", "FooterBackColor", "FooterTextColor", "TextFont", "HeaderFont", "FooterFont", "HeaderHorizontalAlign", "HorizontalAlignInColumn", "FooterHorizontalAlign", "Format", "CellHeight"];
+
+/// What the parser saw of the `<DataPath>` of a `<Column>` (the column value keeps only the last segment).
+#[derive(Debug, Clone, Default)]
+pub struct ColumnSource {
+    pub line: u32,
+    /// The `attributeId` attribute and the text of the element.
+    pub attribute_id: Option<String>,
+    pub data_path: Option<String>,
+    /// `(line, tag)` of the children of the column that the parser did not take into a value.
+    pub leftovers: Vec<(u32, String)>,
+}
+
 /// A control element (a control tag directly inside `ChildItems`).
 #[derive(Debug, Clone)]
 pub struct ControlXml {
@@ -2356,6 +2370,8 @@ pub struct ControlXml {
     pub page: Option<String>,
     pub line: u32,
     pub values: ControlValues,
+    /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
+    pub column_sources: Vec<ColumnSource>,
     /// The control element without nested controls (replaced by [`CONTROL_STUB`]) and without the
     /// supported property elements; everything left here is unsupported to edit.
     pub rest: XmlElement,
@@ -2808,11 +2824,13 @@ impl Parser<'_> {
                     page: page.map(str::to_string),
                     line: c.line,
                     values: ControlValues::empty(),
+                    column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),
                 });
                 let inner = self.walk(c, Some(id), None)?;
-                let (values, rest) = self.split_values(slot, &inner)?;
+                let (values, rest, column_sources) = self.split_values(slot, &inner)?;
                 self.controls[slot].values = values;
+                self.controls[slot].column_sources = column_sources;
                 self.controls[slot].rest = rest;
                 let mut stub = XmlElement::new(CONTROL_STUB, c.line);
                 stub.attrs.insert("id".into(), id.to_string());
@@ -2825,7 +2843,7 @@ impl Parser<'_> {
         Ok(shell)
     }
 
-    fn split_values(&self, slot: usize, inner: &XmlElement) -> Result<(ControlValues, XmlElement)> {
+    fn split_values(&self, slot: usize, inner: &XmlElement) -> Result<(ControlValues, XmlElement, Vec<ColumnSource>)> {
         let who = self.controls[slot].describe();
         let type_name = self.controls[slot].type_name.clone();
         let ctrl_name = self.controls[slot].name.clone();
@@ -3112,10 +3130,12 @@ impl Parser<'_> {
             }
         }
         let mut columns: Vec<ColumnValues> = Vec::new();
+        let mut column_sources: Vec<ColumnSource> = Vec::new();
         if type_name == "Table" {
             if let Some(cols_el) = rest.children.iter_mut().find(|e| e.tag == "Columns") {
                 let mut ok = cols_el.attrs.is_empty() && cols_el.text.trim().is_empty();
                 let mut extracted = Vec::new();
+                let mut sources = Vec::new();
                 let mut seen_col_names = std::collections::HashSet::new();
                 if ok {
                     for col_el in &cols_el.children {
@@ -3146,6 +3166,7 @@ impl Parser<'_> {
                             break;
                         }
                         let mut field_name: Option<String> = None;
+                        let mut source = ColumnSource { line: col_el.line, ..ColumnSource::default() };
                         let mut header = Vec::new();
                         let mut footer_text = Vec::new();
                         let mut tooltip = Vec::new();
@@ -3165,6 +3186,8 @@ impl Parser<'_> {
                                     }
                                     let p = ch.text.trim();
                                     field_name = Some(p.rsplit('.').next().unwrap_or(p).to_string());
+                                    source.attribute_id = ch.attrs.get("attributeId").cloned();
+                                    source.data_path = Some(p.to_string());
                                 }
                                 "Header" => {
                                     if !seen_tags.insert("Header") {
@@ -3412,6 +3435,17 @@ impl Parser<'_> {
                         if !ok {
                             break;
                         }
+                        // the decoder writes `<Editor>` on every editable column: without the tag it is an `InputField`
+                        if !read_only && editor.is_none() {
+                            editor = Some("InputField".to_string());
+                        }
+                        source.leftovers = col_el
+                            .children
+                            .iter()
+                            .filter(|ch| !COLUMN_VALUE_TAGS.contains(&ch.tag.as_str()))
+                            .map(|ch| (ch.line, ch.tag.clone()))
+                            .collect();
+                        sources.push(source);
                         extracted.push(ColumnValues {
                             id: cid,
                             name: cname,
@@ -3432,54 +3466,10 @@ impl Parser<'_> {
                     for (idx, col_el) in cols_el.children.iter_mut().enumerate() {
                         col_el.attrs.remove("name");
                         col_el.attrs.insert("_col".into(), idx.to_string());
-                        col_el.children.retain(|ch| {
-                            !matches!(
-                                ch.tag.as_str(),
-                                "DataPath"
-                                    | "Header"
-                                    | "FooterText"
-                                    | "Tooltip"
-                                    | "Width"
-                                    | "Visible"
-                                    | "ReadOnly"
-                                    | "Editor"
-                                    | "Events"
-                                    | "ShowHierarchy"
-                                    | "CheckBoxThreeState"
-                                    | "ShowInHeader"
-                                    | "ShowInFooter"
-                                    | "ChangeSetting"
-                                    | "ChangePosition"
-                                    | "MarkNegatives"
-                                    | "ChangeVisible"
-                                    | "AutoMarkIncomplete"
-                                    | "AutoCellHeight"
-                                    | "Hyperlink"
-                                    | "CheckData"
-                                    | "RowsPictures"
-                                    | "HeaderPicture"
-                                    | "FooterPicture"
-                                    | "Location"
-                                    | "SizeChange"
-                                    | "EditMode"
-                                    | "FieldBackColor"
-                                    | "FieldTextColor"
-                                    | "HeaderBackColor"
-                                    | "HeaderTextColor"
-                                    | "FooterBackColor"
-                                    | "FooterTextColor"
-                                    | "TextFont"
-                                    | "HeaderFont"
-                                    | "FooterFont"
-                                    | "HeaderHorizontalAlign"
-                                    | "HorizontalAlignInColumn"
-                                    | "FooterHorizontalAlign"
-                                    | "Format"
-                                    | "CellHeight"
-                            )
-                        });
+                        col_el.children.retain(|ch| !COLUMN_VALUE_TAGS.contains(&ch.tag.as_str()));
                     }
                     columns = extracted;
+                    column_sources = sources;
                 }
             }
         }
@@ -3955,7 +3945,7 @@ impl Parser<'_> {
             save_view_properties: opt_bool_of("SaveViewProperties")?,
             fixed_background: opt_bool_of("FixedBackground")?,
         };
-        Ok((values, rest))
+        Ok((values, rest, column_sources))
     }
 }
 
@@ -4864,8 +4854,22 @@ pub fn diff_forms_full(
             }
             // What the parser did not take into a value or an event cannot be written into the clone: say so
             // instead of dropping it silently (a `DataPath` whose text is not exactly the attribute name too).
+            // the columns of a table bound to a tabular section are written; every refusal names its line
+            let bound = match table_binding(c) {
+                Ok(b) => b.is_some(),
+                Err(why) => {
+                    for w in why {
+                        let text = match w.strip_prefix("line ").and_then(|t| t.split_once(": ")) {
+                            Some((line, rest)) => format!("line {line}: {}: {rest}", c.describe()),
+                            None => format!("line {}: {}: {w}", c.line, c.describe()),
+                        };
+                        problems.push(problem("added-control", text));
+                    }
+                    true
+                }
+            };
             for e in &c.rest.children {
-                if matches!(e.tag.as_str(), "Events" | "ChildItems") || e.tag == CONTROL_STUB {
+                if matches!(e.tag.as_str(), "Events" | "ChildItems") || e.tag == CONTROL_STUB || (bound && e.tag == "Columns") {
                     continue;
                 }
                 let why = if e.tag == "DataPath" {
@@ -5037,6 +5041,9 @@ enum LinkStep {
     Attr(String),
     /// `{2,{aid},{-N}}`: a standard attribute of the object.
     Std(i64),
+    /// `{2,{aid},{0,<uuid>}}`: a tabular section of the object (only a `Table` can be bound to it). The row has the
+    /// shape of [`LinkStep::Attr`], so a stored link reads back as that.
+    Tabular(String),
     /// Any other shape (never produced by the writer).
     Other,
 }
@@ -5045,7 +5052,7 @@ impl LinkStep {
     /// The body `{K,{aid},step}` of a link row.
     fn body(&self, aid: i64) -> String {
         match self {
-            LinkStep::Attr(uuid) => format!("{{2,{{{aid}}},{{0,{uuid}}}}}"),
+            LinkStep::Attr(uuid) | LinkStep::Tabular(uuid) => format!("{{2,{{{aid}}},{{0,{uuid}}}}}"),
             LinkStep::Std(code) => format!("{{2,{{{aid}}},{{{code}}}}}"),
             LinkStep::Form | LinkStep::Other => format!("{{1,{{{aid}}}}}"),
         }
@@ -5063,7 +5070,7 @@ fn resolve_link_step(path: &str) -> std::result::Result<LinkStep, String> {
     let parts: Vec<&str> = path.split('.').collect();
     if parts.len() > 2 {
         return Err(format!(
-            "DataPath '{path}': paths of three or more segments are not supported (tabular sections, columns and sub-fields of reference attributes cannot be bound yet)"
+            "DataPath '{path}': paths of three or more segments are not supported (columns of tabular sections are bound through the <Columns> of a table, sub-fields of reference attributes cannot be bound yet)"
         ));
     }
     let name = parts[1];
@@ -5083,8 +5090,12 @@ fn resolve_link_step(path: &str) -> std::result::Result<LinkStep, String> {
         (Resolved::One(uuid), None) => Ok(LinkStep::Attr(uuid.to_ascii_lowercase())),
         (Resolved::Missing, Some(code)) => Ok(LinkStep::Std(code)),
         (Resolved::Missing, None) => {
-            if !matches!(schema.resolve_tabular(name), Resolved::Missing) {
-                return Err(format!("DataPath '{path}': '{name}' is a tabular section; binding to tabular sections is not supported yet"));
+            match schema.resolve_tabular(name) {
+                Resolved::One(ts) => return Ok(LinkStep::Tabular(ts.uuid.to_ascii_lowercase())),
+                Resolved::Ambiguous => {
+                    return Err(format!("DataPath '{path}': the object has several tabular sections named '{name}'"));
+                }
+                Resolved::Missing => {}
             }
             let mut names = schema.root_names();
             let mut seen = std::collections::HashSet::new();
@@ -5103,25 +5114,102 @@ fn resolve_link_step(path: &str) -> std::result::Result<LinkStep, String> {
 /// Unchanged paths are not looked at: their links stay as they are.
 fn check_object_bindings(diff: &FormDiff, edited: &FormXml) -> Result<()> {
     let mut problems: Vec<Problem> = Vec::new();
-    let mut check = |c: &ControlXml, path: &str| {
-        if let Err(why) = resolve_link_step(path) {
-            problems.push(problem("data-path", format!("line {}: {}: {why}", c.line, c.describe())));
-        }
+    let mut check = |c: &ControlXml, path: &str, added: bool| match resolve_link_step(path) {
+        Err(why) => problems.push(problem("data-path", format!("line {}: {}: {why}", c.line, c.describe()))),
+        Ok(LinkStep::Tabular(_)) if c.type_name != "Table" => problems.push(problem(
+            "data-path",
+            format!("line {}: {}: DataPath '{path}' is a tabular section; only a Table can be bound to it", c.line, c.describe()),
+        )),
+        Ok(LinkStep::Tabular(_)) if !added => problems.push(problem(
+            "data-path",
+            format!(
+                "line {}: {}: DataPath '{path}': changing the binding of an existing table to a tabular section is not supported (add a new table instead)",
+                c.line,
+                c.describe()
+            ),
+        )),
+        Ok(_) => {}
     };
     for c in &diff.additions {
         if let Some((_, path)) = &c.values.data_path {
-            check(c, path);
+            check(c, path, true);
         }
     }
     for e in diff.edits.iter().filter(|e| e.changed.contains(&Property::DataPath)) {
         if let (Some((_, path)), Some(c)) = (&e.new.data_path, edited.control(e.id)) {
-            check(c, path);
+            check(c, path, false);
         }
     }
     if problems.is_empty() {
         return Ok(());
     }
     Err(fail(&edited.name, &edited.label, problems))
+}
+
+/// A `Table` bound to a tabular section of the object.
+struct TableBinding {
+    /// Uuid of the tabular section.
+    uuid: String,
+    /// TypeId of the generated type of the section.
+    type_id: String,
+    columns: Vec<crate::ts_table::ColumnSpec>,
+}
+
+/// The binding of an added `Table` whose `DataPath` is a tabular section (`None`: not such a table). The errors
+/// are the refusals (columns that cannot be written), each with its line.
+fn table_binding(c: &ControlXml) -> std::result::Result<Option<TableBinding>, Vec<String>> {
+    use crate::ts_table::ColumnRequest;
+    if c.type_name != "Table" {
+        return Ok(None);
+    }
+    let (Some((attr_id, path)), Some(schema)) = (&c.values.data_path, crate::object_schema::object_schema()) else { return Ok(None) };
+    let Ok(LinkStep::Tabular(uuid)) = resolve_link_step(path) else { return Ok(None) };
+    let (root, _) = path.split_once('.').unwrap_or((path, ""));
+    let Some(ts) = schema.tabular.iter().find(|t| t.uuid.eq_ignore_ascii_case(&uuid)) else { return Ok(None) };
+    let Some(type_id) = ts.type_id.clone() else {
+        return Err(vec![format!("the tabular section '{}' has no generated type id in the object metadata", ts.name)]);
+    };
+    let columns_el = c.rest.children.iter().find(|e| e.tag == "Columns");
+    if c.values.columns.len() != c.column_sources.len() || (c.values.columns.is_empty() && columns_el.is_some_and(|e| !e.children.is_empty())) {
+        let line = columns_el.map_or(c.line, |e| e.line);
+        return Err(vec![format!(
+            "line {line}: <Columns> is not understood (each <Column> needs name, id, Width and only the supported children)"
+        )]);
+    }
+    let requests: Vec<ColumnRequest> = c
+        .values
+        .columns
+        .iter()
+        .zip(&c.column_sources)
+        .map(|(v, src)| {
+            let mut unsupported: Vec<(u32, String)> = src.leftovers.iter().map(|(line, tag)| (*line, format!("<{tag}>"))).collect();
+            for (present, what) in [
+                (!v.footer_text.is_empty(), "<FooterText>"),
+                (!v.tooltip.is_empty(), "<Tooltip>"),
+                (!v.events.is_empty(), "<Events>"),
+                (v.ext != ColumnExt::default(), "an extended property"),
+            ] {
+                if present {
+                    unsupported.push((src.line, what.to_string()));
+                }
+            }
+            ColumnRequest {
+                line: src.line,
+                name: v.name.clone(),
+                id: v.id,
+                header: v.header.clone(),
+                width: v.width,
+                visible: v.visible,
+                read_only: v.read_only,
+                editor: v.editor.clone(),
+                attribute_id: src.attribute_id.clone(),
+                data_path: src.data_path.clone(),
+                unsupported,
+            }
+        })
+        .collect();
+    let columns = crate::ts_table::plan_columns(root, *attr_id, ts, &requests)?;
+    Ok(Some(TableBinding { uuid, type_id, columns }))
 }
 
 // ------------------------------------------------------------------ structural edits (add/remove)
@@ -8304,6 +8392,13 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         let (_, span) = int_slot(site, cp, 26, "Columns", "ReadOnly")?;
                         out.push(piece(span, i32::from(nc.read_only), &[prop]));
                     }
+                    if oc.editor.is_none() && nc.editor.is_some() {
+                        return Err(site.invalid(
+                            "unsupported-table",
+                            "Columns",
+                            "a read-only column has no editor, so giving it one (<ReadOnly>false</ReadOnly> or <Editor> on a <Column>) is not supported".into(),
+                        ));
+                    }
                     if oc.editor != nc.editor {
                         if let Some(ed) = &nc.editor {
                             let (_, span) = cp
@@ -8859,7 +8954,14 @@ fn data_path_matches(links: Option<&Node>, control_id: i64, want: Option<&(i64, 
     let got = links.and_then(|l| read_control_link(l, control_id));
     match want {
         None => got.is_none(),
-        Some((aid, path)) => resolve_link_step(path).is_ok_and(|step| got == Some((*aid, step))),
+        Some((aid, path)) => resolve_link_step(path).is_ok_and(|step| {
+            // the row of a tabular section reads back as an attribute link
+            let step = match step {
+                LinkStep::Tabular(uuid) => LinkStep::Attr(uuid),
+                other => other,
+            };
+            got == Some((*aid, step))
+        }),
     }
 }
 
@@ -9280,6 +9382,9 @@ impl FormPatchPlan<'_> {
             set_clone_geometry(&mut clone, &c.values, page)?;
             set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
             set_clone_props(&mut clone, &c.type_name, &c.values)?;
+            if let Some(tb) = table_binding(c).map_err(|why| layout_err(why.join("; ")))? {
+                crate::ts_table::bind_info(clone_info_mut(&mut clone)?, &tb.type_id, &tb.columns).map_err(layout_err)?;
+            }
             let others: Vec<i64> = new_xml_ids.iter().copied().filter(|&x| x != c.id).collect();
             let edges = anchors::resolve_new_edges(&self.index, c, max_id, page, &others, &deleted_ids)?;
             let container = anchors::container_holder(&self.index, c.parent);
@@ -9452,6 +9557,12 @@ impl FormPatchPlan<'_> {
                 if !data_path_matches(index.links_list().map(|l| l.node), *new_id, Some(path)) {
                     return Err(bad(format!("added control '{}' (id {new_id}): the stored link does not match DataPath '{}'", c.name, path.1)));
                 }
+            }
+            if let Some(tb) = table_binding(c).map_err(|why| bad(why.join("; ")))? {
+                let item = Item::Node(e.control.node.clone());
+                let parts = control_parts(&item).map_err(|x| bad(x.to_string()))?;
+                crate::ts_table::check_table(parts.info, &tb.type_id, &tb.columns)
+                    .map_err(|why| bad(format!("added table '{}' (id {new_id}) bound to the tabular section {}: {why}", c.name, tb.uuid)))?;
             }
         }
         Ok(())

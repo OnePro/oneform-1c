@@ -3139,3 +3139,318 @@ mod object_binding {
         assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some("{2,{1},{-2}}"));
     }
 }
+
+// ---------------------------------------------------------------- tables bound to tabular sections of the object
+
+mod tabular_binding {
+    use super::*;
+    use oneform::object_schema::{with_object_schema, ObjectSchema};
+    use oneform::ts_table::read_table;
+
+    const GOODS: &str = "22222222-0000-0000-0000-000000000001";
+    const GOODS_TYPE: &str = "32dc563e-0b51-4621-9936-5bfc9fd58ef3";
+    const NAME: &str = "33333333-0000-0000-0000-000000000001";
+    const QTY: &str = "33333333-0000-0000-0000-000000000002";
+    const NOTE: &str = "33333333-0000-0000-0000-000000000003";
+
+    fn object_xml() -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" xmlns:v8="http://v8.1c.ru/8.1/data/core" xmlns:xr="http://v8.1c.ru/8.3/xcf/readable" version="2.17">
+  <Document uuid="aaaaaaaa-0000-0000-0000-000000000001">
+    <Properties><Name>Объект</Name></Properties>
+    <ChildObjects>
+      <TabularSection uuid="{GOODS}">
+        <InternalInfo>
+          <xr:GeneratedType name="DocumentTabularSection.Объект.Товары" category="TabularSection">
+            <xr:TypeId>{GOODS_TYPE}</xr:TypeId>
+            <xr:ValueId>44444444-0000-0000-0000-000000000001</xr:ValueId>
+          </xr:GeneratedType>
+        </InternalInfo>
+        <Properties><Name>Товары</Name></Properties>
+        <ChildObjects>
+          <Attribute uuid="{NAME}"><Properties><Name>Наименование</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>20</v8:Length><v8:AllowedLength>Variable</v8:AllowedLength></v8:StringQualifiers></Type></Properties></Attribute>
+          <Attribute uuid="{QTY}"><Properties><Name>Количество</Name><Type><v8:Type>xs:decimal</v8:Type><v8:NumberQualifiers><v8:Digits>15</v8:Digits><v8:FractionDigits>2</v8:FractionDigits><v8:AllowedSign>Any</v8:AllowedSign></v8:NumberQualifiers></Type></Properties></Attribute>
+          <Attribute uuid="{NOTE}"><Properties><Name>Комментарий</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>50</v8:Length><v8:AllowedLength>Variable</v8:AllowedLength></v8:StringQualifiers></Type></Properties></Attribute>
+          <Attribute uuid="33333333-0000-0000-0000-000000000004"><Properties><Name>Флаг</Name><Type><v8:Type>xs:boolean</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="33333333-0000-0000-0000-000000000005"><Properties><Name>Свободный</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>0</v8:Length></v8:StringQualifiers></Type></Properties></Attribute>
+          <Attribute uuid="33333333-0000-0000-0000-000000000006"><Properties><Name>Ссылка</Name><Type><v8:Type>cfg:CatalogRef.Номенклатура</v8:Type></Type></Properties></Attribute>
+        </ChildObjects>
+      </TabularSection>
+      <TabularSection uuid="22222222-0000-0000-0000-000000000002">
+        <Properties><Name>Контакты</Name></Properties>
+        <ChildObjects>
+          <Attribute uuid="33333333-0000-0000-0000-000000000011"><Properties><Name>Значение</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>10</v8:Length><v8:AllowedLength>Variable</v8:AllowedLength></v8:StringQualifiers></Type></Properties></Attribute>
+        </ChildObjects>
+      </TabularSection>
+      <TabularSection uuid="22222222-0000-0000-0000-000000000003"><Properties><Name>Дубль</Name></Properties></TabularSection>
+      <TabularSection uuid="22222222-0000-0000-0000-000000000004"><Properties><Name>Дубль</Name></Properties></TabularSection>
+    </ChildObjects>
+  </Document>
+</MetaDataObject>"#
+        )
+    }
+
+    fn schema() -> ObjectSchema {
+        ObjectSchema::from_object_xml(&object_xml()).unwrap()
+    }
+
+    /// `uuid -> name` of the object: what `extract` knows about it.
+    fn lookup() -> std::collections::HashMap<String, String> {
+        let schema = schema();
+        let mut m = std::collections::HashMap::new();
+        m.insert("@kind".to_string(), "Document".to_string());
+        for t in &schema.tabular {
+            m.insert(t.uuid.to_lowercase(), t.name.clone());
+            for (name, uuid) in &t.columns {
+                m.insert(uuid.to_lowercase(), name.clone());
+            }
+        }
+        m
+    }
+
+    fn col(name: &str, id: i64, path: &str, extra: &str) -> String {
+        format!(
+            "<Column name=\"{name}\" id=\"{id}\"><DataPath attributeId=\"1\">{path}</DataPath><Header><Item language=\"ru\">{name}</Item></Header><Width>90</Width>{extra}</Column>\n"
+        )
+    }
+
+    fn table(name: &str, id: i64, data_path: &str, columns: Option<&str>) -> String {
+        let dp = if data_path.is_empty() { String::new() } else { format!("<DataPath attributeId=\"1\">{data_path}</DataPath>") };
+        let cols = columns.map(|c| format!("<Columns>\n{c}</Columns>")).unwrap_or_default();
+        format!(
+            "<Table name=\"{name}\" id=\"{id}\">{dp}<Left>300</Left><Top>300</Top><Width>400</Width><Height>150</Height><ZOrder>56</ZOrder><TabOrder>56</TabOrder>{cols}</Table>\n        "
+        )
+    }
+
+    fn good_columns() -> String {
+        [
+            col("НомерСтроки", 0, "ОбработкаОбъект.Товары.НомерСтроки", "<ReadOnly>true</ReadOnly>"),
+            col("Наименование", 1, "ОбработкаОбъект.Товары.Наименование", "<Editor>InputField</Editor>"),
+            col("Количество", 2, "ОбработкаОбъект.Товары.Количество", ""),
+            col("Комментарий", 7, "ОбработкаОбъект.Товары.Комментарий", "<ReadOnly>true</ReadOnly><Visible>false</Visible>"),
+        ]
+        .concat()
+    }
+
+    fn oneform_text(n: &oneform::brace::Node) -> String {
+        let mut out = Vec::new();
+        oneform::donor::write_node(n, &mut out);
+        String::from_utf8(out).unwrap().split_whitespace().collect()
+    }
+
+    /// `(name, id, read_only, editor, visible, width)` of the columns of the table `name` of a parsed `Form.xml`.
+    type ColumnRow = (String, Option<i64>, bool, Option<String>, bool, i64);
+
+    fn column_values(xml: &[u8], name: &str) -> Vec<ColumnRow> {
+        let parsed = parse_form_xml(xml, "columns").unwrap();
+        let t = parsed.controls.iter().find(|c| c.name == name).unwrap();
+        t.values.columns.iter().map(|c| (c.name.clone(), c.id, c.read_only, c.editor.clone(), c.visible, c.width)).collect()
+    }
+
+    fn with_table(block: &str) -> String {
+        insert_before_table1(&baseline("DonorForm"), block)
+    }
+
+    fn patch_with(edited: &str) -> PatchedForm {
+        let s = stream("DonorForm");
+        let pf = with_object_schema(Some(schema()), || patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes())).unwrap();
+        assert_only_authorized_changes(s.source(), &pf);
+        pf
+    }
+
+    fn refusal(edited: &str) -> String {
+        let s = stream("DonorForm");
+        let e = with_object_schema(Some(schema()), || plan(&s, edited)).expect_err("must be refused");
+        assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+        format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+    }
+
+    fn link_of(bytes: &[u8], id: i64) -> Option<String> {
+        let s = parse_spanned(bytes).unwrap();
+        let links = s.root.node(2)?.node(3)?;
+        for item in links.children.iter().skip(1) {
+            let oneform::brace::Item::Node(row) = item else { continue };
+            if row.children[0].as_atom().and_then(|a| a.value.parse::<i64>().ok()) == Some(id) {
+                let mut out = Vec::new();
+                oneform::donor::write_node(row.node(1)?, &mut out);
+                return Some(String::from_utf8(out).unwrap().split_whitespace().collect());
+            }
+        }
+        None
+    }
+
+    fn decoded_xml(raw: &[u8]) -> String {
+        let base = baseline("DonorForm");
+        let doc = roxmltree::Document::parse(&base).unwrap();
+        let (id, fname) = (doc.root_element().attribute("id").unwrap(), doc.root_element().attribute("name").unwrap());
+        let model = decode_oof_stream(raw, id, Some(&lookup())).unwrap();
+        let xml = render_form_xml(&common::form_info(id, fname, raw), &model).unwrap();
+        String::from_utf8(enrich_ext_properties(raw, &xml).unwrap()).unwrap().replace("\r\n", "\n")
+    }
+
+    /// The table record (`control[2]`) of control `id` in `bytes`.
+    fn table_info(bytes: &[u8], id: i64) -> oneform::brace::Node {
+        let reparsed = parse_spanned(bytes).unwrap();
+        let index = ControlIndex::build(&reparsed).unwrap();
+        let info = index.get(id).unwrap().control.node.node(2).unwrap().clone();
+        info
+    }
+
+    #[test]
+    fn an_added_table_is_bound_to_a_tabular_section_with_its_columns() {
+        let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&good_columns())));
+        let pf = patch_with(&edited);
+        let id = pf.allocated[0].1;
+        assert_eq!(link_of(&pf.bytes, id).as_deref(), Some(format!("{{2,{{1}},{{0,{GOODS}}}}}").as_str()));
+
+        let (value_type, row_source, columns) = read_table(&table_info(&pf.bytes, id)).unwrap();
+        assert_eq!(value_type, format!("{{\"Pattern\",{{\"#\",{GOODS_TYPE}}}}}"));
+        assert_eq!(row_source, oneform::ts_table::ROW_SOURCE);
+        let got: Vec<(&str, i64, i64, &str, usize)> = columns.iter().map(|c| (c.name.as_str(), c.id, c.ordinal, c.data.as_str(), c.slots)).collect();
+        let (d1, d2, d3) = (format!("{{0,{NAME}}}"), format!("{{0,{QTY}}}"), format!("{{0,{NOTE}}}"));
+        assert_eq!(
+            got,
+            [
+                ("НомерСтроки", 0, -2, "{-2}", 45),
+                ("Наименование", 1, 0, d1.as_str(), 46),
+                ("Количество", 2, 1, d2.as_str(), 46),
+                ("Комментарий", 7, 2, d3.as_str(), 45),
+            ]
+        );
+        // a read-only column has no editor: no editor guid, no editor blob, the flags of an editable column
+        let info = table_info(&pf.bytes, id);
+        let column = |i: usize| info.node(2).unwrap().node(1).unwrap().node(23).unwrap().node(i).unwrap().node(1).unwrap().node(1).unwrap().node(1).unwrap().clone();
+        let (editable, read_only, row_number) = (column(2), column(4), column(1));
+        assert_eq!(read_only.atom(38).unwrap().value, "00000000-0000-0000-0000-000000000000");
+        assert_eq!(editable.atom(38).unwrap().value, "381ed624-9217-4e63-85db-c4c3cb87daae");
+        assert_eq!((read_only.atom(26).unwrap().value.as_str(), read_only.atom(9).unwrap().value.as_str()), ("0", "12590592"));
+        assert_eq!(read_only.atom(6).unwrap().value, "2");
+        assert_eq!(read_only.atom(44).unwrap().value, "90");
+        assert_eq!(oneform_text(read_only.node(35).unwrap()), "{\"Pattern\",{\"S\",50,1}}");
+        assert_eq!(row_number.len(), 45);
+
+        // `extract` of the patched stream shows the same table and columns
+        let xml = decoded_xml(&pf.bytes);
+        let at = xml.find("<Table name=\"Товары\"").expect("the table is extracted");
+        let block = &xml[at..at + xml[at..].find("</Table>").unwrap()];
+        for want in [
+            "<DataPath attributeId=\"1\">ОбработкаОбъект.Товары</DataPath>",
+            "<Column name=\"НомерСтроки\" id=\"0\">",
+            "<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.НомерСтроки</DataPath>",
+            "<Column name=\"Наименование\" id=\"1\">",
+            "<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.Наименование</DataPath>",
+            "<Column name=\"Количество\" id=\"2\">",
+            "<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.Количество</DataPath>",
+            "<Column name=\"Комментарий\" id=\"7\">",
+            "<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.Комментарий</DataPath>",
+        ] {
+            assert!(block.contains(want), "{want} is missing in:\n{block}");
+        }
+        let positions: Vec<usize> = ["НомерСтроки\" id", "Наименование\" id", "Количество\" id", "Комментарий\" id"]
+            .iter()
+            .map(|n| block.find(n).unwrap())
+            .collect();
+        assert!(positions.windows(2).all(|w| w[0] < w[1]), "the columns keep their order");
+        let parsed = parse_form_xml(xml.as_bytes(), "decoded").unwrap();
+        let t = parsed.controls.iter().find(|c| c.name == "Товары").unwrap();
+        let cols: Vec<(&str, bool, bool, i64)> = t.values.columns.iter().map(|c| (c.name.as_str(), c.read_only, c.visible, c.width)).collect();
+        assert_eq!(
+            cols,
+            [("НомерСтроки", true, true, 90), ("Наименование", false, true, 90), ("Количество", false, true, 90), ("Комментарий", true, false, 90)]
+        );
+        // the extracted columns equal the requested ones: an editable column without `<Editor>` is an InputField,
+        // a read-only one has none
+        let requested = column_values(edited.as_bytes(), "Товары");
+        assert_eq!(requested, column_values(xml.as_bytes(), "Товары"));
+        let editors: Vec<Option<&str>> = requested.iter().map(|c| c.3.as_deref()).collect();
+        assert_eq!(editors, [None, Some("InputField"), Some("InputField"), None]);
+    }
+
+    #[test]
+    fn a_read_only_field_column_has_no_editor_and_reads_back() {
+        let columns = [
+            col("НомерСтроки", 0, "ОбработкаОбъект.Товары.НомерСтроки", "<ReadOnly>true</ReadOnly>"),
+            col("Количество", 2, "ОбработкаОбъект.Товары.Количество", "<ReadOnly>false</ReadOnly>"),
+            col("Комментарий", 7, "ОбработкаОбъект.Товары.Комментарий", "<ReadOnly>true</ReadOnly>"),
+            col("Наименование", 8, "ОбработкаОбъект.Товары.Наименование", ""),
+        ]
+        .concat();
+        let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&columns)));
+        let pf = patch_with(&edited);
+        let (_, _, got) = read_table(&table_info(&pf.bytes, pf.allocated[0].1)).unwrap();
+        assert_eq!(got.iter().map(|c| c.slots).collect::<Vec<_>>(), [45, 46, 45, 46]);
+        let xml = decoded_xml(&pf.bytes);
+        let requested = column_values(edited.as_bytes(), "Товары");
+        assert_eq!(requested, column_values(xml.as_bytes(), "Товары"));
+        assert_eq!(requested[2], ("Комментарий".to_string(), Some(7), true, None, true, 90));
+        assert_eq!(requested[1].3.as_deref(), Some("InputField"));
+        assert_eq!(requested[3].3.as_deref(), Some("InputField"));
+    }
+
+    #[test]
+    fn an_added_table_without_columns_is_bound() {
+        let pf = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", None)));
+        let id = pf.allocated[0].1;
+        let (_, _, columns) = read_table(&table_info(&pf.bytes, id)).unwrap();
+        assert!(columns.is_empty());
+        assert_eq!(link_of(&pf.bytes, id).as_deref(), Some(format!("{{2,{{1}},{{0,{GOODS}}}}}").as_str()));
+    }
+
+    #[test]
+    fn a_table_without_a_data_path_keeps_the_donor_record() {
+        let pf = patch_with(&with_table(&table("Товары", 900, "", None)));
+        let id = pf.allocated[0].1;
+        assert_eq!(link_of(&pf.bytes, id), None);
+        let (value_type, _, columns) = read_table(&table_info(&pf.bytes, id)).unwrap();
+        assert!(!value_type.contains(GOODS_TYPE) && columns.len() == 2, "{value_type}");
+    }
+
+    #[test]
+    fn unsupported_tables_and_columns_are_refused_with_the_line_and_the_reason() {
+        let one = |path: &str, extra: &str| col("Колонка", 1, path, extra);
+        let goods = "ОбработкаОбъект.Товары";
+        let cases: Vec<(String, &str)> = vec![
+            (table("Т", 900, "ОбработкаОбъект.НетТакой", None), "no attribute or standard attribute 'НетТакой'"),
+            (table("Т", 900, "ОбработкаОбъект.Дубль", None), "several tabular sections named 'Дубль'"),
+            (table("Т", 900, "ОбработкаОбъект.Товары.Наименование", None), "three or more segments"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Нет", ""))), "the column 'Нет' does not exist in the tabular section 'Товары'"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Контакты.Значение", ""))), "belongs to the tabular section 'Контакты'"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Флаг", ""))), "Boolean"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Свободный", ""))), "unlimited"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Ссылка", ""))), "value type of the column 'Ссылка' is not known"),
+            (table("Т", 900, goods, Some(&one("Товары.Наименование", ""))), "must be ОбработкаОбъект.Товары.<column>"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Наименование", "<Editor>CheckBox</Editor>"))), "editor CheckBox"),
+            (
+                table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Наименование", "<ReadOnly>true</ReadOnly><Editor>InputField</Editor>"))),
+                "a read-only column has no editor",
+            ),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.НомерСтроки", "<Editor>InputField</Editor>"))), "НомерСтроки is read-only and has no editor"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.НомерСтроки", ""))), "НомерСтроки is read-only and has no editor"),
+            (
+                table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Наименование", "<Events><OnChange id=\"2147483647\">Изм</OnChange></Events>"))),
+                "<Events> is not supported",
+            ),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Наименование", "<ValueType kind=\"String\"/>"))), "<ValueType> is not supported"),
+            (
+                table(
+                    "Т",
+                    900,
+                    goods,
+                    Some(&[col("А", 1, "ОбработкаОбъект.Товары.Наименование", ""), col("Б", 1, "ОбработкаОбъект.Товары.Количество", "")].concat()),
+                ),
+                "the id 1 is used by another column",
+            ),
+            (table("Т", 900, "", Some(&one("ОбработкаОбъект.Товары.Наименование", ""))), "this element is not supported on an added control"),
+        ];
+        for (block, why) in cases {
+            let text = refusal(&with_table(&block));
+            assert!(text.contains(why), "{why}: {text}");
+            assert!(text.contains("line "), "{why}: {text}");
+        }
+        // a tabular section is not a field: only a Table can be bound to it
+        let field = "<InputField name=\"Поле\" id=\"901\"><DataPath attributeId=\"1\">ОбработкаОбъект.Товары</DataPath><Left>520</Left><Top>500</Top><Width>120</Width><Height>20</Height><ZOrder>55</ZOrder><TabOrder>55</TabOrder></InputField>\n        ";
+        let text = refusal(&with_table(field));
+        assert!(text.contains("only a Table can be bound"), "{text}");
+    }
+}

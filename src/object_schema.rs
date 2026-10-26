@@ -9,8 +9,9 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
-use crate::brace::{Item, Node, BARE};
+use crate::brace::{Item, Node, BARE, QUOTED};
 use crate::metadata::descriptor_of;
+use crate::metaref::ConfigTypeLookup;
 use crate::naming::is_uuid;
 use crate::oof_props::{std_attr_code, std_attr_names};
 
@@ -35,13 +36,32 @@ pub enum Resolved<T> {
 pub struct TabularSchema {
     pub name: String,
     pub uuid: String,
+    /// TypeId of the generated type `TabularSection` (the value type of a table bound to this section).
+    pub type_id: Option<String>,
     /// `(name, uuid)` in declaration order.
     pub columns: Vec<(String, String)>,
+    /// Value type of each column as the text of a stream pattern (`{"Pattern",{"S",10,1}}`), parallel to
+    /// `columns`; `None` when it cannot be derived.
+    pub column_patterns: Vec<Option<String>>,
 }
 
 impl TabularSchema {
     pub fn resolve_column(&self, name: &str) -> Resolved<&str> {
         resolve(&self.columns, name)
+    }
+
+    /// 0-based position of the column `name` in the declaration order (`None`: missing or ambiguous).
+    pub fn column_ordinal(&self, name: &str) -> Option<usize> {
+        let mut found = self.columns.iter().enumerate().filter(|(_, (n, _))| n == name);
+        match (found.next(), found.next()) {
+            (Some((i, _)), None) => Some(i),
+            _ => None,
+        }
+    }
+
+    /// Stream pattern text of the value type of the column at `ordinal`.
+    pub fn column_pattern(&self, ordinal: usize) -> Option<&str> {
+        self.column_patterns.get(ordinal)?.as_deref()
     }
 }
 
@@ -108,6 +128,12 @@ impl ObjectSchema {
     /// and `ChildObjects/TabularSection` with its own `ChildObjects/Attribute`. `None` when the text
     /// is not a `MetaDataObject` document.
     pub fn from_object_xml(text: &str) -> Option<ObjectSchema> {
+        Self::from_object_xml_with(text, None)
+    }
+
+    /// [`ObjectSchema::from_object_xml`] that resolves the reference types of the columns of tabular sections
+    /// (`cfg:CatalogRef.Name`) through `lookup`; without it only the primitive types get a pattern.
+    pub fn from_object_xml_with(text: &str, lookup: Option<&ConfigTypeLookup>) -> Option<ObjectSchema> {
         let doc = roxmltree::Document::parse_with_options(
             text.strip_prefix('\u{feff}').unwrap_or(text),
             roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() },
@@ -144,15 +170,20 @@ impl ObjectSchema {
             match e.tag_name().name() {
                 "Attribute" | "Dimension" | "Resource" => schema.attrs.push((name, uuid)),
                 "TabularSection" => {
-                    let columns = xchild(e, "ChildObjects")
-                        .map(|c| {
-                            c.children()
-                                .filter(|c| c.is_element() && c.tag_name().name() == "Attribute")
-                                .filter_map(xml_entry)
-                                .collect()
-                        })
-                        .unwrap_or_default();
-                    schema.tabular.push(TabularSchema { name, uuid, columns });
+                    let mut columns = Vec::new();
+                    let mut column_patterns = Vec::new();
+                    let attrs = xchild(e, "ChildObjects")
+                        .into_iter()
+                        .flat_map(|c| c.children().filter(|c| c.is_element() && c.tag_name().name() == "Attribute"));
+                    for attr in attrs {
+                        let Some(entry) = xml_entry(attr) else { continue };
+                        columns.push(entry);
+                        column_patterns.push(
+                            xchild(attr, "Properties").and_then(|p| xchild(p, "Type")).and_then(|t| xml_type_pattern(t, lookup)),
+                        );
+                    }
+                    let type_id = xchild(e, "InternalInfo").and_then(tabular_type_id);
+                    schema.tabular.push(TabularSchema { name, uuid, type_id, columns, column_patterns });
                 }
                 _ => {}
             }
@@ -178,15 +209,29 @@ impl ObjectSchema {
                 Some(TABULAR_CLASS_ID) => {
                     for item in group_items(group) {
                         let Some((name, uuid)) = item_entry(item) else { continue };
-                        let columns = item
+                        let mut columns = Vec::new();
+                        let mut column_patterns = Vec::new();
+                        let col_items = item
                             .children
                             .iter()
                             .filter_map(as_node)
                             .filter(|n| group_class(n) == Some(COLUMNS_CLASS_ID))
-                            .flat_map(group_items)
-                            .filter_map(item_entry)
-                            .collect();
-                        schema.tabular.push(TabularSchema { name, uuid, columns });
+                            .flat_map(group_items);
+                        for col in col_items {
+                            let Some(entry) = item_entry(col) else { continue };
+                            columns.push(entry);
+                            column_patterns.push(col.node(0).and_then(item_pattern));
+                        }
+                        // head `{0,{11,<TabularSection TypeId>,<ValueId>,<row TypeId>,<row ValueId>,...}}`
+                        let type_id = item
+                            .node(0)
+                            .and_then(|h| h.node(1))
+                            .filter(|n| matches!(n.children.first(), Some(Item::Atom(a)) if a.value == "11"))
+                            .and_then(|n| match n.children.get(1) {
+                                Some(Item::Atom(a)) if is_uuid(&a.value) => Some(a.value.to_ascii_lowercase()),
+                                _ => None,
+                            });
+                        schema.tabular.push(TabularSchema { name, uuid, type_id, columns, column_patterns });
                     }
                 }
                 _ => {}
@@ -221,8 +266,71 @@ fn item_entry(item: &Node) -> Option<(String, String)> {
     Some((name.to_string(), uuid.to_string()))
 }
 
+/// Text of the first `{"Pattern",...}` node below `head` (the value type of an attribute or a column).
+fn item_pattern(head: &Node) -> Option<String> {
+    fn find(n: &Node) -> Option<&Node> {
+        if matches!(n.children.first(), Some(Item::Atom(a)) if a.kind == QUOTED && a.value == "Pattern") {
+            return Some(n);
+        }
+        n.children.iter().filter_map(as_node).find_map(find)
+    }
+    let mut out = Vec::new();
+    crate::donor::write_node(find(head)?, &mut out);
+    String::from_utf8(out).ok()
+}
+
 fn first_descriptor(node: &Node) -> Option<(&str, &str)> {
     descriptor_of(node).or_else(|| node.children.iter().filter_map(as_node).find_map(first_descriptor))
+}
+
+/// `xr:TypeId` of the `xr:GeneratedType` with `category="TabularSection"` in `InternalInfo`.
+fn tabular_type_id(info: roxmltree::Node<'_, '_>) -> Option<String> {
+    let generated = info
+        .children()
+        .find(|c| c.is_element() && c.tag_name().name() == "GeneratedType" && c.attribute("category") == Some("TabularSection"))?;
+    let id = xchild(generated, "TypeId")?.text()?.trim().to_lowercase();
+    is_uuid(&id).then_some(id)
+}
+
+/// Stream pattern text of the `Type` element of an attribute (`v8:Type` with its qualifiers): a single
+/// primitive type or a single reference type resolved by `lookup`; `None` for everything else (composite
+/// types, types the lookup does not know).
+fn xml_type_pattern(ty: roxmltree::Node<'_, '_>, lookup: Option<&ConfigTypeLookup>) -> Option<String> {
+    let mut types = ty.children().filter(|c| c.is_element() && c.tag_name().name() == "Type");
+    let (one, rest) = (types.next()?, types.next());
+    if rest.is_some() {
+        return None;
+    }
+    let name = one.text()?.trim();
+    let text = |q: &str, tag: &str| -> Option<&str> { xchild(xchild(ty, q)?, tag)?.text().map(str::trim) };
+    let int = |q: &str, tag: &str| -> Option<i64> { text(q, tag)?.parse().ok() };
+    let branch = match name {
+        "xs:boolean" => r#"{"B"}"#.to_string(),
+        "xs:string" => {
+            let len = int("StringQualifiers", "Length").unwrap_or(0);
+            match (len, text("StringQualifiers", "AllowedLength")) {
+                (0, _) => r#"{"S"}"#.to_string(),
+                (l, Some("Fixed")) => format!(r#"{{"S",{l},0}}"#),
+                (l, _) => format!(r#"{{"S",{l},1}}"#),
+            }
+        }
+        "xs:decimal" => {
+            let digits = int("NumberQualifiers", "Digits").unwrap_or(10);
+            let fraction = int("NumberQualifiers", "FractionDigits").unwrap_or(0);
+            let non_negative = text("NumberQualifiers", "AllowedSign") == Some("Nonnegative");
+            format!(r#"{{"N",{digits},{fraction},{}}}"#, i32::from(non_negative))
+        }
+        "xs:dateTime" => match text("DateQualifiers", "DateFractions") {
+            Some("Date") => r#"{"D","D"}"#.to_string(),
+            Some("Time") => r#"{"D","T"}"#.to_string(),
+            _ => r#"{"D"}"#.to_string(),
+        },
+        other => {
+            let reference = other.strip_prefix("cfg:")?;
+            format!(r##"{{"#",{}}}"##, lookup?.resolve_name(reference)?)
+        }
+    };
+    Some(format!(r#"{{"Pattern",{branch}}}"#))
 }
 
 fn xchild<'a, 'i>(n: roxmltree::Node<'a, 'i>, name: &str) -> Option<roxmltree::Node<'a, 'i>> {

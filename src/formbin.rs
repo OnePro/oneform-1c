@@ -209,7 +209,12 @@ pub fn read_meta_lookup(path: &Path) -> MetaLookup {
 
 /// [`ObjectSchema`] of the object XML at `path`; `None` when the file is missing or is not a metadata object.
 pub fn read_object_schema(path: &Path) -> Option<ObjectSchema> {
-    ObjectSchema::from_object_xml(&read_xml_text(path)?)
+    read_object_schema_with(path, None)
+}
+
+/// [`read_object_schema`] with the reference types of the columns of tabular sections resolved by `lookup`.
+pub fn read_object_schema_with(path: &Path, lookup: Option<&ConfigTypeLookup>) -> Option<ObjectSchema> {
+    ObjectSchema::from_object_xml_with(&read_xml_text(path)?, lookup)
 }
 
 /// `(_read_meta(path), read_meta_lookup(path))` from one parse of the file.
@@ -827,7 +832,7 @@ pub fn stage_config_pack(
         None
     } else {
         let base = object_dir(root, obj);
-        base.parent().and_then(|p| read_object_schema(&p.join(format!("{}.xml", name_of(&base)))))
+        base.parent().and_then(|p| read_object_schema_with(&p.join(format!("{}.xml", name_of(&base))), Some(&*type_lookup)))
     };
     for rec in cur["forms"].as_array().map(Vec::as_slice).unwrap_or_default() {
         let alias = rec["alias"].as_str().unwrap_or("");
