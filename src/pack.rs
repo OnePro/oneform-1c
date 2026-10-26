@@ -415,7 +415,7 @@ pub fn stage_pack(
         let paths: Vec<Value> = readonly.into_iter().map(Value::from).collect();
         return Err(ExtractionError::new(
             GENERATED_FILE_MODIFIED,
-            "definition files are read-only projections and cannot be packed",
+            "definition files are read-only projections and cannot be packed; if you did not edit them, they come from another oneform version: run `oneform extract` again",
         )
         .with("paths", Value::Array(paths)));
     }

@@ -812,7 +812,7 @@ pub fn stage_config_pack(
     if !readonly.is_empty() {
         return Err(ExtractionError::new(
             GENERATED_FILE_MODIFIED,
-            "definition files are read-only projections and cannot be packed",
+            "definition files are read-only projections and cannot be packed; if you did not edit them, they come from another oneform version: run `oneform extract` again",
         )
         .with("paths", paths_value(readonly)));
     }
