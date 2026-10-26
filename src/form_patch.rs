@@ -2764,6 +2764,8 @@ struct Parser<'a> {
     label: &'a str,
     form: String,
     attr_names: HashMap<i64, String>,
+    /// `attributeId` of `<MainAttribute>`: the only attribute whose `Root.Name` paths reach into the object.
+    main_attr_id: Option<i64>,
     controls: Vec<ControlXml>,
 }
 
@@ -3487,7 +3489,11 @@ impl Parser<'_> {
             if valid {
                 if let Some(aid) = e.attrs.get("attributeId").and_then(|v| v.trim().parse::<i64>().ok()) {
                     let path = e.text.trim();
-                    if self.attr_names.get(&aid).map(String::as_str) == Some(path) {
+                    let root = self.attr_names.get(&aid).map(String::as_str);
+                    // `Main.Name` reaches into the object: kept as text, resolved by the planner (changed/added only)
+                    let object_path = self.main_attr_id == Some(aid)
+                        && root.is_some_and(|r| path.strip_prefix(r).is_some_and(|t| t.starts_with('.')));
+                    if root == Some(path) || object_path {
                         data_path = Some((aid, path.to_string()));
                     } else {
                         valid = false;
@@ -4280,13 +4286,19 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     strip_carriers(&mut root);
     let form_name = root.attrs.get("name").cloned().unwrap_or_default();
     if root.tag != "Form" {
-        let p = Parser { label, form: form_name, attr_names: HashMap::new(), controls: Vec::new() };
+        let p = Parser { label, form: form_name, attr_names: HashMap::new(), main_attr_id: None, controls: Vec::new() };
         return Err(p.bad(root.line, format!("root element must be <Form>, found <{}>", root.tag)));
     }
     let (form_caption, form_width, form_height, form_events) = extract_form_header(&mut root);
     let form_props = extract_form_root_props(&mut root);
+    let main_attr_id = root
+        .children
+        .iter()
+        .find(|e| e.tag == "MainAttribute")
+        .and_then(|e| e.attrs.get("attributeId"))
+        .and_then(|v| v.trim().parse::<i64>().ok());
     let (attr_names, attributes) = extract_form_attributes(&mut root);
-    let mut p = Parser { label, form: form_name, attr_names, controls: Vec::new() };
+    let mut p = Parser { label, form: form_name, attr_names, main_attr_id, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
     Ok(FormXml {
         label: label.to_string(),
@@ -4857,7 +4869,7 @@ pub fn diff_forms_full(
                     continue;
                 }
                 let why = if e.tag == "DataPath" {
-                    "only the name of a form attribute is supported here (the path steps of an object attribute, such as \"Object.Field\", are not)"
+                    "only the name of a form attribute or \"<main attribute>.<Name>\" (an attribute of the object) is supported here"
                 } else {
                     "this element is not supported on an added control"
                 };
@@ -5012,7 +5024,104 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     index.validate(&baseline)?;
     index.validate_mode(&edited, true)?;
     let diff = diff_forms_mode(&baseline, &edited, true)?;
+    check_object_bindings(&diff, &edited)?;
     Ok(FormPatchPlan { source, index, diff })
+}
+
+/// What a link of `root[2][3]` holds after the attribute id.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LinkStep {
+    /// `{1,{aid}}`: an attribute of the form.
+    Form,
+    /// `{2,{aid},{0,<uuid>}}`: an attribute of the object.
+    Attr(String),
+    /// `{2,{aid},{-N}}`: a standard attribute of the object.
+    Std(i64),
+    /// Any other shape (never produced by the writer).
+    Other,
+}
+
+impl LinkStep {
+    /// The body `{K,{aid},step}` of a link row.
+    fn body(&self, aid: i64) -> String {
+        match self {
+            LinkStep::Attr(uuid) => format!("{{2,{{{aid}}},{{0,{uuid}}}}}"),
+            LinkStep::Std(code) => format!("{{2,{{{aid}}},{{{code}}}}}"),
+            LinkStep::Form | LinkStep::Other => format!("{{1,{{{aid}}}}}"),
+        }
+    }
+}
+
+/// The link of a `DataPath` text: the form attribute itself (`Name`) or, for `Root.Name`, an attribute or a
+/// standard attribute of the object (resolved with [`crate::object_schema::object_schema`]). The error is
+/// the reason for the refusal.
+fn resolve_link_step(path: &str) -> std::result::Result<LinkStep, String> {
+    use crate::object_schema::{object_schema, Resolved};
+    if !path.contains('.') {
+        return Ok(LinkStep::Form);
+    }
+    let parts: Vec<&str> = path.split('.').collect();
+    if parts.len() > 2 {
+        return Err(format!(
+            "DataPath '{path}': paths of three or more segments are not supported (tabular sections, columns and sub-fields of reference attributes cannot be bound yet)"
+        ));
+    }
+    let name = parts[1];
+    if name.is_empty() {
+        return Err(format!("DataPath '{path}': the attribute name after the dot is empty"));
+    }
+    let Some(schema) = object_schema() else {
+        return Err(format!("DataPath '{path}': object metadata not available for this form, so the attribute '{name}' cannot be resolved"));
+    };
+    let attr = schema.resolve_attr(name);
+    let std = schema.std_code(name);
+    match (attr, std) {
+        (Resolved::Ambiguous, _) => Err(format!("DataPath '{path}': the object has several attributes named '{name}'")),
+        (Resolved::One(_), Some(_)) => {
+            Err(format!("DataPath '{path}': '{name}' is both an attribute and a standard attribute of the object"))
+        }
+        (Resolved::One(uuid), None) => Ok(LinkStep::Attr(uuid.to_ascii_lowercase())),
+        (Resolved::Missing, Some(code)) => Ok(LinkStep::Std(code)),
+        (Resolved::Missing, None) => {
+            if !matches!(schema.resolve_tabular(name), Resolved::Missing) {
+                return Err(format!("DataPath '{path}': '{name}' is a tabular section; binding to tabular sections is not supported yet"));
+            }
+            let mut names = schema.root_names();
+            let mut seen = std::collections::HashSet::new();
+            names.retain(|n| seen.insert(n.clone()));
+            let shown: Vec<&str> = names.iter().take(12).map(String::as_str).collect();
+            let more = if names.len() > shown.len() { ", ..." } else { "" };
+            Err(format!(
+                "DataPath '{path}': the object has no attribute or standard attribute '{name}' (available: {}{more})",
+                shown.join(", ")
+            ))
+        }
+    }
+}
+
+/// Refuses an added or changed `DataPath` that cannot be written as a link (see [`resolve_link_step`]).
+/// Unchanged paths are not looked at: their links stay as they are.
+fn check_object_bindings(diff: &FormDiff, edited: &FormXml) -> Result<()> {
+    let mut problems: Vec<Problem> = Vec::new();
+    let mut check = |c: &ControlXml, path: &str| {
+        if let Err(why) = resolve_link_step(path) {
+            problems.push(problem("data-path", format!("line {}: {}: {why}", c.line, c.describe())));
+        }
+    };
+    for c in &diff.additions {
+        if let Some((_, path)) = &c.values.data_path {
+            check(c, path);
+        }
+    }
+    for e in diff.edits.iter().filter(|e| e.changed.contains(&Property::DataPath)) {
+        if let (Some((_, path)), Some(c)) = (&e.new.data_path, edited.control(e.id)) {
+            check(c, path);
+        }
+    }
+    if problems.is_empty() {
+        return Ok(());
+    }
+    Err(fail(&edited.name, &edited.label, problems))
 }
 
 // ------------------------------------------------------------------ structural edits (add/remove)
@@ -8466,7 +8575,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 int_slot(site, meta, 2, p.xml_name(), p.xml_name())?.0 == want
             }
             Property::Name => site.entry.name == new.name,
-            Property::DataPath => read_control_data_path(site.source, site.edit.id) == new.data_path.as_ref().map(|(id, _)| *id),
+            Property::DataPath => data_path_matches(site.source.root.node(2).and_then(|n| n.node(3)), site.edit.id, new.data_path.as_ref()),
             Property::Events => read_control_events(site.entry)? == new.events,
             Property::Enabled => (info_int_slot(site, app_vec.as_deref().unwrap(), 1, p)?.0 != 0) == new.enabled,
             Property::TransparentBack => (info_int_slot(site, app_vec.as_deref().unwrap(), 5, p)?.0 != 0) == new.transparent_back,
@@ -8718,18 +8827,40 @@ fn read_default_button_id(source: &SpannedMetadata) -> Option<i64> {
     source.root.node(1)?.node(1)?.children.get(2)?.as_atom()?.value.trim().parse().ok()
 }
 
-fn read_control_data_path(source: &SpannedMetadata, control_id: i64) -> Option<i64> {
-    let links = source.root.node(2)?.node(3)?;
+/// `(attribute id, step)` of the link row of `control_id` in the links list.
+fn read_control_link(links: &Node, control_id: i64) -> Option<(i64, LinkStep)> {
     for item in links.children.iter().skip(1) {
         let Item::Node(row) = item else { continue };
         let cid: i64 = row.children.first()?.as_atom()?.value.parse().ok()?;
         if cid == control_id {
             let body = row.node(1)?;
             let aid_item = body.children.get(1)?;
-            return crate::oof_props::int_or_first(aid_item, "attr id").ok();
+            let aid = crate::oof_props::int_or_first(aid_item, "attr id").ok()?;
+            let kind = body.children.first()?.as_atom()?.value.as_str();
+            let step = match (kind, body.len(), body.node(2)) {
+                ("1", 2, _) => LinkStep::Form,
+                ("2", 3, Some(s)) => match (s.len(), s.children.first().and_then(|i| i.as_atom()).map(|a| a.value.as_str())) {
+                    (2, Some("0")) => {
+                        LinkStep::Attr(s.children[1].as_atom().map(|a| a.value.to_ascii_lowercase()).unwrap_or_default())
+                    }
+                    (1, Some(code)) => code.parse().map(LinkStep::Std).unwrap_or(LinkStep::Other),
+                    _ => LinkStep::Other,
+                },
+                _ => LinkStep::Other,
+            };
+            return Some((aid, step));
         }
     }
     None
+}
+
+/// The stored link of `control_id` is exactly the one the requested `data_path` stands for (none: no link).
+fn data_path_matches(links: Option<&Node>, control_id: i64, want: Option<&(i64, String)>) -> bool {
+    let got = links.and_then(|l| read_control_link(l, control_id));
+    match want {
+        None => got.is_none(),
+        Some((aid, path)) => resolve_link_step(path).is_ok_and(|step| got == Some((*aid, step))),
+    }
 }
 
 impl FormPatchPlan<'_> {
@@ -9167,11 +9298,12 @@ impl FormPatchPlan<'_> {
             let (key, count) = list_entry(list)?;
             lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.inserts.push(buf);
             allocated.push((c.id, max_id));
-            if let Some((attr_id, _)) = &c.values.data_path {
+            if let Some((attr_id, path)) = &c.values.data_path {
                 if let Some(links) = self.index.links_list() {
                     let (_k, lcount) = list_entry(links)?;
+                    let step = resolve_link_step(path).map_err(layout_err)?;
                     let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
-                    e.2.inserts.push(format!("{{{max_id},{{1,{{{attr_id}}}}}}}").into_bytes());
+                    e.2.inserts.push(format!("{{{max_id},{}}}", step.body(*attr_id)).into_bytes());
                 }
             }
         }
@@ -9211,7 +9343,8 @@ impl FormPatchPlan<'_> {
                 (cid == ed.id).then_some(i)
             });
             match (existing_idx, &ed.new.data_path) {
-                (Some(i), Some((new_aid, _))) => {
+                (Some(i), Some((new_aid, path))) => {
+                    let step = resolve_link_step(path).map_err(layout_err)?;
                     let row = links
                         .child(i)
                         .and_then(|r| r.child(1))
@@ -9220,16 +9353,17 @@ impl FormPatchPlan<'_> {
                         control_id: ed.id,
                         properties: vec![Property::DataPath],
                         range: row.span.span,
-                        bytes: format!("{{1,{{{new_aid}}}}}").into_bytes(),
+                        bytes: step.body(*new_aid).into_bytes(),
                     });
                 }
                 (Some(i), None) => {
                     let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
                     e.2.removals.push(i - 1);
                 }
-                (None, Some((new_aid, _))) => {
+                (None, Some((new_aid, path))) => {
+                    let step = resolve_link_step(path).map_err(layout_err)?;
                     let e = lists.entry(links.span.span.start).or_insert_with(|| (links, lcount, ListEdit::default()));
-                    e.2.inserts.push(format!("{{{0},{{1,{{{new_aid}}}}}}}", ed.id).into_bytes());
+                    e.2.inserts.push(format!("{{{},{}}}", ed.id, step.body(*new_aid)).into_bytes());
                 }
                 (None, None) => {}
             }
@@ -9314,6 +9448,11 @@ impl FormPatchPlan<'_> {
             let want = &c.values;
             if l != Some(want.left) || t != Some(want.top) || r != Some(want.left + want.width) || b != Some(want.top + want.height) || v != Some(i64::from(want.visible)) {
                 return Err(bad(format!("added control '{}' (id {new_id}): geometry does not match the requested values", c.name)));
+            }
+            if let Some(path) = &want.data_path {
+                if !data_path_matches(index.links_list().map(|l| l.node), *new_id, Some(path)) {
+                    return Err(bad(format!("added control '{}' (id {new_id}): the stored link does not match DataPath '{}'", c.name, path.1)));
+                }
             }
         }
         Ok(())
@@ -9599,5 +9738,70 @@ mod removal_range_tests {
         assert_eq!(empty_list_item(b"{1,,{a}}"), None);
         assert!(empty_list_item(b"{,1}").is_some());
         assert_eq!(empty_list_item(b"{1,\r\n{a},\r\n{b}\r\n}"), None);
+    }
+}
+
+#[cfg(test)]
+mod link_step_tests {
+    use super::*;
+    use crate::brace::parse_metadata;
+    use crate::object_schema::{with_object_schema, ObjectSchema};
+
+    const ATTR: &str = "11111111-0000-0000-0000-000000000001";
+
+    fn schema() -> ObjectSchema {
+        ObjectSchema {
+            kind: Some("Catalog".into()),
+            attrs: vec![("ИНН".into(), ATTR.into()), ("Двойной".into(), "a".into()), ("Двойной".into(), "b".into())],
+            tabular: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn steps_are_resolved_and_unsupported_paths_refused() {
+        with_object_schema(Some(schema()), || {
+            assert_eq!(resolve_link_step("Реквизит"), Ok(LinkStep::Form));
+            assert_eq!(resolve_link_step("Объект.ИНН"), Ok(LinkStep::Attr(ATTR.into())));
+            assert_eq!(resolve_link_step("Объект.Код"), Ok(LinkStep::Std(-2)));
+            assert_eq!(resolve_link_step("Объект.Наименование"), Ok(LinkStep::Std(-3)));
+            for (path, why) in [
+                ("Объект.Нет", "no attribute or standard attribute 'Нет'"),
+                ("Объект.Двойной", "several attributes"),
+                ("Объект.ИНН.Код", "three or more segments"),
+                ("Объект.", "empty"),
+            ] {
+                let e = resolve_link_step(path).unwrap_err();
+                assert!(e.contains(why) && e.contains(path), "{path}: {e}");
+            }
+        });
+        let e = resolve_link_step("Объект.ИНН").unwrap_err();
+        assert!(e.contains("object metadata not available"), "{e}");
+    }
+
+    #[test]
+    fn link_bodies_have_the_stream_shape() {
+        assert_eq!(LinkStep::Form.body(3), "{1,{3}}");
+        assert_eq!(LinkStep::Attr(ATTR.into()).body(1), format!("{{2,{{1}},{{0,{ATTR}}}}}"));
+        assert_eq!(LinkStep::Std(-3).body(1), "{2,{1},{-3}}");
+    }
+
+    #[test]
+    fn verification_compares_the_step_as_well_as_the_attribute() {
+        let links = parse_metadata(format!("{{3,{{7,{{2,{{1}},{{0,{ATTR}}}}}}},{{8,{{2,{{1}},{{-2}}}}}},{{9,{{1,{{4}}}}}}}}").as_bytes()).unwrap();
+        with_object_schema(Some(schema()), || {
+            let m = |id: i64, aid: i64, path: &str| data_path_matches(Some(&links), id, Some(&(aid, path.to_string())));
+            assert!(m(7, 1, "Объект.ИНН"));
+            assert!(!m(7, 1, "Объект.Код"), "standard attribute instead of the attribute");
+            assert!(!m(7, 1, "Объект.Двойной"));
+            assert!(!m(7, 2, "Объект.ИНН"), "other attribute id");
+            assert!(!m(7, 1, "Объект"), "form attribute instead of the object attribute");
+            assert!(m(8, 1, "Объект.Код"));
+            assert!(!m(8, 1, "Объект.Наименование"), "wrong standard code");
+            assert!(m(9, 4, "Реквизит"));
+            assert!(!m(9, 1, "Объект.ИНН"));
+            assert!(!m(10, 1, "Объект.ИНН"), "no link");
+            assert!(data_path_matches(Some(&links), 10, None));
+            assert!(!data_path_matches(Some(&links), 7, None));
+        });
     }
 }

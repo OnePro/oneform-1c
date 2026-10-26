@@ -2912,3 +2912,205 @@ differs from a freshly added control of the type. An absent tag means \"do not t
         assert_eq!(have, out, "docs/xml-reference.md is stale: run with GOLDEN_BLESS=1");
     }
 }
+
+// ---------------------------------------------------------------- binding to attributes of the object
+
+mod object_binding {
+    use super::*;
+    use oneform::object_schema::{with_object_schema, ObjectSchema};
+
+    const INN: &str = "11111111-0000-0000-0000-000000000001";
+    const KPP: &str = "11111111-0000-0000-0000-000000000002";
+
+    fn object_xml(kind: &str) -> String {
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" version="2.17">
+  <{kind} uuid="aaaaaaaa-0000-0000-0000-000000000001">
+    <Properties><Name>Объект</Name></Properties>
+    <ChildObjects>
+      <Attribute uuid="{INN}"><Properties><Name>ИНН</Name></Properties></Attribute>
+      <Attribute uuid="{KPP}"><Properties><Name>КПП</Name></Properties></Attribute>
+      <Attribute uuid="11111111-0000-0000-0000-000000000003"><Properties><Name>Двойной</Name></Properties></Attribute>
+      <Attribute uuid="11111111-0000-0000-0000-000000000004"><Properties><Name>Двойной</Name></Properties></Attribute>
+      <TabularSection uuid="22222222-0000-0000-0000-000000000001">
+        <Properties><Name>Контакты</Name></Properties>
+        <ChildObjects>
+          <Attribute uuid="33333333-0000-0000-0000-000000000001"><Properties><Name>Значение</Name></Properties></Attribute>
+        </ChildObjects>
+      </TabularSection>
+    </ChildObjects>
+  </{kind}>
+</MetaDataObject>"#
+        )
+    }
+
+    fn schema(kind: &str) -> ObjectSchema {
+        ObjectSchema::from_object_xml(&object_xml(kind)).unwrap()
+    }
+
+    /// `uuid -> name` of the schema plus its kind: what `extract` knows about the object.
+    fn lookup(kind: &str) -> std::collections::HashMap<String, String> {
+        let mut m = std::collections::HashMap::new();
+        m.insert("@kind".to_string(), kind.to_string());
+        for (name, uuid) in &schema(kind).attrs {
+            m.insert(uuid.to_lowercase(), name.clone());
+        }
+        m
+    }
+
+    fn decode_with(raw: &[u8], lookup: &std::collections::HashMap<String, String>) -> FormXml {
+        let base = baseline("DonorForm");
+        let doc = roxmltree::Document::parse(&base).unwrap();
+        let (id, fname) = (doc.root_element().attribute("id").unwrap(), doc.root_element().attribute("name").unwrap());
+        let model = decode_oof_stream(raw, id, Some(lookup)).unwrap();
+        let xml = render_form_xml(&common::form_info(id, fname, raw), &model).unwrap();
+        let xml = String::from_utf8(enrich_ext_properties(raw, &xml).unwrap()).unwrap().replace("\r\n", "\n");
+        parse_form_xml(xml.as_bytes(), "decoded").unwrap()
+    }
+
+    /// The link row body of control `id`, without whitespace.
+    fn link_of(bytes: &[u8], id: i64) -> Option<String> {
+        let s = parse_spanned(bytes).unwrap();
+        let links = s.root.node(2)?.node(3)?;
+        for item in links.children.iter().skip(1) {
+            let oneform::brace::Item::Node(row) = item else { continue };
+            if row.children[0].as_atom().and_then(|a| a.value.parse::<i64>().ok()) == Some(id) {
+                let mut out = Vec::new();
+                oneform::donor::write_node(row.node(1)?, &mut out);
+                return Some(String::from_utf8(out).unwrap().split_whitespace().collect());
+            }
+        }
+        None
+    }
+
+    fn bind(path: &str) -> String {
+        format!("<DataPath attributeId=\"1\">ОбработкаОбъект.{path}</DataPath>")
+    }
+
+    fn rebind_existing(path: &str) -> String {
+        mutate("<DataPath attributeId=\"3\">ПолеВвода1</DataPath>", &bind(path))
+    }
+
+    fn with_added_field(name: &str, id: i64, data_path: &str, xml: &str) -> String {
+        let block = format!(
+            "<InputField name=\"{name}\" id=\"{id}\">\n          {data_path}\n          <Left>520</Left><Top>500</Top><Width>120</Width><Height>20</Height>\n          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>\n        </InputField>\n        "
+        );
+        insert_before_table1(xml, &block)
+    }
+
+    fn patch_with(kind: &str, edited: &str) -> PatchedForm {
+        let s = stream("DonorForm");
+        let pf = with_object_schema(Some(schema(kind)), || patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes())).unwrap();
+        assert_only_authorized_changes(s.source(), &pf);
+        pf
+    }
+
+    #[test]
+    fn a_changed_control_is_bound_to_an_object_attribute() {
+        let pf = patch_with("Catalog", &rebind_existing("ИНН"));
+        assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some(format!("{{2,{{1}},{{0,{INN}}}}}").as_str()));
+        let got = decode_with(&pf.bytes, &lookup("Catalog"));
+        assert_eq!(got.control(7).unwrap().values.data_path, Some((1, "ОбработкаОбъект.ИНН".to_string())));
+    }
+
+    #[test]
+    fn an_added_control_is_bound_to_an_object_attribute() {
+        let edited = with_added_field("НовоеПоле", 999, &bind("КПП"), &baseline("DonorForm"));
+        let pf = patch_with("Catalog", &edited);
+        let id = pf.allocated[0].1;
+        assert_eq!(link_of(&pf.bytes, id).as_deref(), Some(format!("{{2,{{1}},{{0,{KPP}}}}}").as_str()));
+        let got = decode_with(&pf.bytes, &lookup("Catalog"));
+        assert_eq!(got.control(id).unwrap().values.data_path, Some((1, "ОбработкаОбъект.КПП".to_string())));
+    }
+
+    #[test]
+    fn standard_attributes_are_written_with_the_code_of_the_object_kind() {
+        for (kind, name, code) in [("Catalog", "Код", -2), ("Catalog", "Наименование", -3), ("Document", "Номер", -2), ("Document", "Дата", -3)] {
+            let edited = with_added_field("НовоеПоле", 999, &bind(name), &baseline("DonorForm"));
+            let pf = patch_with(kind, &edited);
+            let id = pf.allocated[0].1;
+            assert_eq!(link_of(&pf.bytes, id).as_deref(), Some(format!("{{2,{{1}},{{{code}}}}}").as_str()), "{kind}.{name}");
+            let got = decode_with(&pf.bytes, &lookup(kind));
+            assert_eq!(got.control(id).unwrap().values.data_path, Some((1, format!("ОбработкаОбъект.{name}"))), "{kind}.{name}");
+
+            let pf = patch_with(kind, &rebind_existing(name));
+            assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some(format!("{{2,{{1}},{{{code}}}}}").as_str()), "{kind}.{name}");
+        }
+    }
+
+    #[test]
+    fn a_form_attribute_binding_is_still_written_as_before() {
+        let edited = mutate("<DataPath attributeId=\"3\">ПолеВвода1</DataPath>", "<DataPath attributeId=\"4\">Флажок1</DataPath>");
+        let pf = patch_with("Catalog", &edited);
+        assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some("{1,{4}}"));
+    }
+
+    fn refusal(schema: Option<ObjectSchema>, edited: &str) -> String {
+        let s = stream("DonorForm");
+        let e = with_object_schema(schema, || plan(&s, edited)).expect_err("must be refused");
+        assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+        format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+    }
+
+    #[test]
+    fn unsupported_bindings_are_refused_with_the_line_and_the_path() {
+        let cases: [(Option<ObjectSchema>, &str, &str); 5] = [
+            (Some(schema("Catalog")), "НетТакого", "no attribute or standard attribute 'НетТакого'"),
+            (Some(schema("Catalog")), "Двойной", "several attributes named 'Двойной'"),
+            (Some(schema("Catalog")), "ИНН.Код", "three or more segments"),
+            (Some(schema("Catalog")), "Контакты", "tabular section"),
+            (None, "ИНН", "object metadata not available"),
+        ];
+        for (schema, name, why) in cases {
+            for edited in [rebind_existing(name), with_added_field("НовоеПоле", 999, &bind(name), &baseline("DonorForm"))] {
+                let text = refusal(schema.clone(), &edited);
+                assert!(text.contains(why), "{name}: {text}");
+                assert!(text.contains(&format!("ОбработкаОбъект.{name}")) && text.contains("line "), "{name}: {text}");
+            }
+        }
+        // the hint lists what the object has
+        let text = refusal(Some(schema("Catalog")), &rebind_existing("НетТакого"));
+        assert!(text.contains("ИНН") && text.contains("Код"), "{text}");
+        // a root that is not the main attribute
+        let edited = mutate("<DataPath attributeId=\"3\">ПолеВвода1</DataPath>", "<DataPath attributeId=\"3\">ПолеВвода1.ИНН</DataPath>");
+        let text = refusal(Some(schema("Catalog")), &edited);
+        assert!(text.contains("DataPath"), "{text}");
+        // a standard attribute of another kind
+        let text = refusal(Some(schema("Document")), &rebind_existing("Наименование"));
+        assert!(text.contains("'Наименование'"), "{text}");
+    }
+
+    #[test]
+    fn unchanged_dotted_links_keep_their_bytes_even_without_a_schema() {
+        // Control 7 is bound to a path of three steps that `extract` shows only partly: `ОбработкаОбъект.ИНН`.
+        let row = "{7,\r\n{1,\r\n{3}\r\n}\r\n}";
+        let wide = format!("{{7,\r\n{{3,\r\n{{1}},\r\n{{0,{INN}}},\r\n{{0,{KPP}}}\r\n}}\r\n}}");
+        let mut raw = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+        let at = raw.windows(row.len()).position(|w| w == row.as_bytes()).expect("link row of control 7");
+        raw.splice(at..at + row.len(), wide.bytes());
+        let s = parse_spanned(&raw).unwrap();
+
+        let base = rebind_existing("ИНН");
+        let edited = edit_ctl(&base, "ПолеВвода1", &[("<Width>278</Width>", "<Width>279</Width>")]);
+        let plan = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).unwrap();
+        assert!(!plan.is_empty());
+        let pf = patch_form(&s, base.as_bytes(), edited.as_bytes()).unwrap();
+        assert!(String::from_utf8_lossy(&pf.bytes).contains(&wide), "the link row must be byte for byte the same");
+        assert_only_authorized_changes(s.source(), &pf);
+    }
+
+    #[test]
+    fn a_changed_dotted_link_is_replaced_and_verified() {
+        let wide = format!("{{7,\r\n{{2,\r\n{{1}},\r\n{{0,{INN}}}\r\n}}\r\n}}");
+        let row = "{7,\r\n{1,\r\n{3}\r\n}\r\n}";
+        let mut raw = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+        let at = raw.windows(row.len()).position(|w| w == row.as_bytes()).unwrap();
+        raw.splice(at..at + row.len(), wide.bytes());
+        let s = parse_spanned(&raw).unwrap();
+        let base = rebind_existing("ИНН");
+        let edited = replace_once(&base, &bind("ИНН"), &bind("Код"));
+        let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), edited.as_bytes())).unwrap();
+        assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some("{2,{1},{-2}}"));
+    }
+}
