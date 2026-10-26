@@ -8094,7 +8094,11 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 mask_field_slots(&stream_cols, &mut old_cols);
                 mask_field_slots(&stream_cols, &mut cur_cols);
                 if cur_cols != old_cols {
-                    return Err(site.mismatch("Columns", &format!("{old_cols:?}"), &format!("{cur_cols:?}")));
+                    return Err(site.invalid(
+                        "baseline-mismatch",
+                        "Columns",
+                        "the table's columns do not match the baseline XML: changing <ReadOnly> of a table whose columns carry their own read-only state is not supported (if ReadOnly was not edited, re-extract the form)".to_string(),
+                    ));
                 }
                 if cols.len() != new.columns.len() {
                     return Err(site.layout("unexpected-shape", "Columns", "column count mismatch".into()));
