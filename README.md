@@ -84,6 +84,10 @@ oneform explore run --matrix <spec.json|dir> --epf <donor.epf> --base <infobase>
 
 ```
 
+### Для ИИ-агентов
+
+`oneform` рассчитан на работу агента без Конфигуратора: `extract` → правка `Form.xml`/`FormModule.bsl` → `pack --dry-run` → `pack`. Правила чтения XML, поддерживаемые операции (свойства, добавление и удаление элементов, привязки), типичные отказы и проверка в 1С описаны в [`docs/agent-guide.md`](docs/agent-guide.md); допустимые теги по типам элементов — в [`docs/xml-reference.md`](docs/xml-reference.md); навык для агента — [`skills/oneform-forms/SKILL.md`](skills/oneform-forms/SKILL.md). Бинарные служебные записи в `Form.xml` по умолчанию не выводятся (`extract --carriers` возвращает их).
+
 ### Цикл редактирования формы через XML
 
 ```bash
