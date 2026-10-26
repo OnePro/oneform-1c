@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use oneform::brace::{parse_spanned, Replacement, SpannedMetadata};
 use oneform::errors::{ExtractionError, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
 use oneform::form_patch::{
-    diff_forms, enrich_ext_properties, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, FormXml, NodeRef, PatchedForm, Property,
+    anchor_graph_violations, diff_forms, enrich_ext_properties, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, FormXml, NodeRef, PatchedForm, Property,
 };
 use oneform::oof::{decode_oof_stream, render_form_xml};
 
@@ -2482,4 +2482,167 @@ fn font_size_edit_keeps_italic_underline_strikeout_and_scale() {
     let pf2 = patch_form(&s2, base2.as_bytes(), edited.as_bytes()).unwrap();
     let text = String::from_utf8(pf2.bytes).unwrap();
     assert!(text.contains("{7,1,60,\"Arial\",{-26},700,1,1,1,0,120}"), "font flags lost: {}", &text[text.find("Arial").unwrap_or(0).saturating_sub(20)..][..60]);
+}
+
+// ---------------------------------------------------------------- anchor graph of added controls
+
+type InList = [Vec<(i64, i64)>; 6];
+
+/// The six counted incoming lists starting at `start` of `node`.
+fn read_in_lists(node: &oneform::brace::Node, start: usize) -> InList {
+    let mut i = start;
+    let mut out: InList = Default::default();
+    for list in &mut out {
+        let n: usize = node.atom(i).unwrap().value.parse().unwrap();
+        for j in 0..n {
+            let e = node.node(i + 1 + j).unwrap();
+            list.push((e.atom(1).unwrap().value.parse().unwrap(), e.atom(2).unwrap().value.parse().unwrap()));
+        }
+        i += 1 + n;
+    }
+    out
+}
+
+/// Incoming lists in the geometry node of control `id`.
+fn geom_lists(bytes: &[u8], id: i64) -> InList {
+    let s = parse_spanned(bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    read_in_lists(idx.get(id).unwrap().geom().unwrap().node, 12)
+}
+
+/// Incoming lists of the container panel: the root panel (`None`) or the Panel control `id`.
+fn panel_lists(bytes: &[u8], id: Option<i64>) -> InList {
+    let s = parse_spanned(bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    let params = match id {
+        None => idx.root_panel().unwrap().child(1).unwrap().child(1).unwrap(),
+        Some(id) => idx.get(id).unwrap().info().unwrap().child(1).unwrap(),
+    };
+    read_in_lists(params.node, 2)
+}
+
+fn violations(bytes: &[u8]) -> Vec<String> {
+    anchor_graph_violations(&parse_spanned(bytes).unwrap())
+}
+
+fn label_xml(name: &str, id: i64, geometry: &str, anchors: &str) -> String {
+    format!("<LabelDecoration name=\"{name}\" id=\"{id}\">\n          {geometry}\n          <ZOrder>50</ZOrder><TabOrder>50</TabOrder>\n          {anchors}\n        </LabelDecoration>\n        ")
+}
+
+fn insert_before_table1(xml: &str, block: &str) -> String {
+    xml.replacen("        <Table name=\"ТабличноеПоле1\"", &format!("{block}        <Table name=\"ТабличноеПоле1\""), 1)
+}
+
+#[test]
+fn fixtures_have_consistent_anchor_graphs() {
+    for name in ["DonorForm", "DonorFormAlt", "DonorFormV2"] {
+        let s = stream(name);
+        assert_eq!(anchor_graph_violations(&s), Vec::<String>::new(), "{name}");
+    }
+}
+
+#[test]
+fn added_control_without_anchors_gets_designer_defaults_and_list_entries() {
+    let before = panel_lists(stream("DonorForm").source(), None);
+    let edited = added_label(None);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let id = pf.allocated[0].1;
+    assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    let (top, left, w, h) = (500, 500, 80, 20);
+    let a = got.control(id).unwrap().values.anchors.clone().expect("decoded anchors");
+    let at = |target, side, offset| Some(oneform::form_patch::AnchorEdge { target, side, offset });
+    // the label hangs below the nearest control above it (id 13, a panel ending at 377) and has no left neighbour
+    assert_eq!((a.top, a.bottom, a.left, a.right), (at(13, 1, top - 377), at(id, 0, h), None, at(id, 2, w)));
+    assert_eq!(a.alt, [None; 4]);
+    assert_eq!(anchor_edges(&pf.bytes, id), [Some((13, 1, top - 377)), Some((id, 0, h)), Some((-1, 6, 0)), Some((id, 2, w))]);
+    let _ = left;
+    // nothing is attached to the form itself, the neighbour's list takes the top edge
+    assert_eq!(panel_lists(&pf.bytes, None), before);
+    assert_eq!(geom_lists(&pf.bytes, 13)[1].last(), Some(&(id, 0)));
+    let own = geom_lists(&pf.bytes, id);
+    assert_eq!((&own[0], &own[2]), (&vec![(id, 1)], &vec![(id, 3)]));
+    assert!(own[1].is_empty() && own[3].is_empty() && own[4].is_empty() && own[5].is_empty());
+}
+
+#[test]
+fn explicit_anchors_to_an_existing_control_update_its_list() {
+    let before = geom_lists(stream("DonorForm").source(), 7);
+    let anchors = "<Anchors left=\"Left\" leftOffset=\"12\" top=\"Bottom\" topTarget=\"7\" topOffset=\"5\"/>";
+    let geometry = "<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>";
+    let edited = insert_before_table1(&baseline("DonorForm"), &label_xml("Добавленная", 999, geometry, anchors));
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let id = pf.allocated[0].1;
+    assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    assert_eq!(anchor_edges(&pf.bytes, id), [Some((7, 1, 5)), Some((id, 0, 20)), Some((0, 2, 12)), Some((id, 2, 80))]);
+    let after = geom_lists(&pf.bytes, 7);
+    let mut want = before.clone();
+    want[1].push((id, 0));
+    assert_eq!(after, want);
+    // the form is not touched elsewhere: left edge goes to the root panel list 2
+    assert_eq!(panel_lists(&pf.bytes, None)[2].last(), Some(&(id, 2)));
+}
+
+#[test]
+fn unknown_or_new_anchor_targets_are_rejected() {
+    let geometry = "<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>";
+    for (anchors, needle) in [
+        ("<Anchors top=\"Bottom\" topTarget=\"4242\" topOffset=\"5\"/>", "does not exist"),
+        ("<Anchors top=\"Bottom\" topTarget=\"1000\" topOffset=\"5\"/>", "another new control"),
+    ] {
+        let mut edited = insert_before_table1(&baseline("DonorForm"), &label_xml("Первая", 999, geometry, anchors));
+        edited = insert_before_table1(&edited, &label_xml("Вторая", 1000, geometry, ""));
+        let (kind, text) = patch_rejected("DonorForm", &edited);
+        assert_eq!(kind, "invalid-xml", "{text}");
+        assert!(text.contains(needle) && text.contains("Первая"), "{text}");
+    }
+}
+
+#[test]
+fn two_added_controls_share_container_lists() {
+    let before = panel_lists(stream("DonorForm").source(), None);
+    let g1 = "<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>";
+    let g2 = "<Left>600</Left><Top>520</Top><Width>70</Width><Height>18</Height>";
+    let to_form = "<Anchors top=\"Top\" topOffset=\"500\" left=\"Left\" leftOffset=\"500\"/>";
+    let mut edited = insert_before_table1(&baseline("DonorForm"), &label_xml("Первая", 999, g1, to_form));
+    edited = insert_before_table1(&edited, &label_xml("Вторая", 1000, g2, "<Anchors top=\"Bottom\" topTarget=\"7\" topOffset=\"3\" left=\"Left\" leftOffset=\"600\"/>"));
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let (a, b) = (pf.allocated[0].1, pf.allocated[1].1);
+    assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    let root = panel_lists(&pf.bytes, None);
+    assert_eq!(root[0].len(), before[0].len() + 1);
+    assert_eq!(root[2].len(), before[2].len() + 2);
+    assert_eq!(root[2][root[2].len() - 2..], [(a, 2), (b, 2)]);
+    assert_eq!(root[0].last(), Some(&(a, 0)));
+    assert_eq!(geom_lists(&pf.bytes, 7)[1].last(), Some(&(b, 0)));
+}
+
+#[test]
+fn control_added_to_a_panel_page_uses_the_panel_as_container() {
+    let mut xml = baseline("DonorForm");
+    let label = "<LabelDecoration name=\"НаВторойСтранице\" id=\"999\">\n              <Left>10</Left><Top>10</Top><Width>50</Width><Height>20</Height>\n              <ZOrder>9</ZOrder><TabOrder>9</TabOrder>\n              <Anchors top=\"Top\" topOffset=\"10\" left=\"Left\" leftOffset=\"10\"/>\n            </LabelDecoration>\n            ";
+    xml = xml.replacen("<Table name=\"ТабличноеПоле2\"", &format!("{label}<Table name=\"ТабличноеПоле2\""), 1);
+    let root_before = panel_lists(stream("DonorForm").source(), None);
+    let panel_before = panel_lists(stream("DonorForm").source(), Some(13));
+    let (pf, _) = structural_round_trip("DonorForm", &xml);
+    let id = pf.allocated[0].1;
+    assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    let panel = panel_lists(&pf.bytes, Some(13));
+    assert_eq!(panel[0].last(), Some(&(id, 0)));
+    assert_eq!(panel[2].last(), Some(&(id, 2)));
+    assert_eq!(panel[0].len(), panel_before[0].len() + 1);
+    assert_eq!(panel_lists(&pf.bytes, None), root_before);
+}
+
+#[test]
+fn anchor_checker_names_the_control_with_a_missing_list_entry() {
+    // Надпись1 (id 5): the bottom edge is re-pointed at ПолеВвода1 (id 7), whose list does not know about it.
+    let s = tweak_stream("DonorForm", |s, idx| {
+        let edge = idx.get(5).unwrap().geom().unwrap().child(7).unwrap().child(1).unwrap();
+        let target = edge.atom(1).unwrap().1;
+        assert_eq!(text_of(s, target), "5");
+        Replacement { range: target, bytes: b"7".to_vec() }
+    });
+    let v = anchor_graph_violations(&s);
+    assert_eq!(v.len(), 1, "{v:?}");
+    assert!(v[0].contains("'Надпись1' (id 5)") && v[0].contains("edge 1") && v[0].contains("ПолеВвода1"), "{v:?}");
 }

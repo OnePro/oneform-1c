@@ -37,6 +37,8 @@ use crate::naming::is_uuid;
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
 use crate::oof_props::{atom, caption_path, localized};
 
+mod anchors;
+pub use anchors::{anchor_graph_stale_entries, anchor_graph_violations};
 mod ext_read;
 pub use ext_read::enrich_ext_properties;
 
@@ -5879,7 +5881,7 @@ fn set_clone_ext(info: &mut Node, type_name: &str, v: &ControlValues) -> Result<
 fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
     {
         // A donor prototype's anchors point at donor controls: start from unattached edges and empty
-        // back-reference lists, then apply the requested `<Anchors>`.
+        // back-reference lists; `anchors::apply_new_edges` writes the resolved anchors and their list entries.
         let geom = clone_geom_mut(n)?;
         for idx in 6..=9 {
             if let Some(rec) = geom.children.get_mut(idx).and_then(Item::as_node_mut).filter(|r| r.children.len() > 2) {
@@ -5898,33 +5900,6 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 geom.children.drain(at + 1..at + 1 + count);
                 geom.children[at] = bare(0);
             }
-        }
-    }
-    if let Some(anchors) = &v.anchors {
-        let geom = clone_geom_mut(n)?;
-        for (idx, edge) in anchors.edges() {
-            let Some(edge) = edge else { continue };
-            let rec = geom
-                .children
-                .get_mut(idx)
-                .and_then(Item::as_node_mut)
-                .filter(|r| r.children.len() > 1)
-                .ok_or_else(|| layout_err(format!("prototype: geometry edge record {idx} missing")))?;
-            rec.children[1] = Item::Node(
-                crate::brace::parse_metadata(format_edge_target(&edge).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
-            );
-        }
-        for (idx, edge) in anchors.alt_edges() {
-            let Some(edge) = edge else { continue };
-            let rec = geom
-                .children
-                .get_mut(idx)
-                .and_then(Item::as_node_mut)
-                .filter(|r| r.children.len() > 2)
-                .ok_or_else(|| layout_err(format!("prototype: geometry edge record {idx} has no secondary attachment")))?;
-            rec.children[2] = Item::Node(
-                crate::brace::parse_metadata(format_edge_target(&edge).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
-            );
         }
     }
     if let Some(meta) = n.len().checked_sub(2).and_then(|i| n.children.get_mut(i)).and_then(Item::as_node_mut) {
@@ -9081,6 +9056,9 @@ impl FormPatchPlan<'_> {
 
         // ---- additions
         let mut max_id = crate::donor::max_control_id(self.source)?;
+        let new_xml_ids: Vec<i64> = self.diff.additions.iter().map(|c| c.id).collect();
+        let deleted_ids: Vec<i64> = self.diff.deletions.iter().map(|d| d.id).collect();
+        let mut anchor_adds: BTreeMap<(anchors::Holder, usize), Vec<(i64, i64)>> = BTreeMap::new();
         for c in &self.diff.additions {
             if let Some(pid) = c.parent {
                 let parent = self
@@ -9100,6 +9078,10 @@ impl FormPatchPlan<'_> {
             set_clone_geometry(&mut clone, &c.values, page)?;
             set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
             set_clone_props(&mut clone, &c.type_name, &c.values)?;
+            let others: Vec<i64> = new_xml_ids.iter().copied().filter(|&x| x != c.id).collect();
+            let edges = anchors::resolve_new_edges(&self.index, c, max_id, page, &others, &deleted_ids)?;
+            let container = anchors::container_holder(&self.index, c.parent);
+            anchors::apply_new_edges(clone_geom_mut(&mut clone)?, max_id, &edges, container, &mut anchor_adds)?;
             set_clone_events(&mut clone, &xml_events(c)?, &c.describe())?;
             let mut buf = Vec::new();
             crate::donor::write_node(&clone, &mut buf);
@@ -9122,6 +9104,9 @@ impl FormPatchPlan<'_> {
                 }
             }
         }
+
+        // ---- incoming anchor lists of the existing targets and container panels
+        out.extend(anchors::list_replacements(&self.index, &anchor_adds)?);
 
         // ---- existing control DataPath edits
         for ed in &self.diff.edits {
@@ -9326,6 +9311,16 @@ impl FormPatchPlan<'_> {
             }
         } else {
             self.verify_structural(&index, &allocated)?;
+            let added: Vec<i64> = allocated.iter().map(|a| a.1).collect();
+            let violations = anchors::anchor_violations_of(&reparsed, &added);
+            if !violations.is_empty() {
+                return Err(ExtractionError::new(
+                    GENERATED_FILE_MODIFIED,
+                    format!("the anchor graph of the added controls is inconsistent after patching: {}", violations.join("; ")),
+                )
+                .with("kind", "verification-failed")
+                .with("property", "Anchors"));
+            }
         }
         if self.diff.form_props_changed {
             self.verify_form_props(&index)?;
