@@ -901,6 +901,32 @@ pub fn decode_oof_stream_with_types(
     out.insert("height".into(), height.into());
     out.insert("mainAttribute".into(), main_id.map(Value::from).unwrap_or(Value::Null));
     out.insert("extension".into(), is_dp_ext.into());
+    // An extension that is neither the data processor one nor the document/catalog one is the null record
+    // `{00000000-...,0}` of a form without form-module events; keep its guid.
+    let ext_guid = atom(&ext.children[0]);
+    if !is_dp_ext && ext_guid != "c5251418-7f99-4a2f-ba62-7f3c9e7bf914" {
+        out.insert("extensionGuid".into(), ext_guid.into());
+    }
+    // Saved values of a data processor form: `{2,1,{0,N,{"#",91f722a0-..,{3,<attribute uuid>,"<name>",0}}...},{0},1}`.
+    let mut saved = Vec::new();
+    if is_dp_ext {
+        if let Some(Item::Node(body)) = ext.children.get(2) {
+            if let Some(Item::Node(list)) = body.children.get(2) {
+                for it in list.children.iter().skip(2) {
+                    let Item::Node(it) = it else { continue };
+                    let Some(Item::Node(r)) = it.children.get(2) else { continue };
+                    if r.len() >= 3 {
+                        saved.push(json!({
+                            "attributeGuid": atom(&r.children[1]),
+                            "name": atom(&r.children[2]),
+                            "kind": atom(&it.children[1]),
+                        }));
+                    }
+                }
+            }
+        }
+    }
+    out.insert("savedValues".into(), Value::Array(saved));
     out.insert("events".into(), Value::Array(events));
     out.insert("attributes".into(), Value::Array(attrs));
     out.insert("controls".into(), Value::Array(controls));
@@ -1186,6 +1212,9 @@ impl Writer {
         if let Some(v) = p.get("footer") {
             self.leaf("Footer", Some(&pystr(v).to_lowercase()), &[]);
         }
+        if let Some(v) = p.get("rowSource") {
+            self.leaf("RowSource", Some(&pystr(v)), &[]);
+        }
         if let Some(v) = p.get("selectionMode") {
             self.leaf("SelectionMode", Some(&pystr(v)), &[]);
         }
@@ -1195,13 +1224,28 @@ impl Writer {
         if let Some(v) = p.get("autoFill") {
             self.leaf("AutoFill", Some(&pystr(v).to_lowercase()), &[]);
         }
-        if truthy(p.get("buttons")) {
-            self.buttons(arr(p, "buttons"));
+        if truthy(p.get("buttons")) || p.get("buttonsRaw").is_some() {
+            let mut extra: Vec<(&str, String)> = Vec::new();
+            if let Some(raw) = p.get("buttonsRaw") {
+                extra.push(("raw", pystr(raw)));
+            }
+            if let Some(sig) = p.get("buttonsSig") {
+                extra.push(("sig", pystr(sig)));
+            }
+            self.buttons_with(arr(p, "buttons"), &extra);
         }
     }
 
     fn buttons(&mut self, items: &[Value]) {
-        self.open("Buttons", &[]);
+        self.buttons_with(items, &[]);
+    }
+
+    fn buttons_with(&mut self, items: &[Value], extra: &[(&str, String)]) {
+        if items.is_empty() {
+            self.leaf("Buttons", None, extra);
+            return;
+        }
+        self.open("Buttons", extra);
         for b in items {
             let mut attrs: Attrs = vec![("name", pystr(&b["name"]))];
             if b.get("id").is_some_and(|v| !v.is_null()) {
@@ -1458,8 +1502,24 @@ pub fn render_form_xml(info: &FormInfo, model: &Value) -> Res<Vec<u8>> {
     if !model["mainAttribute"].is_null() {
         w.leaf("MainAttribute", None, &[("attributeId", pystr(&model["mainAttribute"]))]);
     }
+    if let Some(g) = model.get("extensionGuid").and_then(Value::as_str) {
+        w.leaf("FormExtension", None, &[("guid", g.to_string())]);
+    }
     if truthy(model.get("extension")) {
-        w.leaf("DataProcessorFormExtension", None, &[]);
+        let saved = arr(model, "savedValues");
+        if saved.is_empty() {
+            w.leaf("DataProcessorFormExtension", None, &[]);
+        } else {
+            w.open("DataProcessorFormExtension", &[]);
+            for s in saved {
+                let mut attrs = vec![("attributeGuid", pystr(&s["attributeGuid"])), ("name", pystr(&s["name"]))];
+                if s["kind"].as_str() != Some("91f722a0-4cc1-11d6-a3c9-0050bae0a776") {
+                    attrs.push(("kind", pystr(&s["kind"])));
+                }
+                w.leaf("SavedValue", None, &attrs);
+            }
+            w.close("DataProcessorFormExtension");
+        }
     }
     w.events(arr(model, "events"));
     let attrs = arr(model, "attributes");

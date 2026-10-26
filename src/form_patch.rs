@@ -3284,7 +3284,8 @@ impl Parser<'_> {
             e: &XmlElement,
             parse_loc: &dyn Fn(&XmlElement) -> Option<LocItems>,
         ) -> Option<Vec<CommandBarButton>> {
-            if !e.attrs.is_empty() || !e.text.trim().is_empty() {
+            // `raw` / `sig` carry the original action tree for a compiler; the patcher edits the stream itself.
+            if !e.attrs.keys().all(|k| k == "raw" || k == "sig") || !e.text.trim().is_empty() {
                 return None;
             }
             let mut out = Vec::new();

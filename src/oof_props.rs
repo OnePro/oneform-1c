@@ -948,6 +948,17 @@ fn table(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofError> {
     if is_bare(&t.children[15], "1") {
         props.insert("selectionMode".into(), "Multi".into());
     }
+    // Row-source descriptor `info[3]`: the data handler of the table (value table, tabular section, dynamic list of
+    // a catalog/document/register with its hierarchy and filter links). It has no smaller XML form yet, so it is
+    // carried verbatim unless it is the plain value-table default.
+    if let Some(Item::Node(d)) = info.children.get(3) {
+        let mut raw = Vec::new();
+        crate::donor::write_node(d, &mut raw);
+        let raw = String::from_utf8_lossy(&raw).into_owned();
+        if raw != "{342cf854-134c-42bb-8af9-a2103d5d9723,{5,0,0,1}}" {
+            props.insert("rowSource".into(), raw.into());
+        }
+    }
     if t.len() > 21 {
         match atom(&t.children[21]) {
             "1" => {
@@ -960,6 +971,52 @@ fn table(props: &mut Map<String, Value>, info: &Node) -> Result<(), OofError> {
         }
     }
     Ok(())
+}
+
+/// Signature of a button list as written to `Form.xml` (FNV-1a 64 of a canonical text): ids, names, kinds,
+/// actions, captions and tooltips, recursively. A compiler recomputes it from the XML to detect edits.
+pub fn buttons_sig(items: &[Value]) -> String {
+    fn text(items: &[Value], out: &mut String) {
+        let s = |v: &Value| match v {
+            Value::String(s) => s.clone(),
+            Value::Null => String::new(),
+            other => other.to_string(),
+        };
+        for b in items {
+            let repr = b.get("representation").map(s).unwrap_or_default();
+            let repr = if repr.is_empty() { "Auto".to_string() } else { repr };
+            out.push_str(&format!(
+                "{}|{}|{}|{}|{}|{}|{}|{}|",
+                b.get("id").map(s).unwrap_or_default(),
+                b.get("name").map(s).unwrap_or_default(),
+                b.get("kind").map(s).unwrap_or_default(),
+                b.get("checked").map(s).unwrap_or_default().to_lowercase(),
+                repr,
+                b.get("hasPicture").and_then(Value::as_bool).unwrap_or(false),
+                b.get("actionKind").map(s).unwrap_or_default(),
+                b.get("action").map(s).unwrap_or_default(),
+            ));
+            for (tag, key) in [("c", "caption"), ("t", "tooltip")] {
+                for it in b.get(key).and_then(Value::as_array).into_iter().flatten() {
+                    out.push_str(&format!("{tag}:{}={};", s(&it[0]), s(&it[1])));
+                }
+            }
+            if let Some(sub) = b.get("buttons").and_then(Value::as_array) {
+                out.push('[');
+                text(sub, out);
+                out.push(']');
+            }
+            out.push('\n');
+        }
+    }
+    let mut t = String::new();
+    text(items, &mut t);
+    let mut h: u64 = 0xcbf29ce484222325;
+    for byte in t.as_bytes() {
+        h ^= u64::from(*byte);
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    format!("{h:016x}")
 }
 
 fn command_bar(props: &mut Map<String, Value>, info: &Node, warn: &mut dyn FnMut(&str)) -> Result<(), OofError> {
@@ -976,6 +1033,15 @@ fn command_bar(props: &mut Map<String, Value>, info: &Node, warn: &mut dyn FnMut
         match buttons(&x.children[7], root) {
             Err(_) => warn("Buttons"),
             Ok(b) => {
+                // The action/group tree carries platform bookkeeping (standard command ids, group codes, source
+                // ranges) that the button list cannot express: keep it verbatim, with a signature of the button
+                // list so a compiler can tell whether the list was edited since.
+                if let Item::Node(tree) = &x.children[7] {
+                    let mut raw = Vec::new();
+                    crate::donor::write_node(tree, &mut raw);
+                    props.insert("buttonsRaw".into(), String::from_utf8_lossy(&raw).into_owned().into());
+                    props.insert("buttonsSig".into(), buttons_sig(&b).into());
+                }
                 if !b.is_empty() {
                     props.insert("buttons".into(), Value::Array(b));
                 }
