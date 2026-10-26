@@ -120,13 +120,14 @@ impl LayoutPatch {
                 .with("error", e.message)
         })?;
         let xml = staged.get(&self.xml_path).ok_or_else(|| fail("staged Form.xml is missing"))?;
-        let decoded =
+        let mut decoded =
             parse_form_xml(xml, "packed").map_err(|e| fail("staged Form.xml cannot be read").with("error", e.message))?;
         let expected = self
             .requested
             .with_allocated_ids(&self.patched.allocated)
             .with_derived_pages(&self.patched.derived_pages)
             .in_decoder_order();
+        decoded.mask_anchors_like(&expected);
         // Added controls carry a sparse user-written projection; their identity and values are compared,
         // the full decoded rest is not.
         let skip_rest: std::collections::HashSet<i64> = self.patched.allocated.iter().map(|(_, new_id)| *new_id).collect();

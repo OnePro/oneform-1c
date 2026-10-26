@@ -788,12 +788,20 @@ pub struct AnchorsSpec {
     pub bottom: Option<AnchorEdge>,
     pub left: Option<AnchorEdge>,
     pub right: Option<AnchorEdge>,
+    /// Secondary (`*Alt*`) attachment of the top, bottom, left and right edge: the second `{2,target,side,offset}`
+    /// sub-record of the edge record.
+    pub alt: [Option<AnchorEdge>; 4],
 }
 
 impl AnchorsSpec {
     /// `(geom index, requested edge)` of the four edges.
     fn edges(&self) -> [(usize, Option<AnchorEdge>); 4] {
         [(6, self.top), (7, self.bottom), (8, self.left), (9, self.right)]
+    }
+
+    /// `(geom index, requested secondary edge)` of the four edges.
+    fn alt_edges(&self) -> [(usize, Option<AnchorEdge>); 4] {
+        [(6, self.alt[0]), (7, self.alt[1]), (8, self.alt[2]), (9, self.alt[3])]
     }
 }
 
@@ -803,7 +811,16 @@ fn format_edge_target(e: &AnchorEdge) -> String {
 
 /// The `{2,target,side,offset}` sub-record of the edge record `geom[idx]` (`6` top, `7` bottom, `8` left, `9` right).
 pub fn read_anchor_edge(geom: &Node, idx: usize) -> Option<AnchorEdge> {
-    let t = geom.children.get(idx)?.as_node()?.children.get(1)?.as_node()?;
+    read_anchor_edge_part(geom, idx, 1)
+}
+
+/// Secondary attachment (`part` 2) of the edge record `geom[idx]`.
+pub fn read_anchor_edge_alt(geom: &Node, idx: usize) -> Option<AnchorEdge> {
+    read_anchor_edge_part(geom, idx, 2)
+}
+
+fn read_anchor_edge_part(geom: &Node, idx: usize, part: usize) -> Option<AnchorEdge> {
+    let t = geom.children.get(idx)?.as_node()?.children.get(part)?.as_node()?;
     if t.children.len() < 4 {
         return None;
     }
@@ -818,7 +835,11 @@ fn parse_anchors_elem(e: &XmlElement) -> Option<AnchorsSpec> {
     }
     let known = |k: &str| {
         k == "target"
-            || EDGES.iter().any(|edge| k == *edge || k.strip_prefix(edge).is_some_and(|rest| rest == "Offset" || rest == "Target"))
+            || EDGES.iter().any(|edge| {
+                k == *edge
+                    || k.strip_prefix(edge)
+                        .is_some_and(|rest| matches!(rest, "Offset" | "Target" | "Alt" | "AltOffset" | "AltTarget"))
+            })
     };
     if !e.attrs.keys().all(|k| known(k)) || !EDGES.iter().any(|edge| e.attrs.contains_key(*edge)) {
         return None;
@@ -848,7 +869,30 @@ fn parse_anchors_elem(e: &XmlElement) -> Option<AnchorsSpec> {
         let offset = parse_opt_int(e, &offset_attr)?.unwrap_or(0);
         Some(Some(AnchorEdge { target, side, offset }))
     };
-    Some(AnchorsSpec { top: edge("top")?, bottom: edge("bottom")?, left: edge("left")?, right: edge("right")? })
+    // Secondary attachment: `<edge>Alt` is the side, `<edge>AltTarget` / `<edge>AltOffset` as for the primary edge.
+    let alt_edge = |name: &str| -> Option<Option<AnchorEdge>> {
+        let (side_attr, offset_attr, target_attr) = (format!("{name}Alt"), format!("{name}AltOffset"), format!("{name}AltTarget"));
+        let Some(side) = e.attrs.get(&side_attr) else {
+            return if e.attrs.contains_key(&offset_attr) || e.attrs.contains_key(&target_attr) { None } else { Some(None) };
+        };
+        let side = match side.trim() {
+            "Top" | "0" => 0,
+            "Bottom" | "1" => 1,
+            "Left" | "2" => 2,
+            "Right" | "3" => 3,
+            _ => return None,
+        };
+        let target = parse_opt_int(e, &target_attr)?.unwrap_or(default_target);
+        let offset = parse_opt_int(e, &offset_attr)?.unwrap_or(0);
+        Some(Some(AnchorEdge { target, side, offset }))
+    };
+    Some(AnchorsSpec {
+        top: edge("top")?,
+        bottom: edge("bottom")?,
+        left: edge("left")?,
+        right: edge("right")?,
+        alt: [alt_edge("top")?, alt_edge("bottom")?, alt_edge("left")?, alt_edge("right")?],
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1885,6 +1929,30 @@ impl FormXml {
     /// the decoder derives ([`PatchedForm::derived_pages`]). Page geometry is not user-editable; compare a
     /// requested model with a decoded one only after applying this to the requested one. A page whose name does
     /// not match is left untouched, so a real mismatch still shows up as a difference.
+    /// `<Anchors>` is a partial request (edges that are absent stay as they are), so the decoded full anchors
+    /// are only compared where the request names an edge or its secondary attachment.
+    pub fn mask_anchors_like(&mut self, requested: &FormXml) {
+        for c in &mut self.controls {
+            let want = requested.controls.iter().find(|r| r.id == c.id).and_then(|r| r.values.anchors.as_ref());
+            let Some(got) = c.values.anchors.as_mut() else { continue };
+            match want {
+                None => c.values.anchors = None,
+                Some(w) => {
+                    for (g, w) in [(&mut got.top, w.top), (&mut got.bottom, w.bottom), (&mut got.left, w.left), (&mut got.right, w.right)] {
+                        if w.is_none() {
+                            *g = None;
+                        }
+                    }
+                    for (g, w) in got.alt.iter_mut().zip(w.alt) {
+                        if w.is_none() {
+                            *g = None;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn with_derived_pages(&self, derived: &[DerivedPage]) -> FormXml {
         let mut out = self.clone();
         let root_mine: Vec<&DerivedPage> = derived.iter().filter(|d| d.panel_id == 0).collect();
@@ -1976,13 +2044,12 @@ impl FormXml {
                 vt.non_negative = false;
                 vt.fixed = false;
             }
-            // Write-only flags and anchors (verified in binary by read_back, not emitted by render_form_xml
+            // Write-only flags (verified in binary by read_back, not emitted by render_form_xml
             // so existing golden Form.xml files stay byte-identical) are cleared before XML comparison.
             c.values.drop_list_button = None;
             c.values.spin_button = None;
             c.values.auto_choice_incomplete = None;
             c.values.auto_cell_height = None;
-            c.values.anchors = None;
             c.values.modifies_data = None;
             c.values.skip_on_input = None;
             c.values.first_in_group = None;
@@ -5448,6 +5515,29 @@ fn set_clone_ext(info: &mut Node, type_name: &str, v: &ControlValues) -> Result<
 
 /// Apply all non-geometry, non-caption `ControlValues` properties to a donor-cloned control node.
 fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<()> {
+    {
+        // A donor prototype's anchors point at donor controls: start from unattached edges and empty
+        // back-reference lists, then apply the requested `<Anchors>`.
+        let geom = clone_geom_mut(n)?;
+        for idx in 6..=9 {
+            if let Some(rec) = geom.children.get_mut(idx).and_then(Item::as_node_mut).filter(|r| r.children.len() > 2) {
+                for part in 1..=2 {
+                    rec.children[part] = Item::Node(
+                        crate::brace::parse_metadata(format_edge_target(&AnchorEdge::UNATTACHED).as_bytes())
+                            .map_err(|e| layout_err(e.to_string()))?,
+                    );
+                }
+            }
+        }
+        // The six lists follow the edge records: `count, entries...`; emptied they become six `0` atoms.
+        for at in 12..18 {
+            let count = geom.children.get(at).and_then(|c| c.as_atom()).and_then(|a| a.value.parse::<usize>().ok());
+            if let Some(count) = count.filter(|c| at + 1 + c <= geom.children.len()) {
+                geom.children.drain(at + 1..at + 1 + count);
+                geom.children[at] = bare(0);
+            }
+        }
+    }
     if let Some(anchors) = &v.anchors {
         let geom = clone_geom_mut(n)?;
         for (idx, edge) in anchors.edges() {
@@ -5459,6 +5549,18 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
                 .filter(|r| r.children.len() > 1)
                 .ok_or_else(|| layout_err(format!("prototype: geometry edge record {idx} missing")))?;
             rec.children[1] = Item::Node(
+                crate::brace::parse_metadata(format_edge_target(&edge).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
+            );
+        }
+        for (idx, edge) in anchors.alt_edges() {
+            let Some(edge) = edge else { continue };
+            let rec = geom
+                .children
+                .get_mut(idx)
+                .and_then(Item::as_node_mut)
+                .filter(|r| r.children.len() > 2)
+                .ok_or_else(|| layout_err(format!("prototype: geometry edge record {idx} has no secondary attachment")))?;
+            rec.children[2] = Item::Node(
                 crate::brace::parse_metadata(format_edge_target(&edge).as_bytes()).map_err(|e| layout_err(e.to_string()))?,
             );
         }
@@ -7867,6 +7969,14 @@ fn anchors_pieces(site: &Site) -> Result<Vec<Piece>> {
             .ok_or_else(|| site.layout("unexpected-shape", "Anchors", format!("geometry edge record {idx} missing")))?;
         out.push(piece(target.span.span, format_edge_target(&edge), &[Property::Anchors]));
     }
+    for (idx, edge) in anchors.alt_edges() {
+        let Some(edge) = edge else { continue };
+        let target = g
+            .child(idx)
+            .and_then(|rec| rec.child(2))
+            .ok_or_else(|| site.layout("unexpected-shape", "Anchors", format!("geometry edge record {idx} has no secondary attachment")))?;
+        out.push(piece(target.span.span, format_edge_target(&edge), &[Property::Anchors]));
+    }
     Ok(out)
 }
 
@@ -7915,9 +8025,10 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                         .geom()
                         .ok_or_else(|| layout_err("geometry node missing after patching"))?
                         .node;
-                    new.anchors
-                        .as_ref()
-                        .is_some_and(|a| a.edges().into_iter().all(|(idx, want)| want.is_none() || read_anchor_edge(geom_node, idx) == want))
+                    new.anchors.as_ref().is_some_and(|a| {
+                        a.edges().into_iter().all(|(idx, want)| want.is_none() || read_anchor_edge(geom_node, idx) == want)
+                            && a.alt_edges().into_iter().all(|(idx, want)| want.is_none() || read_anchor_edge_alt(geom_node, idx) == want)
+                    })
                 }
                 _ => true,
             };

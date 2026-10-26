@@ -274,7 +274,24 @@
       "columns": [],
       "props": {
         "autoFill": true,
-        "actionSource": 0
+        "actionSource": 0,
+        "anchors": {
+          "bottom": {
+            "target": 2,
+            "side": 0,
+            "offset": 25
+          },
+          "left": {
+            "target": 0,
+            "side": 2,
+            "offset": 0
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": 0
+          }
+        }
       },
       "children": []
     },
@@ -362,7 +379,29 @@
             "hasPicture": false
           }
         ],
-        "actionSource": 0
+        "actionSource": 0,
+        "anchors": {
+          "top": {
+            "target": 3,
+            "side": 1,
+            "offset": -25
+          },
+          "bottom": {
+            "target": 0,
+            "side": 1,
+            "offset": 0
+          },
+          "left": {
+            "target": 0,
+            "side": 2,
+            "offset": 0
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": 0
+          }
+        }
       },
       "children": []
     },
@@ -394,7 +433,19 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 4,
+            "side": 0,
+            "offset": 17
+          },
+          "right": {
+            "target": 4,
+            "side": 2,
+            "offset": 60
+          }
+        }
       },
       "children": []
     },
@@ -426,7 +477,19 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 5,
+            "side": 0,
+            "offset": 17
+          },
+          "right": {
+            "target": 5,
+            "side": 2,
+            "offset": 53
+          }
+        }
       },
       "children": []
     },
@@ -642,7 +705,29 @@
       ],
       "props": {
         "footer": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 218
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -455
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 214
+          },
+          "rightAlt": {
+            "target": 14,
+            "side": 2,
+            "offset": -489
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -721,7 +806,19 @@
         "clearButton": true,
         "openButton": true,
         "autoMarkIncomplete": true,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 7,
+            "side": 0,
+            "offset": 19
+          },
+          "right": {
+            "target": 14,
+            "side": 2,
+            "offset": -288
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -757,7 +854,24 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 8,
+            "side": 0,
+            "offset": 19
+          },
+          "left": {
+            "target": 7,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 8,
+            "side": 2,
+            "offset": 278
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -793,7 +907,24 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 9,
+            "side": 0,
+            "offset": 154
+          },
+          "left": {
+            "target": 6,
+            "side": 3,
+            "offset": 8
+          },
+          "right": {
+            "target": 9,
+            "side": 2,
+            "offset": 193
+          }
+        }
       },
       "children": []
     },
@@ -830,7 +961,29 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 218
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -455
+          },
+          "left": {
+            "target": 6,
+            "side": 3,
+            "offset": 206
+          },
+          "right": {
+            "target": 14,
+            "side": 2,
+            "offset": -5
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -881,7 +1034,24 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 6,
+            "side": 1,
+            "offset": 5
+          },
+          "bottom": {
+            "target": 11,
+            "side": 0,
+            "offset": 154
+          },
+          "right": {
+            "target": 11,
+            "side": 2,
+            "offset": 193
+          }
+        }
       },
       "children": []
     },
@@ -1014,7 +1184,24 @@
             ]
           }
         ],
-        "actionSource": 4294967295
+        "actionSource": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 12,
+            "side": 0,
+            "offset": 154
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 415
+          },
+          "rightAlt": {
+            "target": 14,
+            "side": 2,
+            "offset": -288
+          }
+        }
       },
       "children": []
     },
@@ -1041,7 +1228,34 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 10,
+            "side": 1,
+            "offset": 5
+          },
+          "bottom": {
+            "target": 10,
+            "side": 1,
+            "offset": 159
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -296
+          },
+          "left": {
+            "target": 12,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 14,
+            "side": 2,
+            "offset": -5
+          }
+        }
       },
       "children": [
         {
@@ -1083,7 +1297,19 @@
           ],
           "props": {
             "footer": false,
-            "contextMenu": 4294967295
+            "contextMenu": 4294967295,
+            "anchors": {
+              "bottom": {
+                "target": 0,
+                "side": 1,
+                "offset": -6
+              },
+              "right": {
+                "target": 0,
+                "side": 3,
+                "offset": -6
+              }
+            }
           },
           "children": [],
           "dataPath": {
@@ -1109,7 +1335,19 @@
           "columns": [],
           "props": {
             "autoFill": true,
-            "actionSource": 34
+            "actionSource": 34,
+            "anchors": {
+              "bottom": {
+                "target": 35,
+                "side": 0,
+                "offset": 27
+              },
+              "right": {
+                "target": 0,
+                "side": 3,
+                "offset": -6
+              }
+            }
           },
           "children": []
         }
@@ -1165,7 +1403,34 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 377
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -296
+          },
+          "left": {
+            "target": 14,
+            "side": 3,
+            "offset": -12
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 715
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -220
+          }
+        }
       },
       "children": []
     },
@@ -1186,7 +1451,29 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 14,
+            "side": 1,
+            "offset": 5
+          },
+          "bottom": {
+            "target": 0,
+            "side": 1,
+            "offset": -102
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 715
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -220
+          }
+        }
       },
       "children": []
     },
@@ -1248,7 +1535,34 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 197
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -476
+          },
+          "left": {
+            "target": 14,
+            "side": 3,
+            "offset": 13
+          },
+          "right": {
+            "target": 14,
+            "side": 3,
+            "offset": 141
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -79
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1273,7 +1587,29 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 197
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -476
+          },
+          "left": {
+            "target": 16,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -8
+          }
+        }
       },
       "children": []
     },
@@ -1300,7 +1636,29 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 16,
+            "side": 1,
+            "offset": 8
+          },
+          "bottom": {
+            "target": 18,
+            "side": 0,
+            "offset": 32
+          },
+          "left": {
+            "target": 14,
+            "side": 3,
+            "offset": 13
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -22
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1325,7 +1683,29 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 16,
+            "side": 1,
+            "offset": 45
+          },
+          "bottom": {
+            "target": 19,
+            "side": 0,
+            "offset": 32
+          },
+          "left": {
+            "target": 14,
+            "side": 3,
+            "offset": 13
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -22
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1356,7 +1736,34 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 16,
+            "side": 1,
+            "offset": 82
+          },
+          "bottom": {
+            "target": 16,
+            "side": 1,
+            "offset": 153
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -323
+          },
+          "left": {
+            "target": 14,
+            "side": 3,
+            "offset": 13
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -22
+          }
+        }
       },
       "children": []
     },
@@ -1388,7 +1795,34 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 20,
+            "side": 1,
+            "offset": 14
+          },
+          "bottom": {
+            "target": 20,
+            "side": 1,
+            "offset": 86
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -237
+          },
+          "left": {
+            "target": 15,
+            "side": 3,
+            "offset": 13
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -22
+          }
+        }
       },
       "children": []
     },
@@ -1420,7 +1854,29 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 132
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -541
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 236
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -699
+          }
+        }
       },
       "children": []
     },
@@ -1462,7 +1918,34 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 132
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -541
+          },
+          "left": {
+            "target": 22,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 22,
+            "side": 3,
+            "offset": 233
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -466
+          }
+        }
       },
       "children": []
     },
@@ -1529,7 +2012,29 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "bottom": {
+            "target": 0,
+            "side": 0,
+            "offset": 132
+          },
+          "bottomAlt": {
+            "target": 0,
+            "side": 1,
+            "offset": -541
+          },
+          "left": {
+            "target": 23,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -233
+          }
+        }
       },
       "children": []
     },
@@ -1550,7 +2055,29 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 22,
+            "side": 1,
+            "offset": 5
+          },
+          "bottom": {
+            "target": 0,
+            "side": 1,
+            "offset": -412
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 236
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -699
+          }
+        }
       },
       "children": []
     },
@@ -1582,7 +2109,34 @@
       ],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 23,
+            "side": 1,
+            "offset": 5
+          },
+          "bottom": {
+            "target": 0,
+            "side": 1,
+            "offset": -412
+          },
+          "left": {
+            "target": 25,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 25,
+            "side": 3,
+            "offset": 233
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -466
+          }
+        }
       },
       "children": []
     },
@@ -1603,7 +2157,29 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 24,
+            "side": 1,
+            "offset": 26
+          },
+          "bottom": {
+            "target": 0,
+            "side": 1,
+            "offset": -405
+          },
+          "left": {
+            "target": 26,
+            "side": 3,
+            "offset": 11
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -273
+          }
+        }
       },
       "children": []
     },
@@ -1632,7 +2208,24 @@
         "choiceButton": false,
         "clearButton": false,
         "openButton": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 15,
+            "side": 1,
+            "offset": 9
+          },
+          "bottom": {
+            "target": 28,
+            "side": 0,
+            "offset": 21
+          },
+          "right": {
+            "target": 28,
+            "side": 2,
+            "offset": 136
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1664,7 +2257,24 @@
         "choiceButton": true,
         "clearButton": false,
         "openButton": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 15,
+            "side": 1,
+            "offset": 35
+          },
+          "bottom": {
+            "target": 29,
+            "side": 0,
+            "offset": 21
+          },
+          "right": {
+            "target": 29,
+            "side": 2,
+            "offset": 136
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1696,7 +2306,24 @@
         "choiceButton": false,
         "clearButton": false,
         "openButton": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 15,
+            "side": 1,
+            "offset": 9
+          },
+          "bottom": {
+            "target": 30,
+            "side": 0,
+            "offset": 21
+          },
+          "right": {
+            "target": 30,
+            "side": 2,
+            "offset": 136
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1728,7 +2355,29 @@
         "choiceButton": true,
         "clearButton": true,
         "openButton": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 15,
+            "side": 1,
+            "offset": 35
+          },
+          "bottom": {
+            "target": 31,
+            "side": 0,
+            "offset": 21
+          },
+          "right": {
+            "target": 0,
+            "side": 2,
+            "offset": 298
+          },
+          "rightAlt": {
+            "target": 0,
+            "side": 3,
+            "offset": -637
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1760,7 +2409,24 @@
         "choiceButton": true,
         "clearButton": true,
         "openButton": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 15,
+            "side": 1,
+            "offset": 9
+          },
+          "bottom": {
+            "target": 32,
+            "side": 0,
+            "offset": 21
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -496
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1792,7 +2458,29 @@
         "choiceButton": false,
         "clearButton": false,
         "openButton": false,
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 15,
+            "side": 1,
+            "offset": 35
+          },
+          "bottom": {
+            "target": 33,
+            "side": 0,
+            "offset": 21
+          },
+          "left": {
+            "target": 31,
+            "side": 3,
+            "offset": 5
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -496
+          }
+        }
       },
       "children": [],
       "dataPath": {
@@ -1817,7 +2505,29 @@
       "events": [],
       "columns": [],
       "props": {
-        "contextMenu": 4294967295
+        "contextMenu": 4294967295,
+        "anchors": {
+          "top": {
+            "target": 21,
+            "side": 1,
+            "offset": 5
+          },
+          "bottom": {
+            "target": 0,
+            "side": 1,
+            "offset": -128
+          },
+          "left": {
+            "target": 15,
+            "side": 3,
+            "offset": 13
+          },
+          "right": {
+            "target": 0,
+            "side": 3,
+            "offset": -22
+          }
+        }
       },
       "children": [],
       "showTabs": 3,

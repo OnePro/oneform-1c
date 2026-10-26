@@ -105,6 +105,7 @@
           <Height>25</Height>
           <ZOrder>0</ZOrder>
           <TabOrder>1</TabOrder>
+          <Anchors bottom="Top" bottomTarget="2" bottomOffset="25" left="Left" right="Right"/>
           <AutoFill>true</AutoFill>
         </CommandBar>
         <CommandBar name="ОсновныеДействияФормы" id="3">
@@ -114,6 +115,7 @@
           <Height>25</Height>
           <ZOrder>1</ZOrder>
           <TabOrder>27</TabOrder>
+          <Anchors top="Bottom" topTarget="3" topOffset="-25" bottom="Bottom" left="Left" right="Right"/>
           <HorizontalAlign>Right</HorizontalAlign>
           <AutoFill>false</AutoFill>
           <Buttons>
@@ -146,6 +148,7 @@
           <Height>17</Height>
           <ZOrder>2</ZOrder>
           <TabOrder>2</TabOrder>
+          <Anchors bottom="Top" bottomTarget="4" bottomOffset="17" right="Left" rightTarget="4" rightOffset="53"/>
           <Events>
             <Click id="0">Кнопка1Нажатие</Click>
           </Events>
@@ -160,6 +163,7 @@
           <Height>17</Height>
           <ZOrder>3</ZOrder>
           <TabOrder>3</TabOrder>
+          <Anchors bottom="Top" bottomTarget="5" bottomOffset="17" right="Left" rightTarget="5" rightOffset="53"/>
           <Events>
             <Click id="0">Надпись1Нажатие</Click>
           </Events>
@@ -172,6 +176,7 @@
           <Height>154</Height>
           <ZOrder>4</ZOrder>
           <TabOrder>9</TabOrder>
+          <Anchors bottom="Top" bottomOffset="218" bottomAlt="Bottom" bottomAltOffset="-455" right="Left" rightOffset="214" rightAlt="Left" rightAltTarget="14" rightAltOffset="-489"/>
           <Footer>false</Footer>
           <Columns>
             <Column name="Колонка1" id="0">
@@ -236,6 +241,7 @@
           <Height>19</Height>
           <ZOrder>5</ZOrder>
           <TabOrder>4</TabOrder>
+          <Anchors bottom="Top" bottomTarget="7" bottomOffset="19" right="Left" rightTarget="14" rightOffset="-288"/>
           <ValueType kind="ValueList" composite="false"/>
           <ChoiceButton>true</ChoiceButton>
           <ClearButton>true</ClearButton>
@@ -264,6 +270,7 @@
           <Height>19</Height>
           <ZOrder>6</ZOrder>
           <TabOrder>5</TabOrder>
+          <Anchors bottom="Top" bottomTarget="8" bottomOffset="19" left="Right" leftTarget="7" leftOffset="5" right="Left" rightTarget="8" rightOffset="278"/>
           <Events>
             <OnChange id="2147483647">Флажок1ПриИзменении</OnChange>
           </Events>
@@ -278,6 +285,7 @@
           <Height>154</Height>
           <ZOrder>7</ZOrder>
           <TabOrder>10</TabOrder>
+          <Anchors bottom="Top" bottomTarget="9" bottomOffset="154" left="Right" leftTarget="6" leftOffset="8" right="Left" rightTarget="9" rightOffset="193"/>
           <Events>
             <OnChange id="2147483647">Переключатель1ПриИзменении</OnChange>
           </Events>
@@ -290,6 +298,7 @@
           <Height>154</Height>
           <ZOrder>8</ZOrder>
           <TabOrder>11</TabOrder>
+          <Anchors bottom="Top" bottomOffset="218" bottomAlt="Bottom" bottomAltOffset="-455" left="Right" leftTarget="6" leftOffset="206" right="Left" rightTarget="14" rightOffset="-5"/>
           <Events>
             <OnCheckChange id="17">ПолеСписка1ПриИзмененииФлажка</OnCheckChange>
             <Selection id="34">ПолеСписка1Выбор</Selection>
@@ -303,6 +312,7 @@
           <Height>154</Height>
           <ZOrder>9</ZOrder>
           <TabOrder>13</TabOrder>
+          <Anchors top="Bottom" topTarget="6" topOffset="5" bottom="Top" bottomTarget="11" bottomOffset="154" right="Left" rightTarget="11" rightOffset="193"/>
           <Events>
             <Click id="0">ПолеКартинки1Нажатие</Click>
             <DragStart id="3">ПолеКартинки1НачалоПеретаскивания</DragStart>
@@ -318,6 +328,7 @@
           <Height>154</Height>
           <ZOrder>10</ZOrder>
           <TabOrder>14</TabOrder>
+          <Anchors bottom="Top" bottomTarget="12" bottomOffset="154" right="Left" rightOffset="415" rightAlt="Left" rightAltTarget="14" rightAltOffset="-288"/>
           <AutoFill>false</AutoFill>
           <Buttons>
             <Button name="НоваяКнопкаНаПанели" id="1" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанель2НоваяКнопкаНаПанели">
@@ -366,6 +377,7 @@
           <Height>154</Height>
           <ZOrder>11</ZOrder>
           <TabOrder>15</TabOrder>
+          <Anchors top="Bottom" topTarget="10" topOffset="5" bottom="Bottom" bottomTarget="10" bottomOffset="159" bottomAlt="Bottom" bottomAltOffset="-296" left="Right" leftTarget="12" leftOffset="5" right="Left" rightTarget="14" rightOffset="-5"/>
           <ShowTabs type="ShowTabs" member="Unknown" code="2"/>
           <Events>
             <OnCurrentPageChange id="0">Панель1ПриСменеСтраницы</OnCurrentPageChange>
@@ -398,6 +410,7 @@
                   <Height>90</Height>
                   <ZOrder>0</ZOrder>
                   <TabOrder>2</TabOrder>
+                  <Anchors bottom="Bottom" bottomOffset="-6" right="Right" rightOffset="-6"/>
                   <Footer>false</Footer>
                   <Columns>
                     <Column name="Колонка1" id="0">
@@ -418,6 +431,7 @@
                   <Height>27</Height>
                   <ZOrder>1</ZOrder>
                   <TabOrder>1</TabOrder>
+                  <Anchors bottom="Top" bottomTarget="35" bottomOffset="27" right="Right" rightOffset="-6"/>
                   <ActionSource>34</ActionSource>
                   <AutoFill>true</AutoFill>
                 </CommandBar>
@@ -432,6 +446,7 @@
           <Height>335</Height>
           <ZOrder>12</ZOrder>
           <TabOrder>6</TabOrder>
+          <Anchors bottom="Top" bottomOffset="377" bottomAlt="Bottom" bottomAltOffset="-296" left="Right" leftTarget="14" leftOffset="-12" right="Left" rightOffset="715" rightAlt="Right" rightAltOffset="-220"/>
         </Splitter>
         <SpreadsheetDocumentField name="ПолеТабличногоДокумента1" id="15">
           <Left>21</Left>
@@ -440,6 +455,7 @@
           <Height>189</Height>
           <ZOrder>13</ZOrder>
           <TabOrder>19</TabOrder>
+          <Anchors top="Bottom" topTarget="14" topOffset="5" bottom="Bottom" bottomOffset="-102" right="Left" rightOffset="715" rightAlt="Right" rightAltOffset="-220"/>
         </SpreadsheetDocumentField>
         <CalendarField name="ПолеКалендаря1" id="16">
           <DataPath attributeId="6">ПолеКалендаря1</DataPath>
@@ -449,6 +465,7 @@
           <Height>155</Height>
           <ZOrder>14</ZOrder>
           <TabOrder>7</TabOrder>
+          <Anchors bottom="Top" bottomOffset="197" bottomAlt="Bottom" bottomAltOffset="-476" left="Right" leftTarget="14" leftOffset="13" right="Right" rightTarget="14" rightOffset="141" rightAlt="Right" rightAltOffset="-79"/>
           <Events>
             <OnActivateDate id="0">ПолеКалендаря1ПриАктивизацииДаты</OnActivateDate>
             <Selection id="1">ПолеКалендаря1Выбор</Selection>
@@ -467,6 +484,7 @@
           <Height>155</Height>
           <ZOrder>15</ZOrder>
           <TabOrder>8</TabOrder>
+          <Anchors bottom="Top" bottomOffset="197" bottomAlt="Bottom" bottomAltOffset="-476" left="Right" leftTarget="16" leftOffset="5" right="Right" rightOffset="-8"/>
         </TextDocumentField>
         <TrackBar name="ПолосаРегулирования1" id="18">
           <DataPath attributeId="7">ПолосаРегулирования1</DataPath>
@@ -476,6 +494,7 @@
           <Height>32</Height>
           <ZOrder>16</ZOrder>
           <TabOrder>12</TabOrder>
+          <Anchors top="Bottom" topTarget="16" topOffset="8" bottom="Top" bottomTarget="18" bottomOffset="32" left="Right" leftTarget="14" leftOffset="13" right="Right" rightOffset="-22"/>
           <Events>
             <OnChange id="2147483647">ПолосаРегулирования1ПриИзменении</OnChange>
           </Events>
@@ -488,6 +507,7 @@
           <Height>32</Height>
           <ZOrder>17</ZOrder>
           <TabOrder>16</TabOrder>
+          <Anchors top="Bottom" topTarget="16" topOffset="45" bottom="Top" bottomTarget="19" bottomOffset="32" left="Right" leftTarget="14" leftOffset="13" right="Right" rightOffset="-22"/>
         </ProgressBar>
         <GeographicalSchemaField name="ПолеГеографическойСхемы1" id="20">
           <Left>728</Left>
@@ -496,6 +516,7 @@
           <Height>71</Height>
           <ZOrder>18</ZOrder>
           <TabOrder>17</TabOrder>
+          <Anchors top="Bottom" topTarget="16" topOffset="82" bottom="Bottom" bottomTarget="16" bottomOffset="153" bottomAlt="Bottom" bottomAltOffset="-323" left="Right" leftTarget="14" leftOffset="13" right="Right" rightOffset="-22"/>
           <Events>
             <OnActivate id="2">ПолеГеографическойСхемы1</OnActivate>
           </Events>
@@ -507,6 +528,7 @@
           <Height>72</Height>
           <ZOrder>19</ZOrder>
           <TabOrder>18</TabOrder>
+          <Anchors top="Bottom" topTarget="20" topOffset="14" bottom="Bottom" bottomTarget="20" bottomOffset="86" bottomAlt="Bottom" bottomAltOffset="-237" left="Right" leftTarget="15" leftOffset="13" right="Right" rightOffset="-22"/>
           <Events>
             <DocumentComplete id="0">ПолеHTMLДокумента1ДокументСформирован</DocumentComplete>
             <OnClick id="2">ПолеHTMLДокумента1onclick</OnClick>
@@ -520,6 +542,7 @@
           <Height>21</Height>
           <ZOrder>20</ZOrder>
           <TabOrder>21</TabOrder>
+          <Anchors top="Bottom" topTarget="15" topOffset="9" bottom="Top" bottomTarget="28" bottomOffset="21" right="Left" rightTarget="28" rightOffset="136"/>
           <ValueType kind="Number" composite="false" fractionDigits="0"/>
           <ChoiceButton>false</ChoiceButton>
           <ClearButton>false</ClearButton>
@@ -533,6 +556,7 @@
           <Height>21</Height>
           <ZOrder>21</ZOrder>
           <TabOrder>24</TabOrder>
+          <Anchors top="Bottom" topTarget="15" topOffset="35" bottom="Top" bottomTarget="29" bottomOffset="21" right="Left" rightTarget="29" rightOffset="136"/>
           <ValueType kind="Date" composite="false"/>
           <ChoiceButton>true</ChoiceButton>
           <ClearButton>false</ClearButton>
@@ -546,6 +570,7 @@
           <Height>21</Height>
           <ZOrder>22</ZOrder>
           <TabOrder>22</TabOrder>
+          <Anchors top="Bottom" topTarget="15" topOffset="9" bottom="Top" bottomTarget="30" bottomOffset="21" right="Left" rightTarget="30" rightOffset="136"/>
           <ValueType kind="ValueTable" composite="false"/>
           <ChoiceButton>false</ChoiceButton>
           <ClearButton>false</ClearButton>
@@ -559,6 +584,7 @@
           <Height>21</Height>
           <ZOrder>23</ZOrder>
           <TabOrder>25</TabOrder>
+          <Anchors top="Bottom" topTarget="15" topOffset="35" bottom="Top" bottomTarget="31" bottomOffset="21" right="Left" rightOffset="298" rightAlt="Right" rightAltOffset="-637"/>
           <ValueType kind="ValueList" composite="false"/>
           <ChoiceButton>true</ChoiceButton>
           <ClearButton>true</ClearButton>
@@ -572,6 +598,7 @@
           <Height>21</Height>
           <ZOrder>24</ZOrder>
           <TabOrder>23</TabOrder>
+          <Anchors top="Bottom" topTarget="15" topOffset="9" bottom="Top" bottomTarget="32" bottomOffset="21" right="Right" rightOffset="-496"/>
           <ValueType kind="Ref" composite="true"/>
           <ChoiceButton>true</ChoiceButton>
           <ClearButton>true</ClearButton>
@@ -585,6 +612,7 @@
           <Height>21</Height>
           <ZOrder>25</ZOrder>
           <TabOrder>26</TabOrder>
+          <Anchors top="Bottom" topTarget="15" topOffset="35" bottom="Top" bottomTarget="33" bottomOffset="21" left="Right" leftTarget="31" leftOffset="5" right="Right" rightOffset="-496"/>
           <ValueType kind="String" composite="false"/>
           <ChoiceButton>false</ChoiceButton>
           <ClearButton>false</ClearButton>
@@ -597,6 +625,7 @@
           <Height>104</Height>
           <ZOrder>26</ZOrder>
           <TabOrder>20</TabOrder>
+          <Anchors top="Bottom" topTarget="21" topOffset="5" bottom="Bottom" bottomOffset="-128" left="Right" leftTarget="15" leftOffset="13" right="Right" rightOffset="-22"/>
           <ShowTabs type="ShowTabs" member="Unknown" code="3"/>
           <ChildItems>
             <Page name="Страница1">
@@ -628,6 +657,7 @@
           <Height>124</Height>
           <ZOrder>0</ZOrder>
           <TabOrder>1</TabOrder>
+          <Anchors bottom="Top" bottomOffset="132" bottomAlt="Bottom" bottomAltOffset="-541" right="Left" rightOffset="236" rightAlt="Right" rightAltOffset="-699"/>
           <Events>
             <Selection id="0">ПолеГрафическойСхемы1Выбор</Selection>
             <OnActivate id="1">ПолеГрафическойСхемы1ПриАктивизации</OnActivate>
@@ -640,6 +670,7 @@
           <Height>124</Height>
           <ZOrder>1</ZOrder>
           <TabOrder>2</TabOrder>
+          <Anchors bottom="Top" bottomOffset="132" bottomAlt="Bottom" bottomAltOffset="-541" left="Right" leftTarget="22" leftOffset="5" right="Right" rightTarget="22" rightOffset="233" rightAlt="Right" rightAltOffset="-466"/>
           <Events>
             <Selection id="0">Диаграмма1Выбор</Selection>
             <DetailProcessing id="1">Диаграмма1ОбработкаРасшифровки</DetailProcessing>
@@ -654,6 +685,7 @@
           <Height>124</Height>
           <ZOrder>2</ZOrder>
           <TabOrder>3</TabOrder>
+          <Anchors bottom="Top" bottomOffset="132" bottomAlt="Bottom" bottomAltOffset="-541" left="Right" leftTarget="23" leftOffset="5" right="Right" rightOffset="-233"/>
           <Events>
             <Selection id="0">ДиаграммаГанта1Выбор</Selection>
             <DetailProcessing id="1">ДиаграммаГанта1ОбработкаРасшифровки</DetailProcessing>
@@ -673,6 +705,7 @@
           <Height>124</Height>
           <ZOrder>3</ZOrder>
           <TabOrder>4</TabOrder>
+          <Anchors top="Bottom" topTarget="22" topOffset="5" bottom="Bottom" bottomOffset="-412" right="Left" rightOffset="236" rightAlt="Right" rightAltOffset="-699"/>
         </PivotChart>
         <Dendrogram name="Дендрограмма1" id="26">
           <Left>241</Left>
@@ -681,6 +714,7 @@
           <Height>124</Height>
           <ZOrder>4</ZOrder>
           <TabOrder>5</TabOrder>
+          <Anchors top="Bottom" topTarget="23" topOffset="5" bottom="Bottom" bottomOffset="-412" left="Right" leftTarget="25" leftOffset="5" right="Right" rightTarget="25" rightOffset="233" rightAlt="Right" rightAltOffset="-466"/>
           <Events>
             <Selection id="0">Дендрограмма1Выбор</Selection>
             <DetailProcessing id="1">Дендрограмма1ОбработкаРасшифровки</DetailProcessing>
@@ -693,6 +727,7 @@
           <Height>110</Height>
           <ZOrder>5</ZOrder>
           <TabOrder>6</TabOrder>
+          <Anchors top="Bottom" topTarget="24" topOffset="26" bottom="Bottom" bottomOffset="-405" left="Right" leftTarget="26" leftOffset="11" right="Right" rightOffset="-273"/>
         </PDFDocumentField>
       </ChildItems>
     </Page>

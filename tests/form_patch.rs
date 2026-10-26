@@ -212,7 +212,7 @@ fn supported_edits_are_classified_with_old_and_new_values() {
         "<Left>80</Left>\n          <Top>43</Top>\n          <Width>60</Width>\n          <Height>18</Height>\n          <ZOrder>9</ZOrder>\n          <Visible>false</Visible>",
     );
     // A second control changes TabOrder only.
-    xml = replace_once(&xml, "<TabOrder>4</TabOrder>\n          <ValueType kind=\"ValueList\"", "<TabOrder>40</TabOrder>\n          <ValueType kind=\"ValueList\"");
+    xml = replace_once(&xml, "<TabOrder>4</TabOrder>\n          <Anchors bottom=\"Top\" bottomTarget=\"7\"", "<TabOrder>40</TabOrder>\n          <Anchors bottom=\"Top\" bottomTarget=\"7\"");
     let p = plan(&s, &xml).unwrap();
     assert!(!p.is_empty());
     assert_eq!(p.diff.edits.len(), 2);
@@ -1806,6 +1806,31 @@ fn anchor_edges(bytes: &[u8], id: i64) -> [Option<(i64, i64, i64)>; 4] {
 }
 
 #[test]
+fn secondary_anchor_edges_round_trip() {
+    // ПолеВвода1 (id 7): the primary right edge stays, only the secondary attachment of the bottom edge changes.
+    let mut edited = baseline("DonorForm");
+    edited = edit_ctl(
+        &edited,
+        "ПолеВвода1",
+        &[(
+            "<Anchors bottom=\"Top\" bottomTarget=\"7\" bottomOffset=\"19\" right=\"Left\" rightTarget=\"14\" rightOffset=\"-288\"/>",
+            "<Anchors bottom=\"Top\" bottomTarget=\"7\" bottomOffset=\"19\" bottomAlt=\"Bottom\" bottomAltOffset=\"-40\" right=\"Left\" rightTarget=\"14\" rightOffset=\"-288\"/>",
+        )],
+    );
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let alt = |bytes: &[u8]| {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let geom = idx.get(7).unwrap().geom().unwrap().node;
+        oneform::form_patch::read_anchor_edge_alt(geom, 7).map(|e| (e.target, e.side, e.offset))
+    };
+    let before = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+    assert_eq!(alt(&before), Some((-1, 6, 0)));
+    assert_eq!(alt(&pf.bytes), Some((0, 1, -40)));
+    assert_eq!(anchor_edges(&pf.bytes, 7), anchor_edges(&before, 7), "primary edges are untouched");
+}
+
+#[test]
 fn control_anchors_round_trip() {
     let before = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
 
@@ -1813,12 +1838,18 @@ fn control_anchors_round_trip() {
     edited = edit_ctl(
         &edited,
         "ТабличноеПоле1",
-        &[("<ZOrder>4</ZOrder>", "<ZOrder>4</ZOrder>\n          <Anchors left=\"Left\" top=\"Top\" right=\"Right\" bottom=\"Bottom\" leftOffset=\"6\" topOffset=\"24\" rightOffset=\"-6\" bottomOffset=\"-6\"/>")],
+        &[(
+            "<Anchors bottom=\"Top\" bottomOffset=\"218\" bottomAlt=\"Bottom\" bottomAltOffset=\"-455\" right=\"Left\" rightOffset=\"214\" rightAlt=\"Left\" rightAltTarget=\"14\" rightAltOffset=\"-489\"/>",
+            "<Anchors left=\"Left\" top=\"Top\" right=\"Right\" bottom=\"Bottom\" leftOffset=\"6\" topOffset=\"24\" rightOffset=\"-6\" bottomOffset=\"-6\"/>",
+        )],
     );
     edited = edit_ctl(
         &edited,
         "ПолеВвода1",
-        &[("<ZOrder>5</ZOrder>", "<ZOrder>5</ZOrder>\n          <Anchors right=\"Right\" rightOffset=\"-10\"/>")],
+        &[(
+            "<Anchors bottom=\"Top\" bottomTarget=\"7\" bottomOffset=\"19\" right=\"Left\" rightTarget=\"14\" rightOffset=\"-288\"/>",
+            "<Anchors right=\"Right\" rightOffset=\"-10\"/>",
+        )],
     );
     let button = "<Button name=\"Добавленная\" id=\"999\">\n          <Caption><Item language=\"ru\">ОК</Item></Caption>\n          <Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>\n          <ZOrder>50</ZOrder><TabOrder>50</TabOrder>\n          <Anchors top=\"Bottom\" bottom=\"Bottom\" left=\"Right\" right=\"Right\" topOffset=\"-25\" bottomOffset=\"-5\" leftOffset=\"-80\" rightOffset=\"-5\"/>\n        </Button>\n        ";
     let anchor = "        <Table name=\"ТабличноеПоле1\"";
@@ -1840,7 +1871,7 @@ fn control_anchors_round_trip() {
 #[test]
 fn malformed_anchors_are_not_editable() {
     let base = baseline("DonorForm");
-    let from = "<ZOrder>5</ZOrder>";
+    let from = "<Anchors bottom=\"Top\" bottomTarget=\"7\" bottomOffset=\"19\" right=\"Left\" rightTarget=\"14\" rightOffset=\"-288\"/>";
     for bad in [
         "<Anchors/>",
         "<Anchors rightOffset=\"-10\"/>",
@@ -1849,7 +1880,7 @@ fn malformed_anchors_are_not_editable() {
         "<Anchors right=\"Middle\"/>",
         "<Anchors right=\"None\" rightOffset=\"3\"/>",
     ] {
-        let xml = edit_ctl(&base, "ПолеВвода1", &[(from, &format!("{from}\n          {bad}"))]);
+        let xml = edit_ctl(&base, "ПолеВвода1", &[(from, bad)]);
         let (kind, text) = patch_rejected("DonorForm", &xml);
         assert_eq!(kind, "unsupported-unknown-element", "{bad}: {text}");
     }

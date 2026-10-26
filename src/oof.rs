@@ -543,6 +543,37 @@ fn diag_component(form_uuid: &str) -> String {
     format!("Forms/{form_uuid}")
 }
 
+/// `geom[6..=9]` (top, bottom, left, right): `{0,{2,target,side,offset},{2,target,side,offset}}` - the primary and the
+/// secondary attachment of an edge. `None` when no edge is attached.
+fn decode_anchors(geom: &Node) -> Option<Value> {
+    let part = |rec: &Node, i: usize| -> Option<(i64, i64, i64)> {
+        let p = rec.children.get(i)?.as_node()?;
+        if p.len() < 4 {
+            return None;
+        }
+        let num = |k: usize| atom(&p.children[k]).parse::<i64>().ok();
+        Some((num(1)?, num(2)?, num(3)?))
+    };
+    let mut edges = Vec::new();
+    let mut any = false;
+    for name in ["top", "bottom", "left", "right"] {
+        edges.push((name, geom.children.get(6 + edges.len()).and_then(Item::as_node)));
+    }
+    let mut out = Map::new();
+    for (name, rec) in edges {
+        let Some(rec) = rec else { continue };
+        for (key, i) in [(name.to_string(), 1usize), (format!("{name}Alt"), 2)] {
+            if let Some((target, side, offset)) = part(rec, i) {
+                if side != 6 {
+                    any = true;
+                    out.insert(key, json!({"target": target, "side": side, "offset": offset}));
+                }
+            }
+        }
+    }
+    any.then_some(Value::Object(out))
+}
+
 fn control(
     n: &Item,
     warnings: &mut Vec<Value>,
@@ -619,6 +650,9 @@ fn control(
             let key = if type_name == Some("CommandBar") { "actionSource" } else { "contextMenu" };
             props.insert(key.into(), id.into());
         }
+    }
+    if let Some(a) = decode_anchors(geom) {
+        props.insert("anchors".into(), a);
     }
     let mut children = Vec::new();
     for c in table(Some(children_node), "control children")? {
@@ -1263,6 +1297,40 @@ impl Writer {
         // Raw `meta[2]`: the control id of the context menu / of a command bar's action source. Only a real control
         // id is written; 0xFFFFFFFF (unset - a bar then fills itself from the platform's automatic source) and 0
         // (no control) are left out, and an unchanged slot is never rewritten by `pack`.
+        if let Some(a) = c.get("props").and_then(|p| p.get("anchors")).and_then(Value::as_object) {
+            let side = |n: i64| match n {
+                0 => "Top".to_string(),
+                1 => "Bottom".to_string(),
+                2 => "Left".to_string(),
+                3 => "Right".to_string(),
+                other => other.to_string(),
+            };
+            let mut owned: Vec<(String, String)> = Vec::new();
+            for edge in ["top", "bottom", "left", "right"] {
+                let (prim, alt) = (a.get(edge), a.get(&format!("{edge}Alt")));
+                if prim.is_none() && alt.is_none() {
+                    continue;
+                }
+                // `<edge>` is the primary side, `<edge>Alt` the secondary one; a secondary-only edge has primary "None".
+                for (key, rec) in [(edge.to_string(), prim), (format!("{edge}Alt"), alt)] {
+                    let Some(r) = rec else {
+                        if key == edge {
+                            owned.push((key, "None".to_string()));
+                        }
+                        continue;
+                    };
+                    owned.push((key.clone(), side(r["side"].as_i64().unwrap_or(6))));
+                    if r["target"].as_i64().unwrap_or(0) != 0 {
+                        owned.push((format!("{key}Target"), pystr(&r["target"])));
+                    }
+                    if r["offset"].as_i64().unwrap_or(0) != 0 {
+                        owned.push((format!("{key}Offset"), pystr(&r["offset"])));
+                    }
+                }
+            }
+            let attrs: Attrs = owned.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
+            self.leaf("Anchors", None, &attrs);
+        }
         for (key, tagname) in [("contextMenu", "ContextMenu"), ("actionSource", "ActionSource")] {
             if let Some(id) = c.get("props").and_then(|p| p.get(key)).and_then(Value::as_i64) {
                 if id != 4_294_967_295 && id != 0 {
