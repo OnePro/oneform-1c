@@ -56,7 +56,7 @@ Every control carries an 18-element base appearance node (`{16, Enabled, ..., Tr
 | `info[3]` (`9a7643d2-...` `[6]`) + `info[2][0][24]` | `РасширенноеРедактирование` (`ExtendedEdit`) | `0 -> 1` => `Нет -> Да` | `inp7-i3-ext` |
 | `info[5]` + `info[2][0][12]` | `РедактированиеТекста` (`TextEdit`, inverted) | `0 -> 1` => `Да -> Нет` | `inp7-i05` |
 | `info[6]` | `ВыбиратьТип` (`ChooseType`) | `1 -> 0` => `Да -> Нет` | `inp7-i06` |
-| `info[8]` | `СвязьПоТипу` (`TypeLink`) | `{1,0} -> {1,1,{0,c866d8e7-...,{2,1..2,...}}}` | `dental` corpus + Designer RT |
+| `info[8]` | `СвязьПоТипу` (`TypeLink`) | `{1,0} -> {1,1,{0,c866d8e7-...,{2,1..2,...}}}` | Бух. corpus + Designer RT |
 | `info[9]` | `РежимВыбораИзСписка` (`ChoiceListMode`) | `0 -> 1` => `Нет -> Да` | `inputfield-tail-09` |
 
 ### 3. `CheckBox` (`Флажок`) properties

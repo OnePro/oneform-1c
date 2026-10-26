@@ -10,7 +10,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][2]",
-    "dental_count": 15026,
+    "buh_count": 15026,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст на кнопке."
   },
@@ -25,7 +25,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 7351,
+    "buh_count": 7351,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -40,7 +40,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][2]",
-    "dental_count": 6153,
+    "buh_count": 6153,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст надписи."
   },
@@ -55,7 +55,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][7]",
-    "dental_count": 4498,
+    "buh_count": 4498,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки выбора значения в поле. Истина -"
   },
@@ -70,7 +70,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][8]",
-    "dental_count": 4498,
+    "buh_count": 4498,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки очистки поля. Истина - кнопка есть."
   },
@@ -85,7 +85,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][10]",
-    "dental_count": 4498,
+    "buh_count": 4498,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки открытия значения поля. Истина - кнопка"
   },
@@ -100,7 +100,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][3]",
-    "dental_count": 2847,
+    "buh_count": 2847,
     "api_access": "read_write",
     "source_excerpt": "Признак автоматического заполнения командной панели. Если установлено значение - Истина"
   },
@@ -115,7 +115,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][7]",
-    "dental_count": 2187,
+    "buh_count": 2187,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию кнопок, образующих командную панель."
   },
@@ -130,7 +130,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 1944,
+    "buh_count": 1944,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -145,7 +145,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][1][1] bit 1",
-    "dental_count": 1435,
+    "buh_count": 1435,
     "api_access": "read_write",
     "source_excerpt": "Определяет наличие подвала у табличного поля. Истина - подвал есть."
   },
@@ -160,7 +160,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][3]",
-    "dental_count": 926,
+    "buh_count": 926,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста надписи."
   },
@@ -175,7 +175,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][35]",
-    "dental_count": 880,
+    "buh_count": 880,
     "api_access": "read_write",
     "source_excerpt": "Указывает, нужно ли формировать автоматически состояние свойства ОтметкаНезаполненного в зависимости"
   },
@@ -190,7 +190,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][35]",
-    "dental_count": 880,
+    "buh_count": 880,
     "api_access": "read_write",
     "source_excerpt": "Свойство указывает, нужно ли сейчас в поле ввода отображать особую"
   },
@@ -205,7 +205,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][4]",
-    "dental_count": 815,
+    "buh_count": 815,
     "api_access": "read_write",
     "source_excerpt": "Определяет тип выравнивания кнопок командной панели (по левому краю, по"
   },
@@ -220,7 +220,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][base+1]",
-    "dental_count": 736,
+    "buh_count": 736,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим отображения закладок."
   },
@@ -235,7 +235,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[22]",
-    "dental_count": 736,
+    "buh_count": 736,
     "api_access": "read_write",
     "source_excerpt": "Порядковый номер элемента управления при обходе элементов страницы панели."
   },
@@ -250,7 +250,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][0][2]",
-    "dental_count": 709,
+    "buh_count": 709,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст флажка."
   },
@@ -265,7 +265,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][2]",
-    "dental_count": 536,
+    "buh_count": 536,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст подписи рамки группы."
   },
@@ -280,7 +280,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][5]",
-    "dental_count": 462,
+    "buh_count": 462,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что надпись является гиперссылкой. Если значение свойства"
   },
@@ -295,7 +295,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 320,
+    "buh_count": 320,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -310,7 +310,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 316,
+    "buh_count": 316,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -325,7 +325,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][26]",
-    "dental_count": 212,
+    "buh_count": 212,
     "api_access": "read_write",
     "source_excerpt": "Содержит список значений для осуществления выбора по нажатию кнопки списка"
   },
@@ -340,7 +340,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 206,
+    "buh_count": 206,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -355,7 +355,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][2]",
-    "dental_count": 179,
+    "buh_count": 179,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст переключателя."
   },
@@ -370,7 +370,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 105,
+    "buh_count": 105,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -385,7 +385,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 11,
+    "buh_count": 11,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -400,7 +400,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "action[4][1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит действие, ассоциированное с кнопкой командного интерфейса. Имеет смысл только"
   },
@@ -415,7 +415,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][36]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Свойство указывает, нужно ли формировать автоматически состояние свойства ВыборНезаполненного в"
   },
@@ -430,7 +430,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "b[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит тип кнопки командной панели."
   },
@@ -445,7 +445,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "X[7] group",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию кнопок, связанную с данной. Имеет смысл только для"
   },
@@ -460,7 +460,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "root[1][1][0]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст заголовка формы. По умолчанию содержит значение, заданное при"
   },
@@ -475,7 +475,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "rec[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст закладки страницы."
   },
@@ -490,7 +490,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "b[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет пометкой кнопки командной панели. Истина - кнопка помечена (нажата)."
   },
@@ -505,7 +505,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][36]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Свойство указывает, нужно ли сейчас в поле в нужный момент"
   },
@@ -520,7 +520,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки выбора из списка. Истина - кнопка"
   },
@@ -535,7 +535,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "wrapper[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя колонки. Данное свойство позволяет указать, какие данные будут"
   },
@@ -550,7 +550,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "root[2][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя связанной переменной. Для элементов управления, редактирующих данные, изменение"
   },
@@ -565,7 +565,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"D\",\"D\"|\"T\"}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Определяет допустимые части даты."
   },
@@ -580,7 +580,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"D\",\"D\"|\"T\"}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит квалификаторы даты - объект, используемый для описания допустимых значений"
   },
@@ -595,7 +595,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"N\",d,f,sign}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит общее количество разрядов числа (количество разрядов целой части плюс"
   },
@@ -610,7 +610,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности кнопки. Истина - доступна."
   },
@@ -625,7 +625,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности флажка. Истина - доступен."
   },
@@ -640,7 +640,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля. Истина - доступно."
   },
@@ -655,7 +655,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля графической схемы. Истина - доступно."
   },
@@ -670,7 +670,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности рамки. Истина - доступна."
   },
@@ -685,7 +685,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности надписи. Истина - доступна."
   },
@@ -700,7 +700,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля. Истина - доступно."
   },
@@ -715,7 +715,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля картинки. Истина - доступно."
   },
@@ -730,7 +730,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности индикатора. Истина - доступен."
   },
@@ -745,7 +745,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности элемента управления. Истина - доступен."
   },
@@ -760,7 +760,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности разделителя. Истина - доступна."
   },
@@ -775,7 +775,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля. Истина - доступно."
   },
@@ -790,7 +790,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности полосы регулирования. Истина - доступна."
   },
@@ -805,7 +805,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля. Истина - доступно."
   },
@@ -820,7 +820,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности табличного поля. Истина - доступно."
   },
@@ -835,7 +835,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности колонки. Истина - доступна."
   },
@@ -850,7 +850,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности панели. Истина - доступна."
   },
@@ -865,7 +865,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "rec[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности закладки. Истина - доступна."
   },
@@ -880,7 +880,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности командной панели. Истина - доступна."
   },
@@ -895,7 +895,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности кнопки командной панели. Истина - доступна. Может"
   },
@@ -910,7 +910,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности поля табличного документа, а также расположенных в"
   },
@@ -925,7 +925,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности элемента управления. Истина - доступен."
   },
@@ -940,7 +940,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст подвала колонки."
   },
@@ -955,7 +955,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"N\",d,f,sign}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит число разрядов дробной части."
   },
@@ -970,7 +970,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст шапки колонки."
   },
@@ -985,7 +985,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст подсказки в шапке колонки."
   },
@@ -1000,7 +1000,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "root[1][4], root[1][12], root[1][2][1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту окна формы (в логических единицах)."
   },
@@ -1015,7 +1015,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[4] - geom[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту элемента управления (в логических единицах)."
   },
@@ -1030,7 +1030,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[4] - geom[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту элемента управления (в миллиметрах)."
   },
@@ -1045,7 +1045,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][36]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает, когда нужно открывать автовыбор."
   },
@@ -1060,7 +1060,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][1][21]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет вариант начального отображения дерева связанного с табличным полем списка"
   },
@@ -1075,7 +1075,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит координату левой границы элемента управления относительно левой границы панели"
   },
@@ -1090,7 +1090,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит положение левой границы элемента управления, отсчитываемое от левой границы"
   },
@@ -1105,7 +1105,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"S\",len,fixed}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит длину строки в символах. Строка неограниченной длины имеет длину"
   },
@@ -1120,7 +1120,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Свойство регулирует работу поля ввода. Если значение свойства - Истина"
   },
@@ -1135,7 +1135,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][27]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак выделения текста отрицательного числа специальным цветом ЦветОтрицательногоЧисла ."
   },
@@ -1150,7 +1150,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[30]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя колонки."
   },
@@ -1165,7 +1165,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "rec[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя страницы в коллекции страниц панели."
   },
@@ -1180,7 +1180,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "b[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит уникальное имя кнопки командного интерфейса."
   },
@@ -1195,7 +1195,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "meta[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя элемента управления."
   },
@@ -1210,7 +1210,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"N\",d,f,sign}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит квалификаторы числа, используемые для описания допустимых значений числового типа."
   },
@@ -1225,7 +1225,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][base+3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию страниц панели."
   },
@@ -1240,7 +1240,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности/невозможности интерактивного изменения значения, введенного в поле."
   },
@@ -1255,7 +1255,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[26]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности/невозможности интерактивного изменения значения, введенного в ячейки колонки"
   },
@@ -1270,7 +1270,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "b[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит стиль отображения кнопки."
   },
@@ -1285,7 +1285,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][1][15]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим выделения строк табличного поля."
   },
@@ -1300,7 +1300,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет значение, которое будет присвоено связанному с группой переключателей переменной"
   },
@@ -1315,7 +1315,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки регулирования (стрелки вверх и вниз). Истина"
   },
@@ -1330,7 +1330,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "{\"S\",len,fixed}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит квалификаторы строки, используемые для описания допустимых значений строкового типа."
   },
@@ -1345,7 +1345,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[22]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Порядковый номер элемента управления при обходе элементов формы."
   },
@@ -1360,7 +1360,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "b[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст, отображаемый на кнопке, при соответствующем стиле отображения, определяемом"
   },
@@ -1375,7 +1375,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что флажок может иметь три возможных состояния."
   },
@@ -1390,7 +1390,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1][0][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ расположения текста флажка относительно флажка."
   },
@@ -1405,7 +1405,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1420,7 +1420,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1435,7 +1435,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1450,7 +1450,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1465,7 +1465,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1480,7 +1480,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1495,7 +1495,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1510,7 +1510,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1525,7 +1525,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "action[4][2][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1540,7 +1540,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки, которая появляется при наведении курсора."
   },
@@ -1555,7 +1555,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит координату верхней границы элемента управления относительно верхней границы панели"
   },
@@ -1570,7 +1570,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит положение верхней границы элемента управления, отсчитываемое от верхней границы"
   },
@@ -1585,7 +1585,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1600,7 +1600,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет прозрачностью области под кнопками поля выбора. Истина - фон"
   },
@@ -1615,7 +1615,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1630,7 +1630,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1645,7 +1645,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1660,7 +1660,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1675,7 +1675,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1690,7 +1690,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1705,7 +1705,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет прозрачностью области под кнопками поля. Истина - фон прозрачный."
   },
@@ -1720,7 +1720,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1735,7 +1735,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "<base>[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак прозрачности фона. Истина - фон прозрачный."
   },
@@ -1750,7 +1750,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Номер элемента объекта, с которым связано по типу поле ввода."
   },
@@ -1765,7 +1765,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет тип для значений, которые могут храниться в элементах данного"
   },
@@ -1780,7 +1780,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит тип значения, редактируемого в элементе управления."
   },
@@ -1795,7 +1795,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит объект, описывающий допустимые типы значений для элемента управления."
   },
@@ -1810,7 +1810,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[25]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет признак видимости колонки."
   },
@@ -1825,7 +1825,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "rec[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет признак видимости страницы."
   },
@@ -1840,7 +1840,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет признак видимости элемента управления."
   },
@@ -1855,7 +1855,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет признак видимости элемента управления."
   },
@@ -1870,7 +1870,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "root[1][3], root[1][11], root[1][2][1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину окна формы (в логических единицах)."
   },
@@ -1885,7 +1885,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "col_props[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину колонки в символах."
   },
@@ -1900,7 +1900,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[3] - geom[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит толщину рамки (в логических единицах)."
   },
@@ -1915,7 +1915,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[3] - geom[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину элемента управления (в логических единицах)."
   },
@@ -1930,7 +1930,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[3] - geom[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину элемента управления (в миллиметрах)."
   },
@@ -1945,7 +1945,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "info[2][0][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак автоматического переноса длинных строк текста. Истина - выполняется"
   },
@@ -1960,7 +1960,7 @@
     "status": "rw",
     "priority": "P0",
     "slot": "geom[21]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит порядок отображения элемента управления. Совокупность порядков отображения элементов управления,"
   },
@@ -1975,7 +1975,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1]",
-    "dental_count": 4497,
+    "buh_count": 4497,
     "api_access": "read_write",
     "source_excerpt": "Ограничивает состав типов вводимых значений. Может использоваться, когда данные, с"
   },
@@ -1990,7 +1990,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 614,
+    "buh_count": 614,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста надписи."
   },
@@ -2005,7 +2005,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 488,
+    "buh_count": 488,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста."
   },
@@ -2020,7 +2020,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 434,
+    "buh_count": 434,
     "api_access": "read_write",
     "source_excerpt": "Содержит тип рамки группы."
   },
@@ -2035,7 +2035,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][12][2]",
-    "dental_count": 385,
+    "buh_count": 385,
     "api_access": "read_only",
     "source_excerpt": "Содержит картинку надписи."
   },
@@ -2050,7 +2050,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 361,
+    "buh_count": 361,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона элемента управления."
   },
@@ -2065,7 +2065,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 315,
+    "buh_count": 315,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста рамки."
   },
@@ -2080,7 +2080,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 38,
+    "buh_count": 38,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки группы."
   },
@@ -2095,7 +2095,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 10,
+    "buh_count": 10,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг панели и закладок."
   },
@@ -2110,7 +2110,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 9,
+    "buh_count": 9,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона панели."
   },
@@ -2125,7 +2125,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 8,
+    "buh_count": 8,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля."
   },
@@ -2140,7 +2140,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 5,
+    "buh_count": 5,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста кнопки."
   },
@@ -2155,7 +2155,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 4,
+    "buh_count": 4,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг табличного поля."
   },
@@ -2170,7 +2170,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 2,
+    "buh_count": 2,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста поля."
   },
@@ -2185,7 +2185,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 1,
+    "buh_count": 1,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста флажка."
   },
@@ -2200,7 +2200,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 1,
+    "buh_count": 1,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста кнопок панели."
   },
@@ -2215,7 +2215,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 1,
+    "buh_count": 1,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста рамки группы."
   },
@@ -2230,7 +2230,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит элемент управления, который является источником команд для данного элемента"
   },
@@ -2245,7 +2245,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[18]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет интерактивной возможностью закрытия формы."
   },
@@ -2260,7 +2260,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{\"S\",len,fixed}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит вариант ограничения длины строки."
   },
@@ -2275,7 +2275,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{\"N\",d,f,sign}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Определяет допустимый знак числа."
   },
@@ -2290,7 +2290,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{key,mods,0} bit 2",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак использования в сочетании клавиши Alt. Истина - используется."
   },
@@ -2305,7 +2305,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона чередования строк."
   },
@@ -2320,7 +2320,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 20",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает необходимость вычисления высоты ячейки данной колонки. При этом в"
   },
@@ -2335,7 +2335,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[16]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Установка данного свойства разрешает использование для элемента управления автоматического контекстного"
   },
@@ -2350,7 +2350,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 15",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак автоматического ввода новой строки. В этом режиме новая"
   },
@@ -2365,7 +2365,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 19",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак автоматической отметки незаполненных значений подчеркиванием."
   },
@@ -2380,7 +2380,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][base+5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Если установлено Истина , то порядок обхода элементов управления определяется"
   },
@@ -2395,7 +2395,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак автоматического формирования заголовка формы. В этом режиме к"
   },
@@ -2410,7 +2410,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][26][2][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Применяется в случаях, когда требуется ограничить возможность задания значений для"
   },
@@ -2425,7 +2425,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][26][2][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Список доступных значений перечисления, появляющихся в списке выбора."
   },
@@ -2440,7 +2440,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{3,kind,{rgb}}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит синюю составляющую цвета."
   },
@@ -2455,7 +2455,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона флажка."
   },
@@ -2470,7 +2470,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона рамки группы."
   },
@@ -2485,7 +2485,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона поля картинки."
   },
@@ -2500,7 +2500,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона индикатора."
   },
@@ -2515,7 +2515,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона переключателя."
   },
@@ -2530,7 +2530,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона разделителя."
   },
@@ -2545,7 +2545,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона полосы регулирования."
   },
@@ -2560,7 +2560,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона командной панели."
   },
@@ -2575,7 +2575,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Нижняя граница периода видимых в календаре дат. За указанную границу"
   },
@@ -2590,7 +2590,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак печати таблицы в черно-белом режиме. Истина - черно-белый"
   },
@@ -2605,7 +2605,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[21]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак показа таблицы в черно-белом режиме."
   },
@@ -2620,7 +2620,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,kind,mask,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак жирности начертания шрифта."
   },
@@ -2635,7 +2635,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг флажка."
   },
@@ -2650,7 +2650,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля."
   },
@@ -2665,7 +2665,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля графической схемы."
   },
@@ -2680,7 +2680,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля HTML-документа."
   },
@@ -2695,7 +2695,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг надписи."
   },
@@ -2710,7 +2710,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля."
   },
@@ -2725,7 +2725,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля картинки."
   },
@@ -2740,7 +2740,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг индикатора."
   },
@@ -2755,7 +2755,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг переключателя."
   },
@@ -2770,7 +2770,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки разделителя."
   },
@@ -2785,7 +2785,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля текстового документа."
   },
@@ -2800,7 +2800,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг полосы регулирования."
   },
@@ -2815,7 +2815,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг поля."
   },
@@ -2830,7 +2830,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг табличного поля."
   },
@@ -2845,7 +2845,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Рамка вокруг страницы и закладок. В режиме отображения закладок рамка"
   },
@@ -2860,7 +2860,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг панели."
   },
@@ -2875,7 +2875,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит рамку вокруг поля табличного документа."
   },
@@ -2890,7 +2890,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[11][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит параметры рамки вокруг календаря."
   },
@@ -2905,7 +2905,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки кнопки."
   },
@@ -2920,7 +2920,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг флажка."
   },
@@ -2935,7 +2935,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля."
   },
@@ -2950,7 +2950,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля графической схемы."
   },
@@ -2965,7 +2965,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля HTML-документа."
   },
@@ -2980,7 +2980,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг надписи."
   },
@@ -2995,7 +2995,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля."
   },
@@ -3010,7 +3010,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля картинки."
   },
@@ -3025,7 +3025,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг индикатора."
   },
@@ -3040,7 +3040,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг переключателя."
   },
@@ -3055,7 +3055,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки разделителя."
   },
@@ -3070,7 +3070,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля текстового документа."
   },
@@ -3085,7 +3085,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки \"движка\", самой полосы регулирования и всего элемента"
   },
@@ -3100,7 +3100,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки и разделителей панели."
   },
@@ -3115,7 +3115,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг поля табличного документа."
   },
@@ -3130,7 +3130,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет рамки вокруг календаря."
   },
@@ -3145,7 +3145,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит тип начертания рамки."
   },
@@ -3160,7 +3160,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину поля отступа снизу при печати (в миллиметрах). Значение"
   },
@@ -3175,7 +3175,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона кнопки."
   },
@@ -3190,7 +3190,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона кнопок."
   },
@@ -3205,7 +3205,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона \"движка\" и самой полосы регулирования."
   },
@@ -3220,7 +3220,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона кнопок поля ввода."
   },
@@ -3235,7 +3235,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона кнопок командной панели."
   },
@@ -3250,7 +3250,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона выбранной даты, заголовка календаря, кнопок перехода на"
   },
@@ -3265,7 +3265,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "b[14]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Признак, определяющий сортировку кнопок по тексту подменю в пределах разделителей."
   },
@@ -3280,7 +3280,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста кнопки."
   },
@@ -3295,7 +3295,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста кнопок."
   },
@@ -3310,7 +3310,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста кнопок поля выбора."
   },
@@ -3325,7 +3325,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста кнопок командной панели."
   },
@@ -3340,7 +3340,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста выбранной даты, заголовка календаря, кнопок перехода на"
   },
@@ -3355,7 +3355,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Признак разрешения перемещения по датам календаря вне видимых в текущий"
   },
@@ -3370,7 +3370,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[37]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Высота ячейки данной колонки в строках текста."
   },
@@ -3385,7 +3385,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 23",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет возможность изменения позиции колонки. Если позицию колонки запрещено изменять,"
   },
@@ -3400,7 +3400,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 26",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет возможность изменения позиции всех колонок табличного поля. Истина -"
   },
@@ -3415,7 +3415,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][22]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет добавлением и удалением строк. Истина - менять состав разрешено."
   },
@@ -3430,7 +3430,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 22",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет возможность изменения настройки колонки. Истина - менять разрешено."
   },
@@ -3445,7 +3445,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 25",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет возможность настройки всех колонок табличного поля."
   },
@@ -3460,7 +3460,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 18 (inv)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет видимостью колонки. Истина - менять разрешено."
   },
@@ -3475,7 +3475,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "item[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит связанное с элементом списка значение пометки. Ложь - пометка"
   },
@@ -3490,7 +3490,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 3",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что флажок в колонке может иметь три"
   },
@@ -3505,7 +3505,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя колонки, значения которой будут отображаться флажком ячейки табличного"
   },
@@ -3520,7 +3520,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки выбора значения в поле. Истина -"
   },
@@ -3535,7 +3535,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][29]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую в кнопке выбора."
   },
@@ -3550,7 +3550,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][29]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую в кнопке выбора."
   },
@@ -3565,7 +3565,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][31]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту выпадающего списка выбора. Высота измеряется в строках."
   },
@@ -3580,7 +3580,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][31]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту выпадающего списка выбора. Высота измеряется в строках."
   },
@@ -3595,7 +3595,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][32]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит минимальную ширину выпадающего списка для выбора. Эта ширина измеряется"
   },
@@ -3610,7 +3610,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][32]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит минимальную ширину выпадающего списка для выбора. Эта ширина измеряется"
   },
@@ -3625,7 +3625,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 9",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что табличное поле находится в режиме выбора."
   },
@@ -3640,7 +3640,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности выбора типа значения пользователем перед выбором самого"
   },
@@ -3655,7 +3655,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки очистки поля. Истина - кнопка есть."
   },
@@ -3670,7 +3670,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[14]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Свойство используется для схлопывания элементов управления. При схлопывании одна из"
   },
@@ -3685,7 +3685,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак разбора по копиям при выводе таблицы на печать."
   },
@@ -3700,7 +3700,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Свойство определяет, какое контекстное меню будет показано у элемента управления."
   },
@@ -3715,7 +3715,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит количество экземпляров для вывода табличного документа на печать."
   },
@@ -3730,7 +3730,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{key,mods,0} bit 1",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак использования в сочетании клавиши Ctrl. Истина - используется."
   },
@@ -3745,7 +3745,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "b[13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает, является ли кнопка кнопкой \"по умолчанию\". Истина - является."
   },
@@ -3760,7 +3760,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5] + root[1][1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак, является ли кнопка \"кнопкой по умолчанию\". Истина -"
   },
@@ -3775,7 +3775,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[1][2][1] tail[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Истина - элемент управления будет активизирован при открытии формы."
   },
@@ -3790,7 +3790,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "action[4][2][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст, выводимый в панель состояния."
   },
@@ -3805,7 +3805,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][16]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит тип двусторонней печати."
   },
@@ -3820,7 +3820,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[36]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим редактирования ячейки табличного поля."
   },
@@ -3835,7 +3835,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает операцию перетаскивания в поле картинки - приемнике данных."
   },
@@ -3850,7 +3850,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 20",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает начало операции перетаскивания в табличном поле - приемнике данных."
   },
@@ -3865,7 +3865,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[26]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает перетаскивать данные в поле табличного документа - источнике данных."
   },
@@ -3880,7 +3880,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][11]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает операцию перетаскивания в поле календаря - приемнике данных."
   },
@@ -3895,7 +3895,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает начало операции перетаскивания в поле картинки - источнике данных."
   },
@@ -3910,7 +3910,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 14",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает начало операции перетаскивания в табличном поле - источнике данных."
   },
@@ -3925,7 +3925,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[25]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает перетаскивать данные из поля табличного документа - источника данных."
   },
@@ -3940,7 +3940,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает начало операции перетаскивания в поле календаря - источнике данных."
   },
@@ -3955,7 +3955,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Верхняя граница периода видимых в календаре дат. За указанную границу"
   },
@@ -3970,7 +3970,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[19]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет поведение при нажатии на клавишу Enter."
   },
@@ -3985,7 +3985,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[3] 9a7643d2[6] + info[2][0][24]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Если свойство установлено в Истина , то включается расширенный режим"
   },
@@ -4000,7 +4000,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона, на котором изображается галочка флажка."
   },
@@ -4015,7 +4015,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона поля выбора."
   },
@@ -4030,7 +4030,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона поля."
   },
@@ -4045,7 +4045,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона, на котором изображается точка переключателя."
   },
@@ -4060,7 +4060,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона поля редактирования."
   },
@@ -4075,7 +4075,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона табличного поля."
   },
@@ -4090,7 +4090,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[16]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона поля данных колонки."
   },
@@ -4105,7 +4105,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона поля календаря."
   },
@@ -4120,7 +4120,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет галочки флажка."
   },
@@ -4135,7 +4135,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста поля выбора."
   },
@@ -4150,7 +4150,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста поля."
   },
@@ -4165,7 +4165,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет метки переключателя."
   },
@@ -4180,7 +4180,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста поля."
   },
@@ -4195,7 +4195,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[17]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста поля данных колонки."
   },
@@ -4210,7 +4210,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста поля календаря."
   },
@@ -4225,7 +4225,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак начала группы элементов управления данным элементом управления. Установка"
   },
@@ -4240,7 +4240,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак автоматического масштабирования изображения при печати."
   },
@@ -4255,7 +4255,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][20]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак зафиксированности фона табличного документа. Зафиксированный фон остается неподвижным"
   },
@@ -4270,7 +4270,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][11]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит количество зафиксированных слева колонок. Зафиксированные колонки остаются на месте"
   },
@@ -4285,7 +4285,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит количество зафиксированных справа колонок. Зафиксированные колонки остаются на месте"
   },
@@ -4300,7 +4300,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста поля."
   },
@@ -4315,7 +4315,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста."
   },
@@ -4330,7 +4330,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста индикатора."
   },
@@ -4345,7 +4345,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста переключателя."
   },
@@ -4360,7 +4360,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт, используемый в поле текстового документа. Если шрифт не"
   },
@@ -4375,7 +4375,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт, используемый при отображении текста в ячейках табличного поля."
   },
@@ -4390,7 +4390,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста на закладках панели."
   },
@@ -4405,7 +4405,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста в календаре."
   },
@@ -4420,7 +4420,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона подвала табличного поля."
   },
@@ -4435,7 +4435,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[20]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона подвала колонки."
   },
@@ -4450,7 +4450,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][19]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт, используемый при выводе надписей в подвале табличного поля."
   },
@@ -4465,7 +4465,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[24]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт, используемый при выводе текста подвала."
   },
@@ -4480,7 +4480,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][17]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Высота подвала табличного поля в строках."
   },
@@ -4495,7 +4495,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[29]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста в подвале табличного поля."
   },
@@ -4510,7 +4510,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, расположенную в подвале колонки."
   },
@@ -4525,7 +4525,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][15]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит размер нижнего колонтитула (в миллиметрах). Значение по умолчанию 10."
   },
@@ -4540,7 +4540,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста подвала табличного поля."
   },
@@ -4555,7 +4555,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[21]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста подвала колонки."
   },
@@ -4570,7 +4570,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет формат отображения значения. Формат задается текстовой строкой."
   },
@@ -4585,7 +4585,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][34]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет формат отображения значения. Представляет собой строковое значение, включающее параметры"
   },
@@ -4600,7 +4600,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[34]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Задает формат отображения значения."
   },
@@ -4615,7 +4615,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{3,kind,{rgb}}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит зеленую составляющую цвета."
   },
@@ -4630,7 +4630,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 0",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет наличие шапки у табличного поля. Истина - шапка есть."
   },
@@ -4645,7 +4645,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона шапки табличного поля."
   },
@@ -4660,7 +4660,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[18]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона шапки колонки."
   },
@@ -4675,7 +4675,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][18]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт, используемый при выводе надписей в шапке табличного поля."
   },
@@ -4690,7 +4690,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[23]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт текста шапки колонки."
   },
@@ -4705,7 +4705,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][16]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту шапки табличного поля в строках."
   },
@@ -4720,7 +4720,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[27]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста в шапке колонки."
   },
@@ -4735,7 +4735,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[11]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, расположенную в шапке колонки."
   },
@@ -4750,7 +4750,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][14]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит размер верхнего колонтитула (в миллиметрах). Значение по умолчанию 10."
   },
@@ -4765,7 +4765,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста шапки табличного поля."
   },
@@ -4780,7 +4780,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[19]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста шапки колонки."
   },
@@ -4795,7 +4795,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет, которым будут отмечаться выходные дни."
   },
@@ -4810,7 +4810,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста на кнопке."
   },
@@ -4825,7 +4825,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][0][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста флажка. Не зависит от расположения"
   },
@@ -4840,7 +4840,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста переключателя."
   },
@@ -4855,7 +4855,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][17]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального выравнивания текста в поле ввода."
   },
@@ -4870,7 +4870,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[28]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ горизонтального расположения текста в колонке."
   },
@@ -4885,7 +4885,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 3",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак видимости горизонтальных линий - разделителей строк. Истина -"
   },
@@ -4900,7 +4900,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак использования горизонтальной полосы прокрутки табличного поля."
   },
@@ -4915,7 +4915,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[31]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Истина - отображает горизонтальную полосу прокрутки в табличном документе."
   },
@@ -4930,7 +4930,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что поле картинки является гиперссылкой. Если значение"
   },
@@ -4945,7 +4945,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 21",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Истина - отображает значения ячеек данной колонки как гиперссылки. При"
   },
@@ -4960,7 +4960,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][20]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет вариант перехода на строку связанного с табличным полем списка"
   },
@@ -4975,7 +4975,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,1,60,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак наклонного начертания шрифта."
   },
@@ -4990,7 +4990,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{key,mods,0}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит основную клавишу сочетания."
   },
@@ -5005,7 +5005,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][12][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Задает режим расположения картинки внутри элемента управления."
   },
@@ -5020,7 +5020,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит число, на которое изменится значение элемента управления при перемещении"
   },
@@ -5035,7 +5035,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину поля отступа слева при печати (в миллиметрах). Значение"
   },
@@ -5050,7 +5050,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[26]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет положение колонки по отношению к предыдущей."
   },
@@ -5065,7 +5065,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак выделения текста надписи, первый значимый символ которого \"-\","
   },
@@ -5080,7 +5080,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 15",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак выделения текста отрицательного числа специальным цветом ЦветОтрицательногоЧисла ."
   },
@@ -5095,7 +5095,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит способ, которым будет отображаться разметка полосы регулирования."
   },
@@ -5110,7 +5110,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит значение шага, с которым будет отображаться разметка полосы регулирования."
   },
@@ -5125,7 +5125,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[3] 9a7643d2[4] + info[2][0][21]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит посимвольную строку маски интерактивного ввода текста в поле. В"
   },
@@ -5140,7 +5140,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит максимальное значение диапазона изменения. Если значение больше или равно"
   },
@@ -5155,7 +5155,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит максимальное значение диапазона изменения. Это значение устанавливается при перемещении"
   },
@@ -5170,7 +5170,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][20]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит максимальное значение, которое возможно ввести в поле. Имеет смысл"
   },
@@ -5185,7 +5185,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет тип командной панели у кнопки."
   },
@@ -5200,7 +5200,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит минимальное значение диапазона изменения. Если значение меньше или равно"
   },
@@ -5215,7 +5215,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит минимальное значение диапазона изменения. Это значение устанавливается при перемещении"
   },
@@ -5230,7 +5230,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][19]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит минимальное значение, которое возможно ввести в поле. Имеет смысл"
   },
@@ -5245,7 +5245,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что действие, выполняемое кнопкой, приводит к изменению"
   },
@@ -5260,7 +5260,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что данный элемент управления будет менять данные."
   },
@@ -5275,7 +5275,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак многострочного режима отображения текста кнопки. Истина - используется."
   },
@@ -5290,7 +5290,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[3] 9a7643d2[3] + info[2][0][26]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности ввода текста, состоящего из нескольких строк. Истина"
   },
@@ -5305,7 +5305,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,kind,mask,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит имя шрифта, если оно задано (например, \"Times New Roman\")."
   },
@@ -5320,7 +5320,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст, отображаемый, если картинка не выбрана."
   },
@@ -5335,7 +5335,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки открытия значения поля. Истина - кнопка"
   },
@@ -5350,7 +5350,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит вариант ориентации индикатора."
   },
@@ -5365,7 +5365,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит вариант ориентации разделителя. Горизонтальный разделитель делит окно формы на"
   },
@@ -5380,7 +5380,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит способ ориентации полосы регулирования."
   },
@@ -5395,7 +5395,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит способ расположения элемента управления в форме. Если указано Авто"
   },
@@ -5410,7 +5410,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Ограничение вывода на печать, сохранения, работы с буфером обмена."
   },
@@ -5425,7 +5425,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][24]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Ограничение вывода на печать, сохранения, работы с буфером обмена."
   },
@@ -5440,7 +5440,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Ограничение вывода на печать, сохранения, работы с буфером обмена."
   },
@@ -5455,7 +5455,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[28]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Ограничение вывода на печать, сохранения, работы с буфером обмена."
   },
@@ -5470,7 +5470,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ориентацию страницы при выводе таблицы на печать."
   },
@@ -5485,7 +5485,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][base][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит режим расположения картинки внутри элемента управления."
   },
@@ -5500,7 +5500,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[3] 9a7643d2[5] + info[2][0][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак специального режима для ввода пароля, в котором все"
   },
@@ -5515,7 +5515,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит количество страниц на листе при выводе табличного документа на"
   },
@@ -5530,7 +5530,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую на кнопке."
   },
@@ -5545,7 +5545,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][28]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, которая располагается непосредственно в поле выбора. Картинка всегда"
   },
@@ -5560,7 +5560,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит отображаемую в поле картинку."
   },
@@ -5575,7 +5575,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][28]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, которая располагается непосредственно в поле ввода. Картинка всегда"
   },
@@ -5590,7 +5590,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][base][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую на панели в качестве фона. Многостраничная панель"
   },
@@ -5605,7 +5605,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "action[4][2][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, выводимую на кнопке, при соответствующем стиле ее отображения,"
   },
@@ -5620,7 +5620,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "item[1]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, связанную с данным элементом списка значений."
   },
@@ -5635,7 +5635,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет положение картинки на кнопке относительно текста."
   },
@@ -5650,7 +5650,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим приспособления оригинальных размеров картинки к размеру области, в"
   },
@@ -5665,7 +5665,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Указывает размер картинки надписи."
   },
@@ -5680,7 +5680,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим приспособления оригинальных размеров картинки к размеру поля картинки."
   },
@@ -5695,7 +5695,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][base][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим приспособления оригинальных размеров картинки к размеру панели."
   },
@@ -5710,7 +5710,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "item[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит внешнее представление элемента списка значений."
   },
@@ -5725,7 +5725,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][17]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит точность печати документа в режиме веб-клиента."
   },
@@ -5740,7 +5740,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит масштаб изображения при выводе на печать в процентах."
   },
@@ -5755,7 +5755,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак защиты таблицы от редактирования и копирования. В режиме"
   },
@@ -5770,7 +5770,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{3,kind,{rgb}}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит красную составляющую цвета."
   },
@@ -5785,7 +5785,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности/невозможности интерактивного изменения значения, введенного в поле."
   },
@@ -5800,7 +5800,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что поле графической схемы открыто в режиме"
   },
@@ -5815,7 +5815,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет возможность редактирования поля списка. Если значение свойства Истина ,"
   },
@@ -5830,7 +5830,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 10",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности/невозможности интерактивного изменения содержимого табличного поля. Если значение"
   },
@@ -5845,7 +5845,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что табличный документ открыт в режиме просмотра."
   },
@@ -5860,7 +5860,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что текстовый документ открыт в режиме просмотра."
   },
@@ -5875,7 +5875,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину поля отступа справа при печати (в миллиметрах). Значение"
   },
@@ -5890,7 +5890,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит режим интерактивного ввода новых строк в табличное поле. Режим"
   },
@@ -5905,7 +5905,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][14]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Определяет режим выделения строки табличного поля."
   },
@@ -5920,7 +5920,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, которая может выводиться в поле данных колонки."
   },
@@ -5935,7 +5935,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][19]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак сохранения свойств отображения табличного документа: отображения заголовков, сетки,"
   },
@@ -5950,7 +5950,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,1,60,...,scale}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Задает увеличение/уменьшение размера шрифта на указанное количество процентов относительно исходного."
   },
@@ -5965,7 +5965,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][base+6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Управляет режимом прокручиваемых страниц. Истина - устанавливает режим прокручиваемых страниц."
   },
@@ -5980,7 +5980,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Задает режим бегущей строки. В режиме бегущей строки содержимое надписи"
   },
@@ -5995,7 +5995,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Признак поведения панели. Если Ложь , то панель участвует в"
   },
@@ -6010,7 +6010,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][29]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую в кнопке выбора."
   },
@@ -6025,7 +6025,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][29]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую в кнопке выбора."
   },
@@ -6040,7 +6040,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона выделенных ячеек табличного поля."
   },
@@ -6055,7 +6055,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона выделенных в календаре дат."
   },
@@ -6070,7 +6070,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет режим выделения дат в календаре."
   },
@@ -6085,7 +6085,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста выделенных ячеек табличного поля."
   },
@@ -6100,7 +6100,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста выделенных в календаре дат."
   },
@@ -6115,7 +6115,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][base+4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет, изменяется ли состав отображаемых на панели элементов управления при"
   },
@@ -6130,7 +6130,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{key,mods,0} bit 0",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак использования в сочетании клавиши Shift. Истина - используется."
   },
@@ -6145,7 +6145,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит сочетание клавиш, при нажатии на которые произойдет выполнение действия,"
   },
@@ -6160,7 +6160,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит сочетание клавиш, по нажатию которых происходит нажатие на надпись."
   },
@@ -6175,7 +6175,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит сочетание клавиш, по нажатию которых происходит нажатие на картинку."
   },
@@ -6190,7 +6190,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][33]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит сочетание клавиш, по нажатию которых происходит активизация поля."
   },
@@ -6205,7 +6205,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "action[4][2][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит сочетание клавиш, при нажатии на которые произойдет выполнение действия,"
   },
@@ -6220,7 +6220,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения пометок в строках поля списка. Истина -"
   },
@@ -6235,7 +6235,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения строки с текущей датой. Истина - отображается."
   },
@@ -6250,7 +6250,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[18]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения сетки таблицы. Истина - отображается."
   },
@@ -6265,7 +6265,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[20]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения группировок. Истина - отображается."
   },
@@ -6280,7 +6280,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[19]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения заголовков колонок и строк таблицы. Заголовки содержат"
   },
@@ -6295,7 +6295,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 0",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак вывода линий иерархии и пиктограмм раскрытия узлов дерева."
   },
@@ -6310,7 +6310,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 12",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения подвала колонки в подвале табличного поля. Истина"
   },
@@ -6325,7 +6325,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[9] bit 11",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения шапки колонки в шапке табличного поля. Истина"
   },
@@ -6340,7 +6340,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что на индикаторе либо рядом с ним"
   },
@@ -6355,7 +6355,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения картинок в строках поля списка. Истина -"
   },
@@ -6370,7 +6370,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[27]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит тип отображения выделения."
   },
@@ -6385,7 +6385,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет стиль заполнения индикатора."
   },
@@ -6400,7 +6400,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,kind,mask,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит размер шрифта, если он задан."
   },
@@ -6415,7 +6415,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак изменения размера окна."
   },
@@ -6430,7 +6430,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[33]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак изменения размера колонки."
   },
@@ -6445,7 +6445,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак того, что данная колонка будет пропущена при переходе"
   },
@@ -6460,7 +6460,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "meta[4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак, при установке которого, элемент управления будет пропускаться при"
   },
@@ -6475,7 +6475,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия/отсутствия кнопки регулирования (стрелки вверх и вниз). Истина"
   },
@@ -6490,7 +6490,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит число (количество процентов), на которое изменится значение индикатора при"
   },
@@ -6505,7 +6505,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит число, на которое изменится значение элемента управления при перемещении"
   },
@@ -6520,7 +6520,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][18]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет направление перехода при завершении редактирования ячейки таблицы."
   },
@@ -6535,7 +6535,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,1,60,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак зачеркивания при начертании шрифта."
   },
@@ -6550,7 +6550,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определят стиль отображения формы. Может быть установлено в одно из"
   },
@@ -6565,7 +6565,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста флажка."
   },
@@ -6580,7 +6580,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста."
   },
@@ -6595,7 +6595,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста переключателя."
   },
@@ -6610,7 +6610,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет, которым отображается разметка полосы регулирования."
   },
@@ -6625,7 +6625,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "<base>[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста на закладках панели."
   },
@@ -6640,7 +6640,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[5] + info[2][0][12]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак возможности редактирования содержимого поля как обычного текста. Если"
   },
@@ -6655,7 +6655,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "col_props[22]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт, которым выводятся данные в колонке."
   },
@@ -6670,7 +6670,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ расположения текста переключателя относительно переключателя."
   },
@@ -6685,7 +6685,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "rec[2][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую на закладке страницы. Картинка отображается слева от"
   },
@@ -6700,7 +6700,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[14][11]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину поля отступа сверху при печати (в миллиметрах). Значение"
   },
@@ -6715,7 +6715,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[23]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет расположение маркеров секций, сворачивающих горизонтальные группы таблицы. Если значение"
   },
@@ -6730,7 +6730,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[22]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет расположение маркеров секций, сворачивающих вертикальные группы таблицы. Если значение"
   },
@@ -6745,7 +6745,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{3,kind,{...}}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит вид цвета."
   },
@@ -6760,7 +6760,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][3][3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит вид рамки, определяющий способ ее задания: абсолютный или из"
   },
@@ -6775,7 +6775,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,kind,mask,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит вид шрифта."
   },
@@ -6790,7 +6790,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{4,kind,ref,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит вид картинки."
   },
@@ -6805,7 +6805,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "{7,1,60,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак подчеркивания при начертании шрифта."
   },
@@ -6820,7 +6820,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 4",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак чередования цветов строк. Истина - цвета чередуются."
   },
@@ -6835,7 +6835,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Включает использование контекстного меню для картинки. Истина - используется."
   },
@@ -6850,7 +6850,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "item[3]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит хранимое элементом списка значение."
   },
@@ -6865,7 +6865,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ вертикального расположения текста на кнопке."
   },
@@ -6880,7 +6880,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][0][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ вертикального расположения текста флажка."
   },
@@ -6895,7 +6895,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][4]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ вертикального расположения текста на кнопке."
   },
@@ -6910,7 +6910,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ вертикального расположения текста переключателя."
   },
@@ -6925,7 +6925,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][0][18]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет способ вертикального выравнивания текста в поле ввода."
   },
@@ -6940,7 +6940,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][1] bit 2",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак видимости вертикальных линий - разделителей колонок. Истина -"
   },
@@ -6955,7 +6955,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[2][1][10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак использования вертикальной полосы прокрутки табличного поля."
   },
@@ -6970,7 +6970,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[32]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак наличия у поля табличного документа вертикальной полосы прокрутки."
   },
@@ -6985,7 +6985,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[14]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает способ отображения окна формы."
   },
@@ -7000,7 +7000,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[15]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Описывает положение окна в обычном или свободном состояниях. Влияет на"
   },
@@ -7015,7 +7015,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "root[6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет состояние окна формы. Данное состояние можно установить окну только"
   },
@@ -7030,7 +7030,7 @@
     "status": "rw",
     "priority": "P1",
     "slot": "info[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Если свойство установлено ( Истина ), то для картинки, не"
   },
@@ -7045,7 +7045,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[1][7]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает окну переключаться в прячущееся состояние. Истина - разрешено."
   },
@@ -7060,7 +7060,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[1][6]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает окну переключаться в прикрепленное состояние. Истина - разрешено."
   },
@@ -7075,7 +7075,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[1][8]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает окну переключаться в свободное состояние. Истина - разрешено."
   },
@@ -7090,7 +7090,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[10]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит разрешение/запрещение окну соединяться с другими окнами. Истина - разрешено."
   },
@@ -7105,7 +7105,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[1][5]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает окну переключаться в обычное состояние. Истина - разрешено."
   },
@@ -7120,7 +7120,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[13][2]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, отображаемую в заголовке формы."
   },
@@ -7135,7 +7135,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[16]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает или запрещает изменение способа отображения окна формы."
   },
@@ -7150,7 +7150,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Если это свойство установлено ( Истина ), окно будет соединяться"
   },
@@ -7165,7 +7165,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[17]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает или запрещает окну формы открываться в режиме рабочего стола."
   },
@@ -7180,7 +7180,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "<base>[13]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что элемент встроен в ячейку табличного документа."
   },
@@ -7195,7 +7195,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "<base>[17]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак вывода на печать элемента управления."
   },
@@ -7210,7 +7210,7 @@
     "status": "ro",
     "priority": "P2",
     "slot": "{8,ver,pic1,pic2,pic3,...}",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Истина - картинка содержит несколько вариантов изображений."
   },
@@ -7225,7 +7225,7 @@
     "status": "rw",
     "priority": "P2",
     "slot": "root[1][9]",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Описывает положение окна в прикрепленном или прячущемся состояниях. Влияет на"
   },
@@ -7240,7 +7240,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Набор свойств содержит значения реквизитов формы. Доступ к значению осуществляется"
   },
@@ -7255,7 +7255,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Набор свойств содержит кнопки командного интерфейса. Имена свойств совпадают с"
   },
@@ -7270,7 +7270,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Набор свойств содержит значения полей колонок табличного поля. Доступ к"
   },
@@ -7285,7 +7285,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Набор свойств содержит элементы управления, размещенные на форме. Доступ к"
   },
@@ -7300,7 +7300,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит активный объект географической схемы, который выбран пользователем интерактивно."
   },
@@ -7315,7 +7315,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит режим выравнивания текста в ячейке по горизонтали."
   },
@@ -7330,7 +7330,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит допустимую длину двоичных данных."
   },
@@ -7345,7 +7345,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию именованных областей таблицы."
   },
@@ -7360,7 +7360,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает необходимость вычисления высоты ячейки. При этом свойство ВысотаЯчейки указывает"
   },
@@ -7375,7 +7375,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона ячейки."
   },
@@ -7390,7 +7390,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона строки."
   },
@@ -7405,7 +7405,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона даты."
   },
@@ -7420,7 +7420,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет фона периода."
   },
@@ -7435,7 +7435,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит фоновую картинку таблицы."
   },
@@ -7450,7 +7450,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Дата начала периода, оформление которого содержит объект ОформлениеПериода ."
   },
@@ -7465,7 +7465,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит квалификаторы двоичных данных."
   },
@@ -7480,7 +7480,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию кнопок, образующих командную панель."
   },
@@ -7495,7 +7495,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает высоту ячейки в строках текста."
   },
@@ -7510,7 +7510,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию значений ОформлениеЯчейки для строки."
   },
@@ -7525,7 +7525,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит значение флажка."
   },
@@ -7540,7 +7540,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит значение флажка, отображаемого в колонке. Если колонка, отображающая данное"
   },
@@ -7555,7 +7555,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит начальное значение выбора, переданное в форму, открываемую для выбора"
   },
@@ -7570,7 +7570,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит список значений для осуществления выбора по нажатию кнопки списка"
   },
@@ -7585,7 +7585,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что форма находится в режиме выбора. Данный"
   },
@@ -7600,7 +7600,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что форму необходимо закрывать после осуществления выбора."
   },
@@ -7615,7 +7615,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что форма должна закрываться при закрытии формы-владельца."
   },
@@ -7630,7 +7630,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию колонок табличного поля."
   },
@@ -7645,7 +7645,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию колонок таблицы значений."
   },
@@ -7660,7 +7660,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию колонок дерева значений."
   },
@@ -7675,7 +7675,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит элемент управления, который будет использован в качестве редактора значения"
   },
@@ -7690,7 +7690,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Используется для доступа к коллекции размещенных на форме элементов управления."
   },
@@ -7705,7 +7705,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущую активную область или рисунок табличного документа."
   },
@@ -7720,7 +7720,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущую колонку табличного поля. Если данному свойству присвоить КолонкаТабличногоПоля"
   },
@@ -7735,7 +7735,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущий активный элемент формы."
   },
@@ -7750,7 +7750,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит данные текущей строки табличного поля."
   },
@@ -7765,7 +7765,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Текущая выделенная в календаре дата. Соответствует значению, установленному в календаре."
   },
@@ -7780,7 +7780,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Текущий элемент графической схемы."
   },
@@ -7795,7 +7795,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущую страницу панели."
   },
@@ -7810,7 +7810,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущего родителя в режиме иерархического списка."
   },
@@ -7825,7 +7825,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущую строку поля списка."
   },
@@ -7840,7 +7840,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текущую строку табличного поля."
   },
@@ -7855,7 +7855,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Дата, оформление которой содержит данный объект ОформлениеДаты ."
   },
@@ -7870,7 +7870,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Коллекция оформления дат для данного периода."
   },
@@ -7885,7 +7885,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Предоставляет доступ к HTML документу. Описание объекта, в целом, определяется"
   },
@@ -7900,7 +7900,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию рисунков табличного документа."
   },
@@ -7915,7 +7915,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит долготу восточной границы области."
   },
@@ -7930,7 +7930,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию сводных таблиц табличного документа."
   },
@@ -7945,7 +7945,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности даты для выбора и активизации. Истина -"
   },
@@ -7960,7 +7960,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак доступности периода. Истина - доступен."
   },
@@ -7975,7 +7975,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Дата конца периода, оформление которого содержит объект ОформлениеПериода ."
   },
@@ -7990,7 +7990,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит количество зафиксированных слева колонок. Зафиксированные колонки не исчезают из"
   },
@@ -8005,7 +8005,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит количество зафиксированных сверху строк. Зафиксированные строки не исчезают из"
   },
@@ -8020,7 +8020,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт ячейки."
   },
@@ -8035,7 +8035,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит шрифт строки."
   },
@@ -8050,7 +8050,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Шрифт текста, представляющего дату."
   },
@@ -8065,7 +8065,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Шрифт оформления периода."
   },
@@ -8080,7 +8080,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит нижний колонтитул табличного документа."
   },
@@ -8095,7 +8095,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит форму или элемент управления, который является владельцем данной формы."
   },
@@ -8110,7 +8110,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит верхний колонтитул табличного документа."
   },
@@ -8125,7 +8125,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит дополнительную пиктограмму, расположенную в шапке колонки. Картинка располагается с"
   },
@@ -8140,7 +8140,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Истина - отображает значение ячейки табличного поля как гиперссылку. При"
   },
@@ -8155,7 +8155,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию индексов таблицы значений."
   },
@@ -8170,7 +8170,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет раскрыта или закрыта страница. Истина - раскрыта."
   },
@@ -8185,7 +8185,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит код языка, строки на котором будут использоваться для вывода"
   },
@@ -8200,7 +8200,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит максимальную длину двоичных данных. 0 - длина неограниченна."
   },
@@ -8215,7 +8215,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет разделитель строк. Может принимать только следующие значения: ВК ,"
   },
@@ -8230,7 +8230,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Свойство указывает, нужно ли в ячейке отображать отметку незаполненного или"
   },
@@ -8245,7 +8245,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит признак монопольного открытия формы. Истина - форма открыта в"
   },
@@ -8260,7 +8260,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Признак изменения (модифицированности) данных в форме. Модифицированность отображается символом (*)"
   },
@@ -8275,7 +8275,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Разрешает или запрещает выбор нескольких строк из табличных полей. Истина"
   },
@@ -8290,7 +8290,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит имя колонки, связанной с ячейкой."
   },
@@ -8305,7 +8305,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит долготу северной границы области."
   },
@@ -8320,7 +8320,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит высоту страницы в миллиметрах для размера бумаги Custom."
   },
@@ -8335,7 +8335,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит тип чередования страниц при печати."
   },
@@ -8350,7 +8350,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит название размера страницы в виде строки. Неопределено - размер"
   },
@@ -8365,7 +8365,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ширину страницы в миллиметрах для размера страницы Custom."
   },
@@ -8380,7 +8380,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит главную панель формы."
   },
@@ -8395,7 +8395,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию параметров макета табличного документа."
   },
@@ -8410,7 +8410,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Коллекция параметров для текстового макета."
   },
@@ -8425,7 +8425,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит картинку, выводимую в ячейке, или коллекцию картинок."
   },
@@ -8440,7 +8440,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Индекс картинки в коллекции картинок."
   },
@@ -8455,7 +8455,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит значение картинки, отображаемой в колонке. Если колонка, отображающая данное"
   },
@@ -8470,7 +8470,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит область табличного документа, которая будет выводиться на печать."
   },
@@ -8485,7 +8485,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ключ значения, в котором сохраняются параметры печати таблицы. Параметры"
   },
@@ -8500,7 +8500,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя принтера, известного в системе, на который будет выводиться"
   },
@@ -8515,7 +8515,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак использования формы в режиме просмотра. Если свойство установлено"
   },
@@ -8530,7 +8530,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет возможность редактирования ячейки."
   },
@@ -8545,7 +8545,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит область колонок, которая будет повторяться при печати каждого нового"
   },
@@ -8560,7 +8560,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит область строк, которая будет повторяться при печати каждого нового"
   },
@@ -8575,7 +8575,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит данные строки. Тип возвращаемого значения зависит от типа данных,"
   },
@@ -8590,7 +8590,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию строк 1-го уровня дерева значений."
   },
@@ -8605,7 +8605,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит масштаб отображения географической схемы."
   },
@@ -8620,7 +8620,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержи признак масштабирования географической схемы."
   },
@@ -8635,7 +8635,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит выделенные области табличного документа."
   },
@@ -8650,7 +8650,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Коллекция выделенных дат."
   },
@@ -8665,7 +8665,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит коллекцию выделенных строк табличного поля."
   },
@@ -8680,7 +8680,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит выделенный пользователем текст поля текстового документа на момент чтения"
   },
@@ -8695,7 +8695,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит выделенный пользователем текст поля ввода на момент чтения свойства."
   },
@@ -8710,7 +8710,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения флажка в ячейке."
   },
@@ -8725,7 +8725,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак показа дополнительной информационной панели, в которой отображаются координаты"
   },
@@ -8740,7 +8740,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения картинки в ячейке. Истина - отображается."
   },
@@ -8755,7 +8755,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак отображения текста. Истина - отображается."
   },
@@ -8770,7 +8770,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Предоставляет доступ к параметрам показываемой области в режиме масштабирования ЗаданнаяОбласть"
   },
@@ -8785,7 +8785,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит долготу южной границы области."
   },
@@ -8800,7 +8800,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит количество строк в таблице."
   },
@@ -8815,7 +8815,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит количество колонок в таблице."
   },
@@ -8830,7 +8830,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит признак того, что табличный документ является макетом. Для макетов"
   },
@@ -8845,7 +8845,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит код языка, который используется для получения областей методом ПолучитьОбласть"
   },
@@ -8860,7 +8860,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст ячейки."
   },
@@ -8875,7 +8875,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста ячейки."
   },
@@ -8890,7 +8890,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста строки."
   },
@@ -8905,7 +8905,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста даты."
   },
@@ -8920,7 +8920,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит цвет текста периода."
   },
@@ -8935,7 +8935,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_only",
     "source_excerpt": "Содержит данную форму. Может быть использовано в модуле формы для"
   },
@@ -8950,7 +8950,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит текст всплывающей подсказки для даты, которая появляется при наведении"
   },
@@ -8965,7 +8965,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Пользовательский идентификатор формы. Может быть автоматически назначен, если задан соответствующий"
   },
@@ -8980,7 +8980,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит полное имя файла, которое будет использоваться при сохранении текстового"
   },
@@ -8995,7 +8995,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя файла, в который сохраняется документ, если пользователь выполнил"
   },
@@ -9010,7 +9010,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит значение, отображаемое в колонке. Если колонка, отображающая данное значение"
   },
@@ -9025,7 +9025,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит значение, которое может быть назначено странице и затем получено."
   },
@@ -9040,7 +9040,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Предоставляет доступ к значению, которое редактируется в элементе управления. Тип"
   },
@@ -9055,7 +9055,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Предоставляет доступ к значению, которое редактируется в элементе управления. Тип"
   },
@@ -9070,7 +9070,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Предоставляет доступ к значению, которое редактируется в элементе управления."
   },
@@ -9085,7 +9085,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Определяет признак видимости ячейки. Если все ячейки в строке составной"
   },
@@ -9100,7 +9100,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит долготу западной границы области."
   },
@@ -9115,7 +9115,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ключ для сохранения размеров и положения окна данной формы."
   },
@@ -9130,7 +9130,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит ключ для сохранения размеров и положения окна данной формы."
   },
@@ -9145,7 +9145,7 @@
     "status": "runtime",
     "priority": "P4",
     "slot": "Runtime-only (память 1С)",
-    "dental_count": 0,
+    "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Содержит имя для сохранения размеров и положения окна данной формы."
   }

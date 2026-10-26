@@ -2,7 +2,7 @@
   "generated_at": "2026-10-24",
   "target_ordinary_forms_goal": "90% реальных форм",
   "production_database": {
-    "name": "dental (Медицинская/стоматологическая конфигурация 1С 8.2)",
+    "name": "Бух. (бухгалтерская конфигурация 1С 8.2)",
     "total_forms": 1481,
     "total_controls": 38635,
     "forms_with_caption": 1457,

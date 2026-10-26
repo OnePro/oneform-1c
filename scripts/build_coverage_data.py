@@ -2,7 +2,7 @@
 """
 build_coverage_data.py
 Анализ и сведение данных исследования (1c-ordinary-forms-research),
-реальной базы (dental: 1481 форма) и текущего статуса oneform.
+реальной базы (Бух.: 1481 форма) и текущего статуса oneform.
 Генерирует docs/coverage/data/ (summary.json, controls.json, properties.json, roadmap.json, dataset.js).
 """
 
@@ -17,7 +17,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RESEARCH_DIR = pathlib.Path(r"C:\Users\egor\projects\donor1c_objects\1c-ordinary-forms-research")
-DENTAL_DIR = pathlib.Path(r"C:\Users\egor\Documents\1с\export_db\dental")
+BUH_DIR = pathlib.Path(r"C:\Users\egor\Documents\1с\export_db\dental")
 OUT_DIR = ROOT / "docs" / "coverage" / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -89,9 +89,9 @@ ALL_27_CONTROLS = [
     {"xml": "ActiveXControl", "api": "ActiveXControl", "name_ru": "Элемент ActiveX", "in_donor": False},
 ]
 
-# 3. Сканирование реальной конфигурации dental
-print(f"Сканирование конфигурации: {DENTAL_DIR}")
-form_xml_files = list(DENTAL_DIR.glob("**/src/Forms/**/Form.xml"))
+# 3. Сканирование реальной конфигурации Бух.
+print(f"Сканирование конфигурации: {BUH_DIR}")
+form_xml_files = list(BUH_DIR.glob("**/src/Forms/**/Form.xml"))
 total_forms = len(form_xml_files)
 print(f"Найдено форм Form.xml: {total_forms}")
 
@@ -139,7 +139,7 @@ for p in form_xml_files:
     except Exception as e:
         pass
 
-print(f"Всего контролов в базе dental: {total_controls_in_db}")
+print(f"Всего контролов в базе Бух.: {total_controls_in_db}")
 
 # 4. База знаний по свойствам и статусам oneform
 # Статусы:
@@ -674,9 +674,9 @@ for prop in catalog.get("properties", []):
             xml_tag = name_en
             slot = "Не исследован"
 
-    # Частотность в базе dental
+    # Частотность в базе Бух.
     xml_ctl = API_TO_XML_CTL.get(owner, "")
-    dental_cnt = ctl_prop_counts[xml_ctl].get(xml_tag, 0) if xml_ctl else 0
+    buh_cnt = ctl_prop_counts[xml_ctl].get(xml_tag, 0) if xml_ctl else 0
 
     stats[status] += 1
     stats[priority.lower()] += 1
@@ -692,16 +692,16 @@ for prop in catalog.get("properties", []):
         "status": status,
         "priority": priority,
         "slot": slot,
-        "dental_count": dental_cnt,
+        "buh_count": buh_cnt,
         "api_access": prop.get("api_access"),
         "source_excerpt": prop.get("source_excerpt", "")
     })
 
-# Сортировка свойств: сначала P0, потом по частоте в dental, потом по имени
+# Сортировка свойств: сначала P0, потом по частоте в Бух., потом по имени
 priority_rank = {"P0": 0, "P1": 1, "P2": 2, "P3": 3, "P4": 4}
-all_properties.sort(key=lambda x: (priority_rank.get(x["priority"], 99), -x["dental_count"], x["name_en"]))
+all_properties.sort(key=lambda x: (priority_rank.get(x["priority"], 99), -x["buh_count"], x["name_en"]))
 
-# 6. Список контролов с метриками из dental
+# 6. Список контролов с метриками из Бух.
 controls_list = []
 for c in ALL_27_CONTROLS:
     xml_name = c["xml"]
@@ -717,7 +717,7 @@ for c in ALL_27_CONTROLS:
     elif cnt > 0:
         c_prio = "P2 (Редкий)"
     else:
-        c_prio = "P3 (Не встречен в dental)"
+        c_prio = "P3 (Не встречен в Бух.)"
 
     controls_list.append({
         "xml_name": xml_name,
@@ -734,7 +734,7 @@ for c in ALL_27_CONTROLS:
 controls_list.sort(key=lambda x: -x["total_count"])
 
 # 7. Расчет ключевых KPI и прогресса к 90%
-# В dental 1481 форма.
+# В Бух. 1481 форма.
 # Все 10 топовых контролов (99.4% всех контролов) уже в доноре.
 # Покрытие форм по типам контролов:
 forms_with_only_donor_controls = sum(1 for p in form_xml_files) # все 100% форм содержат только контролы из донора!
@@ -750,7 +750,7 @@ summary_data = {
     "generated_at": "2026-10-24",
     "target_ordinary_forms_goal": "90% реальных форм",
     "production_database": {
-        "name": "dental (Медицинская/стоматологическая конфигурация 1С 8.2)",
+        "name": "Бух. (бухгалтерская конфигурация 1С 8.2)",
         "total_forms": total_forms,
         "total_controls": total_controls_in_db,
         "forms_with_caption": form_has_caption,

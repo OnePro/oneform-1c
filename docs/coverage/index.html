@@ -51,7 +51,7 @@
             <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">Обычные формы 1С 8.2</span>
             <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">Цель: 90% реальных форм</span>
           </div>
-          <p class="text-xs text-slate-400">Сверка с исследованием (610 свойств) и реальной базой <span class="text-slate-200 font-medium">dental</span> (1 481 форма)</p>
+          <p class="text-xs text-slate-400">Сверка с исследованием (610 свойств) и реальной базой <span class="text-slate-200 font-medium">Бух.</span> (1 481 форма)</p>
         </div>
       </div>
 
@@ -79,7 +79,7 @@
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-        <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">База продакшена (dental)</div>
+        <div class="text-xs font-medium text-slate-400 uppercase tracking-wider">База продакшена (Бух.)</div>
         <div class="mt-2 flex items-baseline gap-2">
           <span class="text-2xl font-bold text-white">1 481</span>
           <span class="text-xs text-slate-400">форм</span>
@@ -150,7 +150,7 @@
         <div class="flex items-start gap-4">
           <div class="p-2.5 rounded-xl bg-indigo-600/20 text-indigo-400 text-xl">💡</div>
           <div class="space-y-1">
-            <h3 class="text-base font-semibold text-white">Ключевое открытие аудита 1 481 формы базы dental</h3>
+            <h3 class="text-base font-semibold text-white">Ключевое открытие аудита 1 481 формы базы Бух.</h3>
             <p class="text-sm text-slate-300 leading-relaxed">
               В исследовании <code class="text-indigo-300 font-mono">1c-ordinary-forms-research</code> зафиксировано 610 свойств и 27 типов контролов. Однако в реальной конфигурации <strong>99.4% всех элементов управления приходятся всего на 10 базовых типов</strong> (Кнопки, Надписи, Поля ввода, Панели, Таблицы, Флажки, Списки, Рамки групп). 
               Все эти 10 типов <strong>уже есть в нашем доноре</strong> и поддерживают создание, удаление, перемещение и основные свойства. Редкие контролы (ActiveX, диаграммы Ганта, географические схемы) составляют 0.0% в реальном проде.
@@ -162,7 +162,7 @@
       <!-- Two column breakdown -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        <!-- Real World Distribution in dental -->
+        <!-- Real World Distribution in Бух. -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <h3 class="font-semibold text-white flex items-center gap-2">
@@ -252,7 +252,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-lg font-bold text-white">27 типов элементов управления обычных форм</h2>
-          <p class="text-xs text-slate-400">Частота встречаемости в 1 481 форме базы dental и статус в доноре oneform</p>
+          <p class="text-xs text-slate-400">Частота встречаемости в 1 481 форме базы Бух. и статус в доноре oneform</p>
         </div>
         <div class="text-xs text-slate-400">
           В доноре: <strong class="text-emerald-400">26 / 27</strong> (ActiveX осознанно исключен)
@@ -361,7 +361,7 @@
                 <th class="p-3">Свойство 1C</th>
                 <th class="p-3">Тег в Form.xml</th>
                 <th class="p-3">Слот в FormStream.bin</th>
-                <th class="p-3 text-right">В базе dental</th>
+                <th class="p-3 text-right">В базе Бух.</th>
                 <th class="p-3 text-center">Приоритет</th>
                 <th class="p-3 text-center">Статус</th>
               </tr>
@@ -389,7 +389,7 @@
                     <span x-text="p.slot || 'Не исследован'" :class="p.slot && p.slot.includes('root') || p.slot.includes('info') || p.slot.includes('geom') ? 'text-emerald-400' : 'text-slate-500'"></span>
                   </td>
                   <td class="p-3 text-right font-medium text-xs">
-                    <span :class="p.dental_count > 0 ? 'text-indigo-400 font-semibold' : 'text-slate-500'" x-text="p.dental_count > 0 ? p.dental_count.toLocaleString() : '—'"></span>
+                    <span :class="p.buh_count > 0 ? 'text-indigo-400 font-semibold' : 'text-slate-500'" x-text="p.buh_count > 0 ? p.buh_count.toLocaleString() : '—'"></span>
                   </td>
                   <td class="p-3 text-center">
                     <span class="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -438,7 +438,7 @@
       
       <div>
         <h2 class="text-lg font-bold text-white">Дорожная карта к 90% поддержке реальных форм</h2>
-        <p class="text-xs text-slate-400">Пошаговый план реализации критических свойств на основе частотного анализа базы dental</p>
+        <p class="text-xs text-slate-400">Пошаговый план реализации критических свойств на основе частотного анализа базы Бух.</p>
       </div>
 
       <div class="space-y-6">
