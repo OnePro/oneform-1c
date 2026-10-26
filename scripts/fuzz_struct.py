@@ -148,6 +148,13 @@ def main():
         out.write(json.dumps({"obj": rel, "what": what, "outcome": outcome, "second": r2 and r2[0], "msg": r1[2][:3], "bad": bool(bad)}, ensure_ascii=False) + NL)
     out.close()
     print("exit", p1.returncode, p2.returncode, dict(sorted(stats.items())))
+    if os.environ.get("FUZZ_ANCHORS", "1") != "0":
+        # every packed form must keep a consistent anchor graph (violations = edges missing from the incoming lists)
+        env = dict(os.environ, ONEFORM_CORPUS=copy)
+        t = subprocess.run(["cargo", "test", "--release", "--locked", "--test", "anchor_graph", "--", "--ignored", "--nocapture"],
+                           cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        lines = [l for l in (t.stdout + t.stderr).split(NL) if l.startswith("forms scanned") or ".bin:" in l]
+        print("anchor graph:", NL.join(lines[:40]) or t.stdout[-500:], "exit", t.returncode)
 
 
 if __name__ == "__main__":

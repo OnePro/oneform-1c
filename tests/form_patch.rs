@@ -2646,3 +2646,240 @@ fn anchor_checker_names_the_control_with_a_missing_list_entry() {
     assert_eq!(v.len(), 1, "{v:?}");
     assert!(v[0].contains("'Надпись1' (id 5)") && v[0].contains("edge 1") && v[0].contains("ПолеВвода1"), "{v:?}");
 }
+
+// ---------------------------------------------------------------- anchor graph of removed controls
+
+/// The controls (other than `id` itself) that have an edge attached to control `id`: `(source, edge, part, side, offset)`.
+fn dependants(bytes: &[u8], id: i64) -> Vec<(i64, usize, usize, i64, i64)> {
+    let s = parse_spanned(bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    let mut out = Vec::new();
+    for e in &idx.entries {
+        let Some(g) = e.geom().filter(|g| g.node.len() >= 18) else { continue };
+        for edge in 0..6 {
+            for (part, a) in [(1, oneform::form_patch::read_anchor_edge(g.node, 6 + edge)), (2, oneform::form_patch::read_anchor_edge_alt(g.node, 6 + edge))] {
+                if let Some(a) = a.filter(|a| a.target == id && e.id != id) {
+                    out.push((e.id, edge, part, a.side, a.offset));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The rectangle `[left, top, right, bottom]` of control `id`.
+fn rect_of(bytes: &[u8], id: i64) -> [i64; 4] {
+    let s = parse_spanned(bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    let g = idx.get(id).unwrap().geom().unwrap();
+    [1, 2, 3, 4].map(|i| g.atom(i).unwrap().0.value.parse().unwrap())
+}
+
+fn remove_controls(name: &str, blocks: &[(&str, &str)]) -> (PatchedForm, String) {
+    let mut edited = baseline(name);
+    for (open, close) in blocks {
+        edited = cut_block(&edited, open, close).0;
+    }
+    let s = stream(name);
+    let pf = patch_form(&s, baseline(name).as_bytes(), edited.as_bytes()).unwrap();
+    assert_only_authorized_changes(s.source(), &pf);
+    (pf, edited)
+}
+
+const INPUT7: (&str, &str) = ("<InputField name=\"ПолеВвода1\"", "</InputField>");
+const SPLITTER14: (&str, &str) = ("<Splitter name=\"Разделитель1\"", "</Splitter>");
+
+/// Every survivor keeps its rectangle and no edge, list entry or id of the removed controls is left.
+fn assert_clean_removal(before: &[u8], pf: &PatchedForm, removed: &[i64]) {
+    assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    let (old_s, new_s) = (parse_spanned(before).unwrap(), parse_spanned(&pf.bytes).unwrap());
+    let (old_idx, new_idx) = (ControlIndex::build(&old_s).unwrap(), ControlIndex::build(&new_s).unwrap());
+    for e in &old_idx.entries {
+        if removed.contains(&e.id) {
+            assert!(new_idx.get(e.id).is_none(), "control {} is still present", e.id);
+            continue;
+        }
+        if e.geom().is_some_and(|g| g.node.len() >= 18) {
+            assert_eq!(rect_of(&pf.bytes, e.id), rect_of(before, e.id), "rectangle of control {}", e.id);
+        }
+    }
+    for &r in removed {
+        assert_eq!(dependants(&pf.bytes, r), Vec::new(), "edges still attached to {r}");
+    }
+    for e in &new_idx.entries {
+        for list in geom_lists(&pf.bytes, e.id) {
+            assert!(list.iter().all(|(src, _)| !removed.contains(src)), "control {} still lists a removed control: {list:?}", e.id);
+        }
+    }
+    assert!(panel_lists(&pf.bytes, None).iter().flatten().all(|(src, _)| !removed.contains(src)));
+}
+
+#[test]
+fn removed_target_hands_its_dependants_over_to_its_own_target() {
+    let before = stream("DonorForm").source().to_vec();
+    let (pf, _) = remove_controls("DonorForm", &[INPUT7]);
+    assert_clean_removal(&before, &pf, &[7]);
+    // Флажок1 (8) was attached to the right side of ПолеВвода1 (7) with offset 5; that side hangs at Разделитель1 (14) left - 288
+    assert_eq!(anchor_edges(&pf.bytes, 8)[2], Some((14, 2, -283)));
+    let lists = geom_lists(&pf.bytes, 14);
+    assert!(lists[2].contains(&(8, 2)) && !lists[2].contains(&(7, 3)), "{lists:?}");
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    assert!(got.control(7).is_none());
+    assert_eq!(got.control(8).unwrap().values.anchors.as_ref().unwrap().left, Some(oneform::form_patch::AnchorEdge { target: 14, side: 2, offset: -283 }));
+}
+
+/// Edge record `edge` (0..6) of control `id`, primary (`part` 1) or secondary (`part` 2) attachment.
+fn edge_part(bytes: &[u8], id: i64, edge: usize, part: usize) -> oneform::form_patch::AnchorEdge {
+    let s = parse_spanned(bytes).unwrap();
+    let idx = ControlIndex::build(&s).unwrap();
+    let g = idx.get(id).unwrap().geom().unwrap().node;
+    if part == 1 { oneform::form_patch::read_anchor_edge(g, 6 + edge) } else { oneform::form_patch::read_anchor_edge_alt(g, 6 + edge) }.unwrap()
+}
+
+/// Every edge that was attached to a removed control now either points to a surviving control or to the container;
+/// an edge to the container sits at the control's own coordinate.
+fn assert_dependants_in_place(before: &[u8], after: &[u8], removed: &[i64]) {
+    let mut seen = 0;
+    for &r in removed {
+        for (src, edge, part, ..) in dependants(before, r) {
+            if removed.contains(&src) {
+                continue;
+            }
+            seen += 1;
+            let now = edge_part(after, src, edge, part);
+            assert!(!removed.contains(&now.target) && now.target != -1, "control {src} edge {edge}: {now:?}");
+            if now.target == 0 {
+                let rect = rect_of(after, src);
+                let coordinate = [rect[1], rect[3], rect[0], rect[2]][edge];
+                assert_eq!(now.offset, coordinate, "control {src} edge {edge} to the form must sit at its coordinate");
+            }
+        }
+    }
+    assert!(seen > 0);
+}
+
+#[test]
+fn removed_target_with_a_fixed_size_edge_is_followed_through_itself() {
+    // Разделитель1 (14): left = own right - 12, right = form + 715; eleven edges hang at its sides.
+    let before = stream("DonorForm").source().to_vec();
+    assert_eq!(dependants(&before, 14).len(), 11);
+    let (pf, _) = remove_controls("DonorForm", &[SPLITTER14]);
+    assert_clean_removal(&before, &pf, &[14]);
+    assert_dependants_in_place(&before, &pf.bytes, &[14]);
+    let at = |id, edge, part| {
+        let e = edge_part(&pf.bytes, id, edge, part);
+        (e.target, e.side, e.offset)
+    };
+    assert_eq!(at(13, 3, 1), (0, 2, 698)); // was 14.left - 5
+    assert_eq!(at(7, 3, 1), (0, 2, 415)); // was 14.left - 288
+    assert_eq!(at(15, 0, 1), (0, 0, 382)); // was 14.bottom + 5
+    assert_eq!(at(16, 2, 1), (0, 2, 728)); // was 14.right + 13
+    assert_eq!(at(6, 3, 2), (0, 2, 214)); // the secondary attachment of the right edge, was 14.left - 489
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    assert!(got.control(14).is_none() && got.control(13).is_some());
+}
+
+#[test]
+fn removing_a_chain_of_targets_resolves_to_the_surviving_ancestor() {
+    // Флажок1 (8) hangs at ПолеВвода1 (7), which hangs at Разделитель1 (14): both go.
+    let before = stream("DonorForm").source().to_vec();
+    let (pf, _) = remove_controls("DonorForm", &[INPUT7, SPLITTER14]);
+    assert_clean_removal(&before, &pf, &[7, 14]);
+    assert_dependants_in_place(&before, &pf.bytes, &[7, 14]);
+    // 8.left = 7.right + 5 = 14.left - 283 = (14.right - 12) - 283
+    let e = edge_part(&pf.bytes, 8, 2, 1);
+    assert_eq!((e.target, e.side, e.offset), (0, 2, 420));
+}
+
+#[test]
+fn two_removed_controls_attached_to_each_other_leave_no_trace() {
+    let before = stream("DonorForm").source().to_vec();
+    let (pf, _) = remove_controls("DonorForm", &[INPUT7, ("<CheckBox name=\"Флажок1\"", "</CheckBox>")]);
+    assert_clean_removal(&before, &pf, &[7, 8]);
+    // the entry of 7's right edge leaves the list of 14; the survivors are not re-anchored
+    let (old, new) = (geom_lists(&before, 14), geom_lists(&pf.bytes, 14));
+    assert!(old[2].contains(&(7, 3)) && !new[2].contains(&(7, 3)));
+    assert_eq!(new[2].len(), old[2].len() - 1);
+    assert_eq!(anchor_edges(&pf.bytes, 13), anchor_edges(&before, 13));
+}
+
+#[test]
+fn removing_a_panel_removes_its_children_and_their_list_entries() {
+    let before = stream("DonorForm").source().to_vec();
+    let panel = ("<Panel name=\"Панель1\"", "</Panel>");
+    let (pf, _) = remove_controls("DonorForm", &[panel]);
+    assert_clean_removal(&before, &pf, &[13, 34, 35]);
+    // Панель1 hung at ПолеСписка1 (10), КоманднаяПанель2 (12) and Разделитель1 (14)
+    assert!(geom_lists(&before, 10)[1].iter().any(|e| e.0 == 13));
+    assert!(geom_lists(&pf.bytes, 10)[1].iter().all(|e| e.0 != 13));
+    assert!(geom_lists(&pf.bytes, 14)[2].iter().all(|e| e.0 != 13));
+}
+
+/// A new label attached to ПолеВвода1 (7), packed as a first step; returns the patched stream and its XML.
+fn with_label_on_input7(anchors: &str) -> (PatchedForm, String) {
+    let geometry = "<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>";
+    let edited = insert_before_table1(&baseline("DonorForm"), &label_xml("Привязанная", 999, geometry, anchors));
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    let xml = decode_xml("DonorForm", &pf.bytes);
+    (pf, xml)
+}
+
+#[test]
+fn dependant_of_an_unattached_side_falls_back_to_the_form_at_its_absolute_position() {
+    // The label hangs below and to the left of 7: 7's left side is unattached, its bottom is "own top + 19".
+    let (step1, xml1) = with_label_on_input7("<Anchors top=\"Bottom\" topTarget=\"7\" topOffset=\"5\" left=\"Left\" leftTarget=\"7\" leftOffset=\"363\"/>");
+    let id = step1.allocated[0].1;
+    assert_eq!(dependants(&step1.bytes, 7).iter().filter(|d| d.0 == id).count(), 2);
+    let s1 = parse_spanned(&step1.bytes).unwrap();
+    let cut = cut_block(&xml1, "<InputField name=\"ПолеВвода1\"", "</InputField>").0;
+    let pf = patch_form(&s1, xml1.as_bytes(), cut.as_bytes()).unwrap();
+    assert_only_authorized_changes(s1.source(), &pf);
+    assert_clean_removal(&step1.bytes, &pf, &[7]);
+    let rect = rect_of(&pf.bytes, id);
+    assert_eq!(rect, [500, 500, 580, 520]);
+    let at = |edge| {
+        let e = edge_part(&pf.bytes, id, edge, 1);
+        (e.target, e.side, e.offset)
+    };
+    assert_eq!((at(0), at(2)), ((0, 0, 500), (0, 2, 500)));
+    // the form's lists carry the new entries once
+    let root = panel_lists(&pf.bytes, None);
+    assert_eq!(root[0].iter().filter(|e| **e == (id, 0)).count(), 1);
+    assert_eq!(root[2].iter().filter(|e| **e == (id, 2)).count(), 1);
+    // the XML of the result is what the decoder makes of it
+    let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    assert!(got.control(7).is_none());
+    assert_eq!(got.control(id).unwrap().values.anchors.as_ref().unwrap().left, Some(oneform::form_patch::AnchorEdge { target: 0, side: 2, offset: 500 }));
+}
+
+#[test]
+fn explicit_anchor_to_a_control_removed_by_the_same_edit_is_rejected() {
+    let edited = cut_block(&baseline("DonorForm"), INPUT7.0, INPUT7.1).0;
+    let edited = replace_once(&edited, "left=\"Right\" leftTarget=\"7\" leftOffset=\"5\"", "left=\"Right\" leftTarget=\"7\" leftOffset=\"6\"");
+    let (kind, text) = patch_rejected("DonorForm", &edited);
+    assert_eq!(kind, "invalid-xml", "{text}");
+    assert!(text.contains("removed by the same edit") && text.contains("Флажок1"), "{text}");
+}
+
+/// `docs/xml-reference.md`: the property tags of every control type, generated from the patcher itself.
+/// `GOLDEN_BLESS=1 cargo test --test form_patch xml_reference` rewrites it.
+#[test]
+fn xml_reference_is_current() {
+    let mut out = String::from(
+        "# Form.xml: property tags per control type\n\n\
+Generated by `cargo test --test form_patch xml_reference` (`GOLDEN_BLESS=1` rewrites this file). Every tag listed can be\n\
+changed in an extracted `Form.xml` and packed back; the tags a control currently shows are only those whose value\n\
+differs from a freshly added control of the type. An absent tag means \"do not touch\".\n\n",
+    );
+    for (_guid, name) in oneform::oof::CONTROL_GUIDS {
+        let tags = oneform::form_patch::supported_tags_for(name);
+        out.push_str(&format!("## {name}\n\n{}\n\n", tags.iter().map(|t| format!("`{t}`")).collect::<Vec<_>>().join(", ")));
+    }
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs").join("xml-reference.md");
+    if std::env::var("GOLDEN_BLESS").is_ok() {
+        std::fs::write(&path, out.as_bytes()).unwrap();
+    } else {
+        let have = std::fs::read_to_string(&path).unwrap_or_default().replace("\r\n", "\n");
+        assert_eq!(have, out, "docs/xml-reference.md is stale: run with GOLDEN_BLESS=1");
+    }
+}

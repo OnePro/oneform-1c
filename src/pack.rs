@@ -163,7 +163,9 @@ impl LayoutPatch {
         // A control the edit does not touch must decode exactly as it did before the edit: take it from the
         // decoded baseline instead of predicting the decoder's output for it.
         // A touched control decodes as its baseline with the requested properties applied.
+        let mut removed: std::collections::HashSet<i64> = std::collections::HashSet::new();
         if let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) {
+            removed.extend(d.deletions.iter().map(|c| c.id));
             let touched: std::collections::HashMap<i64, &Vec<crate::form_patch::Property>> =
                 d.edits.iter().map(|e| (e.id, &e.changed)).collect();
             let parents: std::collections::HashSet<i64> =
@@ -184,6 +186,28 @@ impl LayoutPatch {
                             values.copy_property(&c.values, *p);
                         }
                         c.values = values;
+                    }
+                }
+            }
+        }
+        // The edges of surviving controls that were attached to a removed control are re-anchored by the patch
+        // (they keep their absolute position, the rectangle is still compared): they decode differently from the
+        // baseline by design. Such an edge must not point to a removed control any more; its new value is not
+        // compared here (the anchor graph of the stream is verified when the stream is patched).
+        if !removed.is_empty() {
+            for c in &mut expected.controls {
+                let Some(a) = c.values.anchors.as_mut() else { continue };
+                let Some(got) = decoded.control(c.id).and_then(|d| d.values.anchors.as_ref()) else { continue };
+                let points = |e: &Option<crate::form_patch::AnchorEdge>| e.is_some_and(|e| removed.contains(&e.target));
+                if let Some(bad) = [got.top, got.bottom, got.left, got.right].iter().chain(got.alt.iter()).find(|e| points(e)) {
+                    return Err(fail("a surviving control still points to a removed control")
+                        .with("kind", "xml-mismatch")
+                        .with("id", c.id)
+                        .with("target", bad.map_or(0, |e| e.target)));
+                }
+                for e in [&mut a.top, &mut a.bottom, &mut a.left, &mut a.right].into_iter().chain(a.alt.iter_mut()) {
+                    if points(e) {
+                        *e = None;
                     }
                 }
             }

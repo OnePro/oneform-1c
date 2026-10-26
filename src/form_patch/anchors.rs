@@ -5,7 +5,7 @@
 //! source control whose edge `edge` (primary or secondary part) is attached to side `k` of the target. Target `0` is the
 //! container panel: its six lists live in the panel parameters node (`info[1]`, lists start at index 2).
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use super::*;
 
@@ -340,32 +340,87 @@ pub(super) fn apply_new_edges(
     Ok(())
 }
 
-/// Replacements that append the entries `adds` to the incoming lists of existing holders: the count atom is
-/// rewritten and the entries are inserted after the last existing entry of the list (new ids are the largest, so
-/// ascending `(source, edge)` order is kept).
+/// Replacements for the incoming lists of the surviving holders: the entries `adds` are appended (a list that
+/// already holds an entry keeps it once) and, when controls are removed, every entry whose source is one of the
+/// `removed` ids is dropped from every list that holds one (also leftovers that no edge justified). One list is
+/// edited by one set of pieces: a list that only grows gets the count rewritten and the entries inserted after the
+/// last existing entry (new ids are the largest, so ascending `(source, edge)` order is kept); a list that loses
+/// entries is rewritten as a whole from the raw bytes of the kept entries followed by the added ones. Holders of
+/// removed controls disappear with their control and are not touched.
 pub(super) fn list_replacements(
     idx: &ControlIndex,
     adds: &BTreeMap<(Holder, usize), Vec<(i64, i64)>>,
+    removed: &BTreeSet<i64>,
 ) -> Result<Vec<AppliedReplacement>> {
-    let mut out = Vec::new();
-    type ListAdds<'a> = Vec<(usize, &'a Vec<(i64, i64)>)>;
-    let mut by_holder: BTreeMap<Holder, ListAdds> = BTreeMap::new();
-    for ((h, k), v) in adds {
-        by_holder.entry(*h).or_default().push((*k, v));
+    let gone = |h: Holder| matches!(h, Holder::Geom(id) | Holder::Panel(id) if removed.contains(&id));
+    let mut holders: BTreeSet<Holder> = adds.keys().map(|(h, _)| *h).collect();
+    if !removed.is_empty() {
+        for e in &idx.entries {
+            holders.insert(Holder::Geom(e.id));
+            if e.type_name == "Panel" {
+                holders.insert(Holder::Panel(e.id));
+            }
+        }
+        holders.insert(Holder::Panel(0));
     }
-    for (h, lists) in by_holder {
-        let (node, start) = holder_node(idx, h)
-            .ok_or_else(|| layout_err(format!("anchor target {h:?}: the incoming lists were not found in the stream")))?;
-        let (_, at) = read_lists(node.node, start).ok_or_else(|| layout_err(format!("anchor target {h:?}: the incoming lists are malformed")))?;
-        for (k, entries) in lists {
-            let mut entries = entries.clone();
+    let mut out = Vec::new();
+    for h in holders.into_iter().filter(|h| !gone(*h)) {
+        let wanted = adds.keys().any(|(a, _)| *a == h);
+        let Some((node, start)) = holder_node(idx, h) else {
+            if wanted {
+                return Err(layout_err(format!("anchor target {h:?}: the incoming lists were not found in the stream")));
+            }
+            continue;
+        };
+        let Some((lists, at)) = read_lists(node.node, start) else {
+            if wanted {
+                return Err(layout_err(format!("anchor target {h:?}: the incoming lists are malformed")));
+            }
+            continue;
+        };
+        for k in 0..6 {
+            let count = lists[k].len();
+            let kept: Vec<usize> = (0..count).filter(|&j| !removed.contains(&lists[k][j].0)).collect();
+            let mut entries: Vec<(i64, i64)> = adds.get(&(h, k)).cloned().unwrap_or_default();
             entries.sort_unstable();
-            let count: usize = node.node.atom(at[k]).and_then(|a| a.value.parse().ok()).unwrap_or(0);
+            entries.dedup();
+            entries.retain(|e| !kept.iter().any(|&j| lists[k][j] == *e));
+            if kept.len() == count && entries.is_empty() {
+                continue;
+            }
             let Some(SpanItem::Atom(count_span)) = node.span.children.get(at[k]) else {
                 return Err(layout_err("anchor target: count atom span missing"));
             };
             let items: Vec<String> = entries.iter().map(|(s, e)| format!("{{0,{s},{e}}}")).collect();
-            if count == 0 {
+            if kept.len() < count {
+                let last = node
+                    .span
+                    .children
+                    .get(at[k] + count)
+                    .ok_or_else(|| layout_err("anchor target: list span does not match its count"))?
+                    .span();
+                let mut bytes = (kept.len() + items.len()).to_string().into_bytes();
+                for &j in &kept {
+                    let raw = node
+                        .span
+                        .children
+                        .get(at[k] + 1 + j)
+                        .ok_or_else(|| layout_err("anchor list: entry span missing"))?
+                        .span();
+                    bytes.push(b',');
+                    bytes.extend_from_slice(&idx.source().source()[raw.start..raw.end]);
+                }
+                for it in &items {
+                    bytes.push(b',');
+                    bytes.extend_from_slice(it.as_bytes());
+                }
+                out.push(AppliedReplacement {
+                    control_id: 0,
+                    properties: Vec::new(),
+                    range: Span { start: count_span.start, end: last.end },
+                    bytes,
+                });
+            } else if count == 0 {
                 out.push(AppliedReplacement {
                     control_id: 0,
                     properties: Vec::new(),
@@ -392,6 +447,138 @@ pub(super) fn list_replacements(
                     bytes: format!(",{}", items.join(",")).into_bytes(),
                 });
             }
+        }
+    }
+    Ok(out)
+}
+
+/// The controls that go away with `deleted`: the deleted ids and everything below a deleted control.
+pub(super) fn removed_closure(idx: &ControlIndex, deleted: &[i64]) -> BTreeSet<i64> {
+    let mut out: BTreeSet<i64> = deleted.iter().copied().collect();
+    loop {
+        let before = out.len();
+        for e in &idx.entries {
+            if e.parent.is_some_and(|p| out.contains(&p)) {
+                out.insert(e.id);
+            }
+        }
+        if out.len() == before {
+            return out;
+        }
+    }
+}
+
+/// Where side `side_list` (a list index `0..4`: top, bottom, left, right) of the removed control `id` sits in terms of
+/// a surviving target: follows the control's own primary edge of that side, through other removed controls and
+/// through the control itself (`{2,self,0,height}` fixed sizes), adding up the offsets. Returns the resulting
+/// edge and the control that owns the final edge (to compare its container). `None` when a link in the chain is
+/// unattached, dangling or loops.
+fn resolve_removed_side(
+    idx: &ControlIndex,
+    removed: &BTreeSet<i64>,
+    id: i64,
+    side_list: usize,
+    acc: i64,
+    seen: &mut Vec<(i64, usize)>,
+) -> Option<(AnchorEdge, i64)> {
+    if side_list > 3 || seen.contains(&(id, side_list)) {
+        return None;
+    }
+    seen.push((id, side_list));
+    let edge = read_anchor_edge_part(idx.get(id)?.geom()?.node, 6 + side_list, 1)?;
+    if edge.side == 6 || edge.target == -1 {
+        return None;
+    }
+    let acc = acc + edge.offset;
+    if edge.target == 0 || (!removed.contains(&edge.target) && idx.get(edge.target).is_some()) {
+        return Some((AnchorEdge { target: edge.target, side: edge.side, offset: acc }, id));
+    }
+    resolve_removed_side(idx, removed, edge.target, list_of_side(edge.side)?, acc, seen)
+}
+
+/// Re-anchor the surviving controls that are attached to a removed control, so that they keep their absolute position.
+///
+/// For every attached edge `e` (primary or secondary part) of a surviving control `D` whose target is a removed
+/// control `R` (side `S`, offset `o`): R's own primary edge of the same side says where that side of `R` sits,
+/// `{2,T,S',o'}`, so `D`'s edge becomes `{2,T,S',o'+o}` (the position `T.S' + o' + o` equals `R.S + o`). An edge of
+/// `R` that is attached to `R` itself (a fixed size, `R.right = R.left + width`) or to another removed control is
+/// followed until a surviving control or the container is reached, adding up the offsets. If the chain ends
+/// unattached, dangling, in a loop, in the container of another panel or in `D` itself, `D` falls back to the
+/// container at its current absolute coordinate: the top/bottom edges (`e` = 0, 1) become `{2,0,0,D.top|D.bottom}`,
+/// the left/right edges (`e` = 2, 3) become `{2,0,2,D.left|D.right}`. The new incoming-list entry `{0,D,e}` is
+/// added to `adds`. Edges named by the user in the same edit (`user`, keyed by `(id, edge, part)`) are not touched;
+/// they must not point to a removed control.
+pub(super) fn reanchor_dependants(
+    idx: &ControlIndex,
+    removed: &BTreeSet<i64>,
+    user: &HashMap<(i64, usize, usize), AnchorEdge>,
+    adds: &mut BTreeMap<(Holder, usize), Vec<(i64, i64)>>,
+) -> Result<Vec<AppliedReplacement>> {
+    let mut out = Vec::new();
+    for d in idx.entries.iter().filter(|d| !removed.contains(&d.id)) {
+        let Some(g) = d.geom().filter(|g| g.node.len() >= 18) else { continue };
+        let rect: Vec<i64> = (1..=4).map(|i| g.atom(i).and_then(|(a, _)| a.value.parse().ok()).unwrap_or(0)).collect();
+        let container = container_holder(idx, d.parent);
+        for (e, part, edge) in attached_edges(g.node) {
+            if !removed.contains(&edge.target) {
+                continue;
+            }
+            let name = || format!("control '{}' (id {}): edge {e}", d.name, d.id);
+            if let Some(u) = user.get(&(d.id, e, part)) {
+                if removed.contains(&u.target) {
+                    return Err(ExtractionError::new(
+                        GENERATED_FILE_MODIFIED,
+                        format!("{}: <Anchors> points to the control {} that is removed by the same edit", name(), u.target),
+                    )
+                    .with("kind", "invalid-xml")
+                    .with("property", "Anchors")
+                    .with("id", d.id));
+                }
+                continue;
+            }
+            let resolved = list_of_side(edge.side)
+                .and_then(|k| resolve_removed_side(idx, removed, edge.target, k, edge.offset, &mut Vec::new()))
+                .filter(|(n, owner)| {
+                    n.target != d.id
+                        && (n.target != 0 || idx.get(*owner).is_some_and(|o| container_holder(idx, o.parent) == container))
+                })
+                .map(|(n, _)| n);
+            let new = match resolved {
+                Some(n) => n,
+                None => {
+                    let (side, at) = match e {
+                        0 => (0, rect[1]),
+                        1 => (0, rect[3]),
+                        2 => (2, rect[0]),
+                        3 => (2, rect[2]),
+                        _ => {
+                            return Err(ExtractionError::new(
+                                GENERATED_FILE_MODIFIED,
+                                format!("{} is attached to a removed control and cannot be re-anchored", name()),
+                            )
+                            .with("kind", "unsupported-anchor")
+                            .with("id", d.id))
+                        }
+                    };
+                    AnchorEdge { target: 0, side, offset: at }
+                }
+            };
+            let holder = if new.target == 0 { container } else { Holder::Geom(new.target) };
+            let k = list_of_side(new.side).ok_or_else(|| layout_err(format!("{}: anchor side {} cannot be listed", name(), new.side)))?;
+            let list = adds.entry((holder, k)).or_default();
+            if !list.contains(&(d.id, e as i64)) {
+                list.push((d.id, e as i64));
+            }
+            let target = g
+                .child(6 + e)
+                .and_then(|rec| rec.child(part))
+                .ok_or_else(|| layout_err(format!("{}: edge record missing", name())))?;
+            out.push(AppliedReplacement {
+                control_id: 0,
+                properties: Vec::new(),
+                range: target.span.span,
+                bytes: format_edge_target(&new).into_bytes(),
+            });
         }
     }
     Ok(out)

@@ -2622,6 +2622,11 @@ fn patch_app_path(type_name: &str) -> Option<&'static [i64]> {
     })
 }
 
+/// The `Form.xml` property tags that `pack` can change on a control of `type_name` (the reference an agent reads).
+pub fn supported_tags_for(type_name: &str) -> Vec<&'static str> {
+    SUPPORTED_TAGS.iter().copied().filter(|t| tag_supported_for(type_name, t)).collect()
+}
+
 fn tag_supported_for(type_name: &str, tag: &str) -> bool {
     match tag {
         "DataPath" | "Caption" | "Left" | "Top" | "Width" | "Height" | "Visible" | "ZOrder" | "TabOrder" | "Anchors"
@@ -9025,14 +9030,18 @@ impl FormPatchPlan<'_> {
         }
 
         // ---- deletions
+        let removed = anchors::removed_closure(&self.index, &self.diff.deletions.iter().map(|d| d.id).collect::<Vec<_>>());
         for d in &self.diff.deletions {
             let entry = self
                 .index
                 .get(d.id)
                 .ok_or_else(|| layout_err(format!("deleted control '{}' (id {}) not found in the stream", d.name, d.id)))?;
-            let list = self.index.at_path(&entry.list_path)?;
-            let (key, count) = list_entry(list)?;
-            lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.removals.push(entry.list_index);
+            // below a removed control the record vanishes together with its ancestor
+            if !entry.parent.is_some_and(|p| removed.contains(&p)) {
+                let list = self.index.at_path(&entry.list_path)?;
+                let (key, count) = list_entry(list)?;
+                lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.removals.push(entry.list_index);
+            }
             // DataPath links of the deleted id
             if let Some(links) = self.index.links_list() {
                 let (_k, lcount) = list_entry(links)?;
@@ -9106,7 +9115,24 @@ impl FormPatchPlan<'_> {
         }
 
         // ---- incoming anchor lists of the existing targets and container panels
-        out.extend(anchors::list_replacements(&self.index, &anchor_adds)?);
+        // Controls attached to a removed control keep their absolute position (re-anchored), and the removed
+        // controls leave the lists of the survivors.
+        if !removed.is_empty() {
+            let mut user: HashMap<(i64, usize, usize), AnchorEdge> = HashMap::new();
+            for ed in self.diff.edits.iter().filter(|e| e.changed.contains(&Property::Anchors)) {
+                let Some(a) = &ed.new.anchors else { continue };
+                for (i, (idx, edge)) in a.edges().into_iter().enumerate() {
+                    if let Some(edge) = edge {
+                        user.insert((ed.id, idx - 6, 1), edge);
+                    }
+                    if let Some(edge) = a.alt_edges()[i].1 {
+                        user.insert((ed.id, idx - 6, 2), edge);
+                    }
+                }
+            }
+            out.extend(anchors::reanchor_dependants(&self.index, &removed, &user, &mut anchor_adds)?);
+        }
+        out.extend(anchors::list_replacements(&self.index, &anchor_adds, &removed)?);
 
         // ---- existing control DataPath edits
         for ed in &self.diff.edits {
@@ -9320,6 +9346,19 @@ impl FormPatchPlan<'_> {
                 )
                 .with("kind", "verification-failed")
                 .with("property", "Anchors"));
+            }
+            if !self.diff.deletions.is_empty() {
+                let before: std::collections::HashSet<String> = anchors::anchor_graph_violations(self.source).into_iter().collect();
+                let fresh: Vec<String> =
+                    anchors::anchor_graph_violations(&reparsed).into_iter().filter(|v| !before.contains(v)).collect();
+                if !fresh.is_empty() {
+                    return Err(ExtractionError::new(
+                        GENERATED_FILE_MODIFIED,
+                        format!("the anchor graph is inconsistent after removing controls: {}", fresh.join("; ")),
+                    )
+                    .with("kind", "verification-failed")
+                    .with("property", "Anchors"));
+                }
             }
         }
         if self.diff.form_props_changed {
