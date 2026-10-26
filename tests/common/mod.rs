@@ -7,11 +7,14 @@ use std::path::Path;
 use oneform::metadata::{FormInfo, Payload};
 
 /// `formbin.read_meta_lookup`: `lowercase uuid -> Name` of every `Attribute` and `TabularSection`
-/// (nested ones included); `{}` when the file is missing or unparsable.
+/// (nested ones included) and `@kind -> <object kind>`; `{}` when the file is missing or unparsable.
 pub fn read_meta_lookup(path: &Path) -> HashMap<String, String> {
     let mut lookup = HashMap::new();
     let Ok(text) = std::fs::read_to_string(path) else { return lookup };
     let Ok(doc) = roxmltree::Document::parse(&text) else { return lookup };
+    if let Some(obj) = doc.root_element().children().find(|c| c.is_element()) {
+        lookup.insert("@kind".to_string(), obj.tag_name().name().to_string());
+    }
     for e in doc.descendants().filter(|n| n.is_element()) {
         if !matches!(e.tag_name().name(), "Attribute" | "TabularSection") {
             continue;

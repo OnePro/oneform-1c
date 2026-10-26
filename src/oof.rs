@@ -28,15 +28,16 @@ use crate::metaref::ConfigTypeLookup;
 pub use crate::oof_props::{
     at, at_n, atom, child, control_caption, decode_color, decode_column_props, decode_font, decode_pattern,
     decode_props, int, int_or_first, is_bare, is_guid, localized, localized_value, node, node_opt, num,
-    resolve_column_step, resolve_data_path, str_val, OofError, EVENT_GUID,
+    resolve_column_step, resolve_data_path, std_attr_code, std_attr_name, str_val, OofError, EVENT_GUID, META_KIND_KEY,
 };
-use crate::oof_props::{index_error, py_get, py_slice, std_element};
+use crate::oof_props::{index_error, py_get, py_slice};
 
 pub const FORM_XML_NAME: &str = "Form.xml";
 pub const ORDINARY_FORM_VERSION: &str = "2.1";
 pub const EXTERNAL_TIMEOUT_SECONDS: u64 = 60;
 
-/// `lowercase metadata uuid -> name` (see `formbin.read_meta_lookup`).
+/// `lowercase metadata uuid -> name` (see `formbin.read_meta_lookup`); the reserved key
+/// `META_KIND_KEY` holds the object kind of a configuration object.
 pub type MetaLookup = HashMap<String, String>;
 
 pub const CONTROL_GUIDS: [(&str, &str); 27] = [
@@ -967,6 +968,7 @@ type Attributes = (Option<i64>, Vec<Value>, HashMap<i64, Value>);
 
 fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Option<&ConfigTypeLookup>) -> Res<Attributes> {
     let main_id = int_or_first(child(section, 0)?, "main attribute id")?;
+    let kind = meta_lookup.and_then(|m| m.get(META_KIND_KEY)).map(String::as_str);
     let mut attrs: Vec<Value> = Vec::new();
     let mut has_main = main_id > 0;
     for rec in table(Some(child(section, 2)?), "attributes")? {
@@ -1007,18 +1009,19 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Opt
             let body = node(&link.children[1], "data path", 2)?;
             if is_bare(&body.children[0], "1") {
                 let attr_id = int_or_first(&body.children[1], "attribute id")?;
-                let resolved = resolve_data_path(attr_id, None, &names, meta_lookup);
+                let resolved = resolve_data_path(attr_id, None, &names, meta_lookup, None);
                 links.insert(int(&link.children[0], "control id")?, resolved);
             } else if is_bare(&body.children[0], "2") {
                 let attr_id = int_or_first(&body.children[1], "attribute id")?;
                 let step = body.children.get(2);
-                let resolved = resolve_data_path(attr_id, step, &names, meta_lookup);
+                let resolved = resolve_data_path(attr_id, step, &names, meta_lookup, if attr_id == main_id { kind } else { None });
                 links.insert(int(&link.children[0], "control id")?, resolved);
             } else if is_bare(&body.children[0], "4") {
                 // Nested display path through a reference field:
-                // {4,{aid},{-60001},{0,<field uuid>},{<std code>}} -> "Attr.Field.StdField"
+                // {4,{aid},{-60001},{0,<field uuid>},{<std code>}} -> "Attr.Field" (the std code belongs to the
+                // referenced object of unknown kind, so it is not named)
                 let attr_id = int_or_first(&body.children[1], "attribute id")?;
-                let mut resolved = resolve_data_path(attr_id, None, &names, meta_lookup);
+                let mut resolved = resolve_data_path(attr_id, None, &names, meta_lookup, None);
                 let root_path = resolved.get("path").and_then(Value::as_str).map(str::to_string);
                 if let Some(root_path) = root_path {
                     let mut parts = vec![root_path];
@@ -1029,14 +1032,6 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Opt
                                 parts.push(n.clone());
                             }
                         }
-                    }
-                    let std_part = match body.children.get(4) {
-                        Some(Item::Node(s)) if !s.is_empty() => atom(&s.children[0]).parse::<i64>().ok().and_then(std_element),
-                        Some(Item::Atom(a)) => a.value.parse::<i64>().ok().and_then(std_element),
-                        _ => None,
-                    };
-                    if let Some(code) = std_part {
-                        parts.push(code.to_string());
                     }
                     if parts.len() > 1 {
                         if let Value::Object(map) = &mut resolved {

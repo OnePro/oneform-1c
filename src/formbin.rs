@@ -28,7 +28,7 @@ use crate::manifest::{module_record, sort_diagnostics, GENERATOR_VERSION, MANIFE
 use crate::metadata::{FormInfo, Payload};
 use crate::metaref::ConfigTypeLookup;
 use crate::naming::{is_uuid, resolve_1c_aliases, safe_join};
-use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, FORM_XML_NAME};
+use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, FORM_XML_NAME, META_KIND_KEY};
 use crate::pack::{atomic_write, encode_text, plan_layout_patch, LayoutPatch, PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES};
 use crate::preview::{render_form_preview_html, FORM_PREVIEW_NAME};
 use crate::stage::{ExtractionResult, STATUS_PARTIAL};
@@ -199,7 +199,8 @@ fn meta_of_doc(doc: &roxmltree::Document<'_>) -> Option<Meta> {
     Some(meta)
 }
 
-/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included).
+/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included), plus
+/// `META_KIND_KEY -> <object kind>` (the element under `MetaDataObject`, e.g. `Catalog`).
 pub fn read_meta_lookup(path: &Path) -> MetaLookup {
     let Some(text) = read_xml_text(path) else { return HashMap::new() };
     open_doc(&text).map(|doc| lookup_of_doc(&doc)).unwrap_or_default()
@@ -216,6 +217,12 @@ fn read_meta_and_lookup(path: &Path) -> (Meta, MetaLookup) {
 
 fn lookup_of_doc(doc: &roxmltree::Document<'_>) -> MetaLookup {
     let mut lookup = HashMap::new();
+    let root = doc.root_element();
+    if root.tag_name().name() == "MetaDataObject" {
+        if let Some(obj) = root.children().find(|c| c.is_element()) {
+            lookup.insert(META_KIND_KEY.to_string(), obj.tag_name().name().to_string());
+        }
+    }
     for e in doc.descendants().filter(|n| n.is_element()) {
         if !matches!(e.tag_name().name(), "Attribute" | "TabularSection") {
             continue;
@@ -974,6 +981,7 @@ mod tests {
             ("aaaaaaaa-0000-0000-0000-000000000001", "Организация"),
             ("aaaaaaaa-0000-0000-0000-000000000002", "Товары"),
             ("aaaaaaaa-0000-0000-0000-000000000003", "Цена"),
+            (META_KIND_KEY, "Document"),
         ]
         .into_iter()
         .map(|(k, v)| (k.to_string(), v.to_string()))

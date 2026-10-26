@@ -624,17 +624,45 @@ fn representation(code: &str) -> &'static str {
     }
 }
 
-pub(crate) fn std_element(code: i64) -> Option<&'static str> {
-    Some(match code {
-        -2 => "Номер",
-        -3 => "Дата",
-        -4 => "ПометкаУдаления",
-        -5 => "Проведен",
-        -6 => "Родитель",
-        -7 => "Владелец",
-        -9 => "Наименование",
-        _ => return None,
-    })
+/// Reserved `MetaLookup` key holding the object kind (XML element name) of a configuration object.
+pub const META_KIND_KEY: &str = "@kind";
+
+/// Standard attributes `{-N}` per object kind (runtime-verified): `(kind, code, name)`.
+const STD_ATTRS: &[(&str, i64, &str)] = &[
+    ("Catalog", -2, "Код"),
+    ("Catalog", -3, "Наименование"),
+    ("Catalog", -4, "Родитель"),
+    ("Catalog", -5, "Владелец"),
+    ("Document", -2, "Номер"),
+    ("Document", -3, "Дата"),
+    ("ChartOfAccounts", -6, "Родитель"),
+    ("ChartOfAccounts", -7, "Код"),
+    ("ChartOfAccounts", -8, "Наименование"),
+    ("ChartOfAccounts", -10, "Вид"),
+    ("ChartOfAccounts", -11, "Забалансовый"),
+    ("ChartOfAccounts", -12, "ВидыСубконто"),
+    ("ChartOfCalculationTypes", -2, "Код"),
+    ("ChartOfCalculationTypes", -3, "Наименование"),
+    ("ChartOfCharacteristicTypes", -8, "Код"),
+    ("ChartOfCharacteristicTypes", -9, "Наименование"),
+    ("ChartOfCharacteristicTypes", -11, "ТипЗначения"),
+    ("ExchangePlan", -2, "Код"),
+    ("ExchangePlan", -3, "Наименование"),
+    ("ExchangePlan", -9, "НомерОтправленного"),
+    ("ExchangePlan", -10, "НомерПринятого"),
+    ("InformationRegister", -2, "Период"),
+];
+
+/// Name of the standard attribute `code` of an object `kind` (the XML element name); `None` when unknown.
+pub fn std_attr_name(kind: Option<&str>, code: i64) -> Option<&'static str> {
+    let kind = kind?;
+    STD_ATTRS.iter().find(|(k, c, _)| *k == kind && *c == code).map(|(_, _, n)| *n)
+}
+
+/// Code `-N` of the standard attribute `name` of an object `kind`; `None` when unknown.
+pub fn std_attr_code(kind: Option<&str>, name: &str) -> Option<i64> {
+    let kind = kind?;
+    STD_ATTRS.iter().find(|(k, _, n)| *k == kind && *n == name).map(|(_, c, _)| *c)
 }
 
 /// Path of the localized caption inside the info node for types with a known location.
@@ -1200,6 +1228,7 @@ pub fn resolve_column_step(
     is_tabular: bool,
     meta_lookup: Option<&HashMap<String, String>>,
 ) -> Option<String> {
+    let kind = meta_lookup.and_then(|m| m.get(META_KIND_KEY)).map(String::as_str);
     let Some(Item::Node(step)) = step else { return None };
     let first = atom(step.children.first()?);
     if first == "-2" && is_tabular {
@@ -1207,7 +1236,9 @@ pub fn resolve_column_step(
     }
     let b = first.as_bytes();
     if b.len() >= 2 && b[0] == b'-' && b[1..].iter().all(|c| c.is_ascii_digit()) {
-        return first.parse::<i64>().ok().and_then(std_element).map(str::to_string);
+        // a tabular row has no standard attribute other than the row number
+        let kind = if is_tabular { None } else { kind };
+        return first.parse::<i64>().ok().and_then(|c| std_attr_name(kind, c)).map(str::to_string);
     }
     if first == "0" && step.len() > 1 {
         return meta_lookup.and_then(|m| m.get(&atom(&step.children[1]).to_lowercase()).cloned());
@@ -1218,11 +1249,13 @@ pub fn resolve_column_step(
 // ---------------------------------------------------------------- data paths
 
 /// `{attributeId, path?}` of a link `{2,{attrId},{elem}}`; `path` is `Attribute[.Element]`.
+/// `kind` is the object kind owning the standard attributes of the step (`None`: unknown).
 pub fn resolve_data_path(
     attr_id: i64,
     step: Option<&Item>,
     names: &HashMap<i64, String>,
     meta_lookup: Option<&HashMap<String, String>>,
+    kind: Option<&str>,
 ) -> Value {
     let mut out = Map::new();
     out.insert("attributeId".into(), attr_id.into());
@@ -1234,7 +1267,7 @@ pub fn resolve_data_path(
             let mut name: Option<String> = None;
             let b = first.as_bytes();
             if b.len() >= 2 && b[0] == b'-' && b[1..].iter().all(|c| c.is_ascii_digit()) {
-                name = first.parse::<i64>().ok().and_then(std_element).map(str::to_string);
+                name = first.parse::<i64>().ok().and_then(|c| std_attr_name(kind, c)).map(str::to_string);
             } else if first == "0" && step.len() > 1 {
                 name = meta_lookup.and_then(|m| m.get(&atom(&step.children[1]).to_lowercase()).cloned());
             }
@@ -1255,6 +1288,53 @@ mod tests {
 
     fn item(s: &str) -> Item {
         Item::Node(parse_metadata(s.as_bytes()).unwrap())
+    }
+
+    #[test]
+    fn std_attr_table_is_per_kind_and_reversible() {
+        assert_eq!(std_attr_name(Some("Catalog"), -2), Some("Код"));
+        assert_eq!(std_attr_name(Some("Catalog"), -3), Some("Наименование"));
+        assert_eq!(std_attr_name(Some("Document"), -2), Some("Номер"));
+        assert_eq!(std_attr_name(Some("Document"), -3), Some("Дата"));
+        assert_eq!(std_attr_name(Some("ChartOfAccounts"), -12), Some("ВидыСубконто"));
+        assert_eq!(std_attr_name(Some("ChartOfCharacteristicTypes"), -11), Some("ТипЗначения"));
+        assert_eq!(std_attr_name(Some("ExchangePlan"), -10), Some("НомерПринятого"));
+        assert_eq!(std_attr_name(Some("InformationRegister"), -2), Some("Период"));
+        // no guesses: unknown code, unknown kind, no kind
+        assert_eq!(std_attr_name(Some("Document"), -9), None);
+        assert_eq!(std_attr_name(Some("Catalog"), -1), None);
+        assert_eq!(std_attr_name(Some("DataProcessor"), -2), None);
+        assert_eq!(std_attr_name(None, -2), None);
+        assert_eq!(std_attr_code(None, "Код"), None);
+        assert_eq!(std_attr_code(Some("Catalog"), "Номер"), None);
+        for &(kind, code, name) in STD_ATTRS {
+            assert_eq!(std_attr_code(Some(kind), name), Some(code), "{kind} {name}");
+            assert_eq!(std_attr_name(Some(kind), code), Some(name), "{kind} {code}");
+        }
+    }
+
+    #[test]
+    fn data_path_step_is_named_by_object_kind() {
+        let names: HashMap<i64, String> = [(1, "Объект".to_string())].into_iter().collect();
+        let path = |kind: Option<&str>, code: &str| {
+            let v = resolve_data_path(1, Some(&item(&format!("{{{code}}}"))), &names, None, kind);
+            v["path"].as_str().unwrap().to_string()
+        };
+        assert_eq!(path(Some("Catalog"), "-2"), "Объект.Код");
+        assert_eq!(path(Some("Catalog"), "-3"), "Объект.Наименование");
+        assert_eq!(path(Some("Document"), "-2"), "Объект.Номер");
+        assert_eq!(path(Some("Document"), "-9"), "Объект");
+        assert_eq!(path(None, "-2"), "Объект");
+    }
+
+    #[test]
+    fn column_step_uses_kind_from_lookup_and_row_number_in_tabular() {
+        let lookup: HashMap<String, String> = [(META_KIND_KEY.to_string(), "Catalog".to_string())].into_iter().collect();
+        let step = item("{-3}");
+        assert_eq!(resolve_column_step(Some(&step), false, Some(&lookup)).as_deref(), Some("Наименование"));
+        assert_eq!(resolve_column_step(Some(&step), true, Some(&lookup)), None);
+        assert_eq!(resolve_column_step(Some(&item("{-2}")), true, Some(&lookup)).as_deref(), Some("НомерСтроки"));
+        assert_eq!(resolve_column_step(Some(&step), false, None), None);
     }
 
     // port: tests/test_oof.py::test_num_parses_scientific_notation_and_rejects_text
