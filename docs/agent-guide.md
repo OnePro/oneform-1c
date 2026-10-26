@@ -26,10 +26,10 @@ oneform preview <PATH>            # обновить FormPreview.html и .onefor
 * **Свойства показаны разреженно**: тег есть, только если значение отличается от значения свежедобавленного элемента
   того же типа. Задали значение по умолчанию — после `pack` тег исчезнет из файла, это не ошибка.
 * **Список допустимых тегов для типа элемента** — `docs/xml-reference.md`.
-* **Не редактируйте служебные блоки**: атрибуты `raw`/`sig` и элементы `InfoRecord`, `Appearance`, `PanelRecord`,
-  `FormRecord`, `ColumnProps`, `Buttons raw`, `RowSource`, `GeometryFlags`, `DataProcessorFormExtension`. Это копии
-  бинарных записей, которые `oneform` ещё не умеет показывать в читаемом виде. `pack` их игнорирует, после упаковки
-  они обновляются.
+* **Служебных бинарных блоков в `Form.xml` нет** (по умолчанию): `Form.xml` содержит только читаемые свойства. Копии
+  бинарных записей (`raw`/`sig`, `InfoRecord`, `Appearance`, `PanelRecord`, `FormRecord`, `ColumnProps`, `GeometryFlags`,
+  `RowSource`) нужны только компилятору форм и выводятся ключом `oneform extract --carriers`; `pack` их игнорирует,
+  если они есть, и не правьте их.
 * `reconstructionComplete="false"` в корне — норма: не все свойства формы описаны в XML (см. выше).
 * Порядок элементов в `ChildItems` — по `ZOrder`. `TabOrder` общий для формы.
 

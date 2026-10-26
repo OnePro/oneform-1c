@@ -776,6 +776,7 @@ pub struct Cli {
     pub oof_path: Option<String>,
     pub progress: bool,
     pub no_progress: bool,
+    pub carriers: bool,
 }
 
 fn build_command() -> Command {
@@ -819,6 +820,12 @@ fn build_command() -> Command {
                 .help("force progress bar even when stderr is not a TTY"),
         )
         .arg(Arg::new("no_progress").long("no-progress").action(ArgAction::SetTrue).help("disable progress bar"))
+        .arg(
+            Arg::new("carriers")
+                .long("carriers")
+                .action(ArgAction::SetTrue)
+                .help("extract: also write the verbatim binary records (raw/sig, *Record elements) used by form compilers; env ONEFORM_CARRIERS=1"),
+        )
 }
 
 pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
@@ -847,6 +854,7 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
         oof_path: m.get_one::<String>("oof_path").cloned(),
         progress: m.get_flag("progress"),
         no_progress: m.get_flag("no_progress"),
+        carriers: m.get_flag("carriers"),
     })
 }
 
@@ -947,6 +955,7 @@ pub fn main(argv: &[String]) -> i32 {
         return fail("--replace-generated is only valid for extract");
     }
 
+    crate::oof::set_carriers(args.carriers || std::env::var("ONEFORM_CARRIERS").is_ok_and(|v| v == "1"));
     let root = clean_path(Path::new(&path));
     if !root.is_dir() {
         return fail(&format!("{} is not a directory", root.display()));

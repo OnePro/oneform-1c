@@ -576,6 +576,19 @@ const COLUMN_SIG_PLACEHOLDER: &str = "@@COLUMN-SIG@@";
 const INFO_SIG_PLACEHOLDER: &str = "@@INFO-SIG@@";
 const PANEL_SIG_PLACEHOLDER: &str = "@@PANEL-SIG@@";
 const FORM_SIG_PLACEHOLDER: &str = "@@FORM-SIG@@";
+static CARRIERS_FLAG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Whether `Form.xml` also carries the verbatim binary records (`raw`/`sig` attributes and the record elements).
+/// Off by default: they are ~70 % of the file, nobody edits them, and `pack` ignores them. A form compiler that
+/// rebuilds a stream from the XML needs them (`oneform extract --carriers`).
+pub fn carriers_on() -> bool {
+    CARRIERS_FLAG.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_carriers(on: bool) {
+    CARRIERS_FLAG.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
 /// Carriers of verbatim records: never part of a canonical text.
 const CARRIERS: [&str; 5] = ["ColumnProps", "Appearance", "InfoRecord", "PanelRecord", "FormRecord"];
 /// Children of a control that the information record does not hold (geometry, links, children).
@@ -1393,7 +1406,7 @@ impl Writer {
     }
 
     fn props(&mut self, p: &Value) {
-        if let Some(raw) = p.get("appearanceRaw") {
+        if let Some(raw) = p.get("appearanceRaw").filter(|_| carriers_on()) {
             self.leaf("Appearance", None, &[("raw", pystr(raw)), ("sig", appearance_sig(p))]);
         }
         if p.get("enabled") == Some(&Value::Bool(false)) {
@@ -1482,7 +1495,7 @@ impl Writer {
         if let Some(v) = p.get("footer") {
             self.leaf("Footer", Some(&pystr(v).to_lowercase()), &[]);
         }
-        if let Some(v) = p.get("rowSource") {
+        if let Some(v) = p.get("rowSource").filter(|_| carriers_on()) {
             self.leaf("RowSource", Some(&pystr(v)), &[]);
         }
         if let Some(v) = p.get("selectionMode") {
@@ -1494,12 +1507,12 @@ impl Writer {
         if let Some(v) = p.get("autoFill") {
             self.leaf("AutoFill", Some(&pystr(v).to_lowercase()), &[]);
         }
-        if truthy(p.get("buttons")) || p.get("buttonsRaw").is_some() {
+        if truthy(p.get("buttons")) || (carriers_on() && p.get("buttonsRaw").is_some()) {
             let mut extra: Vec<(&str, String)> = Vec::new();
-            if let Some(raw) = p.get("buttonsRaw") {
+            if let Some(raw) = p.get("buttonsRaw").filter(|_| carriers_on()) {
                 extra.push(("raw", pystr(raw)));
             }
-            if let Some(sig) = p.get("buttonsSig") {
+            if let Some(sig) = p.get("buttonsSig").filter(|_| carriers_on()) {
                 extra.push(("sig", pystr(sig)));
             }
             self.buttons_with(arr(p, "buttons"), &extra);
@@ -1596,7 +1609,7 @@ impl Writer {
         if let Some(dp) = c.get("dataPath") {
             let path = dp.get("path").filter(|v| !v.is_null()).map(pystr);
             let mut attrs: Attrs = vec![("attributeId", pystr(&dp["attributeId"]))];
-            if let Some(raw) = dp.get("raw") {
+            if let Some(raw) = dp.get("raw").filter(|_| carriers_on()) {
                 // `sig` ties the verbatim link to the id and the path text written next to it.
                 attrs.push(("raw", pystr(raw)));
                 attrs.push(("sig", fnv(&format!("{}|{}", pystr(&dp["attributeId"]), path.as_deref().unwrap_or("")))));
@@ -1651,7 +1664,7 @@ impl Writer {
             let attrs: Attrs = owned.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
             self.leaf("Anchors", None, &attrs);
         }
-        if let Some(f) = c.get("props").and_then(|p| p.get("geometryFlags")).and_then(Value::as_array) {
+        if let Some(f) = c.get("props").and_then(|p| p.get("geometryFlags")).and_then(Value::as_array).filter(|_| carriers_on()) {
             self.leaf("GeometryFlags", None, &[("a", pystr(&f[0])), ("b", pystr(&f[1]))]);
         }
         for (key, tagname) in [("contextMenu", "ContextMenu"), ("actionSource", "ActionSource")] {
@@ -1662,7 +1675,7 @@ impl Writer {
             }
         }
         let pages: &[Value] = if tag == "Panel" { arr(c, "pages") } else { &[] };
-        if let Some(raw) = c.get("panelRaw").filter(|_| tag == "Panel") {
+        if let Some(raw) = c.get("panelRaw").filter(|_| tag == "Panel" && carriers_on()) {
             self.leaf("PanelRecord", None, &[("raw", pystr(raw)), ("sig", PANEL_SIG_PLACEHOLDER.to_string())]);
         }
         if !pages.is_empty() {
@@ -1715,7 +1728,7 @@ impl Writer {
                     self.leaf("Editor", Some(&pystr(&col["editor"])), &[]);
                 }
                 self.events(arr(col, "events"));
-                if let Some(raw) = col.get("propsRaw") {
+                if let Some(raw) = col.get("propsRaw").filter(|_| carriers_on()) {
                     // `sig` is filled in once the whole document is rendered (see `fill_column_sigs`).
                     self.leaf("ColumnProps", None, &[("raw", pystr(raw)), ("sig", COLUMN_SIG_PLACEHOLDER.to_string())]);
                 }
@@ -1724,7 +1737,7 @@ impl Writer {
             self.close("Columns");
         }
         self.events(arr(c, "events"));
-        if let Some(raw) = c.get("props").and_then(|p| p.get("infoRaw")) {
+        if let Some(raw) = c.get("props").and_then(|p| p.get("infoRaw")).filter(|_| carriers_on()) {
             // `sig` is filled in once the whole document is rendered (see `fill_sigs`).
             self.leaf("InfoRecord", None, &[("raw", pystr(raw)), ("sig", INFO_SIG_PLACEHOLDER.to_string())]);
         }
@@ -1838,10 +1851,10 @@ pub fn render_form_xml(info: &FormInfo, model: &Value) -> Res<Vec<u8>> {
     }
     let root_pages = arr(model, "pages");
     let controls = arr(model, "controls");
-    if let Some(raw) = model.get("formRaw") {
+    if let Some(raw) = model.get("formRaw").filter(|_| carriers_on()) {
         w.leaf("FormRecord", None, &[("raw", pystr(raw)), ("sig", FORM_SIG_PLACEHOLDER.to_string())]);
     }
-    if let Some(raw) = model.get("panelRaw") {
+    if let Some(raw) = model.get("panelRaw").filter(|_| carriers_on()) {
         w.leaf("PanelRecord", None, &[("raw", pystr(raw)), ("sig", PANEL_SIG_PLACEHOLDER.to_string())]);
     }
     if !root_pages.is_empty() {

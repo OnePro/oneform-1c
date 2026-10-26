@@ -14,7 +14,7 @@ description: Правка и создание обычных (не управл�
 1. `oneform extract <каталог>` — создаёт `src/Forms/<Форма>/Form.xml`, `FormModule.bsl`, `FormPreview.html`.
 2. Правка `Form.xml` / `FormModule.bsl`. Правила:
    * нет тега = «не трогать»; значение по умолчанию в файле не показывается (после упаковки тег может исчезнуть — это нормально);
-   * служебные блоки (`raw`, `sig`, `InfoRecord`, `Appearance`, `PanelRecord`, `FormRecord`, `ColumnProps`, `Buttons raw`, `RowSource`, `GeometryFlags`) не править;
+   * бинарные служебные блоки (`raw`/`sig`, `*Record`) в XML не выводятся; если встретились (`extract --carriers`) — не править;
    * новый элемент: уникальное `name`, свободный `id`, `Left/Top/Width/Height`, `ZOrder` и `TabOrder` = следующие свободные, вставить в конец нужного `ChildItems`; привязки (`Anchors`) назначаются сами;
    * удалить элемент = удалить его XML целиком.
 3. `oneform pack <каталог> --dry-run` — полная проверка без записи; смотри список правок и ошибки.

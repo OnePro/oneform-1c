@@ -87,6 +87,10 @@ fn fixture_forms_are_byte_identical_to_the_reference() {
         // The fixtures are stored LF-normalized (`*.xml text eol=lf`), while text values with embedded
         // CRLF (tooltips) are emitted verbatim by the Reference; so compare with CRLF folded to LF.
         let xml = String::from_utf8(xml).unwrap().replace("\r\n", "\n");
+        if std::env::var("GOLDEN_BLESS").is_ok() {
+            std::fs::write(d.join("Form.xml"), xml.as_bytes()).unwrap();
+            continue;
+        }
         assert!(xml.as_bytes() == expected.as_slice(), "{name}: Form.xml differs");
     }
 }

@@ -4254,7 +4254,14 @@ fn extract_form_root_props(root: &mut XmlElement) -> FormRootProps {
 /// Verbatim blocks that `extract` carries for a compiler (`<ColumnProps>`, `<Appearance>`) describe the stream as
 /// extracted; `pack` edits the stream itself and `extract` writes them again, so they take no part in comparisons.
 fn strip_carriers(e: &mut XmlElement) {
-    e.children.retain(|c| !matches!(c.tag.as_str(), "ColumnProps" | "Appearance" | "InfoRecord" | "PanelRecord" | "FormRecord"));
+    e.children.retain(|c| {
+        !matches!(
+            c.tag.as_str(),
+            "ColumnProps" | "Appearance" | "InfoRecord" | "PanelRecord" | "FormRecord" | "GeometryFlags" | "RowSource"
+        )
+    });
+    e.attrs.remove("raw");
+    e.attrs.remove("sig");
     for c in &mut e.children {
         strip_carriers(c);
     }
