@@ -53,6 +53,9 @@ pub struct ObjectSchema {
     /// `(name, uuid)` in declaration order (registers: dimensions and resources included).
     pub attrs: Vec<(String, String)>,
     pub tabular: Vec<TabularSchema>,
+    /// Standard attributes of `kind` that this object does not have (a catalog without code, without
+    /// description, not hierarchical, without owners); a link to them would be invalid.
+    pub std_absent: Vec<String>,
 }
 
 fn resolve<'a>(list: &'a [(String, String)], name: &str) -> Resolved<&'a str> {
@@ -86,6 +89,9 @@ impl ObjectSchema {
 
     /// Code `-N` of the standard attribute `name` of this object's kind.
     pub fn std_code(&self, name: &str) -> Option<i64> {
+        if self.std_absent.iter().any(|n| n == name) {
+            return None;
+        }
         std_attr_code(self.kind(), name)
     }
 
@@ -94,7 +100,7 @@ impl ObjectSchema {
     pub fn root_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self.attrs.iter().map(|(n, _)| n.clone()).collect();
         names.extend(self.tabular.iter().map(|t| t.name.clone()));
-        names.extend(std_attr_names(self.kind()).into_iter().map(str::to_string));
+        names.extend(std_attr_names(self.kind()).into_iter().filter(|n| !self.std_absent.iter().any(|a| a == n)).map(str::to_string));
         names
     }
 
@@ -113,6 +119,25 @@ impl ObjectSchema {
         }
         let obj = root.children().find(|c| c.is_element())?;
         let mut schema = ObjectSchema { kind: Some(obj.tag_name().name().to_string()), ..Default::default() };
+        if obj.tag_name().name() == "Catalog" {
+            let prop = |name: &str| {
+                xchild(obj, "Properties").and_then(|p| xchild(p, name)).and_then(|e| e.text()).map(str::trim).map(str::to_string)
+            };
+            let zero = |name: &str| prop(name).is_some_and(|v| v == "0");
+            if zero("CodeLength") {
+                schema.std_absent.push("Код".into());
+            }
+            if zero("DescriptionLength") {
+                schema.std_absent.push("Наименование".into());
+            }
+            if prop("Hierarchical").is_some_and(|v| v != "true") {
+                schema.std_absent.push("Родитель".into());
+            }
+            let owners = xchild(obj, "Properties").and_then(|p| xchild(p, "Owners"));
+            if owners.is_some_and(|o| !o.children().any(|c| c.is_element())) {
+                schema.std_absent.push("Владелец".into());
+            }
+        }
         let Some(children) = xchild(obj, "ChildObjects") else { return Some(schema) };
         for e in children.children().filter(|c| c.is_element()) {
             let Some((name, uuid)) = xml_entry(e) else { continue };
@@ -266,6 +291,24 @@ mod tests {
     </ChildObjects>
   </Catalog>
 </MetaDataObject>"#;
+
+    #[test]
+    fn standard_attributes_a_catalog_does_not_have_are_not_offered() {
+        let xml = r#"<MetaDataObject><Catalog uuid="aaaaaaaa-0000-0000-0000-000000000001"><Properties>
+            <Name>Синхр</Name><Hierarchical>false</Hierarchical><Owners/><CodeLength>7</CodeLength><DescriptionLength>0</DescriptionLength>
+            </Properties><ChildObjects/></Catalog></MetaDataObject>"#;
+        let s = ObjectSchema::from_object_xml(xml).unwrap();
+        assert_eq!(s.std_code("Код"), Some(-2));
+        assert_eq!(s.std_code("Наименование"), None);
+        assert_eq!(s.std_code("Родитель"), None);
+        assert_eq!(s.std_code("Владелец"), None);
+        assert!(s.root_names().contains(&"Код".to_string()));
+        assert!(!s.root_names().contains(&"Наименование".to_string()));
+        let owned = xml.replace("<Owners/>", "<Owners><xr:Item>Catalog.X</xr:Item></Owners>").replace("<Hierarchical>false", "<Hierarchical>true");
+        let s = ObjectSchema::from_object_xml(&owned.replace("<MetaDataObject>", "<MetaDataObject xmlns:xr=\"urn:x\">")).unwrap();
+        assert_eq!(s.std_code("Родитель"), Some(-4));
+        assert_eq!(s.std_code("Владелец"), Some(-5));
+    }
 
     #[test]
     fn object_xml_nested_and_ambiguous() {

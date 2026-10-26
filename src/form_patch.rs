@@ -9754,6 +9754,7 @@ mod link_step_tests {
             kind: Some("Catalog".into()),
             attrs: vec![("ИНН".into(), ATTR.into()), ("Двойной".into(), "a".into()), ("Двойной".into(), "b".into())],
             tabular: Vec::new(),
+            std_absent: Vec::new(),
         }
     }
 
