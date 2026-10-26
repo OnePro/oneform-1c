@@ -1382,9 +1382,11 @@ impl Writer {
             }
         }
         if let Some(f) = p.get("font") {
-            let attrs: Attrs = ["bold", "source", "face", "size"]
+            let attrs: Attrs = ["bold", "italic", "underline", "strikeout", "source", "face", "size", "scale"]
                 .iter()
-                .filter_map(|k| f.get(*k).map(|v| (*k, if *k == "bold" { pystr(v).to_lowercase() } else { pystr(v) })))
+                .filter_map(|k| {
+                    f.get(*k).map(|v| (*k, if matches!(*k, "bold" | "italic" | "underline" | "strikeout") { pystr(v).to_lowercase() } else { pystr(v) }))
+                })
                 .collect();
             self.leaf("Font", None, &attrs);
         }

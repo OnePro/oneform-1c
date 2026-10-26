@@ -2443,3 +2443,28 @@ fn final_catalog_extensions_choiceitem_and_spreadsheet_doc_round_trip() {
     assert!(text.contains("{0,0,0,{\"S\",\"Зн2\"}"));
     assert_eq!(got.control(pf.allocated[0].1).unwrap().values.choice_list.len(), 2);
 }
+
+/// Editing one attribute of a compound value must keep the parts of it that the XML does not state.
+#[test]
+fn font_size_edit_keeps_italic_underline_strikeout_and_scale() {
+    let name = "DonorForm";
+    let mut first = baseline(name);
+    first = edit_ctl(
+        &first,
+        "Кнопка1",
+        &[(
+            "<TabOrder>2</TabOrder>",
+            "<TabOrder>2</TabOrder>\n          <Font bold=\"true\" italic=\"true\" underline=\"true\" strikeout=\"true\" scale=\"120\" face=\"Arial\" size=\"11\"/>",
+        )],
+    );
+    let (pf, _) = structural_round_trip(name, &first);
+    // the next edit starts from what `extract` shows for the patched stream
+    let s2 = parse_spanned(&pf.bytes).unwrap();
+    let base2 = decode_xml(name, &pf.bytes);
+    let font_line = base2.lines().find(|l| l.contains("<Font ") && l.contains("Arial")).expect("font in extract").to_string();
+    let edited = base2.replacen(&font_line, &font_line.replace("size=\"11\"", "size=\"13\""), 1);
+    assert_ne!(edited, base2);
+    let pf2 = patch_form(&s2, base2.as_bytes(), edited.as_bytes()).unwrap();
+    let text = String::from_utf8(pf2.bytes).unwrap();
+    assert!(text.contains("{7,1,60,\"Arial\",{-26},700,1,1,1,0,120}"), "font flags lost: {}", &text[text.find("Arial").unwrap_or(0).saturating_sub(20)..][..60]);
+}
