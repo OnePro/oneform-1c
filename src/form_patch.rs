@@ -7054,6 +7054,17 @@ fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[Comm
     Ok(out)
 }
 
+/// Columns of tabular-section and dynamic-list tables keep `0` where a value-table column keeps its field name:
+/// the field is addressed by a link step instead, and `Form.xml` shows it as `DataPath`. For those columns the
+/// field name is not a patchable value, so it is masked on both sides of every comparison.
+fn mask_field_slots(stream: &[ColumnValues], other: &mut [ColumnValues]) {
+    for (s, o) in stream.iter().zip(other.iter_mut()) {
+        if s.field_name.as_deref() == Some("0") {
+            o.field_name = None;
+        }
+    }
+}
+
 fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
     let cols = table_column_props(site)?;
     let mut out = Vec::with_capacity(cols.len());
@@ -7625,9 +7636,12 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             }
             Property::Columns => {
                 let cols = table_column_props(site)?;
-                let cur_cols = read_table_column_values(site)?;
-                let old_cols: Vec<ColumnValues> =
+                let mut cur_cols = read_table_column_values(site)?;
+                let mut old_cols: Vec<ColumnValues> =
                     old.columns.iter().cloned().map(|c| ColumnValues { ext: ColumnExt::default(), ..c }).collect();
+                let stream_cols = cur_cols.clone();
+                mask_field_slots(&stream_cols, &mut old_cols);
+                mask_field_slots(&stream_cols, &mut cur_cols);
                 if cur_cols != old_cols {
                     return Err(site.mismatch("Columns", &format!("{old_cols:?}"), &format!("{cur_cols:?}")));
                 }
@@ -7642,7 +7656,7 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                             .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column name atom missing".into()))?;
                         out.push(piece(span, quote(&nc.name), &[prop]));
                     }
-                    if oc.field_name != nc.field_name {
+                    if oc.field_name != nc.field_name && stream_cols.get(i).is_none_or(|s| s.field_name.as_deref() != Some("0")) {
                         let (_, span) = wrapper
                             .atom(2)
                             .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column field name atom missing".into()))?;
@@ -8139,7 +8153,12 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             Property::Columns => {
                 let plain: Vec<ColumnValues> =
                     new.columns.iter().cloned().map(|c| ColumnValues { read_only: c.read_only || location_reads_as_read_only(&c.ext), ext: ColumnExt::default(), ..c }).collect();
-                read_table_column_values(site)? == plain && column_ext_matches(site, &new.columns)?
+                let mut plain = plain;
+                let mut cur = read_table_column_values(site)?;
+                let stream_cols = cur.clone();
+                mask_field_slots(&stream_cols, &mut plain);
+                mask_field_slots(&stream_cols, &mut cur);
+                cur == plain && column_ext_matches(site, &new.columns)?
             }
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
             Property::Buttons => {

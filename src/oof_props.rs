@@ -511,7 +511,79 @@ pub fn decode_pattern(pattern: &Item) -> Result<Option<Map<String, Value>>, OofE
     } else if branches.len() > 1 {
         vt.insert("mixedComposite".into(), true.into());
     }
+    // A composite that `kind`/`refGuid` cannot describe is listed branch by branch (lossless raw ids and qualifiers).
+    if vt.get("mixedComposite") == Some(&Value::Bool(true)) {
+        let mut types = Vec::new();
+        for b in branches {
+            types.push(Value::Object(decode_branch(b)?));
+        }
+        for key in ["refGuid", "refGuids", "digits", "fractionDigits", "length", "nonNegative", "fixed"] {
+            vt.remove(key);
+        }
+        vt.insert("types".into(), Value::Array(types));
+    }
     Ok(Some(vt))
+}
+
+/// One `{type}` branch of a pattern as `{kind, qualifiers, refGuid}` (`refGuid` is the raw `#` uuid, built-ins too).
+fn decode_branch(branch: &Item) -> Result<Map<String, Value>, OofError> {
+    let b = node(branch, "type branch", 1)?;
+    let code = str_val(&b.children[0], "type code")?;
+    let mut t = Map::new();
+    match code {
+        "#" => {
+            let g = if b.len() > 1 { atom(&b.children[1]).to_lowercase() } else { String::new() };
+            let kind = match g.as_str() {
+                VALUE_TABLE_GUID => "ValueTable",
+                VALUE_TREE_GUID => "ValueTree",
+                VALUE_LIST_GUID => "ValueList",
+                ANY_REF_GUID => "AnyRef",
+                _ => "Ref",
+            };
+            t.insert("kind".into(), kind.into());
+            t.insert("refGuid".into(), g.into());
+        }
+        "S" => {
+            t.insert("kind".into(), "String".into());
+            if b.len() > 1 {
+                let length = int(&b.children[1], "string length")?;
+                if length > 0 {
+                    t.insert("length".into(), length.into());
+                }
+            }
+            if b.len() > 2 && int(&b.children[2], "string fixed")? != 0 {
+                t.insert("fixed".into(), true.into());
+            }
+        }
+        "N" => {
+            t.insert("kind".into(), "Number".into());
+            if b.len() > 1 {
+                t.insert("digits".into(), int(&b.children[1], "number digits")?.into());
+            }
+            if b.len() > 2 {
+                t.insert("fractionDigits".into(), int(&b.children[2], "fraction digits")?.into());
+            }
+            if b.len() > 3 && int(&b.children[3], "number sign")? != 0 {
+                t.insert("nonNegative".into(), true.into());
+            }
+        }
+        "D" => {
+            let kind = match if b.len() > 1 { Some(str_val(&b.children[1], "date part")?) } else { None } {
+                Some("D") => "Date",
+                Some("T") => "Time",
+                _ => "DateTime",
+            };
+            t.insert("kind".into(), kind.into());
+        }
+        "B" => {
+            t.insert("kind".into(), "Boolean".into());
+        }
+        _ => {
+            t.insert("kind".into(), "Unknown".into());
+            t.insert("code".into(), code.into());
+        }
+    }
+    Ok(t)
 }
 
 /// Lowercase uuid of a `{"#", <uuid>}` branch that is a concrete (not platform built-in) reference type.
@@ -1172,7 +1244,10 @@ mod tests {
         assert_eq!(vt("{\"Pattern\",{\"B\"}}").unwrap()["kind"], "Boolean");
         assert_eq!(
             vt("{\"Pattern\",{\"#\",0b635ac9-cea4-4531-88db-24fe88ba0690},{\"S\"}}"),
-            Some(json!({"kind": "Ref", "composite": true, "mixedComposite": true}))
+            Some(json!({"kind": "Ref", "composite": true, "mixedComposite": true, "types": [
+                {"kind": "Ref", "refGuid": "0b635ac9-cea4-4531-88db-24fe88ba0690"},
+                {"kind": "String"}
+            ]}))
         );
         assert_eq!(
             vt("{\"Pattern\",{\"#\",0b635ac9-cea4-4531-88db-24fe88ba0690},{\"#\",1b635ac9-cea4-4531-88db-24fe88ba0690}}"),

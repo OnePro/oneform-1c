@@ -1044,7 +1044,27 @@ impl Writer {
         if let Some(f) = vt.get("fractionDigits") {
             attrs.push(("fractionDigits", pystr(f)));
         }
-        self.leaf("ValueType", None, &attrs);
+        let types = vt.get("types").and_then(Value::as_array).filter(|t| !t.is_empty());
+        let Some(types) = types else {
+            self.leaf("ValueType", None, &attrs);
+            return;
+        };
+        self.open("ValueType", &attrs);
+        for t in types {
+            let mut a: Attrs = vec![("kind", pystr(&t["kind"]))];
+            for key in ["refGuid", "length", "digits", "fractionDigits", "code"] {
+                if let Some(v) = t.get(key) {
+                    a.push((key, pystr(v)));
+                }
+            }
+            for key in ["fixed", "nonNegative"] {
+                if t.get(key) == Some(&Value::Bool(true)) {
+                    a.push((key, "true".to_string()));
+                }
+            }
+            self.leaf("Type", None, &a);
+        }
+        self.close("ValueType");
     }
 
     fn props(&mut self, p: &Value) {
