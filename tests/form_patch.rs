@@ -2534,6 +2534,25 @@ fn insert_before_table1(xml: &str, block: &str) -> String {
 }
 
 #[test]
+fn an_added_control_with_unsupported_content_is_refused_not_silently_trimmed() {
+    // `Object.Field` data paths and unknown elements cannot be written into a clone: both used to vanish.
+    let geometry = "<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>";
+    for extra in ["<DataPath attributeId=\"3\">ПолеВвода1.Поле</DataPath>", "<NoSuchProperty>1</NoSuchProperty>"] {
+        let block = format!(
+            "<LabelDecoration name=\"Новая\" id=\"999\">
+          {geometry}
+          {extra}
+          <ZOrder>50</ZOrder><TabOrder>50</TabOrder>
+        </LabelDecoration>
+        "
+        );
+        let edited = insert_before_table1(&baseline("DonorForm"), &block);
+        let e = patch_form(&stream("DonorForm"), baseline("DonorForm").as_bytes(), edited.as_bytes()).unwrap_err();
+        assert!(e.to_string().contains("added-control") || format!("{e:?}").contains("added-control"), "{extra}: {e:?}");
+    }
+}
+
+#[test]
 fn fixtures_have_consistent_anchor_graphs() {
     for name in ["DonorForm", "DonorFormAlt", "DonorFormV2"] {
         let s = stream(name);
@@ -2801,6 +2820,16 @@ fn two_removed_controls_attached_to_each_other_leave_no_trace() {
     assert!(old[2].contains(&(7, 3)) && !new[2].contains(&(7, 3)));
     assert_eq!(new[2].len(), old[2].len() - 1);
     assert_eq!(anchor_edges(&pf.bytes, 13), anchor_edges(&before, 13));
+}
+
+#[test]
+fn removing_the_first_items_of_a_list_together_cuts_one_clean_range() {
+    // КоманднаяПанель1 (2) and ОсновныеДействияФормы (3) are the first two items of the page's list: their
+    // removal ranges used to overlap on the separator between them.
+    let before = stream("DonorForm").source().to_vec();
+    let bars = [("<CommandBar name=\"КоманднаяПанель1\"", "</CommandBar>"), ("<CommandBar name=\"ОсновныеДействияФормы\"", "</CommandBar>")];
+    let (pf, _) = remove_controls("DonorForm", &bars);
+    assert_clean_removal(&before, &pf, &[2, 3]);
 }
 
 #[test]

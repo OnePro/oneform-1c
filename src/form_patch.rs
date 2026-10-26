@@ -4839,6 +4839,19 @@ pub fn diff_forms_full(
                     format!("line {}: {} has no approved donor prototype (adding it is not supported)", c.line, c.describe()),
                 ));
             }
+            // What the parser did not take into a value or an event cannot be written into the clone: say so
+            // instead of dropping it silently (a `DataPath` whose text is not exactly the attribute name too).
+            for e in &c.rest.children {
+                if matches!(e.tag.as_str(), "Events" | "ChildItems") || e.tag == CONTROL_STUB {
+                    continue;
+                }
+                let why = if e.tag == "DataPath" {
+                    "only the name of a form attribute is supported here (the path steps of an object attribute, such as \"Object.Field\", are not)"
+                } else {
+                    "this element is not supported on an added control"
+                };
+                problems.push(problem("added-control", format!("line {}: {}: <{}>: {why}", c.line, c.describe(), e.tag)));
+            }
             if let Some(_pid) = c.parent {
                 // CommandBar parents are rejected later against the binary index (needs entry lookup);
                 // here we only have the XML. The pack planner performs the binary-side check.
@@ -6126,8 +6139,9 @@ fn set_clone_events(n: &mut Node, events: &[(i64, String)], who: &str) -> Result
     Ok(())
 }
 
-/// Byte range cutting item `k` of `n` from a counted list, including one separator.
-fn removal_range(list: &SpanNode, k: usize, n: usize) -> Result<Span> {
+/// Byte ranges cutting the items `removals` of `n` from a counted list, one range per run of adjacent items
+/// (a run takes the separator before it, or the one after it when it starts the list), so that ranges never overlap.
+fn removal_ranges(list: &SpanNode, removals: &[usize], n: usize) -> Result<Vec<Span>> {
     let items: Vec<Span> = (1..=n)
         .map(|i| match list.children.get(i) {
             Some(SpanItem::Node(x)) => Ok(x.span),
@@ -6135,13 +6149,33 @@ fn removal_range(list: &SpanNode, k: usize, n: usize) -> Result<Span> {
             None => Err(layout_err("structural edit: list span does not match its count")),
         })
         .collect::<Result<Vec<_>>>()?;
-    if n == 1 {
-        return Ok(items[0]);
+    let mut ks: Vec<usize> = removals.to_vec();
+    ks.sort_unstable();
+    ks.dedup();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < ks.len() {
+        let first = ks[i];
+        let mut last = first;
+        while i + 1 < ks.len() && ks[i + 1] == last + 1 {
+            i += 1;
+            last = ks[i];
+        }
+        i += 1;
+        if last >= n {
+            return Err(layout_err("structural edit: removed item is outside the list"));
+        }
+        out.push(if first > 0 {
+            Span { start: items[first - 1].end, end: items[last].end }
+        } else if last + 1 < n {
+            Span { start: items[0].start, end: items[last + 1].start }
+        } else {
+            // every item goes: the separator after the count goes too (`{0}`, not `{0,}`)
+            let count_end = list.children.first().map_or(items[0].start, |c| c.span().end);
+            Span { start: count_end, end: items[last].end }
+        });
     }
-    if k == 0 {
-        return Ok(Span { start: items[0].start, end: items[1].start });
-    }
-    Ok(Span { start: items[k - 1].end, end: items[k].end })
+    Ok(out)
 }
 
 /// Edits of one counted list: removals by item index, insertions at the end.
@@ -9188,8 +9222,7 @@ impl FormPatchPlan<'_> {
         // ---- materialize replacements
         for (_key, (list, count, edit)) in lists {
             let control_id = 0;
-            for &k in &edit.removals {
-                let range = removal_range(list.span, k, count)?;
+            for range in removal_ranges(list.span, &edit.removals, count)? {
                 out.push(AppliedReplacement { control_id, properties: Vec::new(), range, bytes: Vec::new() });
             }
             if !edit.inserts.is_empty() {
@@ -9470,4 +9503,34 @@ impl FormPatchPlan<'_> {
 /// Plan and apply in one step: parse both XML documents, diff them against the stream and patch it.
 pub fn patch_form(source: &SpannedMetadata, baseline_xml: &[u8], edited_xml: &[u8]) -> Result<PatchedForm> {
     plan_form_patch(source, baseline_xml, edited_xml)?.apply()
+}
+
+#[cfg(test)]
+mod removal_range_tests {
+    use super::*;
+    use crate::brace::{apply_replacements, parse_spanned, Replacement};
+
+    /// Cuts `removals` from the counted list `text` and returns the result.
+    fn cut(text: &str, removals: &[usize]) -> String {
+        let s = parse_spanned(text.as_bytes()).unwrap();
+        let n = s.spans.children.len() - 1;
+        let ranges = removal_ranges(&s.spans, removals, n).unwrap();
+        let reps: Vec<Replacement> = ranges.into_iter().map(|range| Replacement { range, bytes: Vec::new() }).collect();
+        String::from_utf8(apply_replacements(text.as_bytes(), &reps).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn removal_leaves_a_well_formed_list() {
+        let l = "{4,{a},{b},{c},{d}}";
+        assert_eq!(cut(l, &[0]), "{4,{b},{c},{d}}");
+        assert_eq!(cut(l, &[3]), "{4,{a},{b},{c}}");
+        assert_eq!(cut(l, &[0, 1]), "{4,{c},{d}}");
+        assert_eq!(cut(l, &[1, 2]), "{4,{a},{d}}");
+        assert_eq!(cut(l, &[0, 2]), "{4,{b},{d}}");
+        assert_eq!(cut(l, &[2, 3]), "{4,{a},{b}}");
+        // the count is patched separately: the cuts only have to leave a valid body
+        assert_eq!(cut(l, &[0, 1, 2, 3]), "{4}");
+        assert_eq!(cut("{1,{a}}", &[0]), "{1}");
+        assert_eq!(cut("{2,{a},{b}}", &[0, 1]), "{2}");
+    }
 }
