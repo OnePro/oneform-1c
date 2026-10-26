@@ -1,0 +1,413 @@
+//! Scoped reverse table of an object: attribute names -> uuid, standard attribute names -> code,
+//! tabular sections and their columns.
+//!
+//! A flat `uuid -> name` lookup cannot be reversed (equal column names occur in different tabular
+//! sections), so the schema is nested. The pack planner reads it through [`object_schema`]; it is
+//! set per form with [`with_object_schema`] and is `None` when the object has no known schema.
+//! Names are matched exactly (case-sensitive).
+
+use std::cell::RefCell;
+use std::sync::Arc;
+
+use crate::brace::{Item, Node, BARE};
+use crate::metadata::descriptor_of;
+use crate::naming::is_uuid;
+use crate::oof_props::{std_attr_code, std_attr_names};
+
+/// Class of the group of attributes in the root metadata of an external processor.
+const ATTRIBUTES_CLASS_ID: &str = "ec6bb5e5-b7a8-4d75-bec9-658107a699cf";
+/// Class of the group of tabular sections.
+const TABULAR_CLASS_ID: &str = "2bcef0d1-0981-11d6-b9b8-0050bae0a95d";
+/// Class of the group of columns inside a tabular section.
+const COLUMNS_CLASS_ID: &str = "5d24a9d1-098e-11d6-b9b8-0050bae0a95d";
+
+/// Result of a lookup by name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Resolved<T> {
+    One(T),
+    /// The name occurs more than once in the scope.
+    Ambiguous,
+    Missing,
+}
+
+/// A tabular section with its columns.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TabularSchema {
+    pub name: String,
+    pub uuid: String,
+    /// `(name, uuid)` in declaration order.
+    pub columns: Vec<(String, String)>,
+}
+
+impl TabularSchema {
+    pub fn resolve_column(&self, name: &str) -> Resolved<&str> {
+        resolve(&self.columns, name)
+    }
+}
+
+/// Names of the object's attributes (`attrs`), tabular sections and standard attributes of its `kind`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ObjectSchema {
+    /// XML element under `MetaDataObject` (`Catalog`, `Document`, ...); `None` for a processor container.
+    pub kind: Option<String>,
+    /// `(name, uuid)` in declaration order (registers: dimensions and resources included).
+    pub attrs: Vec<(String, String)>,
+    pub tabular: Vec<TabularSchema>,
+}
+
+fn resolve<'a>(list: &'a [(String, String)], name: &str) -> Resolved<&'a str> {
+    let mut found = list.iter().filter(|(n, _)| n == name);
+    match (found.next(), found.next()) {
+        (None, _) => Resolved::Missing,
+        (Some((_, uuid)), None) => Resolved::One(uuid.as_str()),
+        (Some(_), Some(_)) => Resolved::Ambiguous,
+    }
+}
+
+impl ObjectSchema {
+    pub fn kind(&self) -> Option<&str> {
+        self.kind.as_deref()
+    }
+
+    /// uuid of the attribute `name` of the object itself (not of its tabular sections).
+    pub fn resolve_attr(&self, name: &str) -> Resolved<&str> {
+        resolve(&self.attrs, name)
+    }
+
+    /// The tabular section `name`.
+    pub fn resolve_tabular(&self, name: &str) -> Resolved<&TabularSchema> {
+        let mut found = self.tabular.iter().filter(|t| t.name == name);
+        match (found.next(), found.next()) {
+            (None, _) => Resolved::Missing,
+            (Some(t), None) => Resolved::One(t),
+            (Some(_), Some(_)) => Resolved::Ambiguous,
+        }
+    }
+
+    /// Code `-N` of the standard attribute `name` of this object's kind.
+    pub fn std_code(&self, name: &str) -> Option<i64> {
+        std_attr_code(self.kind(), name)
+    }
+
+    /// Every name that can follow the root in a `DataPath` (attributes, tabular sections, standard
+    /// attributes); a hint for error messages.
+    pub fn root_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.attrs.iter().map(|(n, _)| n.clone()).collect();
+        names.extend(self.tabular.iter().map(|t| t.name.clone()));
+        names.extend(std_attr_names(self.kind()).into_iter().map(str::to_string));
+        names
+    }
+
+    /// From the XML of a configuration object (`<Obj>.xml`): `ChildObjects/{Attribute,Dimension,Resource}`
+    /// and `ChildObjects/TabularSection` with its own `ChildObjects/Attribute`. `None` when the text
+    /// is not a `MetaDataObject` document.
+    pub fn from_object_xml(text: &str) -> Option<ObjectSchema> {
+        let doc = roxmltree::Document::parse_with_options(
+            text.strip_prefix('\u{feff}').unwrap_or(text),
+            roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() },
+        )
+        .ok()?;
+        let root = doc.root_element();
+        if root.tag_name().name() != "MetaDataObject" {
+            return None;
+        }
+        let obj = root.children().find(|c| c.is_element())?;
+        let mut schema = ObjectSchema { kind: Some(obj.tag_name().name().to_string()), ..Default::default() };
+        let Some(children) = xchild(obj, "ChildObjects") else { return Some(schema) };
+        for e in children.children().filter(|c| c.is_element()) {
+            let Some((name, uuid)) = xml_entry(e) else { continue };
+            match e.tag_name().name() {
+                "Attribute" | "Dimension" | "Resource" => schema.attrs.push((name, uuid)),
+                "TabularSection" => {
+                    let columns = xchild(e, "ChildObjects")
+                        .map(|c| {
+                            c.children()
+                                .filter(|c| c.is_element() && c.tag_name().name() == "Attribute")
+                                .filter_map(xml_entry)
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    schema.tabular.push(TabularSchema { name, uuid, columns });
+                }
+                _ => {}
+            }
+        }
+        Some(schema)
+    }
+
+    /// From the root metadata tree of an external processor container (kind `None`).
+    ///
+    /// The properties node of the root class holds groups `{<class>,<count>,<item>...}`; an item is
+    /// `{<head>,...}` whose head contains the descriptor `{3,{1,0,<uuid>},"<Name>",...}` of the
+    /// attribute / tabular section / column. Attributes are the group of `ATTRIBUTES_CLASS_ID`; a
+    /// tabular section item carries its own group of `COLUMNS_CLASS_ID`. A tree of an unexpected
+    /// shape yields an empty schema.
+    pub fn from_meta_tree(meta: &Node) -> ObjectSchema {
+        let mut schema = ObjectSchema::default();
+        let Some(props) = meta.node(3).and_then(|cls| cls.node(1)) else { return schema };
+        for group in props.children.iter().skip(2).filter_map(as_node) {
+            match group_class(group) {
+                Some(ATTRIBUTES_CLASS_ID) => {
+                    schema.attrs.extend(group_items(group).filter_map(item_entry));
+                }
+                Some(TABULAR_CLASS_ID) => {
+                    for item in group_items(group) {
+                        let Some((name, uuid)) = item_entry(item) else { continue };
+                        let columns = item
+                            .children
+                            .iter()
+                            .filter_map(as_node)
+                            .filter(|n| group_class(n) == Some(COLUMNS_CLASS_ID))
+                            .flat_map(group_items)
+                            .filter_map(item_entry)
+                            .collect();
+                        schema.tabular.push(TabularSchema { name, uuid, columns });
+                    }
+                }
+                _ => {}
+            }
+        }
+        schema
+    }
+}
+
+fn as_node(item: &Item) -> Option<&Node> {
+    match item {
+        Item::Node(n) => Some(n),
+        Item::Atom(_) => None,
+    }
+}
+
+/// Class uuid of a group `{<class>,<count>,...}`.
+fn group_class(group: &Node) -> Option<&str> {
+    match group.children.first() {
+        Some(Item::Atom(a)) if a.kind == BARE && is_uuid(&a.value) => Some(a.value.as_str()),
+        _ => None,
+    }
+}
+
+fn group_items(group: &Node) -> impl Iterator<Item = &Node> {
+    group.children.iter().skip(2).filter_map(as_node)
+}
+
+/// `(name, uuid)` of the first descriptor in the head (`item[0]`) of a group item.
+fn item_entry(item: &Node) -> Option<(String, String)> {
+    let (uuid, name) = first_descriptor(item.node(0)?)?;
+    Some((name.to_string(), uuid.to_string()))
+}
+
+fn first_descriptor(node: &Node) -> Option<(&str, &str)> {
+    descriptor_of(node).or_else(|| node.children.iter().filter_map(as_node).find_map(first_descriptor))
+}
+
+fn xchild<'a, 'i>(n: roxmltree::Node<'a, 'i>, name: &str) -> Option<roxmltree::Node<'a, 'i>> {
+    n.children().find(|c| c.is_element() && c.tag_name().name() == name)
+}
+
+/// `(Properties/Name, uuid attribute)` of a metadata element; `None` without a name or a valid uuid.
+fn xml_entry(e: roxmltree::Node<'_, '_>) -> Option<(String, String)> {
+    let name = xchild(xchild(e, "Properties")?, "Name")?.text()?.trim();
+    let uuid = e.attribute("uuid")?.trim().to_lowercase();
+    (!name.is_empty() && is_uuid(&uuid)).then(|| (name.to_string(), uuid))
+}
+
+// ---------------------------------------------------------------------------- scope
+
+thread_local! {
+    // The initializer already is `const`; clippy still reports this static.
+    #[allow(clippy::missing_const_for_thread_local)]
+    static ACTIVE_SCHEMA: RefCell<Vec<Option<Arc<ObjectSchema>>>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Runs `f` with `schema` as the active [`object_schema`] (`None`: no schema known for this form).
+pub fn with_object_schema<R>(schema: Option<ObjectSchema>, f: impl FnOnce() -> R) -> R {
+    struct Pop;
+    impl Drop for Pop {
+        fn drop(&mut self) {
+            ACTIVE_SCHEMA.with(|s| s.borrow_mut().pop());
+        }
+    }
+    ACTIVE_SCHEMA.with(|s| s.borrow_mut().push(schema.map(Arc::new)));
+    let _pop = Pop;
+    f()
+}
+
+/// The schema of the form being planned; `None` outside [`with_object_schema`] or when none is known.
+pub fn object_schema() -> Option<Arc<ObjectSchema>> {
+    ACTIVE_SCHEMA.with(|s| s.borrow().last().cloned().flatten())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::brace::parse_metadata;
+
+    const CATALOG: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" version="2.17">
+  <Catalog uuid="aaaaaaaa-0000-0000-0000-000000000001">
+    <Properties><Name>Контрагенты</Name></Properties>
+    <ChildObjects>
+      <Attribute uuid="11111111-0000-0000-0000-000000000001"><Properties><Name>ИНН</Name></Properties></Attribute>
+      <Attribute uuid="11111111-0000-0000-0000-000000000002"><Properties><Name>КПП</Name></Properties></Attribute>
+      <Attribute uuid="11111111-0000-0000-0000-000000000003"><Properties><Name>КПП</Name></Properties></Attribute>
+      <TabularSection uuid="22222222-0000-0000-0000-000000000001">
+        <Properties><Name>Контакты</Name></Properties>
+        <ChildObjects>
+          <Attribute uuid="33333333-0000-0000-0000-000000000001"><Properties><Name>Значение</Name></Properties></Attribute>
+        </ChildObjects>
+      </TabularSection>
+      <TabularSection uuid="22222222-0000-0000-0000-000000000002">
+        <Properties><Name>Счета</Name></Properties>
+        <ChildObjects>
+          <Attribute uuid="33333333-0000-0000-0000-000000000002"><Properties><Name>Значение</Name></Properties></Attribute>
+        </ChildObjects>
+      </TabularSection>
+      <Form>ФормаЭлемента</Form>
+    </ChildObjects>
+  </Catalog>
+</MetaDataObject>"#;
+
+    #[test]
+    fn object_xml_nested_and_ambiguous() {
+        let s = ObjectSchema::from_object_xml(CATALOG).unwrap();
+        assert_eq!(s.kind(), Some("Catalog"));
+        assert_eq!(s.resolve_attr("ИНН"), Resolved::One("11111111-0000-0000-0000-000000000001"));
+        assert_eq!(s.resolve_attr("КПП"), Resolved::Ambiguous);
+        assert_eq!(s.resolve_attr("инн"), Resolved::Missing);
+        assert_eq!(s.resolve_attr("Значение"), Resolved::Missing, "columns are not attributes of the object");
+        let Resolved::One(a) = s.resolve_tabular("Контакты") else { panic!() };
+        let Resolved::One(b) = s.resolve_tabular("Счета") else { panic!() };
+        assert_eq!(a.resolve_column("Значение"), Resolved::One("33333333-0000-0000-0000-000000000001"));
+        assert_eq!(b.resolve_column("Значение"), Resolved::One("33333333-0000-0000-0000-000000000002"));
+        assert_eq!(b.resolve_column("Нет"), Resolved::Missing);
+        assert_eq!(s.resolve_tabular("Нет"), Resolved::Missing);
+    }
+
+    #[test]
+    fn object_xml_standard_codes_and_root_names() {
+        let s = ObjectSchema::from_object_xml(CATALOG).unwrap();
+        assert_eq!(s.std_code("Код"), Some(-2));
+        assert_eq!(s.std_code("Наименование"), Some(-3));
+        assert_eq!(s.std_code("ИНН"), None);
+        let names = s.root_names();
+        for n in ["ИНН", "Контакты", "Код", "Наименование"] {
+            assert!(names.iter().any(|x| x == n), "{n}");
+        }
+        assert_eq!(ObjectSchema::default().std_code("Код"), None, "no kind, no standard attributes");
+    }
+
+    #[test]
+    fn object_xml_register_and_non_object() {
+        let xml = r#"<MetaDataObject><InformationRegister uuid="aaaaaaaa-0000-0000-0000-000000000001"><ChildObjects>
+          <Dimension uuid="44444444-0000-0000-0000-000000000001"><Properties><Name>Контрагент</Name></Properties></Dimension>
+          <Resource uuid="44444444-0000-0000-0000-000000000002"><Properties><Name>Сумма</Name></Properties></Resource>
+        </ChildObjects></InformationRegister></MetaDataObject>"#;
+        let s = ObjectSchema::from_object_xml(xml).unwrap();
+        assert_eq!(s.kind(), Some("InformationRegister"));
+        assert_eq!(s.resolve_attr("Контрагент"), Resolved::One("44444444-0000-0000-0000-000000000001"));
+        assert_eq!(s.resolve_attr("Сумма"), Resolved::One("44444444-0000-0000-0000-000000000002"));
+        assert_eq!(s.std_code("Период"), Some(-2));
+        assert!(ObjectSchema::from_object_xml("<Other/>").is_none());
+        assert!(ObjectSchema::from_object_xml("not xml").is_none());
+    }
+
+    fn desc(uuid: &str, name: &str) -> String {
+        format!("{{3,{{1,0,{uuid}}},\"{name}\",{{0}}}}")
+    }
+
+    /// `{{0,{23,{27,{2,<descriptor>,{Pattern}}}}},0}`: an attribute or a column.
+    fn attr_item(uuid: &str, name: &str) -> String {
+        ["{{0,{23,{27,{2,", &desc(uuid, name), ",{Pattern}}}}},0}"].concat()
+    }
+
+    /// A tabular section with one column `Колонка`.
+    fn tab_item(uuid: &str, name: &str, col_uuid: &str) -> String {
+        [
+            "{{0,{11,", uuid, ",", uuid, ",", uuid, ",", uuid, ",{0,", &desc(uuid, name), "}}},1,{",
+            COLUMNS_CLASS_ID, ",1,", &attr_item(col_uuid, "Колонка"), "}}",
+        ]
+        .concat()
+    }
+
+    fn id(n: u8) -> String {
+        format!("0000000{n}-0000-0000-0000-000000000000")
+    }
+
+    /// Root metadata tree of a processor: attributes `Реквизит`, `Дубль`, `Дубль`; tabular sections
+    /// `А` and `Б`, both with the column `Колонка`.
+    fn processor_tree() -> Node {
+        let groups = [
+            ["{", TABULAR_CLASS_ID, ",2,", &tab_item(&id(1), "А", &id(2)), ",", &tab_item(&id(3), "Б", &id(4)), "}"].concat(),
+            "{3daea016-69b7-4ed4-9453-127911372fe6,0}".to_string(),
+            [
+                "{", ATTRIBUTES_CLASS_ID, ",3,", &attr_item(&id(5), "Реквизит"), ",", &attr_item(&id(6), "Дубль"), ",",
+                &attr_item(&id(7), "Дубль"), "}",
+            ]
+            .concat(),
+        ];
+        let text = ["{1,{", &id(9), "},1,{c3831ec8-d8d5-4f93-8a22-f9bfae07327f,{1,{4,x},4,", &groups.join(","), "}}}"].concat();
+        parse_metadata(text.as_bytes()).unwrap()
+    }
+
+    #[test]
+    fn processor_tree_nested() {
+        let s = ObjectSchema::from_meta_tree(&processor_tree());
+        assert_eq!(s.kind(), None);
+        assert_eq!(s.resolve_attr("Реквизит"), Resolved::One(id(5).as_str()));
+        assert_eq!(s.resolve_attr("Дубль"), Resolved::Ambiguous);
+        assert_eq!(s.resolve_attr("Колонка"), Resolved::Missing);
+        let Resolved::One(a) = s.resolve_tabular("А") else { panic!("{s:?}") };
+        let Resolved::One(b) = s.resolve_tabular("Б") else { panic!("{s:?}") };
+        assert_eq!(a.resolve_column("Колонка"), Resolved::One(id(2).as_str()));
+        assert_eq!(b.resolve_column("Колонка"), Resolved::One(id(4).as_str()));
+        assert_eq!(a.uuid, id(1));
+        assert_eq!(s.std_code("Код"), None);
+    }
+
+    #[test]
+    fn processor_tree_of_unexpected_shape_is_empty() {
+        let tree = parse_metadata(b"{1,{x},1}").unwrap();
+        assert_eq!(ObjectSchema::from_meta_tree(&tree), ObjectSchema::default());
+    }
+
+    fn inventory_of(path: &std::path::Path) -> Option<crate::metadata::ProcessorInventory> {
+        use crate::container::{parse_container, Limits};
+        let data = std::fs::read(path).ok()?;
+        let limits = Limits::default();
+        let c = parse_container(&data, &limits, 0, None).unwrap();
+        Some(crate::metadata::discover(&c, &limits, None, false).unwrap())
+    }
+
+    #[test]
+    fn processor_container_fixture() {
+        let epf = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/donor.epf");
+        let inv = inventory_of(&epf).expect("fixture");
+        // the donor has neither attributes nor tabular sections: an empty, kind-less schema
+        assert_eq!(inv.object_schema, ObjectSchema::default());
+    }
+
+    #[test]
+    fn processor_with_attributes_if_available() {
+        let Some(home) = std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME")) else { return };
+        let epf = std::path::Path::new(&home).join("Documents/1с/export_db/TestProcesser/original/РабочееМестоМенеджера.epf");
+        let Some(inv) = inventory_of(&epf) else { return };
+        let s = &inv.object_schema;
+        let Resolved::One(uuid) = s.resolve_attr("Контрагент") else { panic!("{s:?}") };
+        assert_eq!(inv.meta_lookup.get(uuid).map(String::as_str), Some("Контрагент"));
+        let Resolved::One(t) = s.resolve_tabular("Корзина") else { panic!("{s:?}") };
+        let Resolved::One(col) = t.resolve_column("Номенклатура") else { panic!("{t:?}") };
+        assert_eq!(inv.meta_lookup.get(col).map(String::as_str), Some("Номенклатура"));
+    }
+
+    #[test]
+    fn scope_is_none_safe_and_nested() {
+        assert!(object_schema().is_none());
+        let s = ObjectSchema::from_object_xml(CATALOG).unwrap();
+        with_object_schema(Some(s), || {
+            assert_eq!(object_schema().unwrap().kind(), Some("Catalog"));
+            with_object_schema(None, || assert!(object_schema().is_none()));
+            assert!(object_schema().is_some());
+        });
+        assert!(object_schema().is_none());
+    }
+}

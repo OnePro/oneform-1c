@@ -76,6 +76,8 @@ pub struct ProcessorInventory {
     /// `lowercase metadata uuid -> name` of the object, its attributes, tabular sections and
     /// their fields; used to resolve dotted `DataPath` steps when extracting ordinary forms.
     pub meta_lookup: crate::oof::MetaLookup,
+    /// Scoped reverse table (name -> uuid) of the object's attributes and tabular sections.
+    pub object_schema: crate::object_schema::ObjectSchema,
 }
 
 // ---------------------------------------------------------------- navigation
@@ -146,24 +148,34 @@ fn uuid_at(parent: &Node, idx: usize, path: &str) -> Result<String> {
 /// fields). This is the `meta_lookup` source for EPF/ERF containers, which have no sibling
 /// `<Object>.xml` (config objects use `formbin::read_meta_lookup` instead).
 pub fn metadata_lookup_tree(node: &Node, out: &mut HashMap<String, String>) {
-    let is_descriptor = node.len() >= 4
-        && matches!(&node.children[0], Item::Atom(a) if a.kind == BARE && a.value == "3")
-        && matches!(&node.children[1], Item::Node(ident) if ident.len() >= 3
-            && matches!(&ident.children[0], Item::Atom(a) if a.kind == BARE && a.value == "1")
-            && matches!(&ident.children[1], Item::Atom(a) if a.kind == BARE && a.value == "0")
-            && matches!(&ident.children[2], Item::Atom(a) if a.kind == BARE && is_uuid(&a.value)))
-        && matches!(&node.children[2], Item::Atom(a) if a.kind == QUOTED);
-    if is_descriptor {
-        let Item::Node(ident) = &node.children[1] else { return };
-        let Item::Atom(uid) = &ident.children[2] else { return };
-        let Item::Atom(name) = &node.children[2] else { return };
-        out.entry(uid.value.clone()).or_insert_with(|| name.value.clone());
+    if let Some((uid, name)) = descriptor_of(node) {
+        out.entry(uid.to_string()).or_insert_with(|| name.to_string());
         return;
     }
     for ch in &node.children {
         if let Item::Node(ch) = ch {
             metadata_lookup_tree(ch, out);
         }
+    }
+}
+
+/// `(uuid, name)` when `node` itself is a `{3,{1,0,<uuid>},"<Name>",{syn}...}` descriptor.
+pub fn descriptor_of(node: &Node) -> Option<(&str, &str)> {
+    if node.len() < 4 {
+        return None;
+    }
+    let Item::Atom(tag) = &node.children[0] else { return None };
+    let (Item::Node(ident), Item::Atom(name)) = (&node.children[1], &node.children[2]) else { return None };
+    if tag.kind != BARE || tag.value != "3" || name.kind != QUOTED || ident.len() < 3 {
+        return None;
+    }
+    match (&ident.children[0], &ident.children[1], &ident.children[2]) {
+        (Item::Atom(a), Item::Atom(b), Item::Atom(u))
+            if a.kind == BARE && a.value == "1" && b.kind == BARE && b.value == "0" && u.kind == BARE && is_uuid(&u.value) =>
+        {
+            Some((u.value.as_str(), name.value.as_str()))
+        }
+        _ => None,
     }
 }
 
@@ -468,6 +480,7 @@ pub fn discover(
 
     let mut meta_lookup = crate::oof::MetaLookup::new();
     metadata_lookup_tree(&meta, &mut meta_lookup);
+    let object_schema = crate::object_schema::ObjectSchema::from_meta_tree(&meta);
 
     Ok(ProcessorInventory {
         processor: ProcessorInfo {
@@ -481,6 +494,7 @@ pub fn discover(
         forms,
         templates,
         meta_lookup,
+        object_schema,
     })
 }
 

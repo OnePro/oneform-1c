@@ -22,6 +22,7 @@ use crate::errors::{
 use crate::form_patch::{diff_forms_full, diff_forms_mode, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
 use crate::manifest::MANIFEST_PATH;
 use crate::metadata::discover;
+use crate::object_schema::with_object_schema;
 use crate::stage::{stage_processor, ExtractionResult, StageOpts};
 use crate::transaction::{
     manifest_hashes, publish, verify_source_unchanged, work_dir, PublishResult, Snapshot, Tree,
@@ -473,7 +474,9 @@ pub fn stage_pack(
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("module".into(), payload);
         }
         let bin_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
-        if let Some(lp) = plan_layout_patch(&rec["layout"], existing_src, &current.files)? {
+        let planned =
+            with_object_schema(Some(inv.object_schema.clone()), || plan_layout_patch(&rec["layout"], existing_src, &current.files))?;
+        if let Some(lp) = planned {
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), lp.patched.bytes.clone());
             expected.insert(bin_path.to_string(), lp.patched.bytes.clone());
             packed.insert(lp.xml_path.clone());

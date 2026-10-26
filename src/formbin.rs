@@ -27,6 +27,7 @@ use crate::form_patch::with_type_lookup;
 use crate::manifest::{module_record, sort_diagnostics, GENERATOR_VERSION, MANIFEST_PATH};
 use crate::metadata::{FormInfo, Payload};
 use crate::metaref::ConfigTypeLookup;
+use crate::object_schema::{with_object_schema, ObjectSchema};
 use crate::naming::{is_uuid, resolve_1c_aliases, safe_join};
 use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, FORM_XML_NAME, META_KIND_KEY};
 use crate::pack::{atomic_write, encode_text, plan_layout_patch, LayoutPatch, PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES};
@@ -204,6 +205,11 @@ fn meta_of_doc(doc: &roxmltree::Document<'_>) -> Option<Meta> {
 pub fn read_meta_lookup(path: &Path) -> MetaLookup {
     let Some(text) = read_xml_text(path) else { return HashMap::new() };
     open_doc(&text).map(|doc| lookup_of_doc(&doc)).unwrap_or_default()
+}
+
+/// [`ObjectSchema`] of the object XML at `path`; `None` when the file is missing or is not a metadata object.
+pub fn read_object_schema(path: &Path) -> Option<ObjectSchema> {
+    ObjectSchema::from_object_xml(&read_xml_text(path)?)
 }
 
 /// `(_read_meta(path), read_meta_lookup(path))` from one parse of the file.
@@ -817,6 +823,12 @@ pub fn stage_config_pack(
     let mut packed: Vec<String> = Vec::new();
     let mut layouts: Vec<LayoutPatch> = Vec::new();
     let type_lookup = ConfigTypeLookup::for_config_root(root);
+    let schema = if obj.common {
+        None
+    } else {
+        let base = object_dir(root, obj);
+        base.parent().and_then(|p| read_object_schema(&p.join(format!("{}.xml", name_of(&base)))))
+    };
     for rec in cur["forms"].as_array().map(Vec::as_slice).unwrap_or_default() {
         let alias = rec["alias"].as_str().unwrap_or("");
         let bin = cur["source"]["forms"][alias]["binPath"].as_str().unwrap_or("");
@@ -832,7 +844,9 @@ pub fn stage_config_pack(
         }
         let stream_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
         let ex_stream = existing_file(existing, stream_path)?;
-        let planned = with_type_lookup(Arc::clone(&type_lookup), || plan_layout_patch(&rec["layout"], existing, &current.files))?;
+        let planned = with_object_schema(schema.clone(), || {
+            with_type_lookup(Arc::clone(&type_lookup), || plan_layout_patch(&rec["layout"], existing, &current.files))
+        })?;
         if let Some(lp) = planned {
             edits.entry(name.as_str()).or_default().push(("form", lp.patched.bytes.clone()));
             expected.insert(stream_path.to_string(), lp.patched.bytes.clone());

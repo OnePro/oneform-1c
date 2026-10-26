@@ -665,6 +665,12 @@ pub fn std_attr_code(kind: Option<&str>, name: &str) -> Option<i64> {
     STD_ATTRS.iter().find(|(k, _, n)| *k == kind && *n == name).map(|(_, c, _)| *c)
 }
 
+/// Names of the standard attributes of an object `kind` (`[]` for an unknown or missing kind).
+pub fn std_attr_names(kind: Option<&str>) -> Vec<&'static str> {
+    let Some(kind) = kind else { return Vec::new() };
+    STD_ATTRS.iter().filter(|(k, _, _)| *k == kind).map(|(_, _, n)| *n).collect()
+}
+
 /// Path of the localized caption inside the info node for types with a known location.
 pub fn caption_path(type_name: Option<&str>) -> Option<&'static [i64]> {
     match type_name.unwrap_or("") {
