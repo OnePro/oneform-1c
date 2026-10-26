@@ -166,12 +166,17 @@ impl LayoutPatch {
         if let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) {
             let touched: std::collections::HashMap<i64, &Vec<crate::form_patch::Property>> =
                 d.edits.iter().map(|e| (e.id, &e.changed)).collect();
+            let parents: std::collections::HashSet<i64> =
+                self.baseline.controls.iter().chain(self.requested.controls.iter()).filter_map(|c| c.parent).collect();
             for c in &mut expected.controls {
                 let Some(b) = self.baseline.control(c.id) else { continue };
                 match touched.get(&c.id) {
                     None => {
                         c.values = b.values.clone();
-                        c.rest = b.rest.clone();
+                        // a container's `rest` holds stubs of its children: those may be added or removed
+                        if !parents.contains(&c.id) {
+                            c.rest = b.rest.clone();
+                        }
                     }
                     Some(changed) => {
                         let mut values = b.values.clone();
