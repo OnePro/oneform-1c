@@ -38,7 +38,7 @@ use crate::preview::{
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
 
-pub const COMMANDS: [&str; 4] = ["extract", "pack", "preview", "check"];
+pub const COMMANDS: [&str; 5] = ["extract", "pack", "preview", "check", "clone-form"];
 pub const DEFAULT_WORKERS: usize = 3;
 const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", WORKSPACE_DIR, "src"];
 /// `json.dumps` of the Reference (default separators).
@@ -777,6 +777,9 @@ pub struct Cli {
     pub progress: bool,
     pub no_progress: bool,
     pub carriers: bool,
+    pub from: Option<String>,
+    pub name: Option<String>,
+    pub synonym: Option<String>,
 }
 
 fn build_command() -> Command {
@@ -820,6 +823,9 @@ fn build_command() -> Command {
                 .help("force progress bar even when stderr is not a TTY"),
         )
         .arg(Arg::new("no_progress").long("no-progress").action(ArgAction::SetTrue).help("disable progress bar"))
+        .arg(Arg::new("from").long("from").value_name("FORM").help("clone-form: the existing form of the object to copy"))
+        .arg(Arg::new("name").long("name").value_name("NAME").help("clone-form: name of the new form"))
+        .arg(Arg::new("synonym").long("synonym").value_name("TEXT").help("clone-form: synonym (title) of the new form; default: the name"))
         .arg(
             Arg::new("carriers")
                 .long("carriers")
@@ -855,6 +861,9 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
         progress: m.get_flag("progress"),
         no_progress: m.get_flag("no_progress"),
         carriers: m.get_flag("carriers"),
+        from: m.get_one::<String>("from").cloned(),
+        name: m.get_one::<String>("name").cloned(),
+        synonym: m.get_one::<String>("synonym").cloned(),
     })
 }
 
@@ -945,6 +954,25 @@ pub fn main(argv: &[String]) -> i32 {
         Ok(v) => v,
         Err(m) => return fail(&m),
     };
+    if command == "clone-form" {
+        let (Some(from), Some(name)) = (args.from.as_deref(), args.name.as_deref()) else {
+            return fail("clone-form needs --from <existing form> and --name <new form>");
+        };
+        return match crate::clone_form::clone_form(Path::new(&path), from, name, args.synonym.as_deref()) {
+            Ok(files) => {
+                println!("{path}: CLONED, form {name} created from {from}");
+                for f in files {
+                    println!("  {f}");
+                }
+                println!("  next: oneform extract <config dir>, edit src/Forms/{name}/Form.xml, oneform pack");
+                EXIT_OK
+            }
+            Err(e) => {
+                eprintln!("oneform: error: {}", e.message);
+                EXIT_FAILED
+            }
+        };
+    }
     if args.workers < 1 {
         return fail("--workers must be at least 1");
     }
@@ -1064,7 +1092,7 @@ mod tests {
         assert_eq!(resolve_command(Some("dir"), None), Ok(("extract".into(), "dir".into())));
         assert_eq!(
             resolve_command(Some("bogus"), Some(".")),
-            Err("unknown command 'bogus'; expected one of extract, pack, preview, check".to_string())
+            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form".to_string())
         );
         assert_eq!(py_repr("it's"), "\"it's\"");
     }

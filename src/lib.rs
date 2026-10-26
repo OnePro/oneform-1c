@@ -5,6 +5,7 @@ pub mod brace;
 pub mod canonical;
 pub mod cli_epf;
 pub mod cli_oneform;
+pub mod clone_form;
 pub mod config;
 pub mod container;
 pub mod discovery;
