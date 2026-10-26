@@ -19,7 +19,7 @@ use crate::errors::{
     ExtractionError, Result, ENCODING_INVALID, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
     PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
-use crate::form_patch::{diff_forms_full, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
+use crate::form_patch::{diff_forms_full, diff_forms_mode, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
 use crate::manifest::MANIFEST_PATH;
 use crate::metadata::discover;
 use crate::stage::{stage_processor, ExtractionResult, StageOpts};
@@ -58,6 +58,8 @@ pub struct LayoutPatch {
     pub patched: PatchedForm,
     /// The user's edited `Form.xml`, parsed.
     pub requested: FormXml,
+    /// `Form.xml` of the unmodified target, parsed: controls the edit does not touch must decode as they did.
+    pub baseline: FormXml,
 }
 
 /// Plan the edit of one form's `Form.xml` (`layout` is the form's manifest `layout` record). `existing` is the
@@ -96,12 +98,14 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
         }
     });
     let requested = parse_form_xml(edited, "edited").map_err(|e| e.with("path", xml_path))?;
+    let baseline_xml = parse_form_xml(baseline, "baseline").map_err(|e| e.with("path", xml_path))?;
     Ok(Some(LayoutPatch {
         xml_path: xml_path.to_string(),
         stream_path: stream_path.to_string(),
         original: original.clone(),
         patched,
         requested,
+        baseline: baseline_xml,
     }))
 }
 
@@ -122,11 +126,34 @@ impl LayoutPatch {
         let xml = staged.get(&self.xml_path).ok_or_else(|| fail("staged Form.xml is missing"))?;
         let mut decoded =
             parse_form_xml(xml, "packed").map_err(|e| fail("staged Form.xml cannot be read").with("error", e.message))?;
-        let expected = self
+        let mut expected = self
             .requested
             .with_allocated_ids(&self.patched.allocated)
             .with_derived_pages(&self.patched.derived_pages)
             .in_decoder_order();
+        // A control the edit does not touch must decode exactly as it did before the edit: take it from the
+        // decoded baseline instead of predicting the decoder's output for it.
+        // A touched control decodes as its baseline with the requested properties applied.
+        if let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) {
+            let touched: std::collections::HashMap<i64, &Vec<crate::form_patch::Property>> =
+                d.edits.iter().map(|e| (e.id, &e.changed)).collect();
+            for c in &mut expected.controls {
+                let Some(b) = self.baseline.control(c.id) else { continue };
+                match touched.get(&c.id) {
+                    None => {
+                        c.values = b.values.clone();
+                        c.rest = b.rest.clone();
+                    }
+                    Some(changed) => {
+                        let mut values = b.values.clone();
+                        for p in changed.iter() {
+                            values.copy_property(&c.values, *p);
+                        }
+                        c.values = values;
+                    }
+                }
+            }
+        }
         decoded.mask_anchors_like(&expected);
         // Added controls carry a sparse user-written projection; their identity and values are compared,
         // the full decoded rest is not.
@@ -134,9 +161,11 @@ impl LayoutPatch {
         match diff_forms_full(&expected, &decoded, true, &skip_rest) {
             Ok(d) if d.is_empty() => Ok(()),
             Ok(d) => {
-                let mut text = format!("{d:?}");
+                let mut text = describe_differences(&d);
                 if text.len() > 4000 {
-                    text.truncate(4000);
+                    // cut on a character boundary: the text holds Cyrillic names
+                    let cut = (0..=4000).rev().find(|&i| text.is_char_boundary(i)).unwrap_or(0);
+                    text.truncate(cut);
                 }
                 Err(fail("packed form does not reproduce the requested Form.xml").with("kind", "xml-mismatch").with("differences", text))
             }
@@ -537,4 +566,32 @@ pub fn publish_pack(
     }
     outcome?;
     Ok(PublishResult { status: "UPDATED", run_dir: if keep_work { Some(run_dir) } else { None } })
+}
+
+/// One line per control that the packed form does not reproduce: its properties and where the values part.
+fn describe_differences(d: &crate::form_patch::FormDiff) -> String {
+    let mut out = Vec::new();
+    for e in &d.edits {
+        let (a, b) = (format!("{:?}", e.old), format!("{:?}", e.new));
+        let at = a.char_indices().zip(b.chars()).find(|((_, x), y)| x != y).map_or(0, |((i, _), _)| i);
+        let window = |t: &str| {
+            let from = (0..=at.saturating_sub(40)).rev().find(|&i| t.is_char_boundary(i)).unwrap_or(0);
+            let to = (at + 60..=t.len()).find(|&i| t.is_char_boundary(i)).unwrap_or(t.len());
+            t[from..to.min(t.len())].to_string()
+        };
+        out.push(format!(
+            "control '{}' (id {}, {}): properties {:?} differ; requested ...{}... packed ...{}...",
+            e.name,
+            e.id,
+            e.type_name,
+            e.changed,
+            window(&a),
+            window(&b)
+        ));
+    }
+    if out.is_empty() {
+        format!("{d:?}")
+    } else {
+        out.join("; ")
+    }
 }

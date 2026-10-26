@@ -1679,6 +1679,493 @@ impl Property {
 }
 
 impl ControlValues {
+    /// Copy the fields behind `prop` from `src` (the inverse of the comparison in [`ControlValues::changed_from`]).
+    #[allow(clippy::clone_on_copy)]
+    pub fn copy_property(&mut self, src: &ControlValues, prop: Property) {
+        match prop {
+            Property::Name => {
+                self.name = src.name.clone();
+            }
+            Property::DataPath => {
+                self.data_path = src.data_path.clone();
+            }
+            Property::Caption => {
+                self.caption = src.caption.clone();
+            }
+            Property::Left => {
+                self.left = src.left.clone();
+            }
+            Property::Top => {
+                self.top = src.top.clone();
+            }
+            Property::Width => {
+                self.width = src.width.clone();
+            }
+            Property::Height => {
+                self.height = src.height.clone();
+            }
+            Property::Visible => {
+                self.visible = src.visible.clone();
+            }
+            Property::ZOrder => {
+                self.z_order = src.z_order.clone();
+            }
+            Property::TabOrder => {
+                self.tab_order = src.tab_order.clone();
+            }
+            Property::Events => {
+                self.events = src.events.clone();
+            }
+            Property::Enabled => {
+                self.enabled = src.enabled.clone();
+            }
+            Property::TransparentBack => {
+                self.transparent_back = src.transparent_back.clone();
+            }
+            Property::BackColor => {
+                self.back_color = src.back_color.clone();
+            }
+            Property::TextColor => {
+                self.text_color = src.text_color.clone();
+            }
+            Property::BorderColor => {
+                self.border_color = src.border_color.clone();
+            }
+            Property::Font => {
+                self.font = src.font.clone();
+            }
+            Property::Tooltip => {
+                self.tooltip = src.tooltip.clone();
+            }
+            Property::ValueType => {
+                self.value_type = src.value_type.clone();
+            }
+            Property::HorizontalScrollBar => {
+                self.horizontal_scroll_bar = src.horizontal_scroll_bar.clone();
+            }
+            Property::VerticalScrollBar => {
+                self.vertical_scroll_bar = src.vertical_scroll_bar.clone();
+            }
+            Property::ReadOnly => {
+                self.read_only = src.read_only.clone();
+                self.table_read_only = src.table_read_only.clone();
+            }
+            Property::ChoiceButton => {
+                self.choice_button = src.choice_button.clone();
+            }
+            Property::ClearButton => {
+                self.clear_button = src.clear_button.clone();
+            }
+            Property::OpenButton => {
+                self.open_button = src.open_button.clone();
+            }
+            Property::DropListButton => {
+                self.drop_list_button = src.drop_list_button.clone();
+            }
+            Property::SpinButton => {
+                self.spin_button = src.spin_button.clone();
+            }
+            Property::AutoMarkIncomplete => {
+                self.auto_mark_incomplete = src.auto_mark_incomplete.clone();
+            }
+            Property::AutoChoiceIncomplete => {
+                self.auto_choice_incomplete = src.auto_choice_incomplete.clone();
+            }
+            Property::MarkNegatives => {
+                self.mark_negatives = src.mark_negatives.clone();
+            }
+            Property::AutoCellHeight => {
+                self.auto_cell_height = src.auto_cell_height.clone();
+            }
+            Property::ChoiceListMode => {
+                self.choice_list_mode = src.choice_list_mode.clone();
+            }
+            Property::HorizontalAlign => {
+                self.horizontal_align = src.horizontal_align.clone();
+            }
+            Property::Hyperlink => {
+                self.hyperlink = src.hyperlink.clone();
+            }
+            Property::ThreeState => {
+                self.three_state = src.three_state.clone();
+            }
+            Property::TitleLocation => {
+                self.title_location = src.title_location.clone();
+            }
+            Property::ChoiceList => {
+                self.choice_list = src.choice_list.clone();
+            }
+            Property::ShowTabs => {
+                self.show_tabs = src.show_tabs.clone();
+            }
+            Property::Pages => {
+                self.pages = src.pages.clone();
+            }
+            Property::Footer => {
+                self.footer = src.footer.clone();
+            }
+            Property::Header => {
+                self.header = src.header.clone();
+            }
+            Property::HorizontalLines => {
+                self.horizontal_lines = src.horizontal_lines.clone();
+            }
+            Property::VerticalLines => {
+                self.vertical_lines = src.vertical_lines.clone();
+            }
+            Property::AutoInsertNewRow => {
+                self.auto_insert_new_row = src.auto_insert_new_row.clone();
+            }
+            Property::ChangeRowSet => {
+                self.change_row_set = src.change_row_set.clone();
+            }
+            Property::ChangePositionOfColumns => {
+                self.change_position_of_columns = src.change_position_of_columns.clone();
+            }
+            Property::ChangeSettingOfColumns => {
+                self.change_setting_of_columns = src.change_setting_of_columns.clone();
+            }
+            Property::InitialListView => {
+                self.initial_list_view = src.initial_list_view.clone();
+            }
+            Property::Output => {
+                self.output = src.output.clone();
+            }
+            Property::SelectionMode => {
+                self.selection_mode = src.selection_mode.clone();
+            }
+            Property::InitialTreeView => {
+                self.initial_tree_view = src.initial_tree_view.clone();
+            }
+            Property::Columns => {
+                self.columns = src.columns.clone();
+            }
+            Property::AutoFill => {
+                self.auto_fill = src.auto_fill.clone();
+            }
+            Property::Buttons => {
+                self.buttons = src.buttons.clone();
+            }
+            Property::BorderStyle => {
+                self.border_style = src.border_style.clone();
+            }
+            Property::Anchors => {
+                self.anchors = src.anchors.clone();
+            }
+            Property::ModifiesData => {
+                self.modifies_data = src.modifies_data.clone();
+            }
+            Property::SkipOnInput => {
+                self.skip_on_input = src.skip_on_input.clone();
+            }
+            Property::FirstInGroup => {
+                self.first_in_group = src.first_in_group.clone();
+            }
+            Property::MultiLine => {
+                self.multi_line = src.multi_line.clone();
+            }
+            Property::PasswordMode => {
+                self.password_mode = src.password_mode.clone();
+            }
+            Property::ExtendedEdit => {
+                self.extended_edit = src.extended_edit.clone();
+            }
+            Property::Mask => {
+                self.mask = src.mask.clone();
+            }
+            Property::ChooseType => {
+                self.choose_type = src.choose_type.clone();
+            }
+            Property::TextEdit => {
+                self.text_edit = src.text_edit.clone();
+            }
+            Property::VerticalAlign => {
+                self.vertical_align = src.vertical_align.clone();
+            }
+            Property::TypeLink => {
+                self.type_link = src.type_link.clone();
+            }
+            Property::FieldBackColor => {
+                self.field_back_color = src.field_back_color.clone();
+            }
+            Property::FieldTextColor => {
+                self.field_text_color = src.field_text_color.clone();
+            }
+            Property::ButtonBackColor => {
+                self.button_back_color = src.button_back_color.clone();
+            }
+            Property::ButtonTextColor => {
+                self.button_text_color = src.button_text_color.clone();
+            }
+            Property::PictureLocation => {
+                self.picture_location = src.picture_location.clone();
+            }
+            Property::PictureSize => {
+                self.picture_size = src.picture_size.clone();
+            }
+            Property::Format => {
+                self.format = src.format.clone();
+            }
+            Property::SelectionValue => {
+                self.selection_value = src.selection_value.clone();
+            }
+            Property::ChoiceListWidth => {
+                self.choice_list_width = src.choice_list_width.clone();
+            }
+            Property::MinValue => {
+                self.min_value = src.min_value.clone();
+            }
+            Property::MaxValue => {
+                self.max_value = src.max_value.clone();
+            }
+            Property::SeparateByPage => {
+                self.separate_by_page = src.separate_by_page.clone();
+            }
+            Property::AutoTabOrder => {
+                self.auto_tab_order = src.auto_tab_order.clone();
+            }
+            Property::ScrollPageMode => {
+                self.scroll_page_mode = src.scroll_page_mode.clone();
+            }
+            Property::Orientation => {
+                self.orientation = src.orientation.clone();
+            }
+            Property::Secondary => {
+                self.secondary = src.secondary.clone();
+            }
+            Property::Zoomable => {
+                self.zoomable = src.zoomable.clone();
+            }
+            Property::UseContextMenu => {
+                self.use_context_menu = src.use_context_menu.clone();
+            }
+            Property::NonselectedPictureText => {
+                self.nonselected_picture_text = src.nonselected_picture_text.clone();
+            }
+            Property::EnableStartDrag => {
+                self.enable_start_drag = src.enable_start_drag.clone();
+            }
+            Property::EnableDrag => {
+                self.enable_drag = src.enable_drag.clone();
+            }
+            Property::ChoiceMode => {
+                self.choice_mode = src.choice_mode.clone();
+            }
+            Property::ShowPicture => {
+                self.show_picture = src.show_picture.clone();
+            }
+            Property::ShowCheckBox => {
+                self.show_check_box = src.show_check_box.clone();
+            }
+            Property::Step => {
+                self.step = src.step.clone();
+            }
+            Property::LargeStep => {
+                self.large_step = src.large_step.clone();
+            }
+            Property::MarkingStep => {
+                self.marking_step = src.marking_step.clone();
+            }
+            Property::MarkingAppearance => {
+                self.marking_appearance = src.marking_appearance.clone();
+            }
+            Property::ShowStyle => {
+                self.show_style = src.show_style.clone();
+            }
+            Property::ShowPercent => {
+                self.show_percent = src.show_percent.clone();
+            }
+            Property::SelectionBackColor => {
+                self.selection_back_color = src.selection_back_color.clone();
+            }
+            Property::SelectionTextColor => {
+                self.selection_text_color = src.selection_text_color.clone();
+            }
+            Property::HolidayColor => {
+                self.holiday_color = src.holiday_color.clone();
+            }
+            Property::ShowCurrentDate => {
+                self.show_current_date = src.show_current_date.clone();
+            }
+            Property::CalendarNavigation => {
+                self.calendar_navigation = src.calendar_navigation.clone();
+            }
+            Property::UseAlternationRowColor => {
+                self.use_alternation_row_color = src.use_alternation_row_color.clone();
+            }
+            Property::HeaderBackColor => {
+                self.header_back_color = src.header_back_color.clone();
+            }
+            Property::HeaderTextColor => {
+                self.header_text_color = src.header_text_color.clone();
+            }
+            Property::FooterBackColor => {
+                self.footer_back_color = src.footer_back_color.clone();
+            }
+            Property::FooterTextColor => {
+                self.footer_text_color = src.footer_text_color.clone();
+            }
+            Property::AlternationRowBackColor => {
+                self.alternation_row_back_color = src.alternation_row_back_color.clone();
+            }
+            Property::FixedLeft => {
+                self.fixed_left = src.fixed_left.clone();
+            }
+            Property::FixedRight => {
+                self.fixed_right = src.fixed_right.clone();
+            }
+            Property::RowInputMode => {
+                self.row_input_mode = src.row_input_mode.clone();
+            }
+            Property::RowSelectionMode => {
+                self.row_selection_mode = src.row_selection_mode.clone();
+            }
+            Property::HeaderHeight => {
+                self.header_height = src.header_height.clone();
+            }
+            Property::FooterHeight => {
+                self.footer_height = src.footer_height.clone();
+            }
+            Property::HeaderFont => {
+                self.header_font = src.header_font.clone();
+            }
+            Property::FooterFont => {
+                self.footer_font = src.footer_font.clone();
+            }
+            Property::Shortcut => {
+                self.shortcut = src.shortcut.clone();
+            }
+            Property::Picture => {
+                self.picture = src.picture.clone();
+            }
+            Property::ChoiceButtonPicture => {
+                self.choice_button_picture = src.choice_button_picture.clone();
+            }
+            Property::MenuMode => {
+                self.menu_mode = src.menu_mode.clone();
+            }
+            Property::ScrollingText => {
+                self.scrolling_text = src.scrolling_text.clone();
+            }
+            Property::LabelPictureLocation => {
+                self.label_picture_location = src.label_picture_location.clone();
+            }
+            Property::PanelPictureLocation => {
+                self.panel_picture_location = src.panel_picture_location.clone();
+            }
+            Property::ChoiceListHeight => {
+                self.choice_list_height = src.choice_list_height.clone();
+            }
+            Property::ShowSelection => {
+                self.show_selection = src.show_selection.clone();
+            }
+            Property::BeginOfDisplayPeriod => {
+                self.begin_of_display_period = src.begin_of_display_period.clone();
+            }
+            Property::EndOfDisplayPeriod => {
+                self.end_of_display_period = src.end_of_display_period.clone();
+            }
+            Property::DefaultButton => {
+                self.default_button = src.default_button.clone();
+            }
+            Property::ContextMenu => {
+                self.context_menu = src.context_menu.clone();
+            }
+            Property::ActionSource => {
+                self.action_source = src.action_source.clone();
+            }
+            Property::AutoContextMenu => {
+                self.auto_context_menu = src.auto_context_menu.clone();
+            }
+            Property::Collapse => {
+                self.collapse = src.collapse.clone();
+            }
+            Property::EmbeddedIntoCell => {
+                self.embedded_into_cell = src.embedded_into_cell.clone();
+            }
+            Property::Print => {
+                self.print = src.print.clone();
+            }
+            Property::Protection => {
+                self.protection = src.protection.clone();
+            }
+            Property::ShowGrid => {
+                self.show_grid = src.show_grid.clone();
+            }
+            Property::ShowHeaders => {
+                self.show_headers = src.show_headers.clone();
+            }
+            Property::ShowGroups => {
+                self.show_groups = src.show_groups.clone();
+            }
+            Property::BlackAndWhiteView => {
+                self.black_and_white_view = src.black_and_white_view.clone();
+            }
+            Property::TotalsRight => {
+                self.totals_right = src.totals_right.clone();
+            }
+            Property::TotalsBelow => {
+                self.totals_below = src.totals_below.clone();
+            }
+            Property::PrintScale => {
+                self.print_scale = src.print_scale.clone();
+            }
+            Property::FitToPage => {
+                self.fit_to_page = src.fit_to_page.clone();
+            }
+            Property::BlackAndWhite => {
+                self.black_and_white = src.black_and_white.clone();
+            }
+            Property::Collate => {
+                self.collate = src.collate.clone();
+            }
+            Property::Copies => {
+                self.copies = src.copies.clone();
+            }
+            Property::PerPage => {
+                self.per_page = src.per_page.clone();
+            }
+            Property::PageOrientation => {
+                self.page_orientation = src.page_orientation.clone();
+            }
+            Property::BottomMargin => {
+                self.bottom_margin = src.bottom_margin.clone();
+            }
+            Property::TopMargin => {
+                self.top_margin = src.top_margin.clone();
+            }
+            Property::LeftMargin => {
+                self.left_margin = src.left_margin.clone();
+            }
+            Property::RightMargin => {
+                self.right_margin = src.right_margin.clone();
+            }
+            Property::HeaderSize => {
+                self.header_size = src.header_size.clone();
+            }
+            Property::FooterSize => {
+                self.footer_size = src.footer_size.clone();
+            }
+            Property::DuplexPrinting => {
+                self.duplex_printing = src.duplex_printing.clone();
+            }
+            Property::PrintAccuracy => {
+                self.print_accuracy = src.print_accuracy.clone();
+            }
+            Property::StepDirection => {
+                self.step_direction = src.step_direction.clone();
+            }
+            Property::SaveViewProperties => {
+                self.save_view_properties = src.save_view_properties.clone();
+            }
+            Property::FixedBackground => {
+                self.fixed_background = src.fixed_background.clone();
+            }
+        }
+    }
+}
+
+impl ControlValues {
     /// Supported properties whose value differs from `other`.
     pub fn changed_from(&self, other: &ControlValues) -> Vec<Property> {
         [
@@ -2055,20 +2542,6 @@ impl FormXml {
             c.values.type_link = None;
             c.values.format.clear();
             c.values.nonselected_picture_text.clear();
-            if c.type_name == "LabelDecoration" {
-                if let Some(pic) = &c.values.picture {
-                    c.rest.children.retain(|ch| !(ch.tag == "Picture" && ch.attrs.is_empty()));
-                    if pic.kind == 1 && pic.ref_guid.as_deref().is_some_and(|g| g != "00000000-0000-0000-0000-000000000000") {
-                        let mut marker = XmlElement::new("Picture", 0);
-                        marker.text = "true".to_string();
-                        if let Some(pos) = c.rest.children.iter().position(|ch| ch.tag == "Events") {
-                            c.rest.children.insert(pos, marker);
-                        } else {
-                            c.rest.children.push(marker);
-                        }
-                    }
-                }
-            }
             for it in &mut c.values.choice_list {
                 it.checked = None;
                 it.picture_id = None;
@@ -2090,20 +2563,6 @@ impl FormXml {
                 c.values.border_color = None;
                 c.values.font = None;
                 c.values.tooltip.clear();
-            }
-            // The decoder writes only `bold`, `source`, `face` and `size` of a font; a font that keeps none of
-            // them is written as an opaque `<Font>` element.
-            if let Some(f) = c.values.font.take() {
-                let plain = FontSpec { italic: false, underline: false, strikeout: false, scale: None, ..f.clone() };
-                if plain.bold || plain.face.is_some() || plain.size.is_some() {
-                    c.values.font = Some(plain);
-                } else {
-                    let mut opaque = XmlElement::new("Font", 0);
-                    if f.italic || f.underline || f.strikeout {
-                        opaque.attrs.insert("source".into(), "bin".into());
-                    }
-                    c.rest.children.push(opaque);
-                }
             }
             match c.type_name.as_str() {
                 "LabelDecoration" => c.values.mark_negatives = false,
