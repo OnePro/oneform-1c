@@ -2483,6 +2483,8 @@ impl Parser<'_> {
                 if found.insert(tag, c).is_some() {
                     return Err(self.bad(c.line, format!("{who}: duplicate <{tag}> element")));
                 }
+            } else if c.tag == "Appearance" && c.children.is_empty() {
+                // The verbatim appearance block for a compiler; the patcher edits the stream itself.
             } else {
                 rest.children.push(c.clone());
             }
@@ -3895,6 +3897,15 @@ fn extract_form_root_props(root: &mut XmlElement) -> FormRootProps {
 /// Parse a `Form.xml` (UTF-8, BOM optional) into a [`FormXml`]. `label` (`"baseline"`/`"edited"`) is
 /// used in errors. Indentation, line endings, attribute order and inter-element whitespace do not
 /// influence the result.
+/// Verbatim blocks that `extract` carries for a compiler (`<ColumnProps>`, `<Appearance>`) describe the stream as
+/// extracted; `pack` edits the stream itself and `extract` writes them again, so they take no part in comparisons.
+fn strip_carriers(e: &mut XmlElement) {
+    e.children.retain(|c| !matches!(c.tag.as_str(), "ColumnProps" | "Appearance"));
+    for c in &mut e.children {
+        strip_carriers(c);
+    }
+}
+
 pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     let malformed = |m: String| {
         ExtractionError::new(GENERATED_FILE_MODIFIED, format!("{label} Form.xml is not valid: {m}"))
@@ -3905,6 +3916,7 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     let text = std::str::from_utf8(bytes).map_err(|e| malformed(format!("not valid UTF-8 ({e})")))?;
     let doc = roxmltree::Document::parse(text).map_err(|e| malformed(e.to_string()))?;
     let mut root = convert(doc.root_element(), &doc);
+    strip_carriers(&mut root);
     let form_name = root.attrs.get("name").cloned().unwrap_or_default();
     if root.tag != "Form" {
         let p = Parser { label, form: form_name, attr_names: HashMap::new(), controls: Vec::new() };

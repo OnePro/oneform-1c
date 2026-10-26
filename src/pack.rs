@@ -133,7 +133,13 @@ impl LayoutPatch {
         let skip_rest: std::collections::HashSet<i64> = self.patched.allocated.iter().map(|(_, new_id)| *new_id).collect();
         match diff_forms_full(&expected, &decoded, true, &skip_rest) {
             Ok(d) if d.is_empty() => Ok(()),
-            Ok(_) => Err(fail("packed form does not reproduce the requested Form.xml").with("kind", "xml-mismatch")),
+            Ok(d) => {
+                let mut text = format!("{d:?}");
+                if text.len() > 4000 {
+                    text.truncate(4000);
+                }
+                Err(fail("packed form does not reproduce the requested Form.xml").with("kind", "xml-mismatch").with("differences", text))
+            }
             Err(e) => Err(fail("packed form does not reproduce the requested Form.xml")
                 .with("kind", "xml-mismatch")
                 .with("error", e.message)

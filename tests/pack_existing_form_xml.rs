@@ -306,6 +306,18 @@ const LABEL: &str = "name=\"Надпись1\"";
 const CAPTION: (&str, &str) = ("<Item language=\"ru\">Надпись1</Item>", "<Item language=\"ru\">Подпись</Item>");
 const LEFT: (&str, &str) = ("<Left>79</Left>", "<Left>90</Left>");
 
+/// Replaces `from_tail` by `to_tail` once, where it follows `head` and an optional `<Appearance .../>` line.
+fn replace_after_appearance(xml: &str, head: &str, from_tail: &str, to_tail: &str, count: usize) -> String {
+    assert_eq!(count, 1);
+    let at = xml.find(head).unwrap_or_else(|| panic!("head not found: {head}")) + head.len();
+    let mut tail_at = at;
+    if let Some(rest) = xml[at..].strip_prefix("\n          <Appearance ") {
+        tail_at = at + 1 + (xml[at + 1..].find('\n').unwrap_or(rest.len()));
+    }
+    assert!(xml[tail_at..].starts_with(from_tail), "tail not found after {head}");
+    format!("{}{}{}", &xml[..tail_at], to_tail, &xml[tail_at + from_tail.len()..])
+}
+
 fn rel(w: &Work, p: &Path) -> String {
     p.strip_prefix(w.root())
         .unwrap()
@@ -971,7 +983,7 @@ fn assert_panel_pages_and_table_columns_pack(target: Target) {
             "<Width>100</Width>",
             "<FooterText>\n                <Item language=\"ru\">Итого</Item>\n              </FooterText>\n              <Tooltip>\n                <Item language=\"ru\">Подсказка колонки</Item>\n              </Tooltip>\n              <Width>155</Width>\n              <Visible>false</Visible>\n              <ReadOnly>true</ReadOnly>",
             1,
-        );
+    );
     fs::write(&xml_file, &xml).unwrap();
 
     let out = run(w.root(), &["pack", "."]);
@@ -1137,7 +1149,7 @@ fn assert_remaining_properties_pack(target: Target) {
             "action=\"КнопкаВыполнитьНажатие\"",
             "action=\"КнопкаВыполнитьНовоеНажатие\"",
             1,
-        );
+    );
     fs::write(&xml_file, &xml).unwrap();
 
     let out = run(w.root(), &["pack", "."]);
@@ -1200,9 +1212,10 @@ fn assert_reference_and_qualified_valuetypes_pack(target: Target) {
     let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
     let new_attr = format!("    <Attribute id=\"16\" name=\"КонтрагентРеквизит\">\n      <Main>false</Main>\n      <ValueType kind=\"Ref\" composite=\"false\" {type_attr}/>\n    </Attribute>\n  </Attributes>");
     xml = xml.replacen("  </Attributes>", &new_attr, 1);
-    xml = xml.replacen(
-        "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"35\" bottom=\"Top\" bottomTarget=\"33\" bottomOffset=\"21\" left=\"Right\" leftTarget=\"31\" leftOffset=\"5\" right=\"Right\" rightOffset=\"-496\"/>\n          <ValueType kind=\"String\" composite=\"false\"/>",
-        "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"35\" bottom=\"Top\" bottomTarget=\"33\" bottomOffset=\"21\" left=\"Right\" leftTarget=\"31\" leftOffset=\"5\" right=\"Right\" rightOffset=\"-496\"/>\n          <ValueType kind=\"String\" composite=\"false\" length=\"50\"/>",
+    xml = replace_after_appearance(&xml,
+        "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"35\" bottom=\"Top\" bottomTarget=\"33\" bottomOffset=\"21\" left=\"Right\" leftTarget=\"31\" leftOffset=\"5\" right=\"Right\" rightOffset=\"-496\"/>",
+        "\n          <ValueType kind=\"String\" composite=\"false\"/>",
+        "\n          <ValueType kind=\"String\" composite=\"false\" length=\"50\"/>",
         1,
     );
     fs::write(&xml_file, &xml).unwrap();
@@ -1250,7 +1263,7 @@ fn assert_anchors_pack(target: Target) {
             r#"<Anchors bottom="Top" bottomTarget="7" bottomOffset="19" right="Left" rightTarget="14" rightOffset="-288"/>"#,
             r#"<Anchors right="Right" rightOffset="-10"/>"#,
             1,
-        );
+    );
     fs::write(&xml_file, &xml).unwrap();
 
     let out = run(w.root(), &["pack", "."]);
@@ -1283,17 +1296,18 @@ fn assert_inputfield_flags_and_typelink_pack(target: Target) {
     let xml_file = w.src_file("Form.xml");
     let stream_file = w.src_file("FormStream.bin");
     let mut xml = fs::read_to_string(&xml_file).unwrap().replace("\r\n", "\n");
-    xml = xml
-        .replacen(
-            "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"35\" bottom=\"Top\" bottomTarget=\"33\" bottomOffset=\"21\" left=\"Right\" leftTarget=\"31\" leftOffset=\"5\" right=\"Right\" rightOffset=\"-496\"/>\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <ChoiceButton>false</ChoiceButton>\n          <ClearButton>false</ClearButton>\n          <OpenButton>false</OpenButton>",
-            "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"35\" bottom=\"Top\" bottomTarget=\"33\" bottomOffset=\"21\" left=\"Right\" leftTarget=\"31\" leftOffset=\"5\" right=\"Right\" rightOffset=\"-496\"/>\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <ChoiceButton>false</ChoiceButton>\n          <ClearButton>false</ClearButton>\n          <OpenButton>false</OpenButton>\n          <ModifiesData>true</ModifiesData>\n          <SkipOnInput>true</SkipOnInput>\n          <FirstInGroup>true</FirstInGroup>\n          <MultiLine>true</MultiLine>\n          <PasswordMode>true</PasswordMode>\n          <ExtendedEdit>true</ExtendedEdit>\n          <Mask>@@@-999</Mask>\n          <ChooseType>false</ChooseType>\n          <TextEdit>false</TextEdit>\n          <HorizontalAlign>Center</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>",
+    xml = replace_after_appearance(&xml,
+            "<InputField name=\"ПолеВвода7\" id=\"33\">\n          <DataPath attributeId=\"14\">ПолеВвода7</DataPath>\n          <Left>303</Left>\n          <Top>606</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>25</ZOrder>\n          <TabOrder>26</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"35\" bottom=\"Top\" bottomTarget=\"33\" bottomOffset=\"21\" left=\"Right\" leftTarget=\"31\" leftOffset=\"5\" right=\"Right\" rightOffset=\"-496\"/>",
+            "\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <ChoiceButton>false</ChoiceButton>\n          <ClearButton>false</ClearButton>\n          <OpenButton>false</OpenButton>",
+            "\n          <ValueType kind=\"String\" composite=\"false\"/>\n          <ChoiceButton>false</ChoiceButton>\n          <ClearButton>false</ClearButton>\n          <OpenButton>false</OpenButton>\n          <ModifiesData>true</ModifiesData>\n          <SkipOnInput>true</SkipOnInput>\n          <FirstInGroup>true</FirstInGroup>\n          <MultiLine>true</MultiLine>\n          <PasswordMode>true</PasswordMode>\n          <ExtendedEdit>true</ExtendedEdit>\n          <Mask>@@@-999</Mask>\n          <ChooseType>false</ChooseType>\n          <TextEdit>false</TextEdit>\n          <HorizontalAlign>Center</HorizontalAlign>\n          <VerticalAlign>Bottom</VerticalAlign>",
             1,
-        )
-        .replacen(
-            "<InputField name=\"ПолеВвода6\" id=\"32\">\n          <DataPath attributeId=\"13\">ПолеВвода6</DataPath>\n          <Left>303</Left>\n          <Top>580</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>24</ZOrder>\n          <TabOrder>23</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"9\" bottom=\"Top\" bottomTarget=\"32\" bottomOffset=\"21\" right=\"Right\" rightOffset=\"-496\"/>\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>",
-            "<InputField name=\"ПолеВвода6\" id=\"32\">\n          <DataPath attributeId=\"13\">ПолеВвода6</DataPath>\n          <Left>303</Left>\n          <Top>580</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>24</ZOrder>\n          <TabOrder>23</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"9\" bottom=\"Top\" bottomTarget=\"32\" bottomOffset=\"21\" right=\"Right\" rightOffset=\"-496\"/>\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>\n          <TypeLink attributeId=\"14\">ПолеВвода7</TypeLink>",
+    );
+    xml = replace_after_appearance(&xml,
+            "<InputField name=\"ПолеВвода6\" id=\"32\">\n          <DataPath attributeId=\"13\">ПолеВвода6</DataPath>\n          <Left>303</Left>\n          <Top>580</Top>\n          <Width>136</Width>\n          <Height>21</Height>\n          <ZOrder>24</ZOrder>\n          <TabOrder>23</TabOrder>\n          <Anchors top=\"Bottom\" topTarget=\"15\" topOffset=\"9\" bottom=\"Top\" bottomTarget=\"32\" bottomOffset=\"21\" right=\"Right\" rightOffset=\"-496\"/>",
+            "\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>",
+            "\n          <ValueType kind=\"Ref\" composite=\"true\"/>\n          <ChoiceButton>true</ChoiceButton>\n          <ClearButton>true</ClearButton>\n          <OpenButton>false</OpenButton>\n          <TypeLink attributeId=\"14\">ПолеВвода7</TypeLink>",
             1,
-        );
+    );
     fs::write(&xml_file, &xml).unwrap();
 
     let out = run(w.root(), &["pack", "."]);

@@ -396,6 +396,11 @@ fn column(n: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
     if !ev.is_empty() {
         out.insert("events".into(), Value::Array(ev));
     }
+    // The whole column record (field link step, the 45/46 property slots with formats, alignment, colors and the
+    // embedded editor) is kept verbatim.
+    let mut raw = Vec::new();
+    crate::donor::write_node(n, &mut raw);
+    out.insert("propsRaw".into(), String::from_utf8_lossy(&raw).into_owned().into());
     Ok(Value::Object(out))
 }
 
@@ -543,6 +548,86 @@ fn diag_component(form_uuid: &str) -> String {
     format!("Forms/{form_uuid}")
 }
 
+const COLUMN_SIG_PLACEHOLDER: &str = "@@COLUMN-SIG@@";
+
+/// Canonical text of an element: tag, sorted attributes, trimmed text and the children in order (without the
+/// `ColumnProps` carrier). The compiler computes the same text from the XML.
+fn canon_element(n: roxmltree::Node) -> String {
+    let mut attrs: Vec<String> = n.attributes().map(|a| format!("{}={}", a.name(), a.value())).collect();
+    attrs.sort();
+    let text = n.text().map(str::trim).unwrap_or("");
+    let kids: Vec<String> =
+        n.children().filter(|c| c.is_element() && c.tag_name().name() != "ColumnProps").map(canon_element).collect();
+    format!("{}[{}]{}{{{}}}", n.tag_name().name(), attrs.join(";"), text, kids.join(","))
+}
+
+/// Replaces the placeholder `sig` of every `<ColumnProps>` by the FNV-1a 64 of its `<Column>`'s canonical text, so
+/// a compiler can tell whether the column was edited after extraction.
+fn fill_column_sigs(text: &str) -> Res<String> {
+    if !text.contains(COLUMN_SIG_PLACEHOLDER) {
+        return Ok(text.to_string());
+    }
+    let doc = roxmltree::Document::parse(text).map_err(|e| OofError(format!("rendered Form.xml is not well-formed: {e}")))?;
+    let mut sigs = Vec::new();
+    for col in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "Column") {
+        if col.children().any(|c| c.is_element() && c.tag_name().name() == "ColumnProps") {
+            let mut h: u64 = 0xcbf29ce484222325;
+            for byte in canon_element(col).as_bytes() {
+                h ^= u64::from(*byte);
+                h = h.wrapping_mul(0x100000001b3);
+            }
+            sigs.push(format!("{h:016x}"));
+        }
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    for sig in sigs {
+        let Some(at) = rest.find(COLUMN_SIG_PLACEHOLDER) else { break };
+        out.push_str(&rest[..at]);
+        out.push_str(&sig);
+        rest = &rest[at + COLUMN_SIG_PLACEHOLDER.len()..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
+/// Signature of the appearance elements as written to `Form.xml` (`Enabled`, `TransparentBack`, the three colors,
+/// `Font`, `Tooltip`): FNV-1a 64 over a canonical text. A compiler recomputes it from the XML and uses the verbatim
+/// `<Appearance raw>` block only while the elements are unchanged.
+pub fn appearance_sig(p: &Value) -> String {
+    let mut t = String::new();
+    if p.get("enabled") == Some(&Value::Bool(false)) {
+        t.push_str("Enabled|false\n");
+    }
+    if truthy(p.get("transparentBack")) {
+        t.push_str("TransparentBack|true\n");
+    }
+    for (tag, key) in [("TextColor", "textColor"), ("BackColor", "backColor"), ("BorderColor", "borderColor")] {
+        if let Some(color) = p.get(key) {
+            let attrs: Vec<String> =
+                ["kind", "value", "name", "ref"].iter().filter_map(|k| color.get(*k).map(|v| format!("{k}={}", pystr(v)))).collect();
+            t.push_str(&format!("{tag}|{}\n", attrs.join(";")));
+        }
+    }
+    if let Some(f) = p.get("font") {
+        let attrs: Vec<String> = ["bold", "source", "face", "size"]
+            .iter()
+            .filter_map(|k| f.get(*k).map(|v| format!("{k}={}", if *k == "bold" { pystr(v).to_lowercase() } else { pystr(v) })))
+            .collect();
+        t.push_str(&format!("Font|{}\n", attrs.join(";")));
+    }
+    let tip: Vec<String> = arr(p, "tooltip").iter().map(|i| format!("{}={}", pystr(&i[0]), pystr(&i[1]))).collect();
+    if !tip.is_empty() {
+        t.push_str(&format!("Tooltip|{}\n", tip.join(";")));
+    }
+    let mut h: u64 = 0xcbf29ce484222325;
+    for byte in t.as_bytes() {
+        h ^= u64::from(*byte);
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    format!("{h:016x}")
+}
+
 /// `geom[6..=9]` (top, bottom, left, right): `{0,{2,target,side,offset},{2,target,side,offset}}` - the primary and the
 /// secondary attachment of an edge. `None` when no edge is attached.
 fn decode_anchors(geom: &Node) -> Option<Value> {
@@ -617,7 +702,16 @@ fn control(
 
     let id = int(&n.children[1], "control id")?;
     let visible = int(&geom.children[5], "visible")? != 0;
-    let mut events = events_of(info, type_name)?;
+    // The row-source descriptor `info[3]` of a table holds the events of the data source, which `<RowSource>` carries.
+    let mut events = if type_name == Some("Table") {
+        let mut own = info.clone();
+        if own.children.len() > 3 {
+            own.children[3] = Item::Node(Node::default());
+        }
+        events_of(&own, type_name)?
+    } else {
+        events_of(info, type_name)?
+    };
     if n.len() >= 7 {
         if let (Item::Node(c2), Item::Node(c3)) = (&n.children[2], &n.children[3]) {
             if std::ptr::eq(info, c2) {
@@ -1128,6 +1222,9 @@ impl Writer {
     }
 
     fn props(&mut self, p: &Value) {
+        if let Some(raw) = p.get("appearanceRaw") {
+            self.leaf("Appearance", None, &[("raw", pystr(raw)), ("sig", appearance_sig(p))]);
+        }
         if p.get("enabled") == Some(&Value::Bool(false)) {
             self.leaf("Enabled", Some("false"), &[]);
         }
@@ -1433,6 +1530,10 @@ impl Writer {
                     self.leaf("Editor", Some(&pystr(&col["editor"])), &[]);
                 }
                 self.events(arr(col, "events"));
+                if let Some(raw) = col.get("propsRaw") {
+                    // `sig` is filled in once the whole document is rendered (see `fill_column_sigs`).
+                    self.leaf("ColumnProps", None, &[("raw", pystr(raw)), ("sig", COLUMN_SIG_PLACEHOLDER.to_string())]);
+                }
                 self.close("Column");
             }
             self.close("Columns");
@@ -1569,7 +1670,7 @@ pub fn render_form_xml(info: &FormInfo, model: &Value) -> Res<Vec<u8>> {
         w.close("ChildItems");
     }
     w.close("Form");
-    let text = w.lines.join("\n") + "\n";
+    let text = fill_column_sigs(&(w.lines.join("\n") + "\n"))?;
     check_well_formed(&text)?; // the output must be well-formed XML
     Ok(text.into_bytes())
 }

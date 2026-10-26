@@ -1132,6 +1132,11 @@ pub fn decode_props(type_name: &str, info: &Node, warn: &mut dyn FnMut(&str)) ->
         if appearance(&mut props, a).is_err() {
             warn("Appearance");
         }
+        // The block also holds system colors, font details and other slots `Form.xml` does not express: keep it
+        // verbatim for a compiler (see `appearance_sig` in oof.rs for the staleness check).
+        let mut raw = Vec::new();
+        crate::donor::write_node(a, &mut raw);
+        props.insert("appearanceRaw".into(), String::from_utf8_lossy(&raw).into_owned().into());
     }
     let (result, group_name) = match type_name {
         "LabelDecoration" => (label(&mut props, info), "LabelDecoration"),

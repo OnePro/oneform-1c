@@ -105,13 +105,18 @@ pub(crate) fn neutralize_events(n: &mut Node) {
 }
 
 /// Paths of the counted control-level event lists inside a control record (lists whose items are all
-/// event nodes, excluding `<Column>` subtrees inside a `Table`).
+/// event nodes, excluding `<Column>` subtrees inside a `Table` and the row-source descriptor `info[3]` of a
+/// `Table`, whose dynamic-list events belong to the data source, not to the control).
 pub(crate) fn event_list_paths(n: &Node) -> Vec<Vec<usize>> {
     let mut out = Vec::new();
-    fn walk(n: &Node, path: &mut Vec<usize>, out: &mut Vec<Vec<usize>>) {
+    let is_table = matches!(n.children.first(), Some(Item::Atom(a)) if a.value.eq_ignore_ascii_case("ea83fe3a-ac3c-4cce-8045-3dddf35b28b1"));
+    fn walk(n: &Node, path: &mut Vec<usize>, out: &mut Vec<Vec<usize>>, skip_descriptor: bool) {
         for (i, c) in n.children.iter().enumerate() {
             let Item::Node(x) = c else { continue };
             if !x.is_empty() && crate::oof::is_column_guid(&x.children[0]) {
+                continue;
+            }
+            if skip_descriptor && path.as_slice() == [2] && i == 3 {
                 continue;
             }
             path.push(i);
@@ -121,12 +126,12 @@ pub(crate) fn event_list_paths(n: &Node) -> Vec<Vec<usize>> {
             if is_list {
                 out.push(path.clone());
             } else {
-                walk(x, path, out);
+                walk(x, path, out, skip_descriptor);
             }
             path.pop();
         }
     }
-    walk(n, &mut Vec::new(), &mut out);
+    walk(n, &mut Vec::new(), &mut out, is_table);
     out
 }
 
