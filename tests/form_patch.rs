@@ -4280,3 +4280,114 @@ mod tabular_binding {
         }
     }
 }
+
+// ---------------------------------------------------------------- command bar buttons (root group, sub-menus)
+
+/// Patch `base` into `edited`, read the result back and return the decoded XML; the XML differs from the
+/// baseline only by the `(from, to)` text replacements.
+fn button_edit_round_trip(name: &str, edits: &[(&str, &str)]) -> PatchedForm {
+    let base = baseline(name);
+    let mut edited = base.clone();
+    for (from, to) in edits {
+        edited = replace_once(&edited, from, to);
+    }
+    let pf = round_trip(name, &edited);
+    let mut expected = base;
+    for (from, to) in edits {
+        expected = replace_once(&expected, from, to);
+    }
+    assert_eq!(decode_xml(name, &pf.bytes), expected, "only the requested texts change");
+    pf
+}
+
+#[test]
+fn root_button_is_patched_when_the_root_group_is_not_last() {
+    // `ДействияФормы`: the root group (b78f2e80,4) comes first, the standard sub-menu group (b78f2e80,55) last
+    let pf = button_edit_round_trip(
+        "MailGroupForm",
+        &[("<Item language=\"#\">Подменю</Item>", "<Item language=\"#\">Меню действий</Item>")],
+    );
+    assert_eq!(pf.replacements.len(), 1);
+}
+
+#[test]
+fn sub_menu_button_of_a_standard_sub_menu_is_patched_with_a_root_group_that_is_not_last() {
+    button_edit_round_trip(
+        "MailGroupForm",
+        &[("<Item language=\"ru\">Редактировать код</Item>", "<Item language=\"ru\">Править код</Item>")],
+    );
+}
+
+#[test]
+fn sub_menu_button_caption_is_patched() {
+    let ru = "<Item language=\"ru\">Действие1</Item>\n                    <Item language=\"ro\">Действие1</Item>\n                  </Caption>";
+    let pf = button_edit_round_trip(
+        "DonorForm",
+        &[(ru, "<Item language=\"ru\">Другое действие</Item>\n                    <Item language=\"ro\">Действие1</Item>\n                  </Caption>")],
+    );
+    assert_eq!(pf.replacements.len(), 1);
+}
+
+#[test]
+fn sub_menu_button_description_is_patched() {
+    let base = baseline("DonorForm");
+    let anchor = "<Button name=\"Действие1\" id=\"5\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2Действие1\">";
+    assert_eq!(base.matches(anchor).count(), 1);
+    let edited = base.replace(
+        anchor,
+        &format!("{anchor}\n                  <Description>\n                    <Item language=\"ru\">Пояснение</Item>\n                  </Description>"),
+    );
+    let pf = round_trip("DonorForm", &edited);
+    assert_eq!(pf.replacements.len(), 1);
+}
+
+#[test]
+fn sub_menu_button_checked_flag_is_patched() {
+    let anchor = "<Button name=\"Действие\" id=\"4\" kind=\"Action\" checked=\"false\"";
+    button_edit_round_trip("DonorForm", &[(anchor, "<Button name=\"Действие\" id=\"4\" kind=\"Action\" checked=\"true\"")]);
+}
+
+#[test]
+fn buttons_without_the_checked_attribute_equal_the_baseline() {
+    let base = baseline("DonorForm");
+    let edited = base.replace(" checked=\"false\"", "");
+    assert!(edited.len() < base.len());
+    assert!(plan(&stream("DonorForm"), &edited).unwrap().is_empty());
+    // and a missing attribute next to a real edit
+    let edited = replace_once(
+        &edited,
+        "<Item language=\"ru\">Действие1</Item>\n                    <Item language=\"ro\">Действие1</Item>\n                  </Caption>",
+        "<Item language=\"ru\">Другое</Item>\n                    <Item language=\"ro\">Действие1</Item>\n                  </Caption>",
+    );
+    let pf = patch("DonorForm", &edited).unwrap();
+    assert_eq!(pf.replacements.len(), 1);
+    // a wrong value is still not understood
+    let bad = base.replacen(" checked=\"false\"", " checked=\"maybe\"", 1);
+    assert!(plan(&stream("DonorForm"), &bad).is_err());
+}
+
+#[test]
+fn buttons_of_a_shared_sub_menu_group_are_edited_together() {
+    // two sub-menu buttons (depth 2 and depth 3) show the same group: an edit of one copy alone is refused, the same
+    // edit of both is one replacement
+    let name = "SharedSubmenuForm";
+    let from = "<Item language=\"ru\">Все документы</Item>";
+    let to = "<Item language=\"ru\">Все виды</Item>";
+    let base = baseline(name);
+    assert_eq!(base.matches(from).count(), 2);
+    let one = base.replacen(from, to, 1);
+    let (kind, text) = patch_rejected(name, &one);
+    assert_eq!(kind, "verification-failed", "{text}");
+    let both = base.replace(from, to);
+    let pf = round_trip(name, &both);
+    assert_eq!(pf.replacements.len(), 1);
+    assert_eq!(decode_xml(name, &pf.bytes), both);
+}
+
+#[test]
+fn nested_sub_menu_button_name_and_checked_flag_are_patched() {
+    let name = "SharedSubmenuForm";
+    let from = "<Button name=\"Действие6\" id=\"40\" kind=\"Action\" checked=\"false\"";
+    let to = "<Button name=\"Поиск\" id=\"40\" kind=\"Action\" checked=\"true\"";
+    button_edit_round_trip(name, &[(from, to)]);
+}

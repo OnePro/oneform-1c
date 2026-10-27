@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="4fe35d8f-0ae2-409d-924c-41dde1dbaac9" name="ФормаГруппы" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Группа Группы почтовой рассылки</Item>
+    <Item language="ro">Un grup de Grup de e-mail</Item>
+  </Caption>
+  <Width>440</Width>
+  <Height>110</Height>
+  <MainAttribute attributeId="0"/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <AfterWrite id="80002">ПослеЗаписи</AfterWrite>
+  </Events>
+  <Attributes>
+    <Attribute id="0" name="СправочникОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <LabelDecoration name="Надпись1" id="1">
+      <Caption>
+        <Item language="ru">Код:</Item>
+        <Item language="ro">Cod:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>58</Top>
+      <Width>59</Width>
+      <Height>19</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors bottom="Top" bottomTarget="1" bottomOffset="19" right="Left" rightTarget="1" rightOffset="59"/>
+    </LabelDecoration>
+    <InputField name="Код" id="2">
+      <DataPath attributeId="0" steps="-2">СправочникОбъект.[-2]</DataPath>
+      <Left>67</Left>
+      <Top>58</Top>
+      <Width>80</Width>
+      <Height>19</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="19" right="Left" rightTarget="2" rightOffset="80"/>
+      <ValueType kind="String" composite="false" length="9"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <ReadOnly>true</ReadOnly>
+      <SkipOnInput>true</SkipOnInput>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="Надпись2" id="3">
+      <Caption>
+        <Item language="ru">Наименование:</Item>
+        <Item language="ro">Denumirea:</Item>
+      </Caption>
+      <Left>167</Left>
+      <Top>58</Top>
+      <Width>79</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors bottom="Top" bottomTarget="3" bottomOffset="19" right="Left" rightTarget="3" rightOffset="79"/>
+    </LabelDecoration>
+    <InputField name="Наименование" id="4">
+      <DataPath attributeId="0" steps="-3">СправочникОбъект.[-3]</DataPath>
+      <Left>253</Left>
+      <Top>58</Top>
+      <Width>179</Width>
+      <Height>19</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>7</TabOrder>
+      <Anchors bottom="Top" bottomTarget="4" bottomOffset="19" right="Right" rightOffset="-8"/>
+      <ValueType kind="String" composite="false" length="25"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="Надпись3" id="5">
+      <Caption>
+        <Item language="ru">Родитель:</Item>
+        <Item language="ro">Grupa:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>59</Width>
+      <Height>19</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Top" bottomTarget="5" bottomOffset="19" right="Left" rightTarget="5" rightOffset="59"/>
+    </LabelDecoration>
+    <InputField name="Родитель" id="6">
+      <DataPath attributeId="0" steps="-4">СправочникОбъект.[-4]</DataPath>
+      <Left>67</Left>
+      <Top>33</Top>
+      <Width>365</Width>
+      <Height>19</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Top" bottomTarget="6" bottomOffset="19" right="Right" rightOffset="-8"/>
+      <ValueType kind="Ref" composite="false" refGuid="74da8ccf-0b28-458f-af8e-37cdb2567f75"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>true</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+      <ChoiceListWidth>40</ChoiceListWidth>
+    </InputField>
+    <CommandBar name="ДействияФормы" id="7">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>440</Width>
+      <Height>25</Height>
+      <ZOrder>6</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="7" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>true</AutoFill>
+      <Buttons>
+        <Button name="Подменю" id="111" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="#">Подменю</Item>
+          </Caption>
+          <Buttons>
+            <Button name="Разделитель2" id="60" kind="Separator" checked="false"/>
+            <Button name="РедактироватьКодНомер" id="61" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыРедактироватьКод">
+              <Caption>
+                <Item language="ru">Редактировать код</Item>
+                <Item language="ro">Redactarea cod</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Включить возможность редактирования кода</Item>
+                <Item language="ro">Includerea posibilității de a edita codul</Item>
+              </Tooltip>
+            </Button>
+          </Buttons>
+        </Button>
+      </Buttons>
+    </CommandBar>
+    <CommandBar name="ОсновныеДействияФормы" id="8">
+      <Left>0</Left>
+      <Top>85</Top>
+      <Width>440</Width>
+      <Height>25</Height>
+      <ZOrder>7</ZOrder>
+      <TabOrder>8</TabOrder>
+      <Anchors top="Bottom" topTarget="8" topOffset="-25" bottom="Bottom" left="Left" right="Right"/>
+      <HorizontalAlign>Right</HorizontalAlign>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="Действие" id="1" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:141">
+          <Caption>
+            <Item language="ru">OK</Item>
+            <Item language="ro">OK</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель" id="2" kind="Separator" checked="false" representation="Text"/>
+        <Button name="Действие1" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:140">
+          <Caption>
+            <Item language="ru">Записать</Item>
+            <Item language="ro">Salvează</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель1" id="4" kind="Separator" checked="false" representation="Text"/>
+        <Button name="Действие2" id="5" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:142">
+          <Caption>
+            <Item language="ru">Закрыть</Item>
+            <Item language="ro">Închide</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+  </ChildItems>
+</Form>

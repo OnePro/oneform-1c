@@ -3724,10 +3724,11 @@ impl Parser<'_> {
                 if !matches!(kind.as_str(), "Action" | "Submenu" | "Separator") {
                     return None;
                 }
-                let checked = match b.attrs.get("checked").map(String::as_str)? {
-                    "true" => true,
-                    "false" => false,
-                    _ => return None,
+                // `extract` always writes `checked`; a missing attribute reads as the unchecked default.
+                let checked = match b.attrs.get("checked").map(String::as_str) {
+                    None | Some("false") => false,
+                    Some("true") => true,
+                    Some(_) => return None,
                 };
                 let representation = b.attrs.get("representation").cloned().unwrap_or_else(|| "Auto".to_string());
                 if !matches!(representation.as_str(), "Auto" | "Text" | "Picture" | "PictureAndText") {
@@ -8157,10 +8158,44 @@ fn cb_table<'a>(site: &Site<'_, 'a>, prop: Property) -> Result<(NodeRef<'a>, usi
         .atom(5 + action_count)
         .and_then(|(a, _)| a.value.parse().ok())
         .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "group count missing".into()))?;
-    let root_g = t
-        .child(6 + action_count + group_count.saturating_sub(1))
-        .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "root button group missing".into()))?;
+    let groups: Vec<NodeRef<'a>> = (0..group_count).filter_map(|gi| t.child(6 + action_count + gi)).collect();
+    // The root group is the one keyed by `X[8..9]` (as `oof_props` reads it); the last group is only the fallback.
+    let root_key = x.atom(8).zip(x.atom(9)).map(|((s, _), (c, _))| (s.value.as_str(), c.value.as_str()));
+    let matched: Vec<NodeRef<'a>> = match root_key {
+        Some((src, code)) => groups.iter().copied().filter(|g| cb_group_key(*g) == Some((src, code))).collect(),
+        None => Vec::new(),
+    };
+    let root_g = match matched.as_slice() {
+        [one] => *one,
+        [] => groups
+            .last()
+            .copied()
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "root button group missing".into()))?,
+        _ => return Err(site.layout("unexpected-shape", "Buttons", "root button group is ambiguous".into())),
+    };
     Ok((t, action_count, root_g))
+}
+
+/// `(guid, code)` key of a button group.
+fn cb_group_key(g: NodeRef<'_>) -> Option<(&str, &str)> {
+    Some((g.atom(1)?.0.value.as_str(), g.atom(2)?.0.value.as_str()))
+}
+
+/// The button group of the user sub-menu whose button holds the action `guid` (`{1,T1,code}` -> group `(T1,code)`).
+fn cb_sub_group<'a>(t: NodeRef<'a>, action_count: usize, guid: &str) -> Option<NodeRef<'a>> {
+    let action = (0..action_count)
+        .filter_map(|ai| t.child(5 + ai))
+        .find(|a| a.atom(1).map(|(a, _)| a.value.as_str()) == Some(guid))?;
+    if !matches!(
+        action.atom(3)?.0.value.as_str(),
+        crate::oof_props::SUBMENU_ACTION_GUID | crate::oof_props::STD_SUBMENU_ACTION_GUID
+    ) {
+        return None;
+    }
+    let body = action.child(4)?;
+    let key = (body.atom(1)?.0.value.as_str(), body.atom(2)?.0.value.as_str());
+    let group_count: usize = t.atom(5 + action_count)?.0.value.parse().ok()?;
+    (0..group_count).rev().filter_map(|gi| t.child(6 + action_count + gi)).find(|g| cb_group_key(*g) == Some(key))
 }
 
 /// The `action[4][2]` record that holds the `Picture` (`[5]`) and `Shortcut` (`[6]`) of the action `guid`.
@@ -8174,18 +8209,33 @@ fn cb_action_meta<'a>(t: NodeRef<'a>, action_count: usize, guid: &str) -> Option
 
 /// Every root button that sets a `Picture` / `Shortcut` / `Description` / `DefaultButton` / `ButtonOrder` holds it in the patched stream.
 fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
-    if new_btns.iter().all(|b| {
-        b.picture.is_none()
-            && b.shortcut.is_none()
-            && b.description.is_empty()
-            && b.default_button.is_none()
-            && b.button_order.is_none()
-    }) {
+    fn plain(btns: &[CommandBarButton]) -> bool {
+        btns.iter().all(|b| {
+            b.picture.is_none()
+                && b.shortcut.is_none()
+                && b.description.is_empty()
+                && b.default_button.is_none()
+                && b.button_order.is_none()
+                && plain(&b.buttons)
+        })
+    }
+    if plain(new_btns) {
         return Ok(true);
     }
     let (t, action_count, root_g) = cb_table(site, Property::Buttons)?;
+    cb_group_extras_match(site, (t, action_count), root_g, new_btns, 1)
+}
+
+/// [`cb_extras_match`] for one button group and, recursively, the sub-menu groups below it.
+fn cb_group_extras_match(
+    site: &Site,
+    (t, action_count): (NodeRef, usize),
+    group: NodeRef,
+    new_btns: &[CommandBarButton],
+    depth: usize,
+) -> Result<bool> {
     for (i, nb) in new_btns.iter().enumerate() {
-        let Some(bnode) = root_g.child(6 + 2 * i) else { return Ok(false) };
+        let Some(bnode) = group.child(6 + 2 * i) else { return Ok(false) };
         if let Some(want) = nb.default_button {
             if int_slot(site, bnode, 13, "Buttons", "DefaultButton")?.0 != i64::from(want) {
                 return Ok(false);
@@ -8196,21 +8246,28 @@ fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
                 return Ok(false);
             }
         }
-        if nb.picture.is_none() && nb.shortcut.is_none() && nb.description.is_empty() {
-            continue;
+        let Some(guid) = group.atom(5 + 2 * i).map(|(a, _)| a.value.clone()) else { return Ok(false) };
+        let has_meta_extras = nb.picture.is_some() || nb.shortcut.is_some() || !nb.description.is_empty();
+        if has_meta_extras {
+            let Some(meta) = cb_action_meta(t, action_count, &guid) else { return Ok(false) };
+            if nb.picture.as_ref().is_some_and(|want| meta.node.children.get(5).and_then(read_picture_spec).as_ref() != Some(want)) {
+                return Ok(false);
+            }
+            if nb.shortcut.as_ref().is_some_and(|want| meta.node.children.get(6).and_then(read_shortcut_spec).as_ref() != Some(want)) {
+                return Ok(false);
+            }
+            if !nb.description.is_empty() {
+                let got: Option<LocItems> =
+                    meta.child(4).and_then(strict_localized).map(|items| items.into_iter().map(|i| (i.lang, i.text)).collect());
+                if got.as_ref() != Some(&nb.description) {
+                    return Ok(false);
+                }
+            }
         }
-        let Some(guid) = root_g.atom(5 + 2 * i).map(|(a, _)| a.value.clone()) else { return Ok(false) };
-        let Some(meta) = cb_action_meta(t, action_count, &guid) else { return Ok(false) };
-        if nb.picture.as_ref().is_some_and(|want| meta.node.children.get(5).and_then(read_picture_spec).as_ref() != Some(want)) {
-            return Ok(false);
-        }
-        if nb.shortcut.as_ref().is_some_and(|want| meta.node.children.get(6).and_then(read_shortcut_spec).as_ref() != Some(want)) {
-            return Ok(false);
-        }
-        if !nb.description.is_empty() {
-            let got: Option<LocItems> =
-                meta.child(4).and_then(strict_localized).map(|items| items.into_iter().map(|i| (i.lang, i.text)).collect());
-            if got.as_ref() != Some(&nb.description) {
+        if !nb.buttons.is_empty() {
+            let sub = cb_sub_group(t, action_count, &guid).filter(|_| depth < CB_MAX_DEPTH);
+            let Some(sub) = sub else { return Ok(false) };
+            if !cb_group_extras_match(site, (t, action_count), sub, &nb.buttons, depth + 1)? {
                 return Ok(false);
             }
         }
@@ -8219,17 +8276,42 @@ fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
 }
 
 fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[CommandBarButton], prop: Property) -> Result<Vec<Piece>> {
+    let (t, action_count, root_g) = cb_table(site, prop)?;
+    let mut out = Vec::new();
+    patch_cb_group(site, (t, action_count), root_g, (old_btns, new_btns), prop, 1, &mut out)?;
+    // Several buttons may refer to one group; the same edit of each copy is one replacement, differing ones stay
+    // overlapping and are refused.
+    let mut unique: Vec<Piece> = Vec::with_capacity(out.len());
+    for p in out {
+        if !unique.iter().any(|u| u.range == p.range && u.bytes == p.bytes) {
+            unique.push(p);
+        }
+    }
+    Ok(unique)
+}
+
+/// Deepest nesting of user sub-menus (root group = 1) the patcher follows.
+const CB_MAX_DEPTH: usize = 3;
+
+/// Patches the buttons of one group, then those of the sub-menu groups its buttons refer to.
+fn patch_cb_group(
+    site: &Site,
+    (t, action_count): (NodeRef, usize),
+    group: NodeRef,
+    (old_btns, new_btns): (&[CommandBarButton], &[CommandBarButton]),
+    prop: Property,
+    depth: usize,
+    out: &mut Vec<Piece>,
+) -> Result<()> {
     if old_btns.len() != new_btns.len() {
         return Err(site.layout("unexpected-shape", "Buttons", "button count mismatch".into()));
     }
-    let (t, action_count, root_g) = cb_table(site, prop)?;
-    let mut out = Vec::new();
     for (i, (ob, nb)) in old_btns.iter().zip(new_btns.iter()).enumerate() {
-        let guid = root_g
+        let guid = group
             .atom(5 + 2 * i)
             .map(|(a, _)| a.value.clone())
             .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button action guid missing".into()))?;
-        let bnode = root_g
+        let bnode = group
             .child(6 + 2 * i)
             .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button node missing".into()))?;
         if ob.name != nb.name {
@@ -8322,8 +8404,16 @@ fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[Comm
                 }
             }
         }
+        if !ob.buttons.is_empty() || !nb.buttons.is_empty() {
+            if depth >= CB_MAX_DEPTH {
+                return Err(site.layout("unexpected-shape", "Buttons", "sub-menus are nested deeper than three levels".into()));
+            }
+            let sub = cb_sub_group(t, action_count, &guid)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "sub-menu button group missing".into()))?;
+            patch_cb_group(site, (t, action_count), sub, (&ob.buttons, &nb.buttons), prop, depth + 1, out)?;
+        }
     }
-    Ok(out)
+    Ok(())
 }
 
 /// Columns of tabular-section and dynamic-list tables keep a link step number (`0`, `1`, ...) where a value-table

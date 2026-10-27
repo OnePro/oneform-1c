@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="14ab0024-f37e-463e-8659-84a6bcec931d" name="ФормаПодбораНеоплаченных" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Подбор документов для выписки банка</Item>
+    <Item language="ro">Selectarea documentelor pentru extrasul bncar</Item>
+  </Caption>
+  <Width>750</Width>
+  <Height>400</Height>
+  <MainAttribute attributeId="0"/>
+  <DataProcessorFormExtension/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <NotificationProcessing id="70007">ОбработкаОповещения</NotificationProcessing>
+  </Events>
+  <Attributes>
+    <Attribute id="0" name="ОбработкаОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="1" name="ЖурналДокументовСписок">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false" refGuid="2b020b31-55fa-4247-bc0c-ec8715f8e390"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <CommandBar name="ДействияФормы" id="2">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>750</Width>
+      <Height>25</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="25" left="Left" right="Right"/>
+      <ActionSource>5</ActionSource>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="Подменю" id="32" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="ru">Действия</Item>
+            <Item language="ro">Acţiuni</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Действия в текущем режиме</Item>
+            <Item language="ro">Acţiuni în regim curent</Item>
+          </Tooltip>
+          <Buttons>
+            <Button name="Действие2" id="35" kind="Action" checked="false" actionKind="Standard" action="Standard:84">
+              <Caption>
+                <Item language="ru">&amp;Изменить</Item>
+                <Item language="ro">&amp;Modificare</Item>
+              </Caption>
+            </Button>
+            <Button name="Действие4" id="37" kind="Action" checked="false" actionKind="Standard" action="Standard:38">
+              <Caption>
+                <Item language="ru">Установить пометку удаления</Item>
+                <Item language="ro">Setați marcaj pentru ştergere</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель" id="38" kind="Separator" checked="false"/>
+            <Button name="Действие6" id="40" kind="Action" checked="false" actionKind="Standard" action="Standard:21">
+              <Caption>
+                <Item language="ru">Поиск по номеру...</Item>
+                <Item language="ro">Căutare după număr...</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель1" id="41" kind="Separator" checked="false"/>
+            <Button name="Подменю" id="45" kind="Submenu" checked="false" actionKind="StdSubmenu">
+              <Caption>
+                <Item language="ru">Отбор по виду</Item>
+                <Item language="ro">Selectarea pe tipul</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Отбор по виду документа</Item>
+                <Item language="ro">Selectarea pe tipul de document</Item>
+              </Tooltip>
+              <Buttons>
+                <Button name="Действие" id="46" kind="Action" checked="false" actionKind="Standard" action="Standard:47">
+                  <Caption>
+                    <Item language="ru">Все документы</Item>
+                    <Item language="ro">Totate documentele</Item>
+                  </Caption>
+                </Button>
+                <Button name="Разделитель" id="47" kind="Separator" checked="false"/>
+                <Button name="Действие1" id="48" kind="Action" checked="false" actionKind="Standard" action="Standard:27"/>
+              </Buttons>
+            </Button>
+            <Button name="Действие9" id="49" kind="Action" checked="false" actionKind="Standard" action="Standard:53">
+              <Caption>
+                <Item language="ru">Установить отбор и сортировку списка...</Item>
+                <Item language="ro">Stabilirea selectării şi sortării listei ...</Item>
+              </Caption>
+            </Button>
+            <Button name="Действие10" id="50" kind="Action" checked="false" actionKind="Standard" action="Standard:91">
+              <Caption>
+                <Item language="ru">Отбор по значению в текущей колонке</Item>
+                <Item language="ro">Selectare după voloarea în coloana curentă</Item>
+              </Caption>
+            </Button>
+            <Button name="Подменю1" id="51" kind="Submenu" checked="false" actionKind="StdSubmenu">
+              <Caption>
+                <Item language="ru">История отборов</Item>
+                <Item language="ro">Istoricul selectărilor</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">История отборов</Item>
+                <Item language="ro">Istoricul selectărilor</Item>
+              </Tooltip>
+              <Buttons>
+                <Button name="Действие" id="52" kind="Action" checked="false" actionKind="Standard" action="Standard:72"/>
+                <Button name="Разделитель" id="53" kind="Separator" checked="false"/>
+                <Button name="Действие1" id="54" kind="Action" checked="false" actionKind="Standard" action="Standard:71"/>
+              </Buttons>
+            </Button>
+            <Button name="Действие11" id="55" kind="Action" checked="false" actionKind="Standard" action="Standard:93">
+              <Caption>
+                <Item language="ru">Отключить отбор</Item>
+                <Item language="ro">Anularea selectării</Item>
+              </Caption>
+            </Button>
+            <Button name="Подменю2" id="56" kind="Submenu" checked="false" actionKind="StdSubmenu">
+              <Caption>
+                <Item language="ru">Сортировка</Item>
+                <Item language="ro">Sortare</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Сортировка</Item>
+                <Item language="ro">Sortare</Item>
+              </Tooltip>
+              <Buttons>
+                <Button name="Действие" id="57" kind="Action" checked="false" actionKind="Standard" action="Standard:65"/>
+              </Buttons>
+            </Button>
+            <Button name="Разделитель3" id="58" kind="Separator" checked="false"/>
+            <Button name="Действие12" id="62" kind="Action" checked="false" actionKind="Standard" action="Standard:99">
+              <Caption>
+                <Item language="ru">Вывести список...</Item>
+                <Item language="ro">Afișarea listei...</Item>
+              </Caption>
+            </Button>
+            <Button name="Действие13" id="63" kind="Action" checked="false" actionKind="Standard" action="Standard:97">
+              <Caption>
+                <Item language="ru">Настройка списка...</Item>
+                <Item language="ro">Setarea listei...</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель5" id="64" kind="Separator" checked="false"/>
+            <Button name="Действие14" id="65" kind="Action" checked="false" actionKind="Standard" action="Standard:90">
+              <Caption>
+                <Item language="ru">Обновить</Item>
+                <Item language="ro">Actualizare</Item>
+              </Caption>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Разделитель" id="66" kind="Separator" checked="false"/>
+        <Button name="Действие2" id="69" kind="Action" checked="false" actionKind="Standard" action="Standard:84">
+          <Caption>
+            <Item language="ru">&amp;Изменить</Item>
+            <Item language="ro">&amp;Modificare</Item>
+          </Caption>
+        </Button>
+        <Button name="Действие3" id="70" kind="Action" checked="false" actionKind="Standard" action="Standard:38">
+          <Caption>
+            <Item language="ru">Установить пометку удаления</Item>
+            <Item language="ro">Setați marcaj pentru ştergere</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель1" id="71" kind="Separator" checked="false"/>
+        <Button name="Действие5" id="73" kind="Action" checked="false" actionKind="Standard" action="Standard:21">
+          <Caption>
+            <Item language="ru">Поиск по номеру...</Item>
+            <Item language="ro">Căutare după număr...</Item>
+          </Caption>
+        </Button>
+        <Button name="Подменю1" id="75" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="ru">Отбор по виду</Item>
+            <Item language="ro">Selectarea pe tipul</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Отбор по виду документа</Item>
+            <Item language="ro">Selectarea pe tipul de document</Item>
+          </Tooltip>
+          <Buttons>
+            <Button name="Действие" id="46" kind="Action" checked="false" actionKind="Standard" action="Standard:47">
+              <Caption>
+                <Item language="ru">Все документы</Item>
+                <Item language="ro">Totate documentele</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель" id="47" kind="Separator" checked="false"/>
+            <Button name="Действие1" id="48" kind="Action" checked="false" actionKind="Standard" action="Standard:27"/>
+          </Buttons>
+        </Button>
+        <Button name="Действие" id="147" kind="Action" checked="false" actionKind="Standard" action="Standard:53">
+          <Caption>
+            <Item language="ru">Установить отбор и сортировку списка...</Item>
+            <Item language="ro">Stabilirea selectării şi sortării listei ...</Item>
+          </Caption>
+        </Button>
+        <Button name="Действие1" id="150" kind="Action" checked="false" actionKind="Standard" action="Standard:91">
+          <Caption>
+            <Item language="ru">Отбор по значению в текущей колонке</Item>
+            <Item language="ro">Selectare după voloarea în coloana curentă</Item>
+          </Caption>
+        </Button>
+        <Button name="Действие6" id="151" kind="Action" checked="false" actionKind="Standard" action="Standard:93">
+          <Caption>
+            <Item language="ru">Отключить отбор</Item>
+            <Item language="ro">Anularea selectării</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель2" id="74" kind="Separator" checked="false"/>
+        <Button name="Обновить" id="184" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыОбновить">
+          <Caption>
+            <Item language="ru">Обновить</Item>
+            <Item language="ro">Actualizare</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Обновить</Item>
+            <Item language="ro">Actualizare</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель3" id="141" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие</Item>
+          </Caption>
+        </Button>
+        <Button name="ОтметитьВсе" id="106" kind="Action" checked="false" representation="PictureAndText" actionKind="Handler" action="ДействияФормыОтметитьВсе">
+          <Caption>
+            <Item language="ru">Отметить все</Item>
+            <Item language="ro">Anula toate</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Отметить все документы для проведения</Item>
+            <Item language="ro">De remarcat toate documentele pentru tranzactionare</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель4" id="146" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие</Item>
+          </Caption>
+        </Button>
+        <Button name="СнятьВсеОтметки" id="107" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыСнятьВсеОтметки">
+          <Caption>
+            <Item language="ru">Снять все отметки</Item>
+            <Item language="ro">Scoateți toate marcaje</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Снять отметки со всех документов</Item>
+            <Item language="ro">De scos marcaje de pe toate documentele</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель5" id="178" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие4</Item>
+          </Caption>
+        </Button>
+        <Button name="Провести" id="177" kind="Action" checked="false" representation="PictureAndText" actionKind="Handler" action="ДействияФормыПровести">
+          <Caption>
+            <Item language="ru">Провести отмеченные</Item>
+            <Item language="ro">Înregistra marcate</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Провести отмеченные документы по выписке банка</Item>
+            <Item language="ro">Înregistra documente marcate in extras bancar</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель6" id="185" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие4</Item>
+          </Caption>
+        </Button>
+        <Button name="Закрыть" id="183" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыЗакрыть">
+          <Caption>
+            <Item language="ru">Закрыть</Item>
+            <Item language="ro">Închide</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Закрыть</Item>
+            <Item language="ro">Închide</Item>
+          </Tooltip>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+    <Table name="ЖурналДокументовСписок" id="5">
+      <DataPath attributeId="1">ЖурналДокументовСписок</DataPath>
+      <Left>8</Left>
+      <Top>65</Top>
+      <Width>734</Width>
+      <Height>325</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors top="Bottom" topTarget="7" topOffset="13" bottom="Bottom" bottomOffset="-10" right="Right" rightOffset="-8"/>
+      <Footer>false</Footer>
+      <ChangeRowSet>false</ChangeRowSet>
+      <Columns>
+        <Column name="Картинка" id="0">
+          <Width>24</Width>
+          <ValueType kind="String" composite="false" length="10"/>
+          <ReadOnly>true</ReadOnly>
+        </Column>
+        <Column name="Отметка" id="11">
+          <Tooltip>
+            <Item language="ru">Отметка для документов,
+которые будут проведены по выписке</Item>
+            <Item language="ro">De marca pentru documente,
+care va avea loc la externare</Item>
+          </Tooltip>
+          <Width>32</Width>
+          <Visible>false</Visible>
+          <ValueType kind="String" composite="false" length="10"/>
+          <Editor>CheckBox</Editor>
+        </Column>
+        <Column name="Дата" id="2">
+          <DataPath attributeId="1" steps="-100">ЖурналДокументовСписок.[-100]</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+            <Item language="ro">Data</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="DateTime" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидДокумента" id="14">
+          <DataPath attributeId="1" steps="-60002">ЖурналДокументовСписок.[-60002]</DataPath>
+          <Header>
+            <Item language="ru">Вид документа</Item>
+            <Item language="ro">Tipul documentului</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <ReadOnly>true</ReadOnly>
+        </Column>
+        <Column name="Номер" id="15">
+          <DataPath attributeId="1" steps="-2">ЖурналДокументовСписок.[-2]</DataPath>
+          <Header>
+            <Item language="ru">Номер</Item>
+            <Item language="ro">Număr</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false" length="15"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПлатежныйДокумент" id="12">
+          <DataPath attributeId="1" steps="9ea6cf8d-04b1-43eb-b75a-f5e268f7de30">ЖурналДокументовСписок.[9ea6cf8d-04b1-43eb-b75a-f5e268f7de30]</DataPath>
+          <Header>
+            <Item language="ru">Платежный документ</Item>
+            <Item language="ro">Document de plată</Item>
+          </Header>
+          <Width>150</Width>
+          <ValueType kind="String" composite="false" length="200"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидОперации" id="8">
+          <DataPath attributeId="1" steps="e89a9b75-ae37-4e0f-846f-0d2948c16166">ЖурналДокументовСписок.[e89a9b75-ae37-4e0f-846f-0d2948c16166]</DataPath>
+          <Header>
+            <Item language="ru">Вид операции</Item>
+            <Item language="ro">Tipul operaţiei</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Ref" composite="false" refGuid="f806a70b-638d-4542-bfef-a64abb5fed7b"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Контрагент" id="10">
+          <DataPath attributeId="1" steps="6d609e98-16da-4224-89a8-b3e404f7aca5">ЖурналДокументовСписок.[6d609e98-16da-4224-89a8-b3e404f7aca5]</DataPath>
+          <Header>
+            <Item language="ru">Контрагент</Item>
+            <Item language="ro">Agent economic</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Ref" composite="true" refGuid="70d9321c-06fa-4038-af4e-fe058052d300;923e6bf8-b09b-42a7-be22-28744828266d"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Сумма" id="13">
+          <DataPath attributeId="1" steps="1bfb4d55-8ec9-4213-b414-39ab58183b41">ЖурналДокументовСписок.[1bfb4d55-8ec9-4213-b414-39ab58183b41]</DataPath>
+          <Header>
+            <Item language="ru">Сумма</Item>
+            <Item language="ro">Suma</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Валюта" id="7">
+          <DataPath attributeId="1" steps="63d593da-8ce1-49e6-ad28-d1bd17bf210f">ЖурналДокументовСписок.[63d593da-8ce1-49e6-ad28-d1bd17bf210f]</DataPath>
+          <Header>
+            <Item language="ru">Валюта</Item>
+            <Item language="ro">Valuta</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="fb15fdde-885c-49a8-9d83-393b7bae9189"/>
+          <Editor>InputField</Editor>
+        </Column>
+      </Columns>
+      <Events>
+        <BeforeRowChange id="41">ЖурналДокументовСписокПередНачаломИзменения</BeforeRowChange>
+        <OnCheckChange id="45">ЖурналДокументовСписокПриИзмененииФлажка</OnCheckChange>
+        <OnRowOutput id="47">ЖурналДокументовСписокПриВыводеСтроки</OnRowOutput>
+      </Events>
+    </Table>
+    <Panel name="ПанельКомментария" id="7">
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>734</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors top="Top" topTarget="2" topOffset="33" bottom="Top" bottomTarget="7" bottomOffset="19" right="Right" rightOffset="-8"/>
+      <ShowTabs type="ShowTabs" member="None" code="0"/>
+      <ChildItems>
+        <Page name="Страница1">
+          <Title>
+            <Item language="ru">Страница1</Item>
+            <Item language="ro">Pagina 1</Item>
+          </Title>
+          <Left>0</Left>
+          <Top>0</Top>
+          <Width>734</Width>
+          <Height>19</Height>
+          <ChildItems>
+            <LabelDecoration name="НадписьКомментарий" id="6">
+              <Caption>
+                <Item language="ru">Нет ни одного неоплаченного документа по организации "Наша организация" и счету "Основной счет"</Item>
+                <Item language="ro">Nu există nici un nevărsat document de organizare a "organizația Noastră" și contul "cont de Bază"</Item>
+              </Caption>
+              <Left>0</Left>
+              <Top>0</Top>
+              <Width>734</Width>
+              <Height>19</Height>
+              <ZOrder>0</ZOrder>
+              <TabOrder>1</TabOrder>
+              <Anchors bottom="Top" bottomTarget="6" bottomOffset="19" right="Left" rightTarget="6" rightOffset="734"/>
+            </LabelDecoration>
+          </ChildItems>
+        </Page>
+      </ChildItems>
+    </Panel>
+  </ChildItems>
+</Form>
