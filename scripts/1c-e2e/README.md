@@ -10,3 +10,5 @@ with the original: only the intended differences may appear.
 
 `e2e_variant.sh <tag> <E1,E2,..>` does steps 1-3 for a set of the example edits. The dump launcher is a 1C
 data processor not stored here.
+
+For object forms of the test configuration (launcher `live.py`, partial load, comparison) and the procedure to add a scenario see `live/README.md`; results are summarised in `docs/evidence/`.

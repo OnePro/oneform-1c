@@ -24,7 +24,7 @@ use crate::cli_epf::{
 };
 use crate::config::{effective_config, load_json_bytes};
 use crate::container::Limits;
-use crate::discovery::{is_epf, CONFIG_NAME};
+use crate::discovery::{is_epf, is_erf, CONFIG_NAME, ERF_HINT};
 use crate::errors::{ExtractionError, Result, CONFIG_INVALID, IO_ERROR, RECOVERY_REQUIRED};
 use crate::formbin::{
     check_config_object, discover_config_objects, extract_config_object, find_object_module, pack_config_object,
@@ -61,6 +61,7 @@ when there are warnings.
 validate [PATH] [--json] decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
 (format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection, unreadable); it reads the
 Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is in scope, 1 when any is not.
+A binary external report (.erf) is not read: every command skips it and says so on stderr (dump it with erf-dump first).
 The viewer is PATH/.oneform/index.html. Exit codes: 0 ok, 1 failure, 2 usage/config error, 3 check found differences.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -164,6 +165,28 @@ pub fn discover_epf_targets(root: &Path) -> Vec<Target> {
         }
     });
     targets
+}
+
+/// Paths (relative to `root`) of the binary external reports `*.erf` below `root`: they are not processed.
+pub fn find_erf_files(root: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+    let skip = |d: &str| SKIP_DIRS.contains(&d);
+    walk_dirs(root, &skip, &mut |base, files| {
+        for f in files.iter().filter(|f| is_erf(f)) {
+            found.push(join(&rel_posix(root, base).unwrap_or_else(|| ".".to_string()), &f.name));
+        }
+    });
+    found.sort();
+    found
+}
+
+/// Tells (on stderr, so `--json` output stays clean) that every `.erf` under `root` is skipped, and why.
+fn note_erf_files(root: &Path) -> Vec<String> {
+    let erfs = find_erf_files(root);
+    for rel in &erfs {
+        eprintln!("oneform: {rel}: пропущен, {ERF_HINT}");
+    }
+    erfs
 }
 
 pub fn discover_xml_targets(root: &Path) -> Vec<Target> {
@@ -1033,6 +1056,9 @@ pub fn main(argv: &[String]) -> i32 {
     }
     if args.replace_generated && matches!(command.as_str(), "pack" | "check" | "preview" | "lint" | "validate") {
         return fail("--replace-generated is only valid for extract");
+    }
+    if Path::new(&path).is_dir() {
+        note_erf_files(&clean_path(Path::new(&path)));
     }
     if command == "lint" {
         if args.dry_run {

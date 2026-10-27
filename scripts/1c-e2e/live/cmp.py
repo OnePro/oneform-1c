@@ -1,3 +1,9 @@
+"""Compare two live dumps (live.py output).
+
+  python cmp.py <before.txt> <after.txt> <comma-separated names of NEW controls> [phase=pre]
+Prints counts, missing / changed properties of the pre-existing controls and the number of properties on the new ones.
+Expected: nothing missing, nothing different, no extra properties on pre-existing controls.
+"""
 import sys,re,collections
 def load(p,ph):
     d={}

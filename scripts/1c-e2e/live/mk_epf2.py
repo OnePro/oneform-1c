@@ -1,3 +1,9 @@
+"""Example edit for the table check (task A1b): add a Table bound to the tabular section `Корзина`.
+
+  cd <extracted external processor>; python mk_epf2.py ro|ed
+Adds table `АгентТаблица` with columns НомерСтроки, Номенклатура (read-only `ro` or editable `ed`), Количество
+to src/Forms/ФормаВыбораПоиска/Form.xml of the test processor. Copy and change names for another form.
+"""
 import re,sys
 F="src/Forms/ФормаВыбораПоиска/Form.xml"
 ro = sys.argv[1]=="ro"

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="ccc646a7-3cdd-5a75-a543-45868c9f303f" name="ФормаВТ" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Форма</Item>
+  </Caption>
+  <Width>676</Width>
+  <Height>346</Height>
+  <MainAttribute attributeId="0"/>
+  <Attributes>
+    <Attribute id="0" name="ОбработкаОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="1" name="ТаблицаНоменклатуры">
+      <Main>true</Main>
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+    <Attribute id="5" name="Таблица">
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <CommandBar name="ОсновныеДействияФормы" id="3">
+      <Left>0</Left>
+      <Top>321</Top>
+      <Width>676</Width>
+      <Height>25</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>3</TabOrder>
+      <HorizontalAlign>Right</HorizontalAlign>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="ОсновныеДействияФормыЗакрыть" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:142">
+          <Caption>
+            <Item language="ru">Закрыть</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+    </CommandBar>
+    <Table name="ТаблицаДанных" id="6">
+      <DataPath attributeId="5">Таблица</DataPath>
+      <Left>8</Left>
+      <Top>40</Top>
+      <Width>330</Width>
+      <Height>150</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="6" bottomOffset="150" right="Left" rightTarget="6" rightOffset="330"/>
+      <Footer>false</Footer>
+      <Columns>
+        <Column name="Наименование" id="0">
+          <DataPath attributeId="5">Таблица.Наименование</DataPath>
+          <Header>
+            <Item language="ru">Наименование</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false" length="50"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Сумма" id="1">
+          <DataPath attributeId="5">Таблица.Сумма</DataPath>
+          <Header>
+            <Item language="ru">Сумма</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Number" composite="false" digits="12" fractionDigits="2"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Дата" id="2">
+          <DataPath attributeId="5">Таблица.Дата</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Date" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+      </Columns>
+    </Table>
+  </ChildItems>
+</Form>

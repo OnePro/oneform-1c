@@ -1,3 +1,9 @@
+"""Example edit for the catalog form check (task A1): add four fields bound to the object.
+
+  python edit_cat.py <Form.xml> [add]
+Appends InputField/CheckBox elements bound to СправочникОбъект.Код, .Наименование, .ЗапретРедактирования, .Счет2020
+(attributes of the test catalog) before </ChildItems>. Copy and change the names for another object.
+"""
 import sys
 F=sys.argv[1]; mode=sys.argv[2] if len(sys.argv)>2 else "add"
 s=open(F,encoding="utf-8").read()

@@ -1,0 +1,1 @@
+Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-15)} -MaxEvents 40 | Where-Object { $_.Message -match '1cv8' } | ForEach-Object { $_.TimeCreated.ToString('HH:mm:ss') + ' ' + $_.ProviderName + ' ' + $_.Message.Substring(0,[Math]::Min(260,$_.Message.Length)).Replace("`n",' ') }

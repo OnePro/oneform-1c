@@ -97,6 +97,15 @@ pub fn is_epf(e: &DirEnt) -> bool {
     e.name.to_lowercase().ends_with(".epf") && e.is_file && !e.link
 }
 
+/// A binary external report `*.erf` (any case), a regular file and not a link. `oneform` does not read it: the container
+/// is the same as of `.epf`, but the root metadata (class ids, header, attribute / form groups) is the one of a report.
+pub fn is_erf(e: &DirEnt) -> bool {
+    e.name.to_lowercase().ends_with(".erf") && e.is_file && !e.link
+}
+
+/// What `oneform` says about a binary `.erf` (it is skipped, never processed).
+pub const ERF_HINT: &str = "внешний отчёт: выгрузите в XML (erf-dump), oneform работает с XML-выгрузкой";
+
 /// Names of `*.epf` files (case-insensitive suffix; `.epf.bak` is not a candidate).
 pub fn find_epfs(directory: &Path) -> Result<Vec<String>> {
     Ok(scan(directory)?.into_iter().filter(is_epf).map(|e| e.name).collect())
@@ -256,6 +265,18 @@ mod tests {
         touch(t.path(), &format!("{ROOT}/A/a.epf"), b"x");
         touch(t.path(), &format!("{ROOT}/A/b.epf"), b"x");
         assert!(discover_all(t.path(), ROOT).is_err());
+    }
+
+    #[test]
+    fn erf_is_recognised_but_never_an_epf() {
+        let t = tempfile::tempdir().unwrap();
+        for n in ["a.erf", "B.ERF", "c.erf.bak", "d.epf"] {
+            touch(t.path(), n, b"x");
+        }
+        let ents = scan(t.path()).unwrap();
+        let erfs: Vec<&str> = ents.iter().filter(|e| is_erf(e)).map(|e| e.name.as_str()).collect();
+        assert_eq!(erfs, ["B.ERF", "a.erf"]);
+        assert_eq!(find_epfs(t.path()).unwrap(), ["d.epf"]);
     }
 
     #[test]
