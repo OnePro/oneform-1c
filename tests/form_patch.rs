@@ -3432,6 +3432,32 @@ mod tabular_binding {
         assert_eq!(editors, [None, Some("InputField"), Some("InputField"), None]);
     }
 
+    /// The schema of a processor container: the patterns of the columns are known, the kinds of the references are not.
+    fn schema_without_kinds() -> ObjectSchema {
+        let mut s = schema();
+        for t in &mut s.tabular {
+            t.column_ref_kinds = vec![None; t.columns.len()];
+        }
+        s
+    }
+
+    #[test]
+    fn a_read_only_reference_column_needs_no_kind_and_an_editable_one_is_refused_with_the_way_out() {
+        let s = stream("DonorForm");
+        let columns = col("Ссылка", 1, "ОбработкаОбъект.Товары.Ссылка", "<ReadOnly>true</ReadOnly>");
+        let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&columns)));
+        let pf = with_object_schema(Some(schema_without_kinds()), || patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes())).unwrap();
+        let info = table_info(&pf.bytes, pf.allocated[0].1);
+        let (_, _, got) = read_table(&info).unwrap();
+        assert_eq!(got.iter().map(|c| (c.name.as_str(), c.slots)).collect::<Vec<_>>(), [("Ссылка", 45)]);
+
+        let columns = col("Ссылка", 1, "ОбработкаОбъект.Товары.Ссылка", "<Editor>InputField</Editor>");
+        let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&columns)));
+        let e = with_object_schema(Some(schema_without_kinds()), || plan(&s, &edited)).expect_err("must be refused");
+        let text = format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default());
+        assert!(text.contains("does not tell its kind") && text.contains("ONEFORM_CONFIG_ROOT") && text.contains("read-only"), "{text}");
+    }
+
     #[test]
     fn reference_columns_are_built_with_the_pattern_and_the_editor_of_their_kind() {
         let columns = [

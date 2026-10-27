@@ -251,6 +251,7 @@ fn process_one(
         oof_path: args.oof_path.as_deref(),
         allow_managed: false,
         use_original_names: false,
+        epf_dir: epf_path.parent(),
     };
     if args.pack {
         return pack_one(args, root, proc_rel, &proc_cfg, root_cfg, tools_lock, &opts, epf_name, &epf_path, &src, &snap, notes);

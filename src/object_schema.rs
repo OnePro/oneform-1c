@@ -97,6 +97,28 @@ fn resolve<'a>(list: &'a [(String, String)], name: &str) -> Resolved<&'a str> {
 }
 
 impl ObjectSchema {
+    /// Fill the kind of the reference (`CatalogRef`, ...) of the columns whose value type is a single reference that
+    /// the schema does not name (the container of a processor); `lookup` is built only when there is such a column.
+    pub fn resolve_ref_kinds(&mut self, lookup: impl FnOnce() -> Option<Arc<ConfigTypeLookup>>) {
+        let wanted = |t: &TabularSchema, i: usize| t.column_ref_kinds[i].is_none() && t.column_pattern(i).and_then(crate::ts_table::single_ref_guid).is_some();
+        if !self.tabular.iter().any(|t| t.column_ref_kinds.len() == t.columns.len() && (0..t.columns.len()).any(|i| wanted(t, i))) {
+            return;
+        }
+        let Some(lookup) = lookup() else { return };
+        for t in &mut self.tabular {
+            if t.column_ref_kinds.len() != t.columns.len() {
+                continue;
+            }
+            for i in 0..t.columns.len() {
+                if !wanted(t, i) {
+                    continue;
+                }
+                let guid = t.column_pattern(i).and_then(crate::ts_table::single_ref_guid).unwrap_or_default();
+                t.column_ref_kinds[i] = lookup.resolve_guid(&guid).and_then(crate::ts_table::ref_kind_of_canonical).map(str::to_string);
+            }
+        }
+    }
+
     pub fn kind(&self) -> Option<&str> {
         self.kind.as_deref()
     }

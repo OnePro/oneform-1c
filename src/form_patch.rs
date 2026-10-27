@@ -5199,7 +5199,7 @@ pub fn is_section_table(c: &ControlXml) -> bool {
 /// The columns of the existing tables bound to a tabular section: every `<DataPath>` is `Root.Section.Column` of the
 /// table's own section and a new or rebound column can be written (the data of the stream is not looked at here).
 fn check_existing_tables(diff: &FormDiff, edited: &FormXml, problems: &mut Vec<Problem>) {
-    use crate::ts_table::{column_field, field_data, new_column_data, ColumnData, ROW_NUMBER};
+    use crate::ts_table::{column_field, field_data_for, new_column_data, ColumnData, ROW_NUMBER};
     let Some(schema) = crate::object_schema::object_schema() else { return };
     let added: std::collections::HashSet<i64> = diff.additions.iter().map(|c| c.id).collect();
     for c in edited.controls.iter().filter(|c| c.type_name == "Table" && !added.contains(&c.id)) {
@@ -5238,7 +5238,7 @@ fn check_existing_tables(diff: &FormDiff, edited: &FormXml, problems: &mut Vec<P
                     push(why);
                 }
             } else if rebound {
-                match field_data(ts, field) {
+                match field_data_for(ts, field, v.read_only) {
                     Ok(ColumnData::RowNumber) => push(format!("cannot be rebound to {ROW_NUMBER}: it is read-only and has no editor (the shape of the column would change)")),
                     Ok(_) => {}
                     Err(why) => push(format!("DataPath '{dp}': cannot be rebound: {why}")),
@@ -7681,7 +7681,8 @@ fn rebind_pieces(
             cur.data, cur.check_data
         )));
     }
-    let target = match crate::ts_table::field_data(ts, field) {
+    let editable = cur.editor_guid != "00000000-0000-0000-0000-000000000000";
+    let target = match crate::ts_table::field_data_for(ts, field, !editable) {
         Ok(ColumnData::RowNumber) => {
             return Err(bad(format!("rebinding to {ROW_NUMBER} changes the shape of the column (it is read-only and has no editor)")));
         }
@@ -7689,7 +7690,6 @@ fn rebind_pieces(
         Err(why) => return Err(bad(format!("cannot be rebound to '{field}': {why}"))),
     };
     let ColumnData::Field { ordinal, pattern, .. } = &target else { return Err(bad("internal: no field".into())) };
-    let editable = cur.editor_guid != "00000000-0000-0000-0000-000000000000";
     let mut out = Vec::new();
     let x = rec.child(1).and_then(|w| w.child(1)).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column data record missing".into()))?;
     let step = x.child(2).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column data step missing".into()))?;
@@ -7758,10 +7758,10 @@ fn tabular_columns_match(site: &Site, original: &Site) -> Result<bool> {
             }
             Some(_) => {
                 let field = nc.field_name.as_deref().unwrap_or("");
-                let Ok(target) = crate::ts_table::field_data(&ts, field) else { return Ok(false) };
+                let editable = got.editor_guid != "00000000-0000-0000-0000-000000000000";
+                let Ok(target) = crate::ts_table::field_data_for(&ts, field, !editable) else { return Ok(false) };
                 let crate::ts_table::ColumnData::Field { ordinal, pattern, .. } = &target else { return Ok(false) };
                 let text = crate::ts_table::pattern_text(pattern).map_err(|why| site.layout("verification-failed", "Columns", why))?;
-                let editable = got.editor_guid != "00000000-0000-0000-0000-000000000000";
                 got.data == crate::ts_table::data_step(&target)
                     && got.ordinal == *ordinal as i64
                     && got.pattern == text

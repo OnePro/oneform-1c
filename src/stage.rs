@@ -40,6 +40,8 @@ pub struct StageOpts<'a> {
     pub oof_path: Option<&'a str>,
     pub allow_managed: bool,
     pub use_original_names: bool,
+    /// Directory of the `.epf`: where the configuration export is looked for to resolve reference types of columns.
+    pub epf_dir: Option<&'a std::path::Path>,
 }
 
 /// Build the complete `src/` tree (relative POSIX path -> bytes); no filesystem access.

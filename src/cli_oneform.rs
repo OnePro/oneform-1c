@@ -249,7 +249,7 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
     let epf_path = path_of(root, &t.rel).join(&t.epf);
     let src = path_of(root, &t.proc_rel).join("src");
     let name = t.display();
-    let stage_opts = StageOpts { oof_path: opts.oof_path.as_deref(), use_original_names: orig, ..Default::default() };
+    let stage_opts = StageOpts { oof_path: opts.oof_path.as_deref(), use_original_names: orig, epf_dir: epf_path.parent(), ..Default::default() };
 
     let _lock = processor_lock(root, &t.proc_rel)?;
     let snap = snapshot_epf(&epf_path)?;

@@ -145,7 +145,7 @@ fn classify(pattern: &str, ref_kind: Option<&str>) -> Result<Primitive, String> 
                 .to_string(),
         ),
         (Some("#"), 2) if atom(1).is_some_and(crate::naming::is_uuid) => match ref_kind {
-            None => Err(format!("value type {pattern} is a reference and the object metadata does not tell its kind")),
+            None => Err(format!("value type {pattern} is a reference and the object metadata does not tell its kind; set ONEFORM_CONFIG_ROOT to a configuration export directory that has the type, or make the column read-only")),
             Some(kind) => RefKind::from_xml(kind).map(|kind| Primitive::Ref { kind }).ok_or_else(|| {
                 format!(
                     "value type {pattern} is a reference of the kind {kind}; only CatalogRef, DocumentRef, EnumRef, ChartOfAccountsRef and ChartOfCharacteristicTypesRef are supported for a column"
@@ -160,6 +160,38 @@ fn classify(pattern: &str, ref_kind: Option<&str>) -> Result<Primitive, String> 
 /// Whether a column with this value pattern can be built (the reason otherwise).
 pub fn check_pattern(pattern: &str, ref_kind: Option<&str>) -> Result<(), String> {
     classify(pattern, ref_kind).map(|_| ())
+}
+
+/// The type id of a single-reference pattern (`{"Pattern",{"#",<uuid>}}`), lower case.
+pub fn single_ref_guid(pattern: &str) -> Option<String> {
+    let tree = parse_metadata(pattern.as_bytes()).ok()?;
+    let branches: Vec<&Node> = tree.children.iter().skip(1).filter_map(Item::as_node).collect();
+    match branches.as_slice() {
+        [b] if b.len() == 2 && b.atom(0).is_some_and(|a| a.value == "#") => {
+            b.atom(1).filter(|a| crate::naming::is_uuid(&a.value)).map(|a| a.value.to_ascii_lowercase())
+        }
+        _ => None,
+    }
+}
+
+/// [`classify`] for a column: a read-only column has no editor, so a single reference needs no kind.
+fn classify_column(pattern: &str, ref_kind: Option<&str>, read_only: bool) -> Result<Option<Primitive>, String> {
+    if read_only && single_ref_guid(pattern).is_some() {
+        return Ok(ref_kind.and_then(RefKind::from_xml).map(|kind| Primitive::Ref { kind }));
+    }
+    classify(pattern, ref_kind).map(Some)
+}
+
+/// The kind of the reference named by the canonical name of a type (`Справочник.X` -> `CatalogRef`).
+pub fn ref_kind_of_canonical(name: &str) -> Option<&'static str> {
+    Some(match name.split_once('.')?.0 {
+        "Справочник" => "CatalogRef",
+        "Документ" => "DocumentRef",
+        "Перечисление" => "EnumRef",
+        "ПланСчетов" => "ChartOfAccountsRef",
+        "ПланВидовХарактеристик" => "ChartOfCharacteristicTypesRef",
+        _ => return None,
+    })
 }
 
 /// Template of the inner text of the editor blob: an `InputField` info record (v9) with its own pattern.
@@ -393,9 +425,9 @@ pub fn column_record(spec: &ColumnSpec) -> Result<Node, String> {
     props.children[32] = bare(width_chars(spec.width));
     props.children[last] = bare(spec.width);
     if let ColumnData::Field { pattern, ref_kind, .. } = &spec.data {
-        let prim = classify(pattern, ref_kind.as_deref())?;
+        let prim = classify_column(pattern, ref_kind.as_deref(), spec.read_only)?;
         props.children[35] = Item::Node(parse(pattern)?);
-        if !spec.read_only {
+        if let (false, Some(prim)) = (spec.read_only, prim) {
             let blob = editor_blob(pattern, prim)?;
             props.children[39] = Item::Node(Node { children: vec![Item::Atom(Atom::new(AtomKind::Base64, blob)), bare(0)] });
         }
@@ -488,6 +520,11 @@ pub fn column_field<'p>(root: &str, attr_id: i64, ts: &TabularSchema, path: &'p 
 /// What the column `field` of the section `ts` (or [`ROW_NUMBER`]) is bound to; the error is the reason why it
 /// cannot be built (not found, ambiguous, type not known or without an editor template).
 pub fn field_data(ts: &TabularSchema, field: &str) -> Result<ColumnData, String> {
+    field_data_for(ts, field, false)
+}
+
+/// [`field_data`] for a column that is `read_only` or not: a read-only column needs no kind of its reference type.
+pub fn field_data_for(ts: &TabularSchema, field: &str, read_only: bool) -> Result<ColumnData, String> {
     if field == ROW_NUMBER {
         return Ok(ColumnData::RowNumber);
     }
@@ -506,7 +543,7 @@ pub fn field_data(ts: &TabularSchema, field: &str) -> Result<ColumnData, String>
         ));
     };
     let ref_kind = ts.column_ref_kind(ordinal);
-    check_pattern(pattern, ref_kind)?;
+    classify_column(pattern, ref_kind, read_only)?;
     Ok(ColumnData::Field { uuid: ts.columns[ordinal].1.to_ascii_lowercase(), ordinal, pattern: pattern.to_string(), ref_kind: ref_kind.map(str::to_string) })
 }
 
@@ -522,7 +559,7 @@ pub fn new_column_data(ts: &TabularSchema, path: &str, field: &str, read_only: b
     if read_only && editor.is_some() {
         return Err("a read-only column has no editor: remove <Editor> or use <ReadOnly>false</ReadOnly>".to_string());
     }
-    field_data(ts, field).map_err(|why| format!("DataPath '{path}': {why}"))
+    field_data_for(ts, field, read_only).map_err(|why| format!("DataPath '{path}': {why}"))
 }
 
 /// The column records of an added table bound to the tabular section `ts` of the main attribute `root` (whose id
@@ -936,5 +973,30 @@ mod tests {
         assert_eq!(decoded["id"], 5);
         assert_eq!(decoded["width"], 100);
         assert_eq!(decoded["valueType"]["kind"], "Number");
+    }
+
+    #[test]
+    fn the_kind_of_a_reference_follows_the_canonical_name_of_its_type() {
+        for (name, kind) in [
+            ("Справочник.Номенклатура", Some("CatalogRef")),
+            ("Документ.Заказ", Some("DocumentRef")),
+            ("Перечисление.ВидыЦен", Some("EnumRef")),
+            ("ПланСчетов.Хозрасчетный", Some("ChartOfAccountsRef")),
+            ("ПланВидовХарактеристик.Свойства", Some("ChartOfCharacteristicTypesRef")),
+            ("ПланОбмена.Обмен", None),
+            ("ValueTable", None),
+        ] {
+            assert_eq!(ref_kind_of_canonical(name), kind, "{name}");
+            if let Some(kind) = kind {
+                assert!(RefKind::from_xml(kind).is_some());
+            }
+        }
+        let one = r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043}}"##;
+        assert_eq!(single_ref_guid(one).as_deref(), Some("44a01d39-c2b6-4751-85e6-06fdc2f23043"));
+        assert_eq!(single_ref_guid(r#"{"Pattern",{"S",10,1}}"#), None);
+        // a read-only column needs no kind, an editable one does
+        assert_eq!(classify_column(one, None, true).unwrap(), None);
+        assert!(classify_column(one, None, false).is_err());
+        assert!(classify_column(r#"{"Pattern",{"B"}}"#, None, true).is_err());
     }
 }

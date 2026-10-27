@@ -482,6 +482,8 @@ pub fn stage_pack(
         inner.entry(format!("{}.0", inv.processor.object_uuid)).or_default().insert("text".into(), payload);
     }
 
+    let mut schema = inv.object_schema.clone();
+    schema.resolve_ref_kinds(|| config_lookup(opts.epf_dir));
     let forms = by_id(&cur["forms"]);
     for f in &inv.forms {
         let rec = &forms[&f.uuid];
@@ -491,7 +493,7 @@ pub fn stage_pack(
         }
         let bin_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
         let planned =
-            with_object_schema(Some(inv.object_schema.clone()), || plan_layout_patch(&rec["layout"], existing_src, &current.files))?;
+            with_object_schema(Some(schema.clone()), || plan_layout_patch(&rec["layout"], existing_src, &current.files))?;
         if let Some(lp) = planned {
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), lp.patched.bytes.clone());
             expected.insert(bin_path.to_string(), lp.patched.bytes.clone());
@@ -675,4 +677,15 @@ fn describe_differences(d: &crate::form_patch::FormDiff) -> String {
     } else {
         out.join("; ")
     }
+}
+
+/// The configuration that names the types of reference columns of a processor: `ONEFORM_CONFIG_ROOT` (a
+/// configuration export directory) or, failing that, the configuration around the `.epf`.
+fn config_lookup(epf_dir: Option<&Path>) -> Option<std::sync::Arc<crate::metaref::ConfigTypeLookup>> {
+    use crate::metaref::ConfigTypeLookup;
+    let root = match std::env::var_os("ONEFORM_CONFIG_ROOT").filter(|v| !v.is_empty()) {
+        Some(v) => Some(std::path::PathBuf::from(v)),
+        None => epf_dir.and_then(ConfigTypeLookup::find_config_root),
+    }?;
+    Some(ConfigTypeLookup::for_config_root(&root))
 }
