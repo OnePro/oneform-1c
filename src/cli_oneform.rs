@@ -987,7 +987,7 @@ pub fn main(argv: &[String]) -> i32 {
             return fail(&format!("new-form needs --kind <{}> and --name <new form>", crate::new_form::KINDS.join("|")));
         };
         let result = crate::new_form::Kind::parse(kind)
-            .and_then(|k| crate::new_form::new_form(Path::new(&path), k, name, args.synonym.as_deref(), args.default_form));
+            .and_then(|k| crate::new_form::new_form_with(Path::new(&path), k, name, args.synonym.as_deref(), args.default_form, args.replace_generated));
         return match result {
             Ok(done) => {
                 println!("{path}: CREATED, blank {kind} form {name}");

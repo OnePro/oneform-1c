@@ -245,6 +245,18 @@ pub struct NewForm {
 
 /// Create the blank form `name` of `kind` in `object_dir` (e.g. `.../Catalogs/Контрагенты` or `.../src/МояОбработка`).
 pub fn new_form(object_dir: &Path, kind: Kind, name: &str, synonym: Option<&str>, make_default: bool) -> Result<NewForm> {
+    new_form_with(object_dir, kind, name, synonym, make_default, false)
+}
+
+/// [`new_form`]; `replace_generated` lets the extract of the object replace `src` files made by another oneform version.
+pub fn new_form_with(
+    object_dir: &Path,
+    kind: Kind,
+    name: &str,
+    synonym: Option<&str>,
+    make_default: bool,
+    replace_generated: bool,
+) -> Result<NewForm> {
     if !valid_name(name) {
         return Err(err(format!("{name:?} is not a valid form name (letters, digits and _, not starting with a digit)")));
     }
@@ -325,7 +337,7 @@ pub fn new_form(object_dir: &Path, kind: Kind, name: &str, synonym: Option<&str>
         undo.undo();
         return Err(err(e.to_string()));
     }
-    let extract = match extract_new_form(object_dir, kind, &obj_name) {
+    let extract = match extract_new_form(object_dir, kind, &obj_name, replace_generated) {
         Ok(s) => s,
         Err(e) => {
             undo.undo();
@@ -349,7 +361,7 @@ pub fn new_form(object_dir: &Path, kind: Kind, name: &str, synonym: Option<&str>
 }
 
 /// The normal extract of the object (the root is the same as when `extract` runs on the whole dump).
-fn extract_new_form(object_dir: &Path, kind: Kind, obj_name: &str) -> Result<String> {
+fn extract_new_form(object_dir: &Path, kind: Kind, obj_name: &str, replace_generated: bool) -> Result<String> {
     let parent = object_dir.parent().ok_or_else(|| err("the object directory has no parent"))?;
     let parent_name = parent.file_name().and_then(|n| n.to_str()).unwrap_or("");
     let (root, rel, class) = match (kind.class_dir(), parent.parent()) {
@@ -364,7 +376,7 @@ fn extract_new_form(object_dir: &Path, kind: Kind, obj_name: &str) -> Result<Str
         .collect();
     forms.sort();
     let obj = ConfigObject { rel, object_class: class, forms, common: false };
-    let run = ConfigRunOpts::default();
+    let run = ConfigRunOpts { replace_generated, ..ConfigRunOpts::default() };
     extract_config_object(&root, &obj, &run).map(|o| format!("{} {}", o.path, o.status)).map_err(|e| err(e.message))
 }
 
