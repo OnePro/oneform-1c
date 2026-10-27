@@ -34,4 +34,5 @@ pub mod stage;
 pub mod templates;
 pub mod transaction;
 pub mod ts_table;
+pub mod validate;
 pub mod vt_table;

@@ -66,6 +66,9 @@ oneform preview <PATH>
 # Проверить раскладку Form.xml (error: за краем формы, дубли; warning: пересечения, нет растягивания, нижняя панель; info: отклонения от обычного вида формы; exit 1 при error, 3 с --strict при warning)
 oneform lint <PATH> [--json] [--strict]
 
+# Решить по каждой форме, можно ли её править через oneform: IN_SCOPE / OUT_OF_SCOPE с кодами причин (ничего не пишет; exit 1, если есть форма вне области)
+oneform validate <PATH> [--json]
+
 # Новая пустая обычная форма объекта (каталог объекта выгрузки), регистрация в объекте и extract
 oneform new-form <каталог объекта> --kind processor|report|catalog-item|catalog-list|document --name <Имя> [--synonym <текст>] [--default]
 

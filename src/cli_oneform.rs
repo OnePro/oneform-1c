@@ -38,7 +38,7 @@ use crate::preview::{
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
 
-pub const COMMANDS: [&str; 7] = ["extract", "pack", "preview", "check", "clone-form", "new-form", "lint"];
+pub const COMMANDS: [&str; 8] = ["extract", "pack", "preview", "check", "clone-form", "new-form", "lint", "validate"];
 pub const DEFAULT_WORKERS: usize = 3;
 const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", WORKSPACE_DIR, "src"];
 /// `json.dumps` of the Reference (default separators).
@@ -58,6 +58,9 @@ processor|report|catalog-item|catalog-list|document --name NAME [--synonym TEXT]
 lint [PATH] [--json] [--strict] checks the layout of every extracted Form.xml (outside the form, overlap, stretching, bottom panel,
 tab order, deviations from the usual values of the form kind) and writes nothing; exit 1 when an error is found, 3 with --strict
 when there are warnings.
+validate [PATH] [--json] decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
+(format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection, unreadable); it reads the
+Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is in scope, 1 when any is not.
 The viewer is PATH/.oneform/index.html. Exit codes: 0 ok, 1 failure, 2 usage/config error, 3 check found differences.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -113,7 +116,7 @@ fn join(base: &str, name: &str) -> String {
     }
 }
 
-fn path_of(root: &Path, rel: &str) -> PathBuf {
+pub(crate) fn path_of(root: &Path, rel: &str) -> PathBuf {
     if rel.is_empty() || rel == "." {
         return root.to_path_buf();
     }
@@ -206,11 +209,11 @@ pub fn discover_targets(root: &Path, command: &str) -> Vec<Target> {
 
 // --------------------------------------------------------------------------- workers
 
-fn zero_config() -> Value {
+pub(crate) fn zero_config() -> Value {
     json!({"schemaVersion": 1})
 }
 
-fn root_config(root: &Path) -> Result<Value> {
+pub(crate) fn root_config(root: &Path) -> Result<Value> {
     let f = root.join(CONFIG_NAME);
     if f.is_file() {
         load_json_bytes(&fs::read(&f)?, CONFIG_NAME)
@@ -220,7 +223,7 @@ fn root_config(root: &Path) -> Result<Value> {
 }
 
 /// Python truthiness of an optional JSON value.
-fn falsy(v: Option<&Value>) -> bool {
+pub(crate) fn falsy(v: Option<&Value>) -> bool {
     match v {
         None | Some(Value::Null) => true,
         Some(Value::Bool(b)) => !b,
@@ -795,10 +798,10 @@ pub struct Cli {
 fn build_command() -> Command {
     Command::new("oneform")
         .version(env!("CARGO_PKG_VERSION"))
-        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint] [PATH]")
+        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate] [PATH]")
         .about("Extract, pack, check and preview 1C ordinary forms of EPF files and configuration dumps.")
         .after_help(EPILOG)
-        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint]").help("command (default: extract)"))
+        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate]").help("command (default: extract)"))
         .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .)"))
         .arg(
             Arg::new("workers")
@@ -837,7 +840,7 @@ fn build_command() -> Command {
         .arg(Arg::new("name").long("name").value_name("NAME").help("clone-form, new-form: name of the new form"))
         .arg(Arg::new("synonym").long("synonym").value_name("TEXT").help("clone-form, new-form: synonym (title) of the new form; default: the name"))
         .arg(Arg::new("kind").long("kind").value_name("KIND").help("new-form: processor, report, catalog-item, catalog-list or document"))
-        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint: print the findings as a JSON array"))
+        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate: print the findings as a JSON array"))
         .arg(Arg::new("strict").long("strict").action(ArgAction::SetTrue).help("lint: exit 3 when there are warnings"))
         .arg(Arg::new("default").long("default").action(ArgAction::SetTrue).help("new-form: make the new form the default form of the object"))
         .arg(
@@ -1016,8 +1019,11 @@ pub fn main(argv: &[String]) -> i32 {
     if args.default_form || args.kind.is_some() {
         return fail("--kind and --default are only valid for new-form");
     }
-    if (args.json || args.strict) && command != "lint" {
-        return fail("--json and --strict are only valid for lint");
+    if args.strict && command != "lint" {
+        return fail("--strict is only valid for lint");
+    }
+    if args.json && !matches!(command.as_str(), "lint" | "validate") {
+        return fail("--json is only valid for lint and validate");
     }
     if args.workers < 1 {
         return fail("--workers must be at least 1");
@@ -1025,7 +1031,7 @@ pub fn main(argv: &[String]) -> i32 {
     if (args.backup || args.no_backup) && command != "pack" {
         return fail("--backup/--no-backup require the pack command");
     }
-    if args.replace_generated && matches!(command.as_str(), "pack" | "check" | "preview" | "lint") {
+    if args.replace_generated && matches!(command.as_str(), "pack" | "check" | "preview" | "lint" | "validate") {
         return fail("--replace-generated is only valid for extract");
     }
     if command == "lint" {
@@ -1033,6 +1039,14 @@ pub fn main(argv: &[String]) -> i32 {
             return fail("--dry-run is not valid for lint (lint never writes)");
         }
         return crate::lint::run_cli(&clean_path(Path::new(&path)), args.json, args.strict);
+    }
+
+    if command == "validate" {
+        if args.dry_run {
+            return fail("--dry-run is not valid for validate (validate never writes)");
+        }
+        let oof_path = args.oof_path.clone().or_else(|| std::env::var("EPF_OOF_PATH").ok()).filter(|s| !s.is_empty());
+        return crate::validate::run_cli(Path::new(&path), args.json, args.workers as usize, oof_path.as_deref());
     }
 
     crate::oof::set_carriers(args.carriers || std::env::var("ONEFORM_CARRIERS").is_ok_and(|v| v == "1"));
@@ -1144,7 +1158,7 @@ mod tests {
         assert_eq!(resolve_command(Some("dir"), None), Ok(("extract".into(), "dir".into())));
         assert_eq!(
             resolve_command(Some("bogus"), Some(".")),
-            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint".to_string())
+            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate".to_string())
         );
         assert_eq!(py_repr("it's"), "\"it's\"");
     }
