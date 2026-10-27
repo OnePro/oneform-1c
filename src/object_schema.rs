@@ -43,6 +43,10 @@ pub struct TabularSchema {
     /// Value type of each column as the text of a stream pattern (`{"Pattern",{"S",10,1}}`), parallel to
     /// `columns`; `None` when it cannot be derived.
     pub column_patterns: Vec<Option<String>>,
+    /// For a column whose value type is a single reference of the configuration: the kind of the reference as the
+    /// object XML names it (`CatalogRef`, `EnumRef`, ...), parallel to `columns`; `None` for every other column and
+    /// when the schema does not come from an object XML (the stream of a processor does not name the kind).
+    pub column_ref_kinds: Vec<Option<String>>,
 }
 
 impl TabularSchema {
@@ -62,6 +66,11 @@ impl TabularSchema {
     /// Stream pattern text of the value type of the column at `ordinal`.
     pub fn column_pattern(&self, ordinal: usize) -> Option<&str> {
         self.column_patterns.get(ordinal)?.as_deref()
+    }
+
+    /// Kind of the reference (`CatalogRef`, ...) that the column at `ordinal` has as its value type.
+    pub fn column_ref_kind(&self, ordinal: usize) -> Option<&str> {
+        self.column_ref_kinds.get(ordinal)?.as_deref()
     }
 }
 
@@ -172,18 +181,20 @@ impl ObjectSchema {
                 "TabularSection" => {
                     let mut columns = Vec::new();
                     let mut column_patterns = Vec::new();
+                    let mut column_ref_kinds = Vec::new();
                     let attrs = xchild(e, "ChildObjects")
                         .into_iter()
                         .flat_map(|c| c.children().filter(|c| c.is_element() && c.tag_name().name() == "Attribute"));
                     for attr in attrs {
                         let Some(entry) = xml_entry(attr) else { continue };
                         columns.push(entry);
-                        column_patterns.push(
-                            xchild(attr, "Properties").and_then(|p| xchild(p, "Type")).and_then(|t| xml_type_pattern(t, lookup)),
-                        );
+                        let (pattern, ref_kind) =
+                            xchild(attr, "Properties").and_then(|p| xchild(p, "Type")).and_then(|t| xml_type_pattern(t, lookup)).unzip();
+                        column_patterns.push(pattern);
+                        column_ref_kinds.push(ref_kind.flatten());
                     }
                     let type_id = xchild(e, "InternalInfo").and_then(tabular_type_id);
-                    schema.tabular.push(TabularSchema { name, uuid, type_id, columns, column_patterns });
+                    schema.tabular.push(TabularSchema { name, uuid, type_id, columns, column_patterns, column_ref_kinds });
                 }
                 _ => {}
             }
@@ -211,6 +222,7 @@ impl ObjectSchema {
                         let Some((name, uuid)) = item_entry(item) else { continue };
                         let mut columns = Vec::new();
                         let mut column_patterns = Vec::new();
+                        let mut column_ref_kinds = Vec::new();
                         let col_items = item
                             .children
                             .iter()
@@ -221,6 +233,7 @@ impl ObjectSchema {
                             let Some(entry) = item_entry(col) else { continue };
                             columns.push(entry);
                             column_patterns.push(col.node(0).and_then(item_pattern));
+                            column_ref_kinds.push(None);
                         }
                         // head `{0,{11,<TabularSection TypeId>,<ValueId>,<row TypeId>,<row ValueId>,...}}`
                         let type_id = item
@@ -231,7 +244,7 @@ impl ObjectSchema {
                                 Some(Item::Atom(a)) if is_uuid(&a.value) => Some(a.value.to_ascii_lowercase()),
                                 _ => None,
                             });
-                        schema.tabular.push(TabularSchema { name, uuid, type_id, columns, column_patterns });
+                        schema.tabular.push(TabularSchema { name, uuid, type_id, columns, column_patterns, column_ref_kinds });
                     }
                 }
                 _ => {}
@@ -294,8 +307,9 @@ fn tabular_type_id(info: roxmltree::Node<'_, '_>) -> Option<String> {
 
 /// Stream pattern text of the `Type` element of an attribute (`v8:Type` with its qualifiers): a single
 /// primitive type or a single reference type resolved by `lookup`; `None` for everything else (composite
-/// types, types the lookup does not know).
-fn xml_type_pattern(ty: roxmltree::Node<'_, '_>, lookup: Option<&ConfigTypeLookup>) -> Option<String> {
+/// types, types the lookup does not know). The second item is the kind of the reference (`CatalogRef`, ...) of a
+/// reference type.
+fn xml_type_pattern(ty: roxmltree::Node<'_, '_>, lookup: Option<&ConfigTypeLookup>) -> Option<(String, Option<String>)> {
     let mut types = ty.children().filter(|c| c.is_element() && c.tag_name().name() == "Type");
     let (one, rest) = (types.next()?, types.next());
     if rest.is_some() {
@@ -304,6 +318,7 @@ fn xml_type_pattern(ty: roxmltree::Node<'_, '_>, lookup: Option<&ConfigTypeLooku
     let name = one.text()?.trim();
     let text = |q: &str, tag: &str| -> Option<&str> { xchild(xchild(ty, q)?, tag)?.text().map(str::trim) };
     let int = |q: &str, tag: &str| -> Option<i64> { text(q, tag)?.parse().ok() };
+    let mut ref_kind = None;
     let branch = match name {
         "xs:boolean" => r#"{"B"}"#.to_string(),
         "xs:string" => {
@@ -327,10 +342,11 @@ fn xml_type_pattern(ty: roxmltree::Node<'_, '_>, lookup: Option<&ConfigTypeLooku
         },
         other => {
             let reference = other.strip_prefix("cfg:")?;
+            ref_kind = reference.split_once('.').map(|(kind, _)| kind.to_string());
             format!(r##"{{"#",{}}}"##, lookup?.resolve_name(reference)?)
         }
     };
-    Some(format!(r#"{{"Pattern",{branch}}}"#))
+    Some((format!(r#"{{"Pattern",{branch}}}"#), ref_kind))
 }
 
 fn xchild<'a, 'i>(n: roxmltree::Node<'a, 'i>, name: &str) -> Option<roxmltree::Node<'a, 'i>> {
@@ -416,6 +432,55 @@ mod tests {
         let s = ObjectSchema::from_object_xml(&owned.replace("<MetaDataObject>", "<MetaDataObject xmlns:xr=\"urn:x\">")).unwrap();
         assert_eq!(s.std_code("Родитель"), Some(-4));
         assert_eq!(s.std_code("Владелец"), Some(-5));
+    }
+
+    #[test]
+    fn reference_columns_get_their_pattern_and_kind_from_the_lookup() {
+        let dir = tempfile::tempdir().unwrap();
+        for (sub, file, name, category, type_id) in [
+            ("Catalogs", "Номенклатура.xml", "CatalogRef.Номенклатура", "Ref", "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38"),
+            ("Catalogs", "Номенклатура2.xml", "CatalogObject.Номенклатура", "Object", "f04b5444-61be-425a-b941-9a6144713f21"),
+            ("Enums", "Виды.xml", "EnumRef.Виды", "Ref", "52c49a35-3374-4995-9803-5fc37bb7d7cf"),
+        ] {
+            std::fs::create_dir_all(dir.path().join(sub)).unwrap();
+            let xml = format!(
+                r#"<Obj xmlns:xr="urn:x"><InternalInfo><xr:GeneratedType name="{name}" category="{category}"><xr:TypeId>{type_id}</xr:TypeId></xr:GeneratedType></InternalInfo></Obj>"#
+            );
+            std::fs::write(dir.path().join(sub).join(file), xml).unwrap();
+        }
+        let lookup = ConfigTypeLookup::from_config_dir(dir.path());
+        let column = |n: u8, ty: &str| {
+            format!(
+                r#"<Attribute uuid="33333333-0000-0000-0000-00000000000{n}"><Properties><Name>К{n}</Name><Type><v8:Type>{ty}</v8:Type></Type></Properties></Attribute>"#
+            )
+        };
+        let columns = [
+            column(1, "cfg:CatalogRef.Номенклатура"),
+            column(2, "cfg:EnumRef.Виды"),
+            column(3, "cfg:CatalogRef.Нет"),
+            column(4, "xs:boolean"),
+            column(5, "cfg:CatalogObject.Номенклатура"),
+        ]
+        .concat();
+        let xml = format!(
+            r#"<MetaDataObject xmlns:v8="urn:v8"><Document uuid="aaaaaaaa-0000-0000-0000-000000000001"><ChildObjects><TabularSection uuid="22222222-0000-0000-0000-000000000001"><Properties><Name>Т</Name></Properties><ChildObjects>{columns}</ChildObjects></TabularSection></ChildObjects></Document></MetaDataObject>"#
+        );
+        let s = ObjectSchema::from_object_xml_with(&xml, Some(&lookup)).unwrap();
+        let t = &s.tabular[0];
+        let got: Vec<(Option<&str>, Option<&str>)> = (0..5).map(|i| (t.column_pattern(i), t.column_ref_kind(i))).collect();
+        assert_eq!(
+            got,
+            [
+                (Some(r##"{"Pattern",{"#",47e6dd42-cd5c-4e3a-9bc4-14816ed53d38}}"##), Some("CatalogRef")),
+                (Some(r##"{"Pattern",{"#",52c49a35-3374-4995-9803-5fc37bb7d7cf}}"##), Some("EnumRef")),
+                (None, None),
+                (Some(r#"{"Pattern",{"B"}}"#), None),
+                (Some(r##"{"Pattern",{"#",f04b5444-61be-425a-b941-9a6144713f21}}"##), Some("CatalogObject")),
+            ]
+        );
+        // without a lookup a reference has neither a pattern nor a kind
+        let s = ObjectSchema::from_object_xml(&xml).unwrap();
+        assert_eq!((s.tabular[0].column_pattern(0), s.tabular[0].column_ref_kind(0)), (None, None));
     }
 
     #[test]

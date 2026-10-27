@@ -341,7 +341,7 @@ fn stage_config_object_hashed(
         (None, Some(x)) => read_meta_and_lookup(x),
     };
     let meta_lookup = meta_lookup.unwrap_or(&owned_lookup);
-    let type_lookup = ConfigTypeLookup::for_config_root(root);
+    let type_lookup = ConfigTypeLookup::for_config_root(&ConfigTypeLookup::find_config_root(root).unwrap_or_else(|| root.to_path_buf()));
     let obj_uuid = uuid_or_fallback(&ometa.uuid, &obj.rel);
     let obj_name = if ometa.name.is_empty() { name_of(&base) } else { ometa.name.clone() };
     let obj_synonym = ometa.synonym.clone();
@@ -827,7 +827,7 @@ pub fn stage_config_pack(
     let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut packed: Vec<String> = Vec::new();
     let mut layouts: Vec<LayoutPatch> = Vec::new();
-    let type_lookup = ConfigTypeLookup::for_config_root(root);
+    let type_lookup = ConfigTypeLookup::for_config_root(&ConfigTypeLookup::find_config_root(root).unwrap_or_else(|| root.to_path_buf()));
     let schema = if obj.common {
         None
     } else {

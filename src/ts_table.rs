@@ -11,6 +11,8 @@
 //! the data field in the declaration order of the TS (`-2` for `НомерСтроки`), 9 flags, 25 visible, 26 read-only,
 //! 30 name, 32 `ceil(width / 7)` (derived from 100 -> 15, 75 -> 11, 28 -> 4, ... over the real forms), 35 value
 //! pattern, 38 editor guid, 39 editor blob `{{#base64:...},0}`, last slot the width again.
+//! A column of a reference type has the same `P` as a string column; only `P[35]` (the pattern of the schema) and the
+//! editor blob differ, see [`editor_text`].
 //! Slots that are copied from the templates unexplained: 7, 8, 9 (bit 1), 10-24, 27-29, 31, 33, 34, 36, 37, 40-44.
 
 use std::io::Write;
@@ -48,8 +50,9 @@ const FIELD_FLAGS: i64 = 12590592;
 pub enum ColumnData {
     /// `НомерСтроки`: read-only, no editor, data `{-2}`.
     RowNumber,
-    /// A column of the tabular section: its uuid, 0-based position in the TS and the value pattern text.
-    Field { uuid: String, ordinal: usize, pattern: String },
+    /// A column of the tabular section: its uuid, 0-based position in the TS, the value pattern text and, for a
+    /// reference type, the kind of the reference (`CatalogRef`, ...) as the object XML names it.
+    Field { uuid: String, ordinal: usize, pattern: String, ref_kind: Option<String> },
 }
 
 /// Everything a column record is built from.
@@ -71,10 +74,50 @@ enum Primitive {
     Number { digits: i64, fraction: i64, non_negative: i64 },
     DateTime,
     Date,
+    Ref { kind: RefKind },
 }
 
+/// Kinds of references with an editor template (verified against real forms).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RefKind {
+    Catalog,
+    Document,
+    Enum,
+    ChartOfAccounts,
+    ChartOfCharacteristicTypes,
+}
+
+impl RefKind {
+    /// The kind from the prefix of the type name in the object XML (`cfg:CatalogRef.Name`).
+    fn from_xml(kind: &str) -> Option<RefKind> {
+        Some(match kind {
+            "CatalogRef" => RefKind::Catalog,
+            "DocumentRef" => RefKind::Document,
+            "EnumRef" => RefKind::Enum,
+            "ChartOfAccountsRef" => RefKind::ChartOfAccounts,
+            "ChartOfCharacteristicTypesRef" => RefKind::ChartOfCharacteristicTypes,
+            _ => return None,
+        })
+    }
+
+    /// `{<guid of the editor parameters>,{<parameters>}}` of the editor: the part of the editor record that depends
+    /// on the kind of the reference (the default parameters of real editors, no choice parameters).
+    fn parameters(self) -> &'static str {
+        match self {
+            RefKind::Catalog => "8585207b-9ca7-425b-9385-e8fd67c4e148,{5,0,2,00000000-0000-0000-0000-000000000000,{1,0}}",
+            RefKind::Document => "11fe1b25-97c5-4d25-ab3f-8c9a5655122e,{3,00000000-0000-0000-0000-000000000000}",
+            RefKind::Enum => "30ee7b7c-8dac-4e20-b58e-e7f7742ae8d8,{1,1,00000000-0000-0000-0000-000000000000}",
+            RefKind::ChartOfAccounts => "16ab4ef5-818b-4f8a-a958-51ed44e07bda,{1,0,00000000-0000-0000-0000-000000000000,{1,0}}",
+            RefKind::ChartOfCharacteristicTypes => "5f656c99-ee3b-4bb7-92a1-e6f5a93c2c9d,{0,0,2,00000000-0000-0000-0000-000000000000,{1,0}}",
+        }
+    }
+}
+
+/// Editor parameters of the primitive types: `{"U"}` strings (`9a7643d2`), the same for numbers and dates.
+const PRIMITIVE_PARAMETERS: &str = r#"9a7643d2-19e9-45e2-8893-280bc9195a97,{4,{"U"},{"U"},0,"",0,0}"#;
+
 /// Why a value pattern has no editor template (the text is shown to the user).
-fn classify(pattern: &str) -> Result<Primitive, String> {
+fn classify(pattern: &str, ref_kind: Option<&str>) -> Result<Primitive, String> {
     let tree = parse_metadata(pattern.as_bytes()).map_err(|e| format!("value type '{pattern}' is not a pattern: {e}"))?;
     let branches: Vec<&Node> = tree.children.iter().skip(1).filter_map(Item::as_node).collect();
     let [branch] = branches.as_slice() else {
@@ -99,30 +142,38 @@ fn classify(pattern: &str) -> Result<Primitive, String> {
             "value type Boolean is not supported for a column yet (the Configurator binds it as check box data, a different record shape)"
                 .to_string(),
         ),
-        (Some("#"), _) => Err(format!(
-            "value type {pattern} is a reference; its editor depends on the kind of the reference and is not modelled yet"
-        )),
+        (Some("#"), 2) if atom(1).is_some_and(crate::naming::is_uuid) => match ref_kind {
+            None => Err(format!("value type {pattern} is a reference and the object metadata does not tell its kind")),
+            Some(kind) => RefKind::from_xml(kind).map(|kind| Primitive::Ref { kind }).ok_or_else(|| {
+                format!(
+                    "value type {pattern} is a reference of the kind {kind}; only CatalogRef, DocumentRef, EnumRef, ChartOfAccountsRef and ChartOfCharacteristicTypesRef are supported for a column"
+                )
+            }),
+        },
+        (Some("#"), _) => Err(format!("value type {pattern} is a reference that is not understood")),
         _ => Err(format!("value type {pattern} is not supported for a column")),
     }
 }
 
 /// Whether a column with this value pattern can be built (the reason otherwise).
-pub fn check_pattern(pattern: &str) -> Result<(), String> {
-    classify(pattern).map(|_| ())
+pub fn check_pattern(pattern: &str, ref_kind: Option<&str>) -> Result<(), String> {
+    classify(pattern, ref_kind).map(|_| ())
 }
 
 /// Template of the inner text of the editor blob: an `InputField` info record (v9) with its own pattern.
 fn editor_text(pattern: &str, prim: Primitive) -> String {
-    let (middle, a, b) = match prim {
-        Primitive::String { length } => (format!("0,0,1,0,0,0,0,0,0,1,0,0,{length},0,0,4,0"), 0, 0),
+    let (middle, a, b, parameters) = match prim {
+        Primitive::String { length } => (format!("0,0,1,0,0,0,0,0,0,1,0,0,{length},0,0,4,0"), 0, 0, PRIMITIVE_PARAMETERS),
         Primitive::Number { digits, fraction, non_negative } => {
-            (format!("0,0,0,0,0,0,0,0,0,1,0,0,{digits},{fraction},{non_negative},4,0"), 0, 0)
+            (format!("0,0,0,0,0,0,0,0,0,1,0,0,{digits},{fraction},{non_negative},4,0"), 0, 0, PRIMITIVE_PARAMETERS)
         }
-        Primitive::DateTime => ("0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,4,0".to_string(), 2, 2),
-        Primitive::Date => ("0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,4,0".to_string(), 0, 0),
+        Primitive::DateTime => ("0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,4,0".to_string(), 2, 2, PRIMITIVE_PARAMETERS),
+        Primitive::Date => ("0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,4,0".to_string(), 0, 0, PRIMITIVE_PARAMETERS),
+        // the choice and open buttons (slots 7 and 8 of the run) are on
+        Primitive::Ref { kind } => ("0,0,1,0,0,1,1,0,0,1,0,0,0,0,0,4,0".to_string(), 0, 0, kind.parameters()),
     };
     format!(
-        r#"{{9,{pattern},{{{{{{16,1,{{3,4,{{0}}}},{{3,4,{{0}}}},{{7,3,0,1,100}},0,{{3,3,{{-22}}}},{{3,4,{{0}}}},{{3,4,{{0}}}},{{3,3,{{-7}}}},{{3,3,{{-21}}}},{{3,1,{{-18}},0,0,0}},{{1,0}},0,0,100,0,0}},30,{middle},{{"U"}},{{"U"}},"",{a},1,0,0,0,0,{{4,0,{{0}},"",-1,-1,1,0,""}},{{4,0,{{0}},"",-1,-1,1,0,""}},{b},0,0,{{0,0,0}},{{1,0}},0,0,0,0,0,0,0,16777215,2}}}},{{1,{{9a7643d2-19e9-45e2-8893-280bc9195a97,{{4,{{"U"}},{{"U"}},0,"",0,0}}}}}},{{0}},0,1,0,{{1,0}},0}}"#
+        r#"{{9,{pattern},{{{{{{16,1,{{3,4,{{0}}}},{{3,4,{{0}}}},{{7,3,0,1,100}},0,{{3,3,{{-22}}}},{{3,4,{{0}}}},{{3,4,{{0}}}},{{3,3,{{-7}}}},{{3,3,{{-21}}}},{{3,1,{{-18}},0,0,0}},{{1,0}},0,0,100,0,0}},30,{middle},{{"U"}},{{"U"}},"",{a},1,0,0,0,0,{{4,0,{{0}},"",-1,-1,1,0,""}},{{4,0,{{0}},"",-1,-1,1,0,""}},{b},0,0,{{0,0,0}},{{1,0}},0,0,0,0,0,0,0,16777215,2}}}},{{1,{{{parameters}}}}},{{0}},0,1,0,{{1,0}},0}}"#
     )
 }
 
@@ -244,8 +295,8 @@ pub fn column_record(spec: &ColumnSpec) -> Result<Node, String> {
     props.children[30] = quoted(&spec.name);
     props.children[32] = bare(width_chars(spec.width));
     props.children[last] = bare(spec.width);
-    if let ColumnData::Field { pattern, .. } = &spec.data {
-        let prim = classify(pattern)?;
+    if let ColumnData::Field { pattern, ref_kind, .. } = &spec.data {
+        let prim = classify(pattern, ref_kind.as_deref())?;
         props.children[35] = Item::Node(parse(pattern)?);
         if !spec.read_only {
             let blob = editor_blob(pattern, prim)?;
@@ -390,11 +441,17 @@ pub fn plan_columns(root: &str, attr_id: i64, ts: &TabularSchema, requests: &[Co
                 ));
                 continue;
             };
-            if let Err(why) = check_pattern(pattern) {
+            let ref_kind = ts.column_ref_kind(ordinal);
+            if let Err(why) = check_pattern(pattern, ref_kind) {
                 problems.push(format!("{at}: DataPath '{path}': {why}"));
                 continue;
             }
-            ColumnData::Field { uuid: ts.columns[ordinal].1.to_ascii_lowercase(), ordinal, pattern: pattern.to_string() }
+            ColumnData::Field {
+                uuid: ts.columns[ordinal].1.to_ascii_lowercase(),
+                ordinal,
+                pattern: pattern.to_string(),
+                ref_kind: ref_kind.map(str::to_string),
+            }
         };
         if problems.len() > before {
             continue;
@@ -500,11 +557,21 @@ mod tests {
     }
 
     fn field(ordinal: usize, pattern: &str) -> ColumnData {
-        ColumnData::Field { uuid: format!("33333333-0000-0000-0000-00000000000{ordinal}"), ordinal, pattern: pattern.into() }
+        ColumnData::Field { uuid: format!("33333333-0000-0000-0000-00000000000{ordinal}"), ordinal, pattern: pattern.into(), ref_kind: None }
     }
 
     /// The editor blob of a column of `Корзина` with the editor pattern `{"N",10,3,1}`, as the platform wrote it.
     const REAL_BLOB: &str = "AgFTS2/0iI3BTqDV67a9oKcNfVA7DsIwDEWwVeolMjuSnbRNcgnEwgEKdGVA3aqcjIEjcQUSuwRUPkkk5/nZec/ZrFe87tfbFKCuJrXrx3G4nBWDrQJCsECxrmLOyKEOKCMLTQ74ZJfYpVZMpYQY04UrbA7amF89n1g63DJh6JVhN5p8VkmbswQoMKlL0iJ8bppr8pRJml2qvYolKlWqUOi5CpnTlE/mlTT9YcsLX1y+Oeqcc4ZaKH/E44XedY09GU1hCLppB6O9D1Ybj4djoND2wYn+cgKUGfhL5xdZlMSMWIgP";
+
+    /// Editor blobs of columns with a reference type in real forms (v19, no events, default parameters): the kind,
+    /// the TypeId in the pattern and the blob.
+    const REAL_REF_BLOBS: [(RefKind, &str, &str); 5] = [
+        (RefKind::Catalog, "c7fe2ab6-14f2-4f47-a9ca-61ee6ce8b430", "AgFTS2/0iI3BTqDV67a9oKcNjVFBbgMhDKx6jJRP0KstYTCY/KKXPGB3yx57qHKLeFkOfVK/UAO7mzSNqtqWzYwNtkV6fmrydfk8H2C/O5vX4XTKH++mgRcDk8zZDWNE4tkhzyw4HKYBI+Ucp5xG9rbsd6XWd6MIVJEHrmHL3mMBD1ZLydqih3/c+I19DSj3hKMr02ZBSrWHamMJbIfau5Pedrx4ukFduY9ojqZs0ZgfRUovVbblkKrVvOmX/shuLzwY8qoURcRRALfu17ZLIQVnZUT9GEF2QU8+BcxpfosycSZOtS7oEw7sIvjArbL21y7dlrn7uttw5Rs="),
+        (RefKind::Document, "65d48f7f-b7d6-4ef4-999c-005178776986", "AgFTS2/0iI3BTqDV67a9oKcNjVBLbkMhDKy6jJRL0F2FJZuf4Rbd5ADvx7KLKruIk2XRI/UKBfxekqZRVRvZzNiYgdfnp25f589T0vvdSb0Nx+Py8a46eFE6+NnFzBlGngO4JTtIKU2A6Ikjc0gxlP2utH5ZFDQ1ZLVrCbfqPWZtNdZWQix1848Tv7FtCfieMHRluhag2O6o3lnSKLDeLaRFwWukGyTuRKI6qHLJSv1oqvTahb0G1FarKzn0R/Uy4YHIq1NgZkNem+19/XVEeaHReEg8eXBz3Q2jzRCnNPjgPRmzyGfgavAgbNZGr9O7ABJhIqd8AwIBU0tv9IiNwU6g1eu2vaCnDWNmgID3u/cDAA=="),
+        (RefKind::Enum, "52c49a35-3374-4995-9803-5fc37bb7d7cf", "AgFTS2/0iI3BTqDV67a9oKcNjVBLbgMhDK2yjJRL0C2WbD4x3CKbHGCGYZZdVNlFnKyLHqlXKOCZpE2iKDbC854f5g1689bj5+v7HPVue1aH4XTKnx+qg3elvUkuDtaDtezAxeghBrTg52R5HHniNJfdtjS9LNprashq1wqu3VvM2mqsUkIs9eOFE/fYtgJ8Sxi6Mt0LUGh31OwsaRRY7xbSouBlpz9I0olFdVTlUpX6J6r0osLeA2qr9ZUcetK9THhg8pq0Z2ZDXpv1/+SlMWceOUGYhgQuG4TRhwyZZ2ZnhhymIOI6cwl4sK3Rhi/zuwUSa2Ko/AI="),
+        (RefKind::ChartOfAccounts, "2ab79427-7bc9-43d3-aec3-7a54ed35c9ee", "AgFTS2/0iI3BTqDV67a9oKcNjU9LbgMhDI26jJRL0C2WMJgx3KKbHgBmyLKLKLuIk3XRI/UK5TeTNo2i2BbmPRv8PL3smn1/fl28POwv4i2cz+n0IRp4FVKHyJ40A8fZA5nFQEizAQ6W0mLs7FPKh32u/T1wkliRkVSTWqu3mKWRqrSiUrlcnnjxH5uagG8JjVemaQF0dUbxxqJUHZbZnTSq43HiL9SdukTxLvKWhfjTVOjRpVoNsEati/7oQXX74Y7Iq+PEzBqt1Ot+bTucQqR0tODQRaCjCxC8dWAxLURJcVzC+FGqYXDnWG2dXmb0GKr7spu0/AMCAVNLb/SIjcFOoNXrtr2gpw1jZoCA97v3AwA="),
+        (RefKind::ChartOfCharacteristicTypes, "a0658439-32bd-4b4a-a2cc-88c4c8570eaf", "AgFTS2/0iI3BTqDV67a9oKcNjVFLTgMxDEUsK/USYWtLdv65BRsOkEkzSxaouyonY8GRuAL5TKZQKoRtxfOenfhZ4x8fun2+f1wCHA8X8RzP5/z2Kjp4EhDJGq9VQCWXE+pFR4wyJfQ+6eSNoxzXcjyU1j+CLXBDCnRLNKu32IECqq1MVOrHP278xqoldLeE5CvTtSD7NqN6ZxlowDp7kIoG3k7+hobrIVG8iLJnIX40VXrrol5DbtHqYlz6o7q/cEfk1dk65yQbkHO/vp1ZrbEpBMxZLfUfLQ6DjIzZriYGlWQKp/m2BNoM7xzT5vw6ZcSme6y7iytf"),
+    ];
 
     #[test]
     fn the_blob_format_is_the_platform_one() {
@@ -515,6 +582,73 @@ mod tests {
         assert!(text.ends_with("{1,0},0}"), "{text}");
         // the text is the one of the real blob (the compressed bytes may differ with the deflate implementation)
         assert_eq!(decode_blob(REAL_BLOB).expect("the real blob has a valid header and length prefix"), text);
+    }
+
+    #[test]
+    fn the_reference_editors_are_the_platform_ones() {
+        for (kind, type_id, real) in REAL_REF_BLOBS {
+            let pattern = format!(r##"{{"Pattern",{{"#",{type_id}}}}}"##);
+            let ours = decode_blob(&editor_blob(&pattern, Primitive::Ref { kind }).unwrap()).expect("our blob has a valid length prefix");
+            let real = decode_blob(real).expect("the real blob has a valid header and length prefix");
+            // the real forms differ in the style colors of the first record only
+            let flat = |t: &str| t.replace(['\r', '\n'], "");
+            assert_eq!(flat(&ours).replace("{3,3,{-22}}", "{3,4,{0}}"), flat(&real), "{kind:?}");
+            assert!(flat(&ours).contains(&format!("{{1,{{{}}}}}", kind.parameters())), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn a_reference_column_has_the_pattern_of_the_schema_and_the_editor_of_its_kind() {
+        let type_id = "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38";
+        let pattern = format!(r##"{{"Pattern",{{"#",{type_id}}}}}"##);
+        let data = ColumnData::Field {
+            uuid: "33333333-0000-0000-0000-000000000003".into(),
+            ordinal: 3,
+            pattern: pattern.clone(),
+            ref_kind: Some("CatalogRef".into()),
+        };
+        let c = column_record(&spec("Контрагент", 4, data.clone(), false)).unwrap();
+        let p = c.node(1).unwrap().node(1).unwrap().node(1).unwrap();
+        assert_eq!((p.len(), p.atom(38).unwrap().value.as_str(), p.atom(6).unwrap().value.as_str()), (46, INPUT_FIELD_GUID, "3"));
+        assert_eq!(text_of(p.node(35).unwrap()), pattern);
+        let blob = p.node(39).unwrap().atom(0).unwrap();
+        assert_eq!(blob.kind, AtomKind::Base64);
+        let text = decode_blob(&blob.value).unwrap().replace(['\r', '\n'], "");
+        assert!(text.starts_with(&format!(r##"{{9,{pattern},"##)), "{text}");
+        assert!(text.contains("{1,{8585207b-9ca7-425b-9385-e8fd67c4e148,{5,0,2,"), "{text}");
+        // a read-only reference column has no editor, as any other read-only column
+        let ro = column_record(&spec("Контрагент", 4, data, true)).unwrap();
+        let p = ro.node(1).unwrap().node(1).unwrap().node(1).unwrap();
+        assert_eq!((p.len(), p.atom(38).unwrap().value.as_str()), (45, NO_EDITOR_GUID));
+        assert_eq!(text_of(p.node(35).unwrap()), pattern);
+    }
+
+    #[test]
+    fn references_are_classified_by_their_kind() {
+        let one = r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043}}"##;
+        for (kind, want) in [
+            ("CatalogRef", RefKind::Catalog),
+            ("DocumentRef", RefKind::Document),
+            ("EnumRef", RefKind::Enum),
+            ("ChartOfAccountsRef", RefKind::ChartOfAccounts),
+            ("ChartOfCharacteristicTypesRef", RefKind::ChartOfCharacteristicTypes),
+        ] {
+            assert_eq!(classify(one, Some(kind)).unwrap(), Primitive::Ref { kind: want });
+        }
+        for (kind, why) in [
+            (None, "does not tell its kind"),
+            (Some("ExchangePlanRef"), "kind ExchangePlanRef"),
+            (Some("BusinessProcessRef"), "kind BusinessProcessRef"),
+            (Some("CatalogObject"), "kind CatalogObject"),
+        ] {
+            let e = check_pattern(one, kind).unwrap_err();
+            assert!(e.contains(why), "{kind:?}: {e}");
+        }
+        let composite = r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043},{"#",54a01d39-c2b6-4751-85e6-06fdc2f23043}}"##;
+        assert!(check_pattern(composite, Some("CatalogRef")).unwrap_err().contains("composite"));
+        assert!(check_pattern(r##"{"Pattern",{"#"}}"##, Some("CatalogRef")).unwrap_err().contains("not understood"));
+        // a non-reference type ignores the kind
+        check_pattern(r#"{"Pattern",{"S",10,1}}"#, Some("CatalogRef")).unwrap();
     }
 
     #[test]
@@ -570,14 +704,14 @@ mod tests {
             (r#"{"Pattern",{"S"}}"#, "unlimited"),
             (r#"{"Pattern",{"S",10,0}}"#, "fixed length"),
             (r#"{"Pattern",{"D","T"}}"#, "Time"),
-            (r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043}}"##, "reference"),
+            (r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043}}"##, "does not tell its kind"),
             (r#"{"Pattern",{"S",10,1},{"N",1,0,0}}"#, "composite"),
         ] {
-            let e = check_pattern(pat).unwrap_err();
+            let e = check_pattern(pat, None).unwrap_err();
             assert!(e.contains(why), "{pat}: {e}");
         }
         for pat in [r#"{"Pattern",{"S",10,1}}"#, r#"{"Pattern",{"N",15,2,1}}"#, r#"{"Pattern",{"D"}}"#, r#"{"Pattern",{"D","D"}}"#] {
-            check_pattern(pat).unwrap();
+            check_pattern(pat, None).unwrap();
         }
     }
 
@@ -589,6 +723,17 @@ mod tests {
             spec("Номер", 0, ColumnData::RowNumber, true),
             spec("Цена", 5, field(2, r#"{"Pattern",{"N",15,2,0}}"#), false),
             spec("Дата", 3, field(0, r#"{"Pattern",{"D","D"}}"#), true),
+            spec(
+                "Вид",
+                4,
+                ColumnData::Field {
+                    uuid: "33333333-0000-0000-0000-000000000004".into(),
+                    ordinal: 3,
+                    pattern: r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043}}"##.into(),
+                    ref_kind: Some("EnumRef".into()),
+                },
+                false,
+            ),
         ];
         bind_info(&mut info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &specs).unwrap();
         check_table(&info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &specs).unwrap();
@@ -596,12 +741,12 @@ mod tests {
         let mut other = specs.clone();
         other[1].id = 9;
         assert!(check_table(&info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &other).unwrap_err().contains("column 'Цена'"));
-        assert!(check_table(&info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &specs[..2]).unwrap_err().contains("3 columns"));
+        assert!(check_table(&info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &specs[..2]).unwrap_err().contains("4 columns"));
         let (vt, source, cols) = read_table(&info).unwrap();
         assert_eq!(vt, r##"{"Pattern",{"#",32dc563e-0b51-4621-9936-5bfc9fd58ef3}}"##);
         assert_eq!(source, ROW_SOURCE);
         let got: Vec<(&str, i64, i64, usize)> = cols.iter().map(|c| (c.name.as_str(), c.id, c.ordinal, c.slots)).collect();
-        assert_eq!(got, [("Номер", 0, -2, 45), ("Цена", 5, 2, 46), ("Дата", 3, 0, 45)]);
+        assert_eq!(got, [("Номер", 0, -2, 45), ("Цена", 5, 2, 46), ("Дата", 3, 0, 45), ("Вид", 4, 3, 46)]);
         for (c, s) in cols.iter().zip(&specs) {
             assert_eq!(c.record, text_of(&column_record(s).unwrap()));
         }

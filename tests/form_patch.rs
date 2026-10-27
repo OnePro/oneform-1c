@@ -3152,6 +3152,10 @@ mod tabular_binding {
     const NAME: &str = "33333333-0000-0000-0000-000000000001";
     const QTY: &str = "33333333-0000-0000-0000-000000000002";
     const NOTE: &str = "33333333-0000-0000-0000-000000000003";
+    const ITEM: &str = "33333333-0000-0000-0000-000000000006";
+    const KIND: &str = "33333333-0000-0000-0000-000000000007";
+    const ITEM_TYPE: &str = "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38";
+    const KIND_TYPE: &str = "52c49a35-3374-4995-9803-5fc37bb7d7cf";
 
     fn object_xml() -> String {
         format!(
@@ -3174,7 +3178,10 @@ mod tabular_binding {
           <Attribute uuid="{NOTE}"><Properties><Name>Комментарий</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>50</v8:Length><v8:AllowedLength>Variable</v8:AllowedLength></v8:StringQualifiers></Type></Properties></Attribute>
           <Attribute uuid="33333333-0000-0000-0000-000000000004"><Properties><Name>Флаг</Name><Type><v8:Type>xs:boolean</v8:Type></Type></Properties></Attribute>
           <Attribute uuid="33333333-0000-0000-0000-000000000005"><Properties><Name>Свободный</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>0</v8:Length></v8:StringQualifiers></Type></Properties></Attribute>
-          <Attribute uuid="33333333-0000-0000-0000-000000000006"><Properties><Name>Ссылка</Name><Type><v8:Type>cfg:CatalogRef.Номенклатура</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="{ITEM}"><Properties><Name>Ссылка</Name><Type><v8:Type>cfg:CatalogRef.Номенклатура</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="{KIND}"><Properties><Name>Вид</Name><Type><v8:Type>cfg:EnumRef.ВидыЦен</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="33333333-0000-0000-0000-000000000008"><Properties><Name>Узел</Name><Type><v8:Type>cfg:ExchangePlanRef.Обмен</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="33333333-0000-0000-0000-000000000009"><Properties><Name>Чужая</Name><Type><v8:Type>cfg:CatalogRef.НетТакого</v8:Type></Type></Properties></Attribute>
         </ChildObjects>
       </TabularSection>
       <TabularSection uuid="22222222-0000-0000-0000-000000000002">
@@ -3191,8 +3198,25 @@ mod tabular_binding {
         )
     }
 
+    /// The generated reference types of the configuration the object belongs to.
+    fn type_lookup() -> oneform::metaref::ConfigTypeLookup {
+        let dir = tempfile::tempdir().unwrap();
+        for (sub, name, type_id) in [
+            ("Catalogs", "CatalogRef.Номенклатура", ITEM_TYPE),
+            ("Enums", "EnumRef.ВидыЦен", KIND_TYPE),
+            ("ExchangePlans", "ExchangePlanRef.Обмен", "5d6b7a50-0f5e-4e53-a5b7-1d3a4d1f0e11"),
+        ] {
+            std::fs::create_dir_all(dir.path().join(sub)).unwrap();
+            let xml = format!(
+                r#"<Obj xmlns:xr="http://v8.1c.ru/8.3/xcf/readable"><InternalInfo><xr:GeneratedType name="{name}" category="Ref"><xr:TypeId>{type_id}</xr:TypeId></xr:GeneratedType></InternalInfo></Obj>"#
+            );
+            std::fs::write(dir.path().join(sub).join(format!("{name}.xml")), xml).unwrap();
+        }
+        oneform::metaref::ConfigTypeLookup::from_config_dir(dir.path())
+    }
+
     fn schema() -> ObjectSchema {
-        ObjectSchema::from_object_xml(&object_xml()).unwrap()
+        ObjectSchema::from_object_xml_with(&object_xml(), Some(&type_lookup())).unwrap()
     }
 
     /// `uuid -> name` of the object: what `extract` knows about it.
@@ -3368,6 +3392,44 @@ mod tabular_binding {
     }
 
     #[test]
+    fn reference_columns_are_built_with_the_pattern_and_the_editor_of_their_kind() {
+        let columns = [
+            col("Ссылка", 1, "ОбработкаОбъект.Товары.Ссылка", ""),
+            col("Вид", 2, "ОбработкаОбъект.Товары.Вид", "<Editor>InputField</Editor>"),
+            col("ВидТолькоЧтение", 3, "ОбработкаОбъект.Товары.Вид", "<ReadOnly>true</ReadOnly>"),
+        ]
+        .concat();
+        let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&columns)));
+        let pf = patch_with(&edited);
+        let info = table_info(&pf.bytes, pf.allocated[0].1);
+        let (_, _, got) = read_table(&info).unwrap();
+        let (d1, d2) = (format!("{{0,{ITEM}}}"), format!("{{0,{KIND}}}"));
+        assert_eq!(
+            got.iter().map(|c| (c.name.as_str(), c.ordinal, c.data.as_str(), c.slots)).collect::<Vec<_>>(),
+            [("Ссылка", 5, d1.as_str(), 46), ("Вид", 6, d2.as_str(), 46), ("ВидТолькоЧтение", 6, d2.as_str(), 45)]
+        );
+        let props = |i: usize| info.node(2).unwrap().node(1).unwrap().node(23).unwrap().node(i).unwrap().node(1).unwrap().node(1).unwrap().node(1).unwrap().clone();
+        for (i, type_id, params) in [(1, ITEM_TYPE, "8585207b-9ca7-425b-9385-e8fd67c4e148"), (2, KIND_TYPE, "30ee7b7c-8dac-4e20-b58e-e7f7742ae8d8")] {
+            let p = props(i);
+            let pattern = format!("{{\"Pattern\",{{\"#\",{type_id}}}}}");
+            assert_eq!(oneform_text(p.node(35).unwrap()), pattern);
+            assert_eq!(p.atom(38).unwrap().value, "381ed624-9217-4e63-85db-c4c3cb87daae");
+            let blob = p.node(39).unwrap().atom(0).unwrap();
+            let text = oneform::ts_table::decode_blob(&blob.value).expect("the editor blob has a valid header and length prefix");
+            let text: String = text.split_whitespace().collect();
+            assert!(text.starts_with(&format!("{{9,{pattern},")), "{text}");
+            assert!(text.contains(&format!("{{1,{{{params},")), "{text}");
+        }
+        assert_eq!(oneform_text(props(3).node(35).unwrap()), format!("{{\"Pattern\",{{\"#\",{KIND_TYPE}}}}}"));
+
+        // `extract` of the patched stream shows the same columns
+        let xml = decoded_xml(&pf.bytes);
+        let requested = column_values(edited.as_bytes(), "Товары");
+        assert_eq!(requested, column_values(xml.as_bytes(), "Товары"));
+        assert_eq!(requested.iter().map(|c| c.3.as_deref()).collect::<Vec<_>>(), [Some("InputField"), Some("InputField"), None]);
+    }
+
+    #[test]
     fn a_read_only_field_column_has_no_editor_and_reads_back() {
         let columns = [
             col("НомерСтроки", 0, "ОбработкаОбъект.Товары.НомерСтроки", "<ReadOnly>true</ReadOnly>"),
@@ -3418,7 +3480,8 @@ mod tabular_binding {
             (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Контакты.Значение", ""))), "belongs to the tabular section 'Контакты'"),
             (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Флаг", ""))), "Boolean"),
             (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Свободный", ""))), "unlimited"),
-            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Ссылка", ""))), "value type of the column 'Ссылка' is not known"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Чужая", ""))), "value type of the column 'Чужая' is not known"),
+            (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Узел", ""))), "kind ExchangePlanRef"),
             (table("Т", 900, goods, Some(&one("Товары.Наименование", ""))), "must be ОбработкаОбъект.Товары.<column>"),
             (table("Т", 900, goods, Some(&one("ОбработкаОбъект.Товары.Наименование", "<Editor>CheckBox</Editor>"))), "editor CheckBox"),
             (
