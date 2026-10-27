@@ -2531,15 +2531,27 @@ impl FormXml {
                 }
             }
         }
+        let parents: std::collections::HashSet<i64> = self.controls.iter().filter_map(|c| c.parent).collect();
         for c in &mut out.controls {
             let mine: Vec<&DerivedPage> = derived.iter().filter(|d| d.panel_id == c.id).collect();
+            // A panel of one page without tabs and without controls decodes without any <Page>.
+            if mine.len() == 1 && c.type_name == "Panel" && c.values.show_tabs == Some(0) && !parents.contains(&c.id) {
+                c.values.pages.clear();
+                c.rest.children.retain(|e| e.tag != "ChildItems");
+            }
             for items in c.rest.children.iter_mut().filter(|e| e.tag == "ChildItems") {
                 let mut pages = items.children.iter_mut().filter(|e| e.tag == "Page");
                 for d in &mine {
                     let Some(page) = pages.next().filter(|p| p.attrs.get("name") == Some(&d.name)) else { continue };
-                    for (tag, v) in [("Left", d.left), ("Top", d.top), ("Width", d.width), ("Height", d.height)] {
+                    let given = ["Left", "Top", "Width", "Height"].iter().any(|t| page.children.iter().any(|e| e.tag == *t));
+                    for (i, (tag, v)) in [("Left", d.left), ("Top", d.top), ("Width", d.width), ("Height", d.height)].into_iter().enumerate() {
                         if let Some(e) = page.children.iter_mut().find(|e| e.tag == tag) {
                             e.text = v.to_string();
+                        } else if !given {
+                            // the request leaves the derived page area out: the decoder writes it
+                            let mut e = XmlElement::new(tag, page.line);
+                            e.text = v.to_string();
+                            page.children.insert(i, e);
                         }
                     }
                 }
@@ -2555,6 +2567,9 @@ impl FormXml {
         let lookup = |id: i64| map.iter().find(|(from, _)| *from == id).map(|(_, to)| *to).unwrap_or(id);
         for c in &mut out.controls {
             let new_id = lookup(c.id);
+            if map.iter().any(|(from, _)| *from == c.id) && c.type_name == "Panel" && c.values.show_tabs.is_none() {
+                c.values.show_tabs = Some(1); // the default of an added panel
+            }
             c.id = new_id;
             c.rest.attrs.insert("id".into(), new_id.to_string());
             c.parent = c.parent.map(lookup);
@@ -2572,6 +2587,9 @@ impl FormXml {
             }
         }
         stubs(&mut out.shell, &lookup);
+        for c in &mut out.controls {
+            stubs(&mut c.rest, &lookup);
+        }
         out
     }
 
@@ -3055,7 +3073,7 @@ impl Parser<'_> {
         };
         let show_tabs = if type_name == "Panel" {
             match found.get("ShowTabs") {
-                None => Some(2),
+                None => None,
                 Some(e) => {
                     if !e.children.is_empty() || !e.text.is_empty() {
                         return Err(self.bad(e.line, format!("{who}: <ShowTabs> must be an empty element with a 'code' attribute")));
@@ -4901,6 +4919,147 @@ fn unsupported(owner: &str, owner_type: Option<&str>, line: u32, path: &str, msg
     )
 }
 
+/// How the pages of an existing panel map onto the requested ones: the result holds, for every old page, its position
+/// among the new pages (`None`: the page is removed). Pages are matched by name; when the page count is unchanged the
+/// pages whose names differ are paired by position (a rename). A reorder is a permutation of the same names.
+fn match_pages(old: &[&str], new: &[&str]) -> Vec<Option<usize>> {
+    let mut map: Vec<Option<usize>> = old.iter().map(|o| new.iter().position(|n| n == o)).collect();
+    if old.len() == new.len() {
+        let free_new: Vec<usize> = (0..new.len()).filter(|j| !map.contains(&Some(*j))).collect();
+        let mut free = free_new.into_iter();
+        for slot in map.iter_mut().filter(|m| m.is_none()) {
+            *slot = free.next();
+        }
+    }
+    map
+}
+
+/// Pages that are renamed, added, removed or reordered, per existing panel id: `(old names, new names, map)`.
+type PageMaps = HashMap<i64, (Vec<String>, Vec<String>, Vec<Option<usize>>)>;
+
+/// The page maps of the existing panels whose page names differ in the request; problems for what cannot be written.
+fn page_maps(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Problem>) -> PageMaps {
+    let mut out = PageMaps::new();
+    for c in &edited.controls {
+        let Some(b) = baseline.control(c.id).filter(|b| b.type_name == "Panel" && c.type_name == "Panel") else { continue };
+        let names = |x: &ControlXml| x.values.pages.iter().map(|p| p.name.clone()).collect::<Vec<_>>();
+        let (old, new) = (names(b), names(c));
+        if old == new {
+            continue;
+        }
+        let refuse = |problems: &mut Vec<Problem>, why: String| {
+            problems.push(problem("unsupported-panel", format!("line {}: {}: {why}", c.line, c.describe())));
+        };
+        if old.is_empty() || new.is_empty() {
+            refuse(problems, "the pages of a panel can be edited only while the panel keeps at least one page, and a panel that the extract shows without <Page> has none to edit".to_string());
+            continue;
+        }
+        if let Some(dup) = new.iter().enumerate().find(|(i, n)| new[..*i].contains(n)).map(|(_, n)| n) {
+            refuse(problems, format!("duplicate page name '{dup}'"));
+            continue;
+        }
+        let map = match_pages(&old.iter().map(String::as_str).collect::<Vec<_>>(), &new.iter().map(String::as_str).collect::<Vec<_>>());
+        // a page that stays must not change its geometry; the area of a new page is derived
+        let geometry = |x: &ControlXml, name: &str| -> Vec<(String, String)> {
+            let page = x.rest.children.iter().filter(|e| e.tag == "ChildItems").flat_map(|e| &e.children).find(|e| e.tag == "Page" && e.attrs.get("name").map(String::as_str) == Some(name));
+            page.map(|p| p.children.iter().filter(|e| matches!(e.tag.as_str(), "Left" | "Top" | "Width" | "Height")).map(|e| (e.tag.clone(), e.text.trim().to_string())).collect()).unwrap_or_default()
+        };
+        for (i, j) in map.iter().enumerate() {
+            let Some(j) = j else { continue };
+            let (was, now) = (geometry(b, &old[i]), geometry(c, &new[*j]));
+            if !now.is_empty() && was != now {
+                refuse(problems, format!("page '{}': the page geometry is derived from the panel and cannot be edited", new[*j]));
+            }
+        }
+        out.insert(c.id, (old, new, map));
+    }
+    out
+}
+
+fn strip_pages(e: &mut XmlElement) {
+    for items in e.children.iter_mut().filter(|c| c.tag == "ChildItems") {
+        items.children.retain(|c| c.tag != "Page");
+    }
+}
+
+/// Requests that an added `Panel` and the controls placed in it must meet (refused with the line of the element):
+/// pages are named and titled, `ShowTabs` is 0 or 1, a given page geometry is the derived one, and every child of
+/// a new panel stands in one of its pages with a ZOrder that is unique on that page.
+fn check_added_panels(additions: &[ControlXml], problems: &mut Vec<Problem>) {
+    fn refuse(problems: &mut Vec<Problem>, kind: &'static str, c: &ControlXml, message: String) {
+        problems.push(problem(kind, format!("line {}: {}: {message}", c.line, c.describe())));
+    }
+    let by_id: HashMap<i64, &ControlXml> = additions.iter().map(|c| (c.id, c)).collect();
+    let mut z_seen: HashMap<(i64, Option<&str>, i64), &ControlXml> = HashMap::new();
+    for c in additions {
+        if let Some(parent) = c.parent.and_then(|p| by_id.get(&p)) {
+            if parent.type_name != "Panel" {
+                refuse(problems, "added-control", c, format!("it stands inside the new {}, which cannot hold controls; only a Panel with pages can", parent.type_name));
+            } else if let Some(page) = c.page.as_deref() {
+                if !parent.values.pages.iter().any(|p| p.name == page) {
+                    refuse(problems, "added-control", c, format!("page '{page}' is not a page of the new panel '{}'", parent.name));
+                }
+            } else {
+                refuse(problems, "added-control", c, format!("a child of the new panel '{}' must stand inside one of its <Page> elements", parent.name));
+            }
+            if let Some(first) = z_seen.insert((parent.id, c.page.as_deref(), c.values.z_order), c) {
+                refuse(
+                    problems,
+                    "invalid-order",
+                    c,
+                    format!("ZOrder {} is already used by '{}' on the same page; ZOrder is unique per page (0..k-1)", c.values.z_order, first.name),
+                );
+            }
+        }
+        if c.type_name != "Panel" {
+            continue;
+        }
+        let show_tabs = c.values.show_tabs.unwrap_or(1);
+        if !matches!(show_tabs, 0 | 1) {
+            refuse(problems, "unsupported-panel", c, format!("<ShowTabs code=\"{show_tabs}\">: an added panel supports 0 (None) and 1 (Top) only"));
+        }
+        let pages = &c.values.pages;
+        if pages.is_empty() {
+            refuse(problems, "unsupported-panel", c, "an added panel needs at least one <Page name=\"...\"> with a <Title>".to_string());
+            continue;
+        }
+        for (i, page) in pages.iter().enumerate() {
+            if pages[..i].iter().any(|p| p.name == page.name) {
+                refuse(problems, "unsupported-panel", c, format!("duplicate page name '{}'", page.name));
+            }
+            if page.title.is_empty() {
+                refuse(problems, "unsupported-panel", c, format!("page '{}' has no <Title>", page.name));
+            }
+            if page.title_picture.is_some() {
+                refuse(problems, "unsupported-panel", c, format!("page '{}': <TitlePicture> is not supported on a page of an added panel", page.name));
+            }
+        }
+        let Some(area) = new_panel_page_area(show_tabs, c.values.width, c.values.height) else {
+            if matches!(show_tabs, 0 | 1) {
+                let (w, h) = (c.values.width, c.values.height);
+                refuse(problems, "unsupported-panel", c, format!("a panel of {w}x{h} is too small for its pages (with tabs at least 9x27)"));
+            }
+            continue;
+        };
+        for items in c.rest.children.iter().filter(|e| e.tag == "ChildItems") {
+            for page in items.children.iter().filter(|e| e.tag == "Page") {
+                let name = page.attrs.get("name").map_or("", String::as_str);
+                for (tag, want) in [("Left", area.0), ("Top", area.1), ("Width", area.2), ("Height", area.3)] {
+                    let Some(e) = page.children.iter().find(|e| e.tag == tag) else { continue };
+                    if e.text.trim().parse::<i64>().ok() != Some(want) {
+                        refuse(
+                            problems,
+                            "unsupported-panel",
+                            c,
+                            format!("page '{name}', <{tag}> {}: the page area of an added panel is derived from its size ({} {} {} {}); omit the element or write {want}", e.text.trim(), area.0, area.1, area.2, area.3),
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Diff the ENTIRE projection of `edited` against `baseline`. In non-structural mode identity changes
 /// (added/deleted/duplicate/renamed/retyped/moved) and every difference outside the supported property
 /// set are errors. In structural mode, added controls of donor-supported types and deletions are
@@ -4931,6 +5090,7 @@ pub fn diff_forms_full(
             problems.push(problem("duplicate-control", format!("baseline has duplicate control id {}", c.id)));
         }
     }
+    let page_maps = page_maps(baseline, edited, &mut problems);
     let mut seen: HashMap<i64, &ControlXml> = HashMap::new();
     let mut seen_names: HashMap<&str, &ControlXml> = HashMap::new();
     for c in &edited.controls {
@@ -4957,7 +5117,26 @@ pub fn diff_forms_full(
         if b.type_name != c.type_name || b.guid != c.guid {
             problems.push(problem("retyped-control", format!("line {}: control '{}' (id {}) changed type {} -> {} (not supported)", c.line, b.name, c.id, b.type_name, c.type_name)));
         }
-        if b.parent != c.parent || b.page != c.page {
+        // the pages of an existing panel may be renamed, reordered, added and removed: a control stays on its page
+        let mut stays_on = b.page.clone();
+        if let Some((olds, news, map)) = b.parent.and_then(|p| page_maps.get(&p)) {
+            if let Some(i) = olds.iter().position(|n| Some(n) == b.page.as_ref()) {
+                match map[i] {
+                    Some(j) => stays_on = Some(news[j].clone()),
+                    None => {
+                        problems.push(problem(
+                            "moved-control",
+                            format!(
+                                "line {}: control '{}' (id {}) stands on the page '{}' that the request removes; delete the controls of a removed page in the same request (moving a control to another page is not supported)",
+                                c.line, b.name, c.id, olds[i]
+                            ),
+                        ));
+                        continue;
+                    }
+                }
+            }
+        }
+        if b.parent != c.parent || stays_on != c.page {
             problems.push(problem("moved-control", format!("line {}: control '{}' (id {}) moved to another parent or page (not supported)", c.line, b.name, c.id)));
         }
     }
@@ -4971,6 +5150,7 @@ pub fn diff_forms_full(
         }
     }
     if structural {
+        check_added_panels(&additions, &mut problems);
         // Structural validation of the collected changes: additions need a donor prototype and a
         // non-CommandBar parent; their events/unsupported inner structure are still diffed below.
         for c in &additions {
@@ -5063,6 +5243,11 @@ pub fn diff_forms_full(
             ),
             _ => (rest_a, rest_b),
         };
+        let (mut rest_a, mut rest_b) = (rest_a, rest_b);
+        if page_maps.contains_key(&c.id) {
+            strip_pages(&mut rest_a);
+            strip_pages(&mut rest_b);
+        }
         if !skip_rest.contains(&c.id) {
             diff_elements(&rest_a, &rest_b, "", &mut diffs);
         }
@@ -6690,6 +6875,276 @@ fn set_clone_events(n: &mut Node, events: &[(i64, String)], who: &str) -> Result
     }
     *cur = list;
     Ok(())
+}
+
+/// A control of an added subtree while its record is still a tree.
+struct StagedControl {
+    /// Id in the request.
+    xml_id: i64,
+    /// Parent id in the request (`None`: the root panel).
+    parent: Option<i64>,
+    /// The parent's request id when the parent is itself a new control.
+    new_parent: Option<i64>,
+    /// Allocated stream id.
+    id: i64,
+    node: Node,
+}
+
+/// The page area `(left, top, width, height)` of every page of an added panel of the given size: the panel
+/// without tabs is all page area, a panel with tabs on top leaves one pixel on each side and the tab strip above.
+/// `None` when the panel is too small for the boundary rows.
+pub fn new_panel_page_area(show_tabs: i64, width: i64, height: i64) -> Option<(i64, i64, i64, i64)> {
+    match show_tabs {
+        0 if width >= 1 && height >= 1 => Some((0, 0, width, height)),
+        1 if width >= 9 && height >= 27 => Some((1, 19, width - 2, height - 20)),
+        _ => None,
+    }
+}
+
+/// Turn the cloned donor panel into a clean one: no content of the donor panel, one page record per page,
+/// four boundary rows per page, one tail slot per page. The page record is the donor's version-5 record
+/// (`Страница2`, the last one) with title, name, visibility and availability set and the title picture reset; the
+/// rows give the decoder exactly [`new_panel_page_area`]. The six anchor lists are emptied (the children's entries
+/// are added when the children are placed), the children list is `{0}` and the events are cleared.
+fn build_panel_clone(clone: &mut Node, pages: &[PageValues], show_tabs: i64, width: i64, height: i64) -> Result<()> {
+    let shape = |m: &str| layout_err(format!("prototype: panel {m}"));
+    let (_, _, area_w, area_h) = new_panel_page_area(show_tabs, width, height)
+        .ok_or_else(|| layout_err(format!("a panel of {width}x{height} with ShowTabs {show_tabs} is too small for its pages")))?;
+    let last = clone.children.len().checked_sub(1).ok_or_else(|| shape("has no children list"))?;
+    clone.children[last] = Item::Node(Node { children: vec![bare(0)] });
+    let p = nav_mut(clone_info_mut(clone)?, &[1])?;
+    let mut base = 2usize;
+    for _ in 0..6 {
+        let size: usize = p
+            .children
+            .get(base)
+            .and_then(Item::as_atom)
+            .and_then(|a| a.value.parse().ok())
+            .ok_or_else(|| shape("list size"))?;
+        base += 1 + size;
+    }
+    let table = p.children.get(base + 3).and_then(Item::as_node).filter(|t| t.len() >= 3).ok_or_else(|| shape("page table"))?;
+    let old_pages = table.len() - 2;
+    let mut record = table.children.last().and_then(Item::as_node).cloned().ok_or_else(|| shape("page record"))?;
+    if record.len() != 11 || record.atom(0).is_none_or(|a| a.value != "5") {
+        return Err(shape("page record is not a version 5 record"));
+    }
+    let table_head = table.children[0].clone();
+    let old_rows: usize = p.atom(base + 7).and_then(|a| a.value.parse().ok()).ok_or_else(|| shape("row count"))?;
+    let mut row_templates = Vec::new();
+    for edge in 1..=4usize {
+        let row = p
+            .children
+            .get(base + 7 + edge)
+            .and_then(Item::as_node)
+            .filter(|r| r.len() == 9 && r.atom(4).is_some_and(|a| a.value == edge.to_string()))
+            .ok_or_else(|| shape("boundary row"))?;
+        row_templates.push(row.clone());
+    }
+    let tail: Vec<Item> = p.children.get(base + 8 + old_rows..).ok_or_else(|| shape("tail"))?.to_vec();
+    let slots_empty = tail.len() > old_pages && tail[1..=old_pages].iter().all(|s| s.as_atom().is_some_and(|a| a.value == "4294967295"));
+    if !slots_empty {
+        return Err(shape("tail slots"));
+    }
+    // the page record: title, flags, name; the title picture is the empty default
+    let picture = crate::brace::parse_metadata(br#"{4,0,{0},"",-1,-1,1,0,""}"#).map_err(|e| layout_err(e.to_string()))?;
+    let appearance = record.children[2].as_node_mut().filter(|a| a.len() > 2).ok_or_else(|| shape("page appearance"))?;
+    appearance.children[2] = Item::Node(picture);
+    let mut page_records = Vec::new();
+    for page in pages {
+        let mut rec = record.clone();
+        rec.children[1] = Item::Node(localized_node(&page.title));
+        rec.children[4] = bare(i64::from(page.visible));
+        rec.children[5] = bare(i64::from(page.enabled));
+        rec.children[6] = Item::Atom(Atom::new(QUOTED, &page.name));
+        page_records.push(Item::Node(rec));
+    }
+    let mut new_table = Node { children: vec![table_head, bare(pages.len() as i64)] };
+    new_table.children.extend(page_records);
+    // boundary rows: (coordinate, margin) of the four edges
+    let edges: [(i64, i64); 4] = if show_tabs == 0 {
+        [(0, 0), (0, 0), (width, 0), (height, 0)]
+    } else {
+        [(6, 0), (6, 0), (area_w - 6, 6), (area_h - 6, 6)]
+    };
+    let mut rows = Vec::new();
+    for page in 0..pages.len() {
+        for (template, (coord, margin)) in row_templates.iter().zip(edges) {
+            let mut row = template.clone();
+            row.children[1] = bare(coord);
+            row.children[5] = bare(page as i64);
+            row.children[7] = bare(margin);
+            rows.push(Item::Node(row));
+        }
+    }
+    let mut out: Vec<Item> = p.children[..2].to_vec();
+    out.extend((0..6).map(|_| bare(0)));
+    out.extend(p.children[base..base + 3].iter().cloned());
+    out[9] = bare(show_tabs);
+    out.push(Item::Node(new_table));
+    out.extend(p.children[base + 4..base + 7].iter().cloned());
+    out.push(bare(rows.len() as i64));
+    out.extend(rows);
+    out.push(tail[0].clone());
+    out.extend((0..pages.len()).map(|_| bare(4_294_967_295)));
+    out.extend(tail[1 + old_pages..].iter().cloned());
+    p.children = out;
+    Ok(())
+}
+
+/// Which old page of an edited panel goes where when the request renames, adds, removes or reorders pages: `None`
+/// while the page names are unchanged.
+fn page_plan(edit: &ControlEdit) -> Option<Vec<Option<usize>>> {
+    if edit.type_name != "Panel" || !edit.changed.contains(&Property::Pages) {
+        return None;
+    }
+    let names = |p: &[PageValues]| p.iter().map(|x| x.name.clone()).collect::<Vec<_>>();
+    let (old, new) = (names(&edit.old.pages), names(&edit.new.pages));
+    if old == new {
+        return None;
+    }
+    Some(match_pages(&old.iter().map(String::as_str).collect::<Vec<_>>(), &new.iter().map(String::as_str).collect::<Vec<_>>()))
+}
+
+/// Pages that keep their positions (a plain rename) need only their own atoms patched.
+fn plan_is_positional(map: &[Option<usize>], new_count: usize) -> bool {
+    map.len() == new_count && map.iter().enumerate().all(|(i, j)| *j == Some(i))
+}
+
+/// The page record for page `j` of the new table: the record of the old page it came from, or a copy of the panel's
+/// first record (same version) for an added page, with title, name, flags and picture of the request.
+fn new_page_record(old_records: &[NodeRef], from: Option<usize>, old: &[PageValues], new: &PageValues) -> Result<Node> {
+    let mut rec = old_records[from.unwrap_or(0)].node.clone();
+    if rec.len() < 7 {
+        return Err(layout_err("panel page record is too short"));
+    }
+    let was = from.map(|i| &old[i]);
+    if from.is_none() {
+        // an empty title picture of the same record version
+        if let Some(pic) = rec.children.get_mut(2).and_then(Item::as_node_mut).and_then(|a| a.children.get_mut(2)).and_then(Item::as_node_mut) {
+            if pic.len() > 3 {
+                pic.children[1] = bare(0);
+                pic.children[2] = Item::Node(Node { children: vec![bare(0)] });
+                pic.children[3] = Item::Atom(Atom::new(QUOTED, ""));
+            }
+        }
+    }
+    if was.is_none_or(|w| w.title != new.title) {
+        rec.children[1] = Item::Node(localized_node(&new.title));
+    }
+    rec.children[4] = bare(i64::from(new.visible));
+    rec.children[5] = bare(i64::from(new.enabled));
+    rec.children[6] = Item::Atom(Atom::new(QUOTED, &new.name));
+    if let Some(pic) = new.title_picture.as_ref().filter(|p| was.is_none_or(|w| w.title_picture.as_ref() != Some(*p))) {
+        let node = crate::brace::parse_metadata(format_picture_node(pic).as_bytes()).map_err(|e| layout_err(e.to_string()))?;
+        if let Some(a) = rec.children.get_mut(2).and_then(Item::as_node_mut).filter(|a| a.len() > 2) {
+            a.children[2] = Item::Node(node);
+        }
+    }
+    Ok(rec)
+}
+
+/// Replacements that rebuild the page table, the boundary rows and the tail slots of the existing panel `edit.id`
+/// for the new page order and renumber the page index of its surviving children (`map`: old page -> new position).
+/// A new page copies the first page's record and rows (the same area) and gets an empty tail slot; the rows and
+/// slots of a removed page go; `t0` goes back to 0 when it points past the new page count.
+fn restructure_pages(index: &ControlIndex, edit: &ControlEdit, map: &[Option<usize>], removed: &std::collections::BTreeSet<i64>) -> Result<Vec<AppliedReplacement>> {
+    let shape = |m: &str| layout_err(format!("panel '{}': {m}", edit.name));
+    let entry = index.get(edit.id).ok_or_else(|| shape("not found in the stream"))?;
+    let p = entry.info().and_then(|i| i.child(1)).filter(|p| p.node.len() >= 4).ok_or_else(|| shape("the panel record is missing"))?;
+    let table_at = panel_page_list_idx(p.node).ok_or_else(|| shape("the panel lists are malformed"))?;
+    let table = p.child(table_at).ok_or_else(|| shape("the page table is missing"))?;
+    let old_count = table.node.len().saturating_sub(2);
+    let records: Vec<NodeRef> = (0..old_count).filter_map(|i| table.child(2 + i)).collect();
+    if old_count == 0 || records.len() != old_count || map.len() != old_count || edit.old.pages.len() != old_count {
+        return Err(shape("the page table does not match the pages of the baseline"));
+    }
+    let new_count = edit.new.pages.len();
+    let mk = |range: Span, bytes: Vec<u8>| AppliedReplacement { control_id: edit.id, properties: vec![Property::Pages], range, bytes };
+    let mut out = Vec::new();
+    // the page table
+    let mut new_table = Node { children: vec![table.node.children[0].clone(), bare(new_count as i64)] };
+    for j in 0..new_count {
+        let from = map.iter().position(|m| *m == Some(j));
+        new_table.children.push(Item::Node(new_page_record(&records, from, &edit.old.pages, &edit.new.pages[j])?));
+    }
+    let mut bytes = Vec::new();
+    crate::donor::write_node(&new_table, &mut bytes);
+    out.push(mk(table.span.span, bytes));
+    // the boundary rows
+    let rows_at = table_at + 4;
+    let (rows, rows_span) = p
+        .atom(rows_at)
+        .and_then(|(a, s)| Some((strict_int(&a.value).and_then(|v| usize::try_from(v).ok())?, s)))
+        .ok_or_else(|| shape("the boundary row count is missing"))?;
+    let mut kept: Vec<Node> = Vec::new();
+    let mut template: Vec<Node> = Vec::new();
+    for r in 0..rows {
+        let row = p.child(rows_at + 1 + r).filter(|row| row.node.len() >= 8).ok_or_else(|| shape("a boundary row is malformed"))?;
+        let page = row.atom(5).and_then(|(a, _)| strict_int(&a.value)).ok_or_else(|| shape("a boundary row has no page index"))?;
+        let edge = row.atom(4).and_then(|(a, _)| strict_int(&a.value)).unwrap_or(0);
+        if page == 0 && (1..=4).contains(&edge) {
+            template.push(row.node.clone());
+        }
+        match usize::try_from(page).ok().filter(|pg| *pg < old_count) {
+            Some(pg) => {
+                if let Some(j) = map[pg] {
+                    let mut moved = row.node.clone();
+                    moved.children[5] = bare(j as i64);
+                    kept.push(moved);
+                }
+            }
+            None => kept.push(row.node.clone()),
+        }
+    }
+    for j in (0..new_count).filter(|j| !map.contains(&Some(*j))) {
+        for row in &template {
+            let mut copy = row.clone();
+            copy.children[5] = bare(j as i64);
+            kept.push(copy);
+        }
+    }
+    let mut text = kept.len().to_string().into_bytes();
+    for row in &kept {
+        text.push(b',');
+        crate::donor::write_node(row, &mut text);
+    }
+    let end = if rows > 0 { p.child(rows_at + rows).map_or(rows_span.end, |l| l.span.span.end) } else { rows_span.end };
+    out.push(mk(Span { start: rows_span.start, end }, text));
+    // the tail: t0 and one slot per page
+    let tail_at = rows_at + 1 + rows;
+    let slot = |i: usize| p.atom(tail_at + i).filter(|(a, _)| a.kind == AtomKind::Bare).ok_or_else(|| shape("a tail slot is missing"));
+    let (t0, t0_span) = slot(0)?;
+    let t0_value = strict_int(&t0.value).ok_or_else(|| shape("the tail head is not a number"))?;
+    let mut tail = vec![if t0_value >= new_count as i64 { "0".to_string() } else { t0.value.clone() }];
+    for j in 0..new_count {
+        tail.push(match map.iter().position(|m| *m == Some(j)) {
+            Some(i) => slot(1 + i)?.0.value.clone(),
+            None => "4294967295".to_string(),
+        });
+    }
+    let last = slot(old_count)?.1;
+    out.push(mk(Span { start: t0_span.start, end: last.end }, tail.join(",").into_bytes()));
+    // the page index of the surviving children
+    for e in index.entries.iter().filter(|e| e.parent == Some(edit.id) && !removed.contains(&e.id)) {
+        let Some(new_page) = usize::try_from(e.page).ok().filter(|pg| *pg < old_count).and_then(|pg| map[pg]) else { continue };
+        if new_page as i64 == e.page {
+            continue;
+        }
+        let g = e.geom().ok_or_else(|| shape("a child has no geometry"))?;
+        let mut at = 12usize;
+        for _ in 0..6 {
+            at += 1 + g.atom(at).and_then(|(a, _)| a.value.parse::<usize>().ok()).ok_or_else(|| shape("a child geometry list is malformed"))?;
+        }
+        let (_, span) = g.atom(at).ok_or_else(|| shape("a child geometry has no page index"))?;
+        out.push(AppliedReplacement { control_id: e.id, properties: vec![Property::Pages], range: span, bytes: new_page.to_string().into_bytes() });
+    }
+    Ok(out)
+}
+
+/// The edit rebuilds the page table (a page is added, removed or moved), not just the atoms of pages that stay.
+fn restructures_pages(edit: &ControlEdit) -> bool {
+    page_plan(edit).is_some_and(|m| !plan_is_positional(&m, edit.new.pages.len()))
 }
 
 /// Byte ranges cutting the items `removals` of `n` from a counted list, one range per run of adjacent items
@@ -8993,6 +9448,7 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                 let want = new.show_tabs.unwrap_or(0);
                 out.push(piece(layout.show_tabs.1, in_i32(site, prop, want)?, &[prop]));
             }
+            Property::Pages if restructures_pages(site.edit) => {} // rebuilt by `restructure_pages`
             Property::Pages => {
                 let recs = panel_page_records(site)?;
                 let cur_pages = read_panel_page_values(site)?;
@@ -9012,6 +9468,12 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         let items = strict_localized(title_node)
                             .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page title not localized".into()))?;
                         out.extend(localized_pieces(site, title_node, &items, &op.title, &np.title, prop)?);
+                    }
+                    if op.name != np.name {
+                        let (_, span) = rec
+                            .atom(6)
+                            .ok_or_else(|| site.layout("unexpected-shape", "Pages", "page name atom missing".into()))?;
+                        out.push(piece(span, quote(&np.name), &[prop]));
                     }
                     if op.visible != np.visible {
                         let (_, span) = int_slot(site, rec, 4, "Pages", "Visible")?;
@@ -9683,7 +10145,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
         }
         return Ok(derived_pages(site.edit.id, &actual.1));
     }
-    if site.edit.type_name == "Panel" && site.edit.changed.contains(&Property::ShowTabs) {
+    if site.edit.type_name == "Panel" && (site.edit.changed.contains(&Property::ShowTabs) || page_plan(site.edit).is_some()) {
         let actual = panel_pages(panel_info(site)?.node, new.width, new.height);
         return Ok(derived_pages(site.edit.id, &actual.1));
     }
@@ -9762,6 +10224,7 @@ impl FormPatchPlan<'_> {
             && !self.diff.form_props_changed
             && !has_dp_edits
             && default_buttons.is_empty()
+            && !self.diff.edits.iter().any(restructures_pages)
         {
             return Ok(allocated);
         }
@@ -10133,27 +10596,68 @@ impl FormPatchPlan<'_> {
             }
         }
 
+        // ---- pages of existing panels that are added, removed or reordered
+        for ed in self.diff.edits.iter().filter(|e| restructures_pages(e)) {
+            if is_panel_resize(ed) {
+                return Err(layout_err(format!("panel '{}': change its size and its pages in separate packs", ed.name)));
+            }
+            out.extend(restructure_pages(&self.index, ed, &page_plan(ed).unwrap_or_default(), &removed)?);
+        }
+
         // ---- additions
-        let mut max_id = crate::donor::max_control_id(self.source)?;
+        // The request lists a parent before its children, so the controls of a new panel are built as trees: a
+        // child joins the children list of its parent's record before the top-level record is written.
+        let max_id0 = crate::donor::max_control_id(self.source)?;
+        let mut max_id = max_id0;
         let new_xml_ids: Vec<i64> = self.diff.additions.iter().map(|c| c.id).collect();
+        let alloc: HashMap<i64, i64> = new_xml_ids.iter().enumerate().map(|(i, &x)| (x, max_id0 + 1 + i as i64)).collect();
         let deleted_ids: Vec<i64> = self.diff.deletions.iter().map(|d| d.id).collect();
         let mut anchor_adds: BTreeMap<(anchors::Holder, usize), Vec<(i64, i64)>> = BTreeMap::new();
+        let mut staged: Vec<StagedControl> = Vec::new();
+        let mut page_names: HashMap<i64, Vec<String>> = HashMap::new();
         for c in &self.diff.additions {
-            if let Some(pid) = c.parent {
-                let parent = self
-                    .index
-                    .get(pid)
-                    .ok_or_else(|| layout_err(format!("added control '{}': parent id {pid} not found", c.name)))?;
-                if parent.type_name == "CommandBar" {
-                    return Err(layout_err(format!(
-                        "added control '{}': adding under a CommandBar is not supported (command bar buttons are edited separately)",
-                        c.name
-                    )));
-                }
+            let new_parent = c.parent.filter(|p| alloc.contains_key(p));
+            if self.diff.edits.iter().any(|e| Some(e.id) == c.parent && page_plan(e).is_some()) {
+                return Err(layout_err(format!(
+                    "added control '{}': its panel changes its pages in the same request; add the control in a separate pack",
+                    c.name
+                )));
             }
-            let page = resolve_page(&self.index, c.parent, c.page.as_deref())?;
-            max_id += 1;
+            let page = match (c.parent, new_parent) {
+                (Some(pid), Some(_)) => {
+                    let names = page_names.get(&pid).ok_or_else(|| {
+                        layout_err(format!("added control '{}': a new control can only hold children when it is a Panel with pages", c.name))
+                    })?;
+                    let page = c
+                        .page
+                        .as_deref()
+                        .ok_or_else(|| layout_err(format!("added control '{}': a child of a new panel must stand inside a <Page>", c.name)))?;
+                    names
+                        .iter()
+                        .position(|n| n == page)
+                        .ok_or_else(|| layout_err(format!("added control '{}': page '{page}' not found in its new panel", c.name)))? as i64
+                }
+                (Some(pid), None) => {
+                    let parent = self
+                        .index
+                        .get(pid)
+                        .ok_or_else(|| layout_err(format!("added control '{}': parent id {pid} not found", c.name)))?;
+                    if parent.type_name == "CommandBar" {
+                        return Err(layout_err(format!(
+                            "added control '{}': adding under a CommandBar is not supported (command bar buttons are edited separately)",
+                            c.name
+                        )));
+                    }
+                    resolve_page(&self.index, c.parent, c.page.as_deref())?
+                }
+                (None, _) => resolve_page(&self.index, c.parent, c.page.as_deref())?,
+            };
+            max_id = alloc[&c.id];
             let mut clone = crate::donor::clone_prototype_raw(&c.type_name, max_id, &c.name)?;
+            if c.type_name == "Panel" {
+                build_panel_clone(&mut clone, &c.values.pages, c.values.show_tabs.unwrap_or(1), c.values.width, c.values.height)?;
+                page_names.insert(c.id, c.values.pages.iter().map(|p| p.name.clone()).collect());
+            }
             set_clone_geometry(&mut clone, &c.values, page)?;
             set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
             set_clone_props(&mut clone, &c.type_name, &c.values)?;
@@ -10161,22 +10665,30 @@ impl FormPatchPlan<'_> {
                 crate::ts_table::bind_info(clone_info_mut(&mut clone)?, &tb.type_id, &tb.columns).map_err(layout_err)?;
             }
             let others: Vec<i64> = new_xml_ids.iter().copied().filter(|&x| x != c.id).collect();
-            let edges = anchors::resolve_new_edges(&self.index, &self.edited, c, max_id, page, &others, &deleted_ids)?;
-            let container = anchors::container_holder(&self.index, c.parent);
+            let siblings: Vec<anchors::NewSibling> = match new_parent {
+                Some(_) => self
+                    .diff
+                    .additions
+                    .iter()
+                    .filter(|s| s.id != c.id && s.parent == c.parent && s.page == c.page)
+                    .map(|s| anchors::NewSibling {
+                        xml_id: s.id,
+                        id: alloc[&s.id],
+                        rect: (s.values.left, s.values.top, s.values.left + s.values.width, s.values.top + s.values.height),
+                        visible: s.values.visible,
+                    })
+                    .collect(),
+                None => Vec::new(),
+            };
+            let scope = anchors::NewScope { siblings: &siblings, in_new_panel: new_parent.is_some(), other_new_xml_ids: &others, deleted: &deleted_ids };
+            let edges = anchors::resolve_new_edges(&self.index, &self.edited, c, max_id, page, &scope)?;
+            let container = match new_parent {
+                Some(p) => anchors::Holder::Panel(alloc[&p]),
+                None => anchors::container_holder(&self.index, c.parent),
+            };
             anchors::apply_new_edges(clone_geom_mut(&mut clone)?, max_id, &edges, container, &mut anchor_adds)?;
             set_clone_events(&mut clone, &xml_events(c)?, &c.describe())?;
-            let mut buf = Vec::new();
-            crate::donor::write_node(&clone, &mut buf);
-            let list = match c.parent {
-                Some(pid) => self
-                    .index
-                    .get(pid)
-                    .and_then(|e| e.children_list())
-                    .ok_or_else(|| layout_err(format!("added control '{}': parent has no children list", c.name)))?,
-                None => self.index.root_children_list()?,
-            };
-            let (key, count) = list_entry(list)?;
-            lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.inserts.push(buf);
+            staged.push(StagedControl { xml_id: c.id, parent: c.parent, new_parent, id: max_id, node: clone });
             allocated.push((c.id, max_id));
             if let Some((attr_id, path)) = &c.values.data_path {
                 if let Some(links) = self.index.links_list() {
@@ -10186,6 +10698,61 @@ impl FormPatchPlan<'_> {
                     e.2.inserts.push(format!("{{{max_id},{}}}", step.body(*attr_id)).into_bytes());
                 }
             }
+        }
+        // Incoming-list entries whose holder is itself new belong into that record, not into the stream.
+        {
+            let new_ids: std::collections::HashSet<i64> = alloc.values().copied().collect();
+            let mut own: BTreeMap<anchors::Holder, BTreeMap<usize, Vec<(i64, i64)>>> = BTreeMap::new();
+            for key in anchor_adds.keys().copied().collect::<Vec<_>>() {
+                let (anchors::Holder::Geom(id) | anchors::Holder::Panel(id)) = key.0;
+                if new_ids.contains(&id) {
+                    let entries = anchor_adds.remove(&key).unwrap_or_default();
+                    own.entry(key.0).or_default().insert(key.1, entries);
+                }
+            }
+            for (holder, adds) in own {
+                let (anchors::Holder::Geom(id) | anchors::Holder::Panel(id)) = holder;
+                let node = &mut staged.iter_mut().find(|s| s.id == id).ok_or_else(|| layout_err("new control: anchor holder not found"))?.node;
+                match holder {
+                    anchors::Holder::Geom(_) => anchors::merge_new_lists(clone_geom_mut(node)?, 12, &adds)?,
+                    anchors::Holder::Panel(_) => anchors::merge_new_lists(nav_mut(clone_info_mut(node)?, &[1])?, 2, &adds)?,
+                }
+            }
+        }
+        // Bottom-up: children join their parents (the last child is placed first, each at the front of the list).
+        let mut tops: Vec<(Option<i64>, Vec<u8>)> = Vec::new();
+        while let Some(s) = staged.pop() {
+            match s.new_parent {
+                Some(p) => {
+                    let parent = staged.iter_mut().find(|x| x.xml_id == p).ok_or_else(|| layout_err("new control: parent record not found"))?;
+                    let list = parent
+                        .node
+                        .children
+                        .last_mut()
+                        .and_then(Item::as_node_mut)
+                        .ok_or_else(|| layout_err("prototype: children list missing"))?;
+                    let count = list.atom(0).and_then(|a| a.value.parse::<usize>().ok()).ok_or_else(|| layout_err("prototype: children list count"))?;
+                    list.children[0] = bare(count as i64 + 1);
+                    list.children.insert(1, Item::Node(s.node));
+                }
+                None => {
+                    let mut buf = Vec::new();
+                    crate::donor::write_node(&s.node, &mut buf);
+                    tops.push((s.parent, buf));
+                }
+            }
+        }
+        for (parent, buf) in tops.into_iter().rev() {
+            let list = match parent {
+                Some(pid) => self
+                    .index
+                    .get(pid)
+                    .and_then(|e| e.children_list())
+                    .ok_or_else(|| layout_err(format!("added control: parent id {pid} has no children list")))?,
+                None => self.index.root_children_list()?,
+            };
+            let (key, count) = list_entry(list)?;
+            lists.entry(key).or_insert_with(|| (list, count, ListEdit::default())).2.inserts.push(buf);
         }
 
         // ---- incoming anchor lists of the existing targets and container panels
@@ -10328,6 +10895,39 @@ impl FormPatchPlan<'_> {
             if l != Some(want.left) || t != Some(want.top) || r != Some(want.left + want.width) || b != Some(want.top + want.height) || v != Some(i64::from(want.visible)) {
                 return Err(bad(format!("added control '{}' (id {new_id}): geometry does not match the requested values", c.name)));
             }
+            let parent = c.parent.map(|p| allocated.iter().find(|(x, _)| *x == p).map_or(p, |a| a.1));
+            if e.parent != parent {
+                return Err(bad(format!("added control '{}' (id {new_id}): its parent is {:?}, expected {parent:?}", c.name, e.parent)));
+            }
+            let want_page = resolve_page(index, parent, c.page.as_deref()).map_err(|x| bad(x.to_string()))?;
+            if geom_page(g.node) != (want_page, want.z_order, want.tab_order) {
+                return Err(bad(format!(
+                    "added control '{}' (id {new_id}): page, ZOrder and TabOrder read back as {:?}, expected ({want_page}, {}, {})",
+                    c.name,
+                    geom_page(g.node),
+                    want.z_order,
+                    want.tab_order
+                )));
+            }
+            if c.type_name == "Panel" {
+                let info = e.info().ok_or_else(|| bad(format!("added panel '{}' (id {new_id}) has no info record", c.name)))?;
+                let (show_tabs, pages) = panel_pages(info.node, want.width, want.height);
+                let area = new_panel_page_area(want.show_tabs.unwrap_or(1), want.width, want.height);
+                let area_ok = pages.iter().all(|p| {
+                    let at = |k: &str| p[k].as_i64();
+                    area.is_some_and(|a| (at("left"), at("top"), at("width"), at("height")) == (Some(a.0), Some(a.1), Some(a.2), Some(a.3)))
+                });
+                let values_ok = pages.len() == want.pages.len()
+                    && pages.iter().zip(&want.pages).all(|(p, w)| {
+                        p["name"].as_str() == Some(w.name.as_str())
+                            && p["title"] == crate::oof_props::localized_value(&w.title)
+                            && p["visible"].as_bool() == Some(w.visible)
+                            && p["enabled"].as_bool() == Some(w.enabled)
+                    });
+                if show_tabs != want.show_tabs.unwrap_or(1) || !area_ok || !values_ok {
+                    return Err(bad(format!("added panel '{}' (id {new_id}): the pages do not read back as requested", c.name)));
+                }
+            }
             if let Some(path) = &want.data_path {
                 if !data_path_matches(index.links_list().map(|l| l.node), *new_id, Some(path)) {
                     return Err(bad(format!("added control '{}' (id {new_id}): the stored link does not match DataPath '{}'", c.name, path.1)));
@@ -10341,6 +10941,14 @@ impl FormPatchPlan<'_> {
             }
         }
         Ok(())
+    }
+
+    /// The page index of an original control after the patch: pages of its panel that the request reorders, adds or
+    /// removes renumber it.
+    fn page_after(&self, e: &ControlEntry) -> i64 {
+        let Some(ed) = e.parent.and_then(|p| self.diff.edits.iter().find(|x| x.id == p)).filter(|x| restructures_pages(x)) else { return e.page };
+        let map = page_plan(ed).unwrap_or_default();
+        usize::try_from(e.page).ok().and_then(|pg| map.get(pg).copied().flatten()).map_or(e.page, |j| j as i64)
     }
 
     /// ZOrder values must stay unique among the controls of one parent/page whenever they were unique in the
@@ -10428,7 +11036,7 @@ impl FormPatchPlan<'_> {
         let structural = !self.diff.additions.is_empty() || !self.diff.deletions.is_empty();
         if !structural {
             let same_layout = index.entries.len() == self.index.entries.len()
-                && index.entries.iter().zip(&self.index.entries).all(|(a, b)| (a.id, &a.path, a.page) == (b.id, &b.path, b.page));
+                && index.entries.iter().zip(&self.index.entries).all(|(a, b)| (a.id, &a.path, a.page) == (b.id, &b.path, self.page_after(b)));
             if !same_layout {
                 return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, "the patched stream has a different control layout")
                     .with("kind", "verification-failed"));
@@ -10459,6 +11067,14 @@ impl FormPatchPlan<'_> {
                 }
             }
         }
+        for e in &index.entries {
+            if let Some(old) = self.index.get(e.id).filter(|old| self.page_after(old) != old.page) {
+                if e.page != self.page_after(old) {
+                    return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, format!("control '{}' (id {}) is not on the page the request moves it to", e.name, e.id))
+                        .with("kind", "verification-failed"));
+                }
+            }
+        }
         if self.diff.form_props_changed {
             self.verify_form_props(&index)?;
         }
@@ -10478,6 +11094,12 @@ impl FormPatchPlan<'_> {
             if let Ok(pinfo) = index.at_path(&[1, 2, 1]) {
                 let actual = panel_pages(pinfo.node, new_w, new_h);
                 derived_pages.extend(crate::form_patch::derived_pages(0, &actual.1));
+            }
+        }
+        // The pages of an added panel as the decoder derives them from the patched stream.
+        for (c, (_, new_id)) in self.diff.additions.iter().zip(&allocated) {
+            if let Some(info) = index.get(*new_id).filter(|_| c.type_name == "Panel").and_then(|e| e.info()) {
+                derived_pages.extend(crate::form_patch::derived_pages(*new_id, &panel_pages(info.node, c.values.width, c.values.height).1));
             }
         }
         for (edit, entry) in self.targets() {

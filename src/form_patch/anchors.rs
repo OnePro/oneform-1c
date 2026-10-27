@@ -203,11 +203,29 @@ pub(super) type NewEdges = [(AnchorEdge, AnchorEdge); 4];
 ///
 /// An existing control stands where the edited `Form.xml` puts it (`edited`), not where the stream has it: the same
 /// edit may move the control and add one next to it.
-fn neighbours(idx: &ControlIndex, edited: &FormXml, c: &ControlXml, page: i64, deleted: &[i64]) -> (Option<AnchorEdge>, Option<AnchorEdge>) {
+fn neighbours(
+    idx: &ControlIndex,
+    edited: &FormXml,
+    c: &ControlXml,
+    page: i64,
+    deleted: &[i64],
+    scope: &NewScope,
+) -> (Option<AnchorEdge>, Option<AnchorEdge>) {
     let v = &c.values;
     let (left, top, right, bottom) = (v.left, v.top, v.left + v.width, v.top + v.height);
     let mut above: Option<(i64, i64, i64)> = None; // (bottom, id, gap)
     let mut beside: Option<(i64, i64, i64)> = None;
+    let mut consider = |id: i64, (l, t, r, b): (i64, i64, i64, i64), visible: bool| {
+        if !visible {
+            return;
+        }
+        if b <= top && l < right && r > left && above.is_none_or(|(ab, aid, _)| b > ab || (b == ab && id < aid)) {
+            above = Some((b, id, top - b));
+        }
+        if r <= left && t < bottom && b > top && beside.is_none_or(|(br, bid, _)| r > br || (r == br && id < bid)) {
+            beside = Some((r, id, left - r));
+        }
+    };
     for e in &idx.entries {
         if e.parent != c.parent || e.page != page || deleted.contains(&e.id) {
             continue;
@@ -218,24 +236,39 @@ fn neighbours(idx: &ControlIndex, edited: &FormXml, c: &ControlXml, page: i64, d
             _ => None,
         };
         let (Some(l), Some(t), Some(r), Some(b), Some(visible)) = (at(1), at(2), at(3), at(4), at(5)) else { continue };
-        let (l, t, r, b) = match edited.control(e.id) {
+        let rect = match edited.control(e.id) {
             Some(x) if x.type_name == e.type_name => (x.values.left, x.values.top, x.values.left + x.values.width, x.values.top + x.values.height),
             _ => (l, t, r, b),
         };
-        if visible == 0 {
-            continue;
-        }
-        if b <= top && l < right && r > left && above.is_none_or(|(ab, aid, _)| b > ab || (b == ab && e.id < aid)) {
-            above = Some((b, e.id, top - b));
-        }
-        if r <= left && t < bottom && b > top && beside.is_none_or(|(br, bid, _)| r > br || (r == br && e.id < bid)) {
-            beside = Some((r, e.id, left - r));
-        }
+        consider(e.id, rect, visible != 0);
+    }
+    for s in scope.siblings {
+        consider(s.id, s.rect, s.visible);
     }
     (
         above.map(|(_, id, gap)| AnchorEdge { target: id, side: 1, offset: gap }),
         beside.map(|(_, id, gap)| AnchorEdge { target: id, side: 3, offset: gap }),
     )
+}
+
+/// A new control of the same page of the same new panel as the control being placed: a layout neighbour and a
+/// legal anchor target. `xml_id` is the id in the request, `id` the allocated one.
+pub(super) struct NewSibling {
+    pub xml_id: i64,
+    pub id: i64,
+    pub rect: (i64, i64, i64, i64),
+    pub visible: bool,
+}
+
+/// The new controls an added control can anchor to. `in_new_panel`: the control is a child of a new panel, so its
+/// edges may point to the container (`0`) and to `siblings` only; the panel's neighbourhood is not in the stream yet.
+pub(super) struct NewScope<'a> {
+    pub siblings: &'a [NewSibling],
+    pub in_new_panel: bool,
+    /// The request ids of the other new controls of the edit.
+    pub other_new_xml_ids: &'a [i64],
+    /// The ids of the controls the edit deletes.
+    pub deleted: &'a [i64],
 }
 
 /// Resolve the edges of a new control `new_id` (XML id `xml_id`): Designer defaults (top below the nearest control
@@ -248,11 +281,11 @@ pub(super) fn resolve_new_edges(
     c: &ControlXml,
     new_id: i64,
     page: i64,
-    other_new_xml_ids: &[i64],
-    deleted: &[i64],
+    scope: &NewScope,
 ) -> Result<NewEdges> {
     let v = &c.values;
-    let (above, beside) = neighbours(idx, edited, c, page, deleted);
+    let (other_new_xml_ids, deleted) = (scope.other_new_xml_ids, scope.deleted);
+    let (above, beside) = neighbours(idx, edited, c, page, deleted, scope);
     let defaults = [
         above.unwrap_or(AnchorEdge::UNATTACHED),
         AnchorEdge { target: new_id, side: 0, offset: v.height },
@@ -269,10 +302,20 @@ pub(super) fn resolve_new_edges(
         for (part, edge) in [(false, Some(prim)), (true, spec.alt[e])] {
             let Some(mut edge) = edge else { continue };
             if edge.side != 6 && validated[usize::from(part)] {
+                let which = format!("<Anchors> {}{}", names[e], if part { "Alt" } else { "" });
                 if edge.target == c.id {
                     edge.target = new_id;
+                } else if let Some(s) = scope.siblings.iter().find(|s| s.xml_id == edge.target) {
+                    edge.target = s.id;
                 } else if other_new_xml_ids.contains(&edge.target) {
-                    return Err(anchor_err(c, format!("<Anchors> {}{}: the target {} is another new control of the same edit; anchor to an existing control or to the form (0)", names[e], if part { "Alt" } else { "" }, edge.target)));
+                    let why = if scope.in_new_panel {
+                        "is another new control that is not on the same page of the same new panel; anchor to the panel (0) or to a control of the same page"
+                    } else {
+                        "is another new control of the same edit; anchor to an existing control or to the form (0)"
+                    };
+                    return Err(anchor_err(c, format!("{which}: the target {} {why}", edge.target)));
+                } else if scope.in_new_panel && edge.target != 0 {
+                    return Err(anchor_err(c, format!("{which}: the target {} is outside the new panel; a control of a new panel anchors to the panel (0) or to a control of the same page", edge.target)));
                 } else if edge.target != 0 && (idx.get(edge.target).is_none() || deleted.contains(&edge.target)) {
                     return Err(anchor_err(c, format!("<Anchors> {}{}: the target control {} does not exist", names[e], if part { "Alt" } else { "" }, edge.target)));
                 }
@@ -346,6 +389,36 @@ pub(super) fn apply_new_edges(
         }
     }
     geom.children.splice(12..18, flat);
+    Ok(())
+}
+
+/// Add entries to the six counted incoming lists that start at `start` of a node that is still a tree (a new control
+/// that is not in the stream yet): `adds[k]` joins list `k`; every list stays sorted by `(source, edge)` without
+/// duplicates, like the lists the stream replacements write.
+pub(super) fn merge_new_lists(node: &mut Node, start: usize, adds: &BTreeMap<usize, Vec<(i64, i64)>>) -> Result<()> {
+    let bad = || layout_err("new control: the incoming lists are malformed");
+    let mut flat: Vec<Item> = Vec::new();
+    let mut at = start;
+    for k in 0..6 {
+        let count: usize = node.atom(at).and_then(|a| a.value.parse().ok()).ok_or_else(bad)?;
+        let mut entries: Vec<(i64, i64)> = Vec::new();
+        for j in 0..count {
+            let e = node.node(at + 1 + j).filter(|e| e.len() == 3).ok_or_else(bad)?;
+            let parsed = e.atom(1).and_then(|a| a.value.parse().ok()).zip(e.atom(2).and_then(|a| a.value.parse().ok()));
+            entries.push(parsed.ok_or_else(bad)?);
+        }
+        entries.extend(adds.get(&k).into_iter().flatten().copied());
+        entries.sort_unstable();
+        entries.dedup();
+        flat.push(bare(entries.len() as i64));
+        for (src, edge) in entries {
+            flat.push(Item::Node(
+                crate::brace::parse_metadata(format!("{{0,{src},{edge}}}").as_bytes()).map_err(|er| layout_err(er.to_string()))?,
+            ));
+        }
+        at += 1 + count;
+    }
+    node.children.splice(start..at, flat);
     Ok(())
 }
 

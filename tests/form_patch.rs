@@ -5716,3 +5716,514 @@ mod command_bar_edit {
         );
     }
 }
+
+/// Tabbed panels: an added `Panel` with `<Page>` children is built clean from the donor panel (no donor content), its
+/// controls are placed on their pages (OpenSpec change `add-panel-with-pages`).
+mod panel_pages {
+    use super::*;
+
+    const ROOT_END: &str = "      </ChildItems>\n    </Page>\n  </ChildItems>\n</Form>";
+
+    fn label(name: &str, id: i64, top: i64, z: i64, tab: i64, extra: &str) -> String {
+        format!(
+            "<LabelDecoration name=\"{name}\" id=\"{id}\"><Caption><Item language=\"ru\">{name}</Item></Caption><Left>8</Left><Top>{top}</Top><Width>100</Width><Height>19</Height><ZOrder>{z}</ZOrder><TabOrder>{tab}</TabOrder>{extra}</LabelDecoration>"
+        )
+    }
+
+    fn field(name: &str, id: i64, top: i64, z: i64, tab: i64, attr: (i64, &str), extra: &str) -> String {
+        format!(
+            "<InputField name=\"{name}\" id=\"{id}\"><DataPath attributeId=\"{}\">{}</DataPath><Left>120</Left><Top>{top}</Top><Width>200</Width><Height>19</Height><ZOrder>{z}</ZOrder><TabOrder>{tab}</TabOrder>{extra}</InputField>",
+            attr.0, attr.1
+        )
+    }
+
+    fn page(name: &str, geometry: &str, children: &str) -> String {
+        format!("<Page name=\"{name}\"><Title><Item language=\"ru\">{name}</Item></Title>{geometry}<ChildItems>{children}</ChildItems></Page>")
+    }
+
+    /// A panel of `w`x`h` at (8, 700) at the end of the root page.
+    fn panel(name: &str, id: i64, w: i64, h: i64, show_tabs: Option<i64>, pages: &[String]) -> String {
+        let tabs = show_tabs.map_or(String::new(), |c| format!("<ShowTabs type=\"ShowTabs\" member=\"None\" code=\"{c}\"/>"));
+        format!(
+            "<Panel name=\"{name}\" id=\"{id}\"><Left>8</Left><Top>700</Top><Width>{w}</Width><Height>{h}</Height><ZOrder>100</ZOrder><TabOrder>100</TabOrder>{tabs}<ChildItems>{}</ChildItems></Panel>\n",
+            pages.concat()
+        )
+    }
+
+    fn with_block(block: &str) -> String {
+        replace_once(&baseline("DonorForm"), ROOT_END, &format!("{block}{ROOT_END}"))
+    }
+
+    /// Two pages of three controls each, the standard case.
+    fn two_pages(show_tabs: Option<i64>) -> String {
+        let first = [
+            label("Подпись1", 901, 8, 0, 1, ""),
+            field("Поле1", 902, 8, 1, 2, (9, "ПолеВвода2"), ""),
+            field("Поле2", 903, 32, 2, 3, (10, "ПолеВвода3"), ""),
+        ]
+        .concat();
+        let second = [
+            label("Подпись2", 904, 8, 0, 1, ""),
+            field("Поле3", 905, 8, 1, 2, (11, "ПолеВвода4"), ""),
+            field("Поле4", 906, 32, 2, 3, (12, "ПолеВвода5"), ""),
+        ]
+        .concat();
+        with_block(&panel("Закладки", 900, 400, 200, show_tabs, &[page("Основное", "", &first), page("Дополнительно", "", &second)]))
+    }
+
+    /// Patch, decode and require the decoded XML to equal the request (page geometry included).
+    fn check(edited: &str) -> (PatchedForm, FormXml) {
+        let (pf, got) = structural_round_trip("DonorForm", edited);
+        assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+        let mut requested = parse_form_xml(edited.as_bytes(), "requested")
+            .unwrap()
+            .with_allocated_ids(&pf.allocated)
+            .with_derived_pages(&pf.derived_pages)
+            .in_decoder_order();
+        let mut got = got;
+        got.mask_anchors_like(&requested);
+        requested.mask_anchors_like(&got);
+        if let Err(e) = diff_forms(&requested, &got) {
+            panic!("decoded XML differs from the request: {e} {:?}", e.params.get("problems"));
+        }
+        (pf, got)
+    }
+
+    fn new_id(pf: &PatchedForm, xml_id: i64) -> i64 {
+        pf.allocated.iter().find(|(x, _)| *x == xml_id).unwrap().1
+    }
+
+    #[test]
+    fn two_pages_with_three_controls_each() {
+        let (pf, got) = check(&two_pages(Some(1)));
+        assert_eq!(pf.allocated.len(), 7);
+        let panel_id = new_id(&pf, 900);
+        let panel = got.control(panel_id).unwrap();
+        assert_eq!(panel.values.show_tabs, Some(1));
+        let names: Vec<_> = panel.values.pages.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, ["Основное", "Дополнительно"]);
+        for (xml_id, page_name) in [(901, "Основное"), (903, "Основное"), (904, "Дополнительно"), (906, "Дополнительно")] {
+            let c = got.control(new_id(&pf, xml_id)).unwrap();
+            assert_eq!((c.parent, c.page.as_deref()), (Some(panel_id), Some(page_name)), "{}", c.name);
+        }
+        // per page z-order 0..k-1 and tab order 1..k
+        let s = parse_spanned(&pf.bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        for (xml_id, want) in [(901, (0, 0, 1)), (902, (0, 1, 2)), (903, (0, 2, 3)), (904, (1, 0, 1)), (905, (1, 1, 2)), (906, (1, 2, 3))] {
+            let g = idx.get(new_id(&pf, xml_id)).unwrap().geom().unwrap();
+            assert_eq!(oneform::oof::geom_page(g.node), want, "control {xml_id}");
+        }
+        // the page area of a panel with tabs: (1, 19, W-2, H-20)
+        let derived: Vec<_> = pf.derived_pages.iter().filter(|d| d.panel_id == panel_id).map(|d| (d.left, d.top, d.width, d.height)).collect();
+        assert_eq!(derived, [(1, 19, 398, 180), (1, 19, 398, 180)]);
+    }
+
+    #[test]
+    fn nothing_of_the_donor_panel_comes_along() {
+        let (pf, got) = check(&two_pages(Some(1)));
+        let panel_id = new_id(&pf, 900);
+        let s = parse_spanned(&pf.bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let under: Vec<_> = idx.entries.iter().filter(|e| e.parent == Some(panel_id)).map(|e| e.name.as_str()).collect();
+        assert_eq!(under, ["Подпись1", "Поле1", "Поле2", "Подпись2", "Поле3", "Поле4"]);
+        let donor = stream("DonorForm");
+        let orig = ControlIndex::build(&donor).unwrap();
+        assert_eq!(idx.entries.len(), orig.entries.len() + 7);
+        // no event, no table inside the new panel
+        assert!(got.control(panel_id).unwrap().values.events.is_empty());
+        assert!(!got.controls.iter().any(|c| c.parent == Some(panel_id) && c.type_name == "Table"));
+        // the six own lists hold nothing of the donor ids 34 / 35
+        let lists = panel_lists(&pf.bytes, Some(panel_id));
+        assert!(lists.iter().flatten().all(|(src, _)| ![34, 35].contains(src)));
+    }
+
+    #[test]
+    fn one_page_with_tabs_and_default_show_tabs() {
+        let kids = label("Подпись1", 901, 8, 0, 1, "");
+        let xml = with_block(&panel("Закладки", 900, 300, 120, None, &[page("Единственная", "", &kids)]));
+        let (pf, got) = check(&xml);
+        let panel = got.control(new_id(&pf, 900)).unwrap();
+        assert_eq!(panel.values.show_tabs, Some(1), "a missing <ShowTabs> means tabs on top");
+        let d: Vec<_> = pf.derived_pages.iter().map(|d| (d.left, d.top, d.width, d.height)).collect();
+        assert_eq!(d, [(1, 19, 298, 100)]);
+    }
+
+    #[test]
+    fn panel_without_tabs_has_the_page_area_of_the_panel() {
+        let kids = [label("Подпись1", 901, 8, 0, 1, ""), field("Поле1", 902, 8, 1, 2, (9, "ПолеВвода2"), "")].concat();
+        let xml = with_block(&panel("Закладки", 900, 300, 120, Some(0), &[page("Единственная", "", &kids)]));
+        let (pf, got) = check(&xml);
+        assert_eq!(got.control(new_id(&pf, 900)).unwrap().values.show_tabs, Some(0));
+        let d: Vec<_> = pf.derived_pages.iter().map(|d| (d.left, d.top, d.width, d.height)).collect();
+        assert_eq!(d, [(0, 0, 300, 120)]);
+    }
+
+    #[test]
+    fn page_geometry_may_be_given_when_it_is_the_derived_one() {
+        let kids = label("Подпись1", 901, 8, 0, 1, "");
+        let geometry = "<Left>1</Left><Top>19</Top><Width>298</Width><Height>100</Height>";
+        let xml = with_block(&panel("Закладки", 900, 300, 120, Some(1), &[page("Единственная", geometry, &kids)]));
+        check(&xml);
+    }
+
+    #[test]
+    fn childless_single_page_without_tabs_decodes_without_a_page() {
+        let xml = with_block(&panel("Закладки", 900, 300, 120, Some(0), &[page("Единственная", "", "")]));
+        let (pf, got) = check(&xml);
+        let panel = got.control(new_id(&pf, 900)).unwrap();
+        assert!(panel.values.pages.is_empty(), "the decoder shows no <Page> for it");
+        // the stream still has the page
+        let s = parse_spanned(&pf.bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let info = idx.get(new_id(&pf, 900)).unwrap().info().unwrap();
+        let pages = oneform::oof::panel_pages(info.node, 300, 120).1;
+        assert_eq!(pages[0]["name"], "Единственная");
+    }
+
+    #[test]
+    fn a_panel_inside_a_page_of_a_new_panel() {
+        let inner_kids = [label("Внутри1", 903, 8, 0, 1, ""), field("Внутри2", 904, 8, 1, 2, (9, "ПолеВвода2"), "")].concat();
+        let inner = panel("Внутренняя", 902, 300, 100, Some(1), &[page("Вложенная", "", &inner_kids), page("Вторая", "", "")]);
+        let outer_kids = [label("Снаружи1", 901, 8, 0, 1, ""), inner.trim_end().to_string()].concat();
+        let xml = with_block(&panel("Внешняя", 900, 400, 200, Some(1), &[page("Страница", "", &outer_kids)]));
+        let (pf, got) = check(&xml);
+        let (outer, inner) = (new_id(&pf, 900), new_id(&pf, 902));
+        assert_eq!(got.control(inner).unwrap().parent, Some(outer));
+        for (xml_id, name) in [(903, "Вложенная"), (904, "Вложенная")] {
+            let c = got.control(new_id(&pf, xml_id)).unwrap();
+            assert_eq!((c.parent, c.page.as_deref()), (Some(inner), Some(name)));
+        }
+        assert_eq!(pf.derived_pages.iter().filter(|d| d.panel_id == inner).count(), 2);
+    }
+
+    #[test]
+    fn anchors_to_the_panel_and_to_siblings() {
+        let kids = [
+            label("Подпись1", 901, 8, 0, 1, "<Anchors top=\"Top\" topOffset=\"8\" left=\"Left\" leftOffset=\"8\"/>"),
+            field("Поле1", 902, 8, 1, 2, (9, "ПолеВвода2"), "<Anchors top=\"Top\" topOffset=\"8\" left=\"Right\" leftTarget=\"901\" leftOffset=\"12\" right=\"Right\" rightOffset=\"-8\"/>"),
+        ]
+        .concat();
+        let xml = with_block(&panel("Закладки", 900, 400, 200, Some(1), &[page("Единственная", "", &kids)]));
+        let (pf, _) = check(&xml);
+        let (panel, a, b) = (new_id(&pf, 900), new_id(&pf, 901), new_id(&pf, 902));
+        let lists = panel_lists(&pf.bytes, Some(panel));
+        assert_eq!(lists[0], vec![(a, 0), (b, 0)], "top edges attach to the panel");
+        assert_eq!(lists[2], vec![(a, 2)]);
+        assert_eq!(lists[3], vec![(b, 3)]);
+        // the field's left edge hangs on the label's right side: the label's list 3 holds it
+        assert_eq!(geom_lists(&pf.bytes, a)[3], vec![(b, 2)]);
+    }
+
+    #[test]
+    fn default_anchors_chain_the_controls_of_one_page() {
+        // no <Anchors>: the second control hangs below the first one, as in an existing panel
+        let kids = [label("Подпись1", 901, 8, 0, 1, ""), label("Подпись2", 902, 40, 1, 2, "")].concat();
+        let xml = with_block(&panel("Закладки", 900, 400, 200, Some(1), &[page("Единственная", "", &kids)]));
+        let (pf, _) = check(&xml);
+        let (a, b) = (new_id(&pf, 901), new_id(&pf, 902));
+        assert_eq!(geom_lists(&pf.bytes, a)[1], vec![(b, 0)], "the second label hangs below the first");
+    }
+
+    #[test]
+    fn a_later_resize_of_the_new_panel_goes_through_the_page_machinery() {
+        let (pf, _) = check(&two_pages(Some(1)));
+        let step1 = decode_xml("DonorForm", &pf.bytes);
+        let panel = new_id(&pf, 900);
+        let head = format!("<Panel name=\"Закладки\" id=\"{panel}\">");
+        let at = step1.find(&head).unwrap();
+        let w_at = at + step1[at..].find("<Width>400</Width>").unwrap();
+        let resized = format!("{}<Width>450</Width>{}", &step1[..w_at], &step1[w_at + "<Width>400</Width>".len()..]);
+        let resized = resized.replacen("<Height>200</Height>", "<Height>230</Height>", 1);
+        let s1 = parse_spanned(&pf.bytes).unwrap();
+        let pf2 = patch_form(&s1, step1.as_bytes(), resized.as_bytes()).unwrap();
+        let d: Vec<_> = pf2.derived_pages.iter().filter(|d| d.panel_id == panel).map(|d| (d.width, d.height)).collect();
+        assert_eq!(d, [(448, 210), (448, 210)]);
+    }
+
+    fn refused(xml: &str) -> String {
+        let s = stream("DonorForm");
+        let e = plan_form_patch(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).and_then(|p| p.apply()).expect_err("must be refused");
+        format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+    }
+
+    #[test]
+    fn unsupported_show_tabs_codes_are_refused() {
+        for code in [2, 5, 7] {
+            let text = refused(&two_pages(Some(code)));
+            assert!(text.contains("supports 0 (None) and 1 (Top) only") && text.contains("Закладки"), "{text}");
+        }
+    }
+
+    #[test]
+    fn page_geometry_that_does_not_match_is_refused() {
+        let kids = label("Подпись1", 901, 8, 0, 1, "");
+        let geometry = "<Left>1</Left><Top>19</Top><Width>300</Width><Height>100</Height>";
+        let xml = with_block(&panel("Закладки", 900, 300, 120, Some(1), &[page("Единственная", geometry, &kids)]));
+        let text = refused(&xml);
+        assert!(text.contains("<Width> 300") && text.contains("derived from its size"), "{text}");
+        let s = stream("DonorForm");
+        let e = plan_form_patch(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).unwrap_err();
+        assert!(format!("{e} {:?}", e.params).contains("unsupported-panel"), "{e}");
+    }
+
+    #[test]
+    fn anchors_outside_the_new_panel_are_refused() {
+        // 7 is an existing field
+        let outside = field("Поле1", 902, 8, 1, 2, (9, "ПолеВвода2"), "<Anchors top=\"Bottom\" topTarget=\"7\" topOffset=\"3\"/>");
+        let xml = with_block(&panel("Закладки", 900, 400, 200, Some(1), &[page("Единственная", "", &outside)]));
+        let text = refused(&xml);
+        assert!(text.contains("outside the new panel"), "{text}");
+        // 901 is a control of another page
+        let a = label("Подпись1", 901, 8, 0, 1, "");
+        let b = label("Подпись2", 902, 8, 0, 1, "<Anchors top=\"Bottom\" topTarget=\"901\" topOffset=\"3\"/>");
+        let xml = with_block(&panel("Закладки", 900, 400, 200, Some(1), &[page("Первая", "", &a), page("Вторая", "", &b)]));
+        let text = refused(&xml);
+        assert!(text.contains("not on the same page of the same new panel"), "{text}");
+    }
+
+    #[test]
+    fn a_panel_without_pages_and_a_child_outside_a_page_are_refused() {
+        let empty = with_block("<Panel name=\"Закладки\" id=\"900\"><Left>8</Left><Top>700</Top><Width>300</Width><Height>120</Height><ZOrder>100</ZOrder><TabOrder>100</TabOrder></Panel>\n");
+        assert!(refused(&empty).contains("needs at least one <Page"));
+        let loose = with_block(&format!(
+            "<Panel name=\"Закладки\" id=\"900\"><Left>8</Left><Top>700</Top><Width>300</Width><Height>120</Height><ZOrder>100</ZOrder><TabOrder>100</TabOrder><ChildItems>{}</ChildItems></Panel>\n",
+            label("Подпись1", 901, 8, 0, 1, "")
+        ));
+        let text = refused(&loose);
+        assert!(text.contains("needs at least one <Page") || text.contains("inside"), "{text}");
+    }
+
+    #[test]
+    fn a_child_of_a_new_control_that_is_not_a_panel_is_refused() {
+        let inner = label("Подпись1", 901, 8, 0, 1, "");
+        let group = format!(
+            "<LabelDecoration name=\"Группа\" id=\"900\"><Left>8</Left><Top>700</Top><Width>300</Width><Height>120</Height><ZOrder>100</ZOrder><TabOrder>100</TabOrder><ChildItems><Page name=\"П\"><ChildItems>{inner}</ChildItems></Page></ChildItems></LabelDecoration>\n"
+        );
+        let text = refused(&with_block(&group));
+        assert!(text.contains("cannot hold controls") || text.contains("not supported"), "{text}");
+    }
+
+    #[test]
+    fn duplicate_zorder_on_one_page_and_duplicate_page_names_are_refused() {
+        let kids = [label("Подпись1", 901, 8, 0, 1, ""), label("Подпись2", 902, 40, 0, 2, "")].concat();
+        let text = refused(&with_block(&panel("Закладки", 900, 400, 200, Some(1), &[page("Единственная", "", &kids)])));
+        assert!(text.contains("ZOrder 0 is already used"), "{text}");
+        let one = label("Подпись1", 901, 8, 0, 1, "");
+        let text = refused(&with_block(&panel("Закладки", 900, 400, 200, Some(1), &[page("Та же", "", &one), page("Та же", "", "")])));
+        assert!(text.contains("duplicate page name"), "{text}");
+    }
+
+    /// The baseline `Form.xml` and the decoder's projection of a stream: the V2 donor ships no `Form.xml`.
+    fn base_of(name: &str) -> String {
+        if name != "DonorFormV2" {
+            return baseline(name);
+        }
+        decode_of(name, &std::fs::read(dir(name).join("FormStream.bin")).unwrap())
+    }
+
+    fn decode_of(name: &str, bytes: &[u8]) -> String {
+        if name != "DonorFormV2" {
+            return decode_xml(name, bytes);
+        }
+        let model = decode_oof_stream(bytes, "x", None).unwrap();
+        let xml = render_form_xml(&common::form_info("x", "Форма", bytes), &model).unwrap();
+        String::from_utf8(enrich_ext_properties(bytes, &xml).unwrap()).unwrap().replace("\r\n", "\n")
+    }
+
+    #[test]
+    fn a_two_page_panel_is_added_to_every_donor_fixture() {
+        for name in ["DonorForm", "DonorFormV2", "DonorFormNoLinks"] {
+            let base = base_of(name);
+            // the end of the controls of the root page (or of the root, when the root shows no page)
+            let end = base.rfind("</Page>
+  </ChildItems>
+</Form>").unwrap_or(base.len());
+            let at = base[..end].rfind("</ChildItems>").unwrap();
+            let at = base[..at].rfind('\n').map_or(at, |i| i + 1);
+            let first = [label("Подпись1", 901, 8, 0, 1, ""), label("Подпись2", 902, 40, 1, 2, "")].concat();
+            let second = label("Подпись3", 903, 8, 0, 1, "");
+            let block = panel("Закладки", 900, 300, 150, Some(1), &[page("Основное", "", &first), page("Дополнительно", "", &second)]);
+            let edited = format!("{}{block}{}", &base[..at], &base[at..]);
+            let s = stream(name);
+            let pf = patch_form(&s, base.as_bytes(), edited.as_bytes()).unwrap_or_else(|e| panic!("{name}: {e}"));
+            assert_only_authorized_changes(s.source(), &pf);
+            assert_eq!(violations(&pf.bytes), Vec::<String>::new(), "{name}");
+            let got = parse_form_xml(decode_of(name, &pf.bytes).as_bytes(), "decoded").unwrap();
+            let mut requested = parse_form_xml(edited.as_bytes(), "requested")
+                .unwrap()
+                .with_allocated_ids(&pf.allocated)
+                .with_derived_pages(&pf.derived_pages)
+                .in_decoder_order();
+            let mut got = got;
+            got.mask_anchors_like(&requested);
+            requested.mask_anchors_like(&got);
+            let panel_id = new_id(&pf, 900);
+            let c = got.control(new_id(&pf, 903)).unwrap();
+            assert_eq!((c.parent, c.page.as_deref()), (Some(panel_id), Some("Дополнительно")), "{name}");
+            if let Err(e) = diff_forms(&requested, &got) {
+                panic!("{name}: decoded XML differs from the request: {e} {:?}", e.params.get("problems"));
+            }
+        }
+    }
+
+    // ---- pages of an existing panel (Панель1 of the donor form: Страница1 is empty and hidden, Страница2 holds a table
+    // and a command bar)
+
+    const OLD_FIRST: &str = "            <Page name=\"Страница1\">";
+    const PANEL_PAGES_END: &str = "          </ChildItems>\n        </Panel>\n        <Splitter name=\"Разделитель1\"";
+
+    /// The two page blocks of Панель1 as `(first, second)` byte ranges in `xml`.
+    fn page_blocks(xml: &str) -> ((usize, usize), (usize, usize)) {
+        let panel = xml.find("<Panel name=\"Панель1\"").unwrap();
+        let first = panel + xml[panel..].find(OLD_FIRST).unwrap();
+        let second = first + xml[first..].find("            <Page name=\"Страница2\">").unwrap();
+        let end = second + xml[second..].find(PANEL_PAGES_END).unwrap();
+        ((first, second), (second, end))
+    }
+
+    fn rename_pages(xml: &str, first: &str, second: &str) -> String {
+        let ((a, b), (c, d)) = page_blocks(xml);
+        let (one, two) = (&xml[a..b], &xml[c..d]);
+        let one = one.replace("Страница1", first);
+        let two = two.replace("<Page name=\"Страница2\">", &format!("<Page name=\"{second}\">")).replacen(
+            "<Item language=\"ru\">Страница2</Item>",
+            &format!("<Item language=\"ru\">{second}</Item>"),
+            1,
+        );
+        format!("{}{one}{two}{}", &xml[..a], &xml[d..])
+    }
+
+    /// Index of the page table in the panel record: after the six counted incoming lists and three more items.
+    fn table_index(p: &oneform::brace::Node) -> usize {
+        let mut at = 2usize;
+        for _ in 0..6 {
+            at += 1 + p.atom(at).unwrap().value.parse::<usize>().unwrap();
+        }
+        at + 3
+    }
+
+    fn panel1(got: &FormXml) -> &oneform::form_patch::ControlXml {
+        got.control(13).unwrap()
+    }
+
+    fn page_names(c: &oneform::form_patch::ControlXml) -> Vec<&str> {
+        c.values.pages.iter().map(|p| p.name.as_str()).collect()
+    }
+
+    #[test]
+    fn pages_of_an_existing_panel_are_renamed_with_their_controls() {
+        let xml = rename_pages(&baseline("DonorForm"), "Первая", "Вторая");
+        let (pf, got) = check(&xml);
+        assert_eq!(page_names(panel1(&got)), ["Первая", "Вторая"]);
+        // the table and the command bar stay on the (renamed) second page
+        for id in [34, 35] {
+            let c = got.control(id).unwrap();
+            assert_eq!((c.parent, c.page.as_deref()), (Some(13), Some("Вторая")));
+        }
+        assert_eq!(pf.derived_pages.iter().filter(|d| d.panel_id == 13).count(), 2);
+    }
+
+    #[test]
+    fn a_page_is_added_with_the_area_of_the_others() {
+        let xml = replace_once(
+            &baseline("DonorForm"),
+            PANEL_PAGES_END,
+            &format!("            <Page name=\"Третья\"><Title><Item language=\"ru\">Третья</Item></Title></Page>\n{PANEL_PAGES_END}"),
+        );
+        let (pf, got) = check(&xml);
+        assert_eq!(page_names(panel1(&got)), ["Страница1", "Страница2", "Третья"]);
+        assert_eq!(panel1(&got).values.pages[2].title, vec![("ru".to_string(), "Третья".to_string())]);
+        let area: Vec<_> = pf.derived_pages.iter().filter(|d| d.panel_id == 13).map(|d| (d.left, d.top, d.width, d.height)).collect();
+        assert_eq!(area, [(1, 19, 276, 134); 3]);
+        // the stream: three records, 12 rows, three tail slots, children where they were
+        let s = parse_spanned(&pf.bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        assert_eq!(idx.get(34).unwrap().page, 1);
+        assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+        let info = idx.get(13).unwrap().info().unwrap();
+        let p = info.child(1).unwrap();
+        let table_at = table_index(p.node);
+        assert_eq!(p.child(table_at).unwrap().node.len(), 2 + 3);
+        assert_eq!(p.atom(table_at + 4).unwrap().0.value, "12");
+    }
+
+    #[test]
+    fn an_empty_page_is_removed_and_the_children_are_renumbered() {
+        let base = baseline("DonorForm");
+        let ((a, b), _) = page_blocks(&base);
+        let xml = format!("{}{}", &base[..a], &base[b..]);
+        let (pf, got) = check(&xml);
+        assert_eq!(page_names(panel1(&got)), ["Страница2"]);
+        for id in [34, 35] {
+            assert_eq!(got.control(id).unwrap().page.as_deref(), Some("Страница2"));
+        }
+        let s = parse_spanned(&pf.bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        assert_eq!((idx.get(34).unwrap().page, idx.get(35).unwrap().page), (0, 0), "the page index follows the removal");
+        let p = idx.get(13).unwrap().info().unwrap().child(1).unwrap();
+        let table_at = table_index(p.node);
+        assert_eq!(p.atom(table_at + 4).unwrap().0.value, "4", "four rows for the one page left");
+    }
+
+    #[test]
+    fn pages_are_reordered() {
+        let base = baseline("DonorForm");
+        let ((a, b), (c, d)) = page_blocks(&base);
+        let xml = format!("{}{}{}{}", &base[..a], &base[c..d], &base[a..b], &base[d..]);
+        let (pf, got) = check(&xml);
+        assert_eq!(page_names(panel1(&got)), ["Страница2", "Страница1"]);
+        let s = parse_spanned(&pf.bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        assert_eq!((idx.get(34).unwrap().page, idx.get(35).unwrap().page), (0, 0));
+        // the hidden page moved with its flag
+        assert!(!panel1(&got).values.pages[1].visible);
+    }
+
+    #[test]
+    fn a_page_with_controls_is_removed_only_together_with_them() {
+        let base = baseline("DonorForm");
+        let ((a, b), (c, d)) = page_blocks(&base);
+        // the controls of the removed page move to the first page: refused
+        let (one, two) = (&base[a..b], &base[c..d]);
+        let kids = &two[two.find("              <ChildItems>").unwrap()..two.rfind("            </Page>").unwrap()];
+        let moved = one.replacen("            </Page>
+", &format!("{kids}            </Page>
+"), 1);
+        let text = refused_xml(&format!("{}{moved}{}", &base[..a], &base[d..]));
+        assert!(text.contains("removes") && text.contains("delete the controls of a removed page"), "{text}");
+        // the page and its controls go together
+        let (pf, got) = check(&format!("{}{}{}", &base[..c], "", &base[d..]));
+        assert_eq!(page_names(panel1(&got)), ["Страница1"]);
+        assert!(got.control(34).is_none() && got.control(35).is_none());
+        assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    }
+
+    fn refused_xml(xml: &str) -> String {
+        let s = stream("DonorForm");
+        let e = plan_form_patch(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).and_then(|p| p.apply()).expect_err("must be refused");
+        format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+    }
+
+    #[test]
+    fn changing_the_order_of_pages_and_the_size_together_is_refused() {
+        let base = baseline("DonorForm");
+        let ((a, b), (c, d)) = page_blocks(&base);
+        let swapped = format!("{}{}{}{}", &base[..a], &base[c..d], &base[a..b], &base[d..]);
+        let at = swapped.find("<Panel name=\"Панель1\"").unwrap();
+        let w = at + swapped[at..].find("<Width>278</Width>").unwrap();
+        let resized = format!("{}<Width>300</Width>{}", &swapped[..w], &swapped[w + "<Width>278</Width>".len()..]);
+        let text = refused_xml(&resized);
+        assert!(text.contains("separate packs"), "{text}");
+    }
+
+    #[test]
+    fn a_control_cannot_be_added_to_a_panel_that_changes_its_pages() {
+        let base = baseline("DonorForm");
+        let ((a, b), (c, d)) = page_blocks(&base);
+        let swapped = format!("{}{}{}{}", &base[..a], &base[c..d], &base[a..b], &base[d..]);
+        let new = label("Новая", 900, 8, 7, 7, "");
+        let xml = swapped.replacen("<Table name=\"ТабличноеПоле2\"", &format!("{new}<Table name=\"ТабличноеПоле2\""), 1);
+        let text = refused_xml(&xml);
+        assert!(text.contains("separate pack"), "{text}");
+    }
+}
