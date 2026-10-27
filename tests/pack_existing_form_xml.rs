@@ -1506,3 +1506,56 @@ fn epf_table_and_column_catalog_properties_pack() {
 fn config_table_and_column_catalog_properties_pack() {
     assert_table_and_column_catalog_properties_pack(Target::Config);
 }
+
+/// A handler button added to the first command bar of the form: `pack` writes it, warns while the procedure is
+/// missing from `FormModule.bsl`, stays silent once the module declares it, and the extracted XML shows the button.
+fn assert_added_button_packs_with_a_warning(target: Target) {
+    let w = Work::new(target);
+    let xml_file = w.src_file("Form.xml");
+    let xml = fs::read_to_string(&xml_file).unwrap();
+    let start = xml.find("<CommandBar name=").expect("a command bar");
+    let end = start + xml[start..].find("</CommandBar>").unwrap();
+    let panel = &xml[start..end];
+    let button = "<Button name=\"НоваяКнопкаПанели\" kind=\"Action\" action=\"НоваяКнопкаПанелиНажатие\"><Caption><Item language=\"ru\">Новая</Item></Caption></Button>";
+    let panel = match (panel.find("<Buttons>"), panel.rfind("</Buttons>")) {
+        (Some(_), Some(close)) => format!("{}{button}\n{}", &panel[..close], &panel[close..]),
+        _ => format!("{panel}<Buttons>{button}</Buttons>\n"),
+    };
+    let edited = format!("{}{panel}{}", &xml[..start], &xml[end..]);
+    fs::write(&xml_file, &edited).unwrap();
+
+    let out = run(w.root(), &["pack", ".", "--dry-run"]);
+    let t = text(&out);
+    assert!(out.status.success() && t.contains("WOULD PACK"), "{target:?}: {t}");
+    assert!(t.contains("warning") && t.contains("НоваяКнопкаПанелиНажатие"), "{target:?}: the missing procedure is reported: {t}");
+    assert!(!t.contains("FAILED"), "{target:?}: {t}");
+
+    // the module declares the procedure: no warning
+    let bsl = w.src_file("FormModule.bsl");
+    let mut module = fs::read(&bsl).unwrap();
+    module.extend_from_slice("\nПроцедура НоваяКнопкаПанелиНажатие(Кнопка)\nКонецПроцедуры\n".as_bytes());
+    fs::write(&bsl, module).unwrap();
+    let out = run(w.root(), &["pack", ".", "--dry-run"]);
+    let t = text(&out);
+    assert!(out.status.success() && t.contains("WOULD PACK") && !t.contains("warning"), "{target:?}: {t}");
+
+    let out = run(w.root(), &["pack", "."]);
+    assert!(out.status.success() && text(&out).contains("PACKED"), "{target:?}: {}", text(&out));
+    let again = run(w.root(), &["pack", ".", "--dry-run"]);
+    assert!(text(&again).contains("NO CHANGES"), "{target:?}: {}", text(&again));
+    let after = w.snap();
+    let fresh = fresh_extract(&after);
+    let extracted = String::from_utf8_lossy(&fresh[&rel(&w, &xml_file)]).into_owned();
+    assert!(extracted.contains("name=\"НоваяКнопкаПанели\""), "{target:?}: the new button is extracted");
+    assert!(extracted.contains("action=\"НоваяКнопкаПанелиНажатие\""), "{target:?}");
+}
+
+#[test]
+fn epf_added_button_packs_and_reports_a_missing_procedure() {
+    assert_added_button_packs_with_a_warning(Target::Epf);
+}
+
+#[test]
+fn config_added_button_packs_and_reports_a_missing_procedure() {
+    assert_added_button_packs_with_a_warning(Target::Config);
+}

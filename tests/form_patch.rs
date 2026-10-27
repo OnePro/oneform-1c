@@ -4391,3 +4391,559 @@ fn nested_sub_menu_button_name_and_checked_flag_are_patched() {
     let to = "<Button name=\"Поиск\" id=\"40\" kind=\"Action\" checked=\"true\"";
     button_edit_round_trip(name, &[(from, to)]);
 }
+
+// ---------------------------------------------------------------- command bar buttons: add, remove, reorder
+
+mod command_bar_edit {
+    use super::*;
+    use oneform::form_patch::CommandBarButton;
+
+    const V2: &str = "DonorFormV2";
+    /// `КоманднаяПанель1` of the V2 donor: empty, AutoFill, format X9 / act7 / btn8.
+    const EMPTY: &str = "КоманднаяПанель1";
+    /// `ОсновныеДействияФормы`: a handler, a separator and `Standard:142`.
+    const MAIN: &str = "ОсновныеДействияФормы";
+    /// `КоманднаяПанель2`: handlers and a user sub-menu.
+    const SUB: &str = "КоманднаяПанель2";
+
+    fn raw(name: &str) -> Vec<u8> {
+        std::fs::read(dir(name).join("FormStream.bin")).unwrap()
+    }
+
+    /// The V2 donor ships no `Form.xml`: the decoder's own projection is the baseline.
+    fn decode(name: &str, bytes: &[u8]) -> String {
+        if name != V2 {
+            return decode_xml(name, bytes);
+        }
+        let model = decode_oof_stream(bytes, "x", None).unwrap();
+        assert_eq!(model["warnings"], serde_json::json!([]));
+        let xml = render_form_xml(&common::form_info("x", "Форма", bytes), &model).unwrap();
+        String::from_utf8(enrich_ext_properties(bytes, &xml).unwrap()).unwrap().replace("\r\n", "\n")
+    }
+
+    fn base(name: &str) -> String {
+        if name == V2 {
+            decode(name, &raw(name))
+        } else {
+            baseline(name)
+        }
+    }
+
+    fn run(name: &str, edited: &str) -> Result<PatchedForm, ExtractionError> {
+        patch_form(&parse_spanned(&raw(name)).unwrap(), base(name).as_bytes(), edited.as_bytes())
+    }
+
+    fn panel_id(name: &str, panel: &str) -> i64 {
+        let m = parse_form_xml(base(name).as_bytes(), "baseline").unwrap();
+        m.controls.iter().find(|c| c.name == panel).unwrap().id
+    }
+
+    fn buttons_of(name: &str, bytes: &[u8], panel: &str) -> Vec<CommandBarButton> {
+        let m = parse_form_xml(decode(name, bytes).as_bytes(), "decoded").unwrap();
+        m.controls.iter().find(|c| c.name == panel).unwrap().values.buttons.clone()
+    }
+
+    fn panel_bounds(xml: &str, panel: &str) -> (usize, usize) {
+        let start = xml.find(&format!("<CommandBar name=\"{panel}\"")).unwrap();
+        (start, start + xml[start..].find("</CommandBar>").unwrap())
+    }
+
+    /// The `<Button>` elements of the `<Buttons>` of `panel` (top level only).
+    fn blocks(xml: &str, panel: &str) -> Vec<String> {
+        let (start, end) = panel_bounds(xml, panel);
+        let part = &xml[start..end];
+        let Some(open) = part.find("<Buttons>") else { return Vec::new() };
+        let close = part.rfind("</Buttons>").unwrap();
+        let inner = &part[open + "<Buttons>".len()..close];
+        let (mut out, mut depth, mut from) = (Vec::new(), 0usize, 0usize);
+        let re = regex::Regex::new(r"<Button\b[^>]*?/>|<Button\b[^>]*>|</Button>").unwrap();
+        for m in re.find_iter(inner) {
+            let t = m.as_str();
+            if t.starts_with("</") {
+                depth -= 1;
+                if depth == 0 {
+                    out.push(inner[from..m.end()].to_string());
+                }
+            } else if t.ends_with("/>") {
+                if depth == 0 {
+                    out.push(t.to_string());
+                }
+            } else {
+                if depth == 0 {
+                    from = m.start();
+                }
+                depth += 1;
+            }
+        }
+        out
+    }
+
+    /// `xml` with the `<Buttons>` of `panel` replaced by `list` (the element is created for an empty panel).
+    fn set_buttons(xml: &str, panel: &str, list: &[String]) -> String {
+        let (start, end) = panel_bounds(xml, panel);
+        let part = &xml[start..end];
+        let inner = format!("<Buttons>\n{}\n</Buttons>", list.join("\n"));
+        let part = match (part.find("<Buttons>"), part.rfind("</Buttons>")) {
+            (Some(a), Some(b)) => format!("{}{inner}{}", &part[..a], &part[b + "</Buttons>".len()..]),
+            _ => format!("{part}{inner}\n"),
+        };
+        format!("{}{part}{}", &xml[..start], &xml[end..])
+    }
+
+    fn handler(name: &str, proc: &str, caption: &str) -> String {
+        format!("<Button name=\"{name}\" kind=\"Action\" action=\"{proc}\"><Caption><Item language=\"ru\">{caption}</Item></Caption></Button>")
+    }
+
+    fn separator(name: &str) -> String {
+        format!("<Button name=\"{name}\" kind=\"Separator\"/>")
+    }
+
+    fn names(list: &[CommandBarButton]) -> Vec<&str> {
+        list.iter().map(|b| b.name.as_str()).collect()
+    }
+
+    /// What the stream of panel `id` says, read independently of the patcher.
+    struct Table {
+        t2: i64,
+        n_act: usize,
+        /// `(id, kind code)` of the root buttons in order
+        root: Vec<(i64, String)>,
+        pos: i64,
+        subs: Vec<i64>,
+        refs: Vec<i64>,
+    }
+
+    impl Table {
+        fn ids(&self) -> Vec<i64> {
+            self.root.iter().map(|r| r.0).collect()
+        }
+    }
+
+    fn atom(n: &oneform::brace::Node, i: usize) -> String {
+        n.atom(i).unwrap_or_else(|| panic!("atom {i} of {n:?}")).value.clone()
+    }
+
+    /// Reads the table and asserts the invariants of the layout (unique action references, counters, versions, tails).
+    fn table(bytes: &[u8], id: i64) -> Table {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let x = idx.get(id).unwrap().info().unwrap().node.node(1).unwrap();
+        let t = x.node(7).unwrap();
+        let (t1, t2, n_act) = (atom(t, 1), atom(t, 2).parse::<i64>().unwrap(), atom(t, 4).parse::<usize>().unwrap());
+        let n_groups: usize = atom(t, 5 + n_act).parse().unwrap();
+        assert_eq!(t.len(), 6 + n_act + n_groups, "table length");
+        let mut guids = std::collections::HashSet::new();
+        let acts: Vec<_> = (0..n_act).map(|i| t.node(5 + i).unwrap()).collect();
+        for a in &acts {
+            assert!(guids.insert(atom(a, 1)), "action guid listed twice");
+        }
+        let versions: std::collections::HashSet<String> = acts.iter().map(|a| atom(a, 0)).collect();
+        assert!(versions.len() <= 1, "mixed action versions {versions:?}");
+        let (mut used, mut ids, mut shapes) = (std::collections::HashSet::new(), Vec::new(), std::collections::HashSet::new());
+        let key = (atom(x, 8), atom(x, 9));
+        let mut out = None;
+        for gi in 0..n_groups {
+            let g = t.node(6 + n_act + gi).unwrap();
+            let k: usize = atom(g, 4).parse().unwrap();
+            assert_eq!(g.len(), 6 + 2 * k, "group length");
+            for i in 0..k {
+                let r = atom(g, 5 + 2 * i);
+                assert!(guids.contains(&r), "unknown action {r}");
+                assert!(used.insert(r), "action used twice");
+                let b = g.node(6 + 2 * i).unwrap();
+                assert_eq!(atom(b, 6), t1, "button carries the table guid");
+                ids.push(atom(b, 7).parse::<i64>().unwrap());
+                shapes.insert((atom(b, 0), b.len()));
+            }
+            if (atom(g, 1), atom(g, 2)) == key {
+                let tail = g.node(5 + 2 * k).unwrap();
+                let pos: i64 = atom(tail, 0).parse().unwrap();
+                assert!((-1..=k as i64).contains(&pos), "tail position {pos} with {k} buttons");
+                let nr: usize = atom(tail, 1).parse().unwrap();
+                let sub = tail.node(2 + 2 * nr).unwrap();
+                let ns: usize = atom(sub, 0).parse().unwrap();
+                assert_eq!(sub.len(), 1 + 3 * ns);
+                let root: Vec<(i64, String)> = (0..k)
+                    .map(|i| {
+                        let b = g.node(6 + 2 * i).unwrap();
+                        (atom(b, 7).parse().unwrap(), atom(b, 9))
+                    })
+                    .collect();
+                let subs: Vec<i64> = (0..ns).map(|i| atom(sub, 2 + 3 * i).parse().unwrap()).collect();
+                let refs: Vec<i64> = (0..nr).map(|i| atom(tail, 3 + 2 * i).parse().unwrap()).collect();
+                let order: Vec<usize> = subs.iter().map(|s| root.iter().position(|(id, _)| id == s).expect("sub-menu list names root buttons")).collect();
+                assert!(order.windows(2).all(|w| w[0] < w[1]), "sub-menu list in button order");
+                out = Some((root, pos, subs, refs));
+            }
+        }
+        assert_eq!(used.len(), n_act, "one action per button");
+        assert!(shapes.len() <= 1, "mixed button versions {shapes:?}");
+        let mut seen = std::collections::HashSet::new();
+        assert!(ids.iter().all(|i| seen.insert(*i)), "button ids are unique");
+        assert!(ids.iter().all(|i| *i <= t2), "T2 {t2} covers every id {ids:?}");
+        let (root, pos, subs, refs) = out.expect("root group");
+        Table { t2, n_act, root, pos, subs, refs }
+    }
+
+    /// Patch, check the byte preservation, decode the result and return it with the original and patched tables.
+    fn edit(name: &str, panel: &str, list: &[String]) -> (PatchedForm, Table, Table, Vec<CommandBarButton>) {
+        let edited = set_buttons(&base(name), panel, list);
+        let pf = run(name, &edited).unwrap_or_else(|e| panic!("{e}"));
+        let original = raw(name);
+        assert_only_authorized_changes(&original, &pf);
+        assert_eq!(pf.replacements.len(), 1, "the table is one replacement");
+        let id = panel_id(name, panel);
+        let (before, after) = (table(&original, id), table(&pf.bytes, id));
+        let got = buttons_of(name, &pf.bytes, panel);
+        (pf, before, after, got)
+    }
+
+    fn refused(name: &str, panel: &str, list: &[String], needle: &str) {
+        let edited = set_buttons(&base(name), panel, list);
+        let Err(e) = run(name, &edited) else { panic!("must be refused: {needle}") };
+        let text = e.to_string();
+        assert!(text.contains(needle), "{needle}: {text}");
+        assert_eq!(e.params["kind"].as_str(), Some("unsupported-button"), "{text}");
+    }
+
+    #[test]
+    fn two_handlers_and_a_separator_are_added_to_the_empty_donor_panel() {
+        let list = [
+            handler("Выполнить", "ВыполнитьНажатие", "Выполнить"),
+            separator("Разделитель"),
+            "<Button name=\"Заполнить\" kind=\"Action\" action=\"ЗаполнитьНажатие\"><Caption><Item language=\"ru\">Заполнить</Item><Item language=\"ro\">Заполнить</Item></Caption><Tooltip><Item language=\"ru\">Заполнить таблицу</Item></Tooltip></Button>".to_string(),
+        ];
+        let (pf, before, after, got) = edit(V2, EMPTY, &list);
+        assert_eq!((before.n_act, before.t2), (0, 30));
+        assert_eq!((after.n_act, after.t2), (3, 33));
+        assert_eq!(after.ids(), vec![31, 32, 33]);
+        assert_eq!(after.root.iter().map(|r| r.1.as_str()).collect::<Vec<_>>(), vec!["0", "2", "0"]);
+        assert_eq!(after.pos, 3, "the position that sat at the end of the empty group follows it");
+        assert_eq!(names(&got), vec!["Выполнить", "Разделитель", "Заполнить"]);
+        assert_eq!(got[0].id, Some(31));
+        assert_eq!((got[0].kind.as_str(), got[0].action_kind.as_str(), got[0].action.as_str()), ("Action", "Handler", "ВыполнитьНажатие"));
+        assert_eq!(got[1].kind, "Separator");
+        assert_eq!(got[2].tooltip, vec![("ru".to_string(), "Заполнить таблицу".to_string())]);
+        assert_eq!(got[2].caption.len(), 2);
+        assert_eq!(pf.button_lists.len(), 1);
+        assert_eq!(pf.button_lists[0].1.iter().map(|b| b.id.unwrap()).collect::<Vec<_>>(), vec![31, 32, 33]);
+        // every new action guid appears twice in the stream (its record and its button) and nowhere in the original
+        let before_text = String::from_utf8_lossy(&raw(V2)).to_lowercase();
+        let after_text = String::from_utf8_lossy(&pf.bytes).to_lowercase();
+        let re = regex::Regex::new(r"\{7,([0-9a-f-]{36}),1,e1692cc2").unwrap();
+        let fresh: Vec<&str> = re.captures_iter(&after_text).map(|c| c.get(1).unwrap().as_str()).filter(|g| !before_text.contains(g)).collect();
+        assert_eq!(fresh.len(), 2);
+        for g in fresh {
+            assert_eq!(after_text.matches(g).count(), 2, "guid {g}");
+        }
+    }
+
+    #[test]
+    fn the_added_panel_extracts_to_the_same_buttons_with_the_allocated_ids() {
+        let list = [handler("Выполнить", "ВыполнитьНажатие", "Выполнить"), separator("Разделитель")];
+        let (pf, ..) = edit(V2, EMPTY, &list);
+        let xml = decode(V2, &pf.bytes);
+        assert!(xml.contains("<Button name=\"Выполнить\" id=\"31\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"ВыполнитьНажатие\">"));
+        assert!(xml.contains("<Button name=\"Разделитель\" id=\"32\" kind=\"Separator\" checked=\"false\"/>"));
+        // the extracted XML against the patched stream is no edit
+        let again = patch_form(&parse_spanned(&pf.bytes).unwrap(), xml.as_bytes(), xml.as_bytes()).unwrap();
+        assert!(again.replacements.is_empty());
+    }
+
+    #[test]
+    fn a_handler_is_added_in_the_middle_of_a_flat_panel() {
+        let b = blocks(&base(V2), MAIN);
+        assert_eq!(b.len(), 3);
+        let list = [b[0].clone(), handler("Заполнить", "ЗаполнитьНажатие", "Заполнить"), b[1].clone(), b[2].clone()];
+        let (_, before, after, got) = edit(V2, MAIN, &list);
+        assert_eq!((before.n_act, before.t2), (3, 3));
+        assert_eq!((after.n_act, after.t2), (4, 4));
+        assert_eq!(after.ids(), vec![1, 4, 2, 3]);
+        assert_eq!(names(&got), vec!["ОсновныеДействияФормыВыполнить", "Заполнить", "Разделитель", "ОсновныеДействияФормыЗакрыть"]);
+        // the kept buttons decode as before
+        let was = buttons_of(V2, &raw(V2), MAIN);
+        assert_eq!(got[0], was[0]);
+        assert_eq!(got[2], was[1]);
+        assert_eq!(got[3], was[2]);
+        assert_eq!((before.pos, after.pos), (-1, -1), "-1 stays");
+    }
+
+    #[test]
+    fn a_separator_and_a_handler_are_removed() {
+        let b = blocks(&base(V2), MAIN);
+        let (_, _, after, got) = edit(V2, MAIN, &[b[0].clone(), b[2].clone()]);
+        assert_eq!((after.n_act, after.t2), (2, 3), "T2 never shrinks");
+        assert_eq!(after.ids(), vec![1, 3]);
+        assert_eq!(names(&got), vec!["ОсновныеДействияФормыВыполнить", "ОсновныеДействияФормыЗакрыть"]);
+        let (_, _, after, got) = edit(V2, MAIN, &[b[1].clone(), b[2].clone()]);
+        assert_eq!(after.ids(), vec![2, 3]);
+        assert_eq!(names(&got), vec!["Разделитель", "ОсновныеДействияФормыЗакрыть"]);
+        // all buttons removed: the empty group stays
+        let (_, _, after, got) = edit(V2, MAIN, &[]);
+        assert_eq!((after.n_act, after.root.len()), (0, 0));
+        assert!(got.is_empty());
+    }
+
+    #[test]
+    fn buttons_are_reordered_keeping_their_records() {
+        let b = blocks(&base(V2), MAIN);
+        let (_, _, after, got) = edit(V2, MAIN, &[b[2].clone(), b[1].clone(), b[0].clone()]);
+        assert_eq!(after.ids(), vec![3, 2, 1]);
+        assert_eq!((after.n_act, after.t2), (3, 3), "no new ids");
+        let was = buttons_of(V2, &raw(V2), MAIN);
+        assert_eq!(got, vec![was[2].clone(), was[1].clone(), was[0].clone()]);
+    }
+
+    #[test]
+    fn add_remove_reorder_and_a_caption_edit_combine() {
+        let b = blocks(&base(V2), MAIN);
+        let renamed = b[2].replace("<Item language=\"ru\">Закрыть</Item>", "<Item language=\"ru\">Выйти</Item>");
+        assert_ne!(renamed, b[2]);
+        let list = [renamed, handler("Заполнить", "ЗаполнитьНажатие", "Заполнить"), b[0].clone()];
+        let (_, _, after, got) = edit(V2, MAIN, &list);
+        assert_eq!(after.ids(), vec![3, 4, 1]);
+        assert_eq!(after.n_act, 3);
+        assert_eq!(got[0].caption[0], ("ru".to_string(), "Выйти".to_string()));
+        assert_eq!(got[0].action, "Standard:142");
+        assert_eq!(got[1].id, Some(4));
+        // a changed handler name of a kept button is applied inside the rebuilt record too
+        let moved = b[0].replace("action=\"КнопкаВыполнитьНажатие\"", "action=\"ДругаяПроцедура\"");
+        let (_, _, _, got) = edit(V2, MAIN, &[b[2].clone(), moved]);
+        assert_eq!(got[1].action, "ДругаяПроцедура");
+    }
+
+    #[test]
+    fn tail_position_follows_its_button_and_sub_menu_lists_survive() {
+        // the root group of this panel ends with a standard sub-menu whose tail is `{pos,1,T1,id,{1,T1,id,0}}`
+        let name = "MailGroupForm";
+        let xml = base(name);
+        let m = parse_form_xml(xml.as_bytes(), "b").unwrap();
+        let (panel, was) = m
+            .controls
+            .iter()
+            .find(|c| c.type_name == "CommandBar" && c.values.buttons.iter().any(|b| b.kind == "Submenu"))
+            .map(|c| (c.name.clone(), c.values.buttons.clone()))
+            .unwrap();
+        let b = blocks(&xml, &panel);
+        assert_eq!(b.len(), was.len());
+        let at = was.iter().position(|b| b.kind == "Submenu").unwrap();
+        let mut list = vec![handler("НоваяКнопкаПочты", "НоваяКнопкаПочтыНажатие", "Новая")];
+        list.extend(b.iter().cloned());
+        let (_, before, after, got) = edit(name, &panel, &list);
+        assert_eq!(after.root.len(), before.root.len() + 1);
+        assert_eq!(got[at + 1].kind, "Submenu");
+        assert_eq!(got[at + 1].buttons, was[at].buttons, "the standard sub-menu group is untouched");
+        assert_eq!((&after.subs, &after.refs), (&before.subs, &before.refs));
+        if before.pos >= 0 && (before.pos as usize) < before.root.len() {
+            assert_eq!(after.root[after.pos as usize].0, before.root[before.pos as usize].0, "the position stays on its button");
+        }
+        // the position sits on the standard sub-menu of the other panel and follows it
+        let name = "SharedSubmenuForm";
+        let xml = base(name);
+        let m = parse_form_xml(xml.as_bytes(), "b").unwrap();
+        let c = m.controls.iter().find(|c| c.name == "ДействияФормы").unwrap();
+        let b = blocks(&xml, &c.name);
+        let before = table(&raw(name), c.id);
+        assert!(before.pos >= 0 && (before.pos as usize) < before.root.len(), "fixture: the position sits on a button");
+        let anchor = before.pos as usize;
+        // and the position follows its button when buttons are inserted before it
+        let mut more = b.clone();
+        more.insert(0, handler("Первая", "ПерваяНажатие", "Первая"));
+        more.insert(0, separator("Первый"));
+        let (_, _, after, _) = edit(name, &c.name, &more);
+        assert_eq!(after.pos as usize, anchor + 2);
+        assert_eq!(after.root[anchor + 2].0, before.root[anchor].0);
+    }
+
+    /// `MAIN` with its tail position set to `pos`.
+    fn with_pos(pos: i64) -> SpannedMetadata {
+        let id = panel_id(V2, MAIN);
+        tweak_stream(V2, |_, idx| {
+            let t = idx.get(id).unwrap().info().unwrap().child(1).unwrap().child(7).unwrap();
+            let tail = t.child(9).unwrap().child(11).unwrap();
+            Replacement { range: tail.atom(0).unwrap().1, bytes: pos.to_string().into_bytes() }
+        })
+    }
+
+    #[test]
+    fn tail_position_moves_to_the_next_survivor_or_the_end() {
+        let xml = base(V2);
+        let b = blocks(&xml, MAIN);
+        let id = panel_id(V2, MAIN);
+        let run_pos = |pos: i64, list: &[String]| {
+            let s = with_pos(pos);
+            assert_eq!(table(&s.emit(), id).pos, pos);
+            let pf = patch_form(&s, xml.as_bytes(), set_buttons(&xml, MAIN, list).as_bytes()).unwrap_or_else(|e| panic!("{e}"));
+            table(&pf.bytes, id)
+        };
+        // the separator (index 1) is removed: Закрыть is the next survivor and moves to index 1
+        assert_eq!(run_pos(1, &[b[0].clone(), b[2].clone()]).pos, 1);
+        // the last button (index 2) is removed: nobody follows, the position is the new end
+        assert_eq!(run_pos(2, &[b[0].clone(), b[1].clone()]).pos, 2);
+        // the end position follows the end
+        assert_eq!(run_pos(3, &[b[0].clone(), b[1].clone(), b[2].clone(), handler("Н", "Н1", "Н")]).pos, 4);
+        assert_eq!(run_pos(3, &[b[0].clone()]).pos, 1);
+        // a reorder carries the position with its button
+        assert_eq!(run_pos(0, &[b[2].clone(), b[1].clone(), b[0].clone()]).pos, 2);
+        // -1 stays
+        assert_eq!(run_pos(-1, &[b[2].clone()]).pos, -1);
+    }
+
+    #[test]
+    fn buttons_of_real_panels_are_added_removed_and_reordered() {
+        let mut panels = 0;
+        for name in ["MailGroupForm", "SharedSubmenuForm"] {
+            let xml = base(name);
+            let m = parse_form_xml(xml.as_bytes(), "b").unwrap();
+            for c in m.controls.iter().filter(|c| c.type_name == "CommandBar" && !c.values.buttons.is_empty()) {
+                panels += 1;
+                let b = blocks(&xml, &c.name);
+                assert_eq!(b.len(), c.values.buttons.len(), "{name} {}", c.name);
+                // append a handler
+                let mut list = b.clone();
+                list.push(handler("ДобавленнаяКнопка", "ДобавленнаяКнопкаНажатие", "Добавленная"));
+                let (_, before, after, got) = edit(name, &c.name, &list);
+                assert_eq!(after.root.len(), before.root.len() + 1);
+                assert_eq!(got.last().unwrap().id, Some(before.t2 + 1));
+                assert_eq!((&after.subs, &after.refs), (&before.subs, &before.refs));
+                // remove the first flat button
+                if let Some(i) = c.values.buttons.iter().position(|x| x.kind != "Submenu") {
+                    let mut list = b.clone();
+                    list.remove(i);
+                    let (_, before, after, _) = edit(name, &c.name, &list);
+                    assert_eq!((after.root.len() + 1, after.n_act + 1, after.t2), (before.root.len(), before.n_act, before.t2));
+                }
+                // reverse a panel without sub-menus
+                if c.values.buttons.iter().all(|x| x.kind != "Submenu") && b.len() > 1 {
+                    let mut list = b.clone();
+                    list.reverse();
+                    let (_, before, after, _) = edit(name, &c.name, &list);
+                    let mut ids = before.ids();
+                    ids.reverse();
+                    assert_eq!(after.ids(), ids);
+                }
+            }
+        }
+        assert!(panels >= 2);
+    }
+
+    #[test]
+    fn unsupported_buttons_are_refused_with_their_line_and_reason() {
+        let ok = handler("Выполнить", "ВыполнитьНажатие", "Выполнить");
+        let cap = "<Caption><Item language=\"ru\">П</Item></Caption>";
+        let cases: Vec<(String, &str)> = vec![
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" actionKind=\"Standard\" action=\"Standard:142\">{cap}</Button>"), "Standard:N"),
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" action=\"Standard:24\">{cap}</Button>"), "Standard:N"),
+            (format!("<Button name=\"Меню\" kind=\"Action\" actionKind=\"StdSubmenu\" action=\"x\">{cap}</Button>"), "handler buttons"),
+            (format!("<Button name=\"Меню\" kind=\"Submenu\">{cap}</Button>"), "sub-menu cannot be created"),
+            (format!("<Button name=\"Пустая\" kind=\"Action\">{cap}</Button>"), "needs action"),
+            ("<Button name=\"БезПодписи\" kind=\"Action\" action=\"Проц\"/>".to_string(), "needs a <Caption>"),
+            (format!("<Button name=\"Плохое Имя\" kind=\"Action\" action=\"Проц\">{cap}</Button>"), "identifier"),
+            (format!("<Button name=\"Кнопка\" kind=\"Action\" action=\"1Проц\">{cap}</Button>"), "procedure name"),
+            (format!("<Button name=\"Картинка\" kind=\"Action\" action=\"Проц\">{cap}<Picture kind=\"2\" stdId=\"1\"/></Button>"), "picture"),
+            ("<Button name=\"Разд\" kind=\"Separator\" action=\"Проц\"/>".to_string(), "separator holds no"),
+            (handler("ОсновныеДействияФормыЗакрыть", "Проц", "Закрыть"), "name exists"),
+        ];
+        for (extra, needle) in cases {
+            // the baseline buttons stay, the new one goes in the middle
+            let mut list = blocks(&base(V2), MAIN);
+            list.insert(1, extra.clone());
+            let edited = set_buttons(&base(V2), MAIN, &list);
+            let Err(e) = run(V2, &edited) else { panic!("{extra}") };
+            let text = e.to_string();
+            assert!(text.contains(needle), "{needle}: {text}");
+            assert!(text.contains("line "), "{text}");
+        }
+        // two new buttons with one name
+        refused(V2, EMPTY, &[ok.clone(), ok], "name exists");
+        // the same id twice
+        let b = blocks(&base(V2), MAIN);
+        refused(V2, MAIN, &[b[0].clone(), b[0].clone()], "used twice");
+    }
+
+    #[test]
+    fn sub_menus_and_moves_between_levels_are_refused() {
+        let xml = base(V2);
+        let b = blocks(&xml, SUB);
+        assert_eq!(b.len(), 2);
+        // removing the sub-menu
+        let e = run(V2, &set_buttons(&xml, SUB, &b[..1])).expect_err("sub-menu removal");
+        assert!(e.to_string().contains("removing a sub-menu"), "{e}");
+        // a nested button as a root button
+        let (start, end) = panel_bounds(&xml, SUB);
+        let part = &xml[start..end];
+        let a = part.find("<Button name=\"Действие\"").unwrap();
+        let nested = part[a..a + part[a..].find("</Button>").unwrap() + "</Button>".len()].to_string();
+        let e = run(V2, &set_buttons(&xml, SUB, &[b[0].clone(), nested, b[1].clone()])).expect_err("move");
+        assert!(e.to_string().contains("between sub-menu levels"), "{e}");
+        // the kind of a kept button cannot change
+        let sep = "<Button name=\"НоваяКнопка\" id=\"1\" kind=\"Separator\" checked=\"false\"/>".to_string();
+        let e = run(V2, &set_buttons(&xml, SUB, &[sep, b[1].clone(), handler("Ещё", "Ещё1", "Ещё")])).expect_err("kind");
+        assert!(e.to_string().contains("kind of an existing button"), "{e}");
+    }
+
+    #[test]
+    fn unchanged_order_keeps_the_per_button_patch_path() {
+        let xml = base(V2);
+        let edited = replace_once(&xml, "<Item language=\"ru\">Закрыть</Item>", "<Item language=\"ru\">Выйти</Item>");
+        let pf = run(V2, &edited).unwrap();
+        assert_eq!(pf.replacements.len(), 1);
+        assert!(pf.button_lists.is_empty());
+        assert!(pf.replacements[0].bytes.len() < 40, "an in-place text edit, not a table rebuild");
+    }
+
+    #[test]
+    fn a_corrupt_table_is_not_rebuilt() {
+        // negative control: the checker is live and refuses a panel whose layout it cannot trust
+        let b = blocks(&base(V2), MAIN);
+        let edited = set_buttons(&base(V2), MAIN, &[b[0].clone(), b[2].clone()]);
+        let id = panel_id(V2, MAIN);
+        let s = tweak_stream(V2, |_, idx| {
+            let t = idx.get(id).unwrap().info().unwrap().child(1).unwrap().child(7).unwrap();
+            let (_, span) = t.atom(2).unwrap();
+            Replacement { range: span, bytes: b"1".to_vec() }
+        });
+        let e = patch_form(&s, base(V2).as_bytes(), edited.as_bytes()).expect_err("id counter below a button id");
+        assert!(e.to_string().contains("id counter"), "{e}");
+        let s = tweak_stream(V2, |s, idx| {
+            let t = idx.get(id).unwrap().info().unwrap().child(1).unwrap().child(7).unwrap();
+            let first = text_of(s, t.child(5).unwrap().atom(1).unwrap().1);
+            Replacement { range: t.child(6).unwrap().atom(1).unwrap().1, bytes: first.into_bytes() }
+        });
+        let e = patch_form(&s, base(V2).as_bytes(), edited.as_bytes()).expect_err("duplicate action");
+        assert!(e.to_string().contains("listed twice"), "{e}");
+        // the property edit path is not affected by the checker
+        assert!(patch_form(&parse_spanned(&raw(V2)).unwrap(), base(V2).as_bytes(), base(V2).as_bytes()).unwrap().replacements.is_empty());
+    }
+
+    #[test]
+    fn the_rest_of_the_stream_is_preserved_byte_for_byte() {
+        let (pf, ..) = edit(V2, EMPTY, &[handler("Выполнить", "ВыполнитьНажатие", "Выполнить")]);
+        let original = raw(V2);
+        let r = &pf.replacements[0];
+        assert_eq!(&pf.bytes[..r.range.start], &original[..r.range.start]);
+        assert_eq!(&pf.bytes[r.range.start + r.bytes.len()..], &original[r.range.end..]);
+        // the replacement is the button table `{5,...}` of the panel only
+        assert!(r.bytes.starts_with(b"{5,") && r.bytes.ends_with(b"}"));
+        assert!(original[r.range.start..].starts_with(b"{5,"));
+    }
+
+    #[test]
+    fn handler_helpers_find_new_procedures_and_declarations() {
+        let module = "Процедура ВыполнитьНажатие(Кнопка)\n КонецПроцедуры\nФункция Другая ()\nКонецФункции\n// Процедура Закомментированная(";
+        assert!(oneform::form_patch::module_declares(module, "ВыполнитьНажатие"));
+        assert!(oneform::form_patch::module_declares(module, "другая"));
+        assert!(!oneform::form_patch::module_declares(module, "Выполнить"));
+        assert!(!oneform::form_patch::module_declares(module, "Отсутствует"));
+        let b = blocks(&base(V2), MAIN);
+        let list = [b[0].replace("КнопкаВыполнитьНажатие", "Переименована"), b[1].clone(), handler("Новая", "Новая1", "Н")];
+        let edited = set_buttons(&base(V2), MAIN, &list);
+        let source = parse_spanned(&raw(V2)).unwrap();
+        let plan = plan_form_patch(&source, base(V2).as_bytes(), edited.as_bytes()).unwrap();
+        let got: Vec<(String, String)> = plan.diff.edits.iter().flat_map(oneform::form_patch::new_handlers).collect();
+        assert_eq!(
+            got,
+            vec![("ОсновныеДействияФормыВыполнить".to_string(), "Переименована".to_string()), ("Новая".to_string(), "Новая1".to_string())]
+        );
+    }
+}

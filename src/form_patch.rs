@@ -30,6 +30,9 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
+mod cb_edit;
+pub use cb_edit::{module_declares, new_handlers};
+
 use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
 use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
 use crate::metaref::{ConfigTypeLookup, ANY_REF_GUID, VALUE_LIST_GUID, VALUE_TABLE_GUID, VALUE_TREE_GUID};
@@ -931,6 +934,18 @@ fn format_choice_list_node(items: &[ChoiceItemSpec]) -> String {
     format!("{{8,0,{{0,0,0,0,0,0,{{1,{},{}}}}}}}", items.len(), parts.join(","))
 }
 
+/// Source line of an XML element, carried for messages only: every value compares equal.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SrcLine(pub u32);
+
+impl PartialEq for SrcLine {
+    fn eq(&self, _: &SrcLine) -> bool {
+        true
+    }
+}
+
+impl Eq for SrcLine {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandBarButton {
     pub name: String,
@@ -954,6 +969,8 @@ pub struct CommandBarButton {
     pub default_button: Option<bool>,
     /// Write-only submenu button order (`bnode[14]`: `0` DontOrder, `1` Ascending).
     pub button_order: Option<i64>,
+    /// Line of the `<Button>` in `Form.xml` (0 for a button read from the stream).
+    pub line: SrcLine,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2549,6 +2566,18 @@ impl FormXml {
         out
     }
 
+    /// The model where the command bars whose buttons were added, removed or reordered carry the buttons the patched
+    /// stream decodes to (new buttons with their allocated ids).
+    pub fn with_button_lists(&self, lists: &[(i64, Vec<CommandBarButton>)]) -> FormXml {
+        let mut out = self.clone();
+        for (id, list) in lists {
+            if let Some(c) = out.controls.iter_mut().find(|c| c.id == *id) {
+                c.values.buttons = list.clone();
+            }
+        }
+        out
+    }
+
     /// The model with the controls of every `Page` ordered by `(ZOrder, id)`, the order in which the decoder's
     /// XML writer lists them. A `ZOrder` edit therefore moves a control inside its page when the patched stream
     /// is extracted again; compare a requested model with a decoded one only after applying this to it.
@@ -3787,6 +3816,7 @@ impl Parser<'_> {
                     description,
                     default_button,
                     button_order,
+                    line: SrcLine(b.line),
                 });
             }
             Some(out)
@@ -6714,6 +6744,9 @@ pub struct PatchedForm {
     pub derived_pages: Vec<DerivedPage>,
     /// `(xml id, allocated stream id)` for every added control (empty without structural edits).
     pub allocated: Vec<(i64, i64)>,
+    /// `(control id, root buttons)` of every command bar whose button set or order changed, with the ids the
+    /// new buttons were allocated (the buttons as the patched stream decodes them).
+    pub button_lists: Vec<(i64, Vec<CommandBarButton>)>,
 }
 
 impl PatchedForm {
@@ -8123,6 +8156,7 @@ fn read_cb_buttons(info: &Node) -> Vec<CommandBarButton> {
                 description: Vec::new(),
                 default_button: None,
                 button_order: None,
+                line: SrcLine::default(),
             });
         }
         out
@@ -8276,6 +8310,9 @@ fn cb_group_extras_match(
 }
 
 fn patch_cb_buttons(site: &Site, old_btns: &[CommandBarButton], new_btns: &[CommandBarButton], prop: Property) -> Result<Vec<Piece>> {
+    if cb_edit::is_structural(old_btns, new_btns) {
+        return cb_edit::patch_structural(site, old_btns, new_btns, prop);
+    }
     let (t, action_count, root_g) = cb_table(site, prop)?;
     let mut out = Vec::new();
     patch_cb_group(site, (t, action_count), root_g, (old_btns, new_btns), prop, 1, &mut out)?;
@@ -8314,107 +8351,122 @@ fn patch_cb_group(
         let bnode = group
             .child(6 + 2 * i)
             .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button node missing".into()))?;
-        if ob.name != nb.name {
-            let (_, span) = bnode
-                .atom(1)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button name missing".into()))?;
-            out.push(piece(span, quote(&nb.name), &[prop]));
-        }
-        if ob.caption != nb.caption {
-            let cnode = bnode
+        patch_cb_button(site, (t, action_count), (&guid, bnode), (ob, nb), prop, depth, out)?;
+    }
+    Ok(())
+}
+
+/// Patches one button record `bnode` (action `guid`) and, recursively, the sub-menu group it refers to.
+fn patch_cb_button(
+    site: &Site,
+    (t, action_count): (NodeRef, usize),
+    (guid, bnode): (&str, NodeRef),
+    (ob, nb): (&CommandBarButton, &CommandBarButton),
+    prop: Property,
+    depth: usize,
+    out: &mut Vec<Piece>,
+) -> Result<()> {
+    if ob.name != nb.name {
+        let (_, span) = bnode
+            .atom(1)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button name missing".into()))?;
+        out.push(piece(span, quote(&nb.name), &[prop]));
+    }
+    if ob.caption != nb.caption {
+        let cnode = bnode
+            .child(4)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button caption missing".into()))?;
+        let items = strict_localized(cnode)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button caption malformed".into()))?;
+        out.extend(localized_pieces(site, cnode, &items, &ob.caption, &nb.caption, prop)?);
+    }
+    if ob.representation != nb.representation {
+        let (_, span) = bnode
+            .atom(10)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button representation missing".into()))?;
+        let rcode = match nb.representation.as_str() {
+            "Text" => 1,
+            "Picture" => 2,
+            "PictureAndText" => 3,
+            _ => 0,
+        };
+        out.push(piece(span, rcode, &[prop]));
+    }
+    if ob.checked != nb.checked {
+        let (_, span) = bnode
+            .atom(12)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button checked missing".into()))?;
+        out.push(piece(span, i32::from(nb.checked), &[prop]));
+    }
+    if let Some(def) = nb.default_button.filter(|_| ob.default_button != nb.default_button) {
+        let (_, span) = bnode
+            .atom(13)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button DefaultButton slot missing".into()))?;
+        out.push(piece(span, i32::from(def), &[prop]));
+    }
+    if let Some(ord) = nb.button_order.filter(|_| ob.button_order != nb.button_order) {
+        let (_, span) = bnode
+            .atom(14)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button ButtonOrder slot missing".into()))?;
+        out.push(piece(span, ord, &[prop]));
+    }
+    let new_picture = nb.picture.as_ref().filter(|_| ob.picture != nb.picture);
+    let new_shortcut = nb.shortcut.as_ref().filter(|_| ob.shortcut != nb.shortcut);
+    let new_desc = (!nb.description.is_empty() && ob.description != nb.description).then_some(&nb.description);
+    if new_picture.is_some() || new_shortcut.is_some() || new_desc.is_some() {
+        let meta = cb_action_meta(t, action_count, guid)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button action record missing".into()))?;
+        if let Some(desc) = new_desc {
+            let dnode = meta
                 .child(4)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button caption missing".into()))?;
-            let items = strict_localized(cnode)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button caption malformed".into()))?;
-            out.extend(localized_pieces(site, cnode, &items, &ob.caption, &nb.caption, prop)?);
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button description slot missing".into()))?;
+            let items = strict_localized(dnode)
+                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button description malformed".into()))?;
+            let current: LocItems = items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
+            out.extend(localized_pieces(site, dnode, &items, &current, desc, prop)?);
         }
-        if ob.representation != nb.representation {
-            let (_, span) = bnode
-                .atom(10)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button representation missing".into()))?;
-            let rcode = match nb.representation.as_str() {
-                "Text" => 1,
-                "Picture" => 2,
-                "PictureAndText" => 3,
-                _ => 0,
-            };
-            out.push(piece(span, rcode, &[prop]));
-        }
-        if ob.checked != nb.checked {
-            let (_, span) = bnode
-                .atom(12)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button checked missing".into()))?;
-            out.push(piece(span, i32::from(nb.checked), &[prop]));
-        }
-        if let Some(def) = nb.default_button.filter(|_| ob.default_button != nb.default_button) {
-            let (_, span) = bnode
-                .atom(13)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button DefaultButton slot missing".into()))?;
-            out.push(piece(span, i32::from(def), &[prop]));
-        }
-        if let Some(ord) = nb.button_order.filter(|_| ob.button_order != nb.button_order) {
-            let (_, span) = bnode
-                .atom(14)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button ButtonOrder slot missing".into()))?;
-            out.push(piece(span, ord, &[prop]));
-        }
-        let new_picture = nb.picture.as_ref().filter(|_| ob.picture != nb.picture);
-        let new_shortcut = nb.shortcut.as_ref().filter(|_| ob.shortcut != nb.shortcut);
-        let new_desc = (!nb.description.is_empty() && ob.description != nb.description).then_some(&nb.description);
-        if new_picture.is_some() || new_shortcut.is_some() || new_desc.is_some() {
-            let meta = cb_action_meta(t, action_count, &guid)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button action record missing".into()))?;
-            if let Some(desc) = new_desc {
-                let dnode = meta
-                    .child(4)
-                    .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button description slot missing".into()))?;
-                let items = strict_localized(dnode)
-                    .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button description malformed".into()))?;
-                let current: LocItems = items.iter().map(|i| (i.lang.clone(), i.text.clone())).collect();
-                out.extend(localized_pieces(site, dnode, &items, &current, desc, prop)?);
-            }
-            for (idx, text) in [
-                (5usize, new_picture.map(format_picture_node)),
-                (6usize, new_shortcut.map(format_shortcut_node)),
-            ] {
-                if let Some(text) = text {
-                    let span = meta
-                        .child(idx)
-                        .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button picture/shortcut slot missing".into()))?
-                        .span
-                        .span;
-                    out.push(piece(span, text, &[prop]));
-                }
+        for (idx, text) in [
+            (5usize, new_picture.map(format_picture_node)),
+            (6usize, new_shortcut.map(format_shortcut_node)),
+        ] {
+            if let Some(text) = text {
+                let span = meta
+                    .child(idx)
+                    .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button picture/shortcut slot missing".into()))?
+                    .span
+                    .span;
+                out.push(piece(span, text, &[prop]));
             }
         }
-        if ob.action != nb.action && nb.action_kind == "Handler" {
-            for ai in 0..action_count {
-                let Some(anode) = t.child(5 + ai) else { continue };
-                if anode.atom(1).map(|(a, _)| a.value.as_str()) == Some(guid.as_str()) {
-                    if let Some(body) = anode.child(4) {
-                        if let Some((_, sp1)) = body.atom(1) {
-                            out.push(piece(sp1, quote(&nb.action), &[prop]));
-                        }
-                        if let Some(meta) = body.child(2) {
-                            if let Some((_, sp2)) = meta.atom(1) {
-                                out.push(piece(sp2, quote(&nb.action), &[prop]));
-                            }
+    }
+    if ob.action != nb.action && nb.action_kind == "Handler" {
+        for ai in 0..action_count {
+            let Some(anode) = t.child(5 + ai) else { continue };
+            if anode.atom(1).map(|(a, _)| a.value.as_str()) == Some(guid) {
+                if let Some(body) = anode.child(4) {
+                    if let Some((_, sp1)) = body.atom(1) {
+                        out.push(piece(sp1, quote(&nb.action), &[prop]));
+                    }
+                    if let Some(meta) = body.child(2) {
+                        if let Some((_, sp2)) = meta.atom(1) {
+                            out.push(piece(sp2, quote(&nb.action), &[prop]));
                         }
                     }
                 }
             }
         }
-        if !ob.buttons.is_empty() || !nb.buttons.is_empty() {
-            if depth >= CB_MAX_DEPTH {
-                return Err(site.layout("unexpected-shape", "Buttons", "sub-menus are nested deeper than three levels".into()));
-            }
-            let sub = cb_sub_group(t, action_count, &guid)
-                .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "sub-menu button group missing".into()))?;
-            patch_cb_group(site, (t, action_count), sub, (&ob.buttons, &nb.buttons), prop, depth + 1, out)?;
+    }
+    if !ob.buttons.is_empty() || !nb.buttons.is_empty() {
+        if depth >= CB_MAX_DEPTH {
+            return Err(site.layout("unexpected-shape", "Buttons", "sub-menus are nested deeper than three levels".into()));
         }
+        let sub = cb_sub_group(t, action_count, guid)
+            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "sub-menu button group missing".into()))?;
+        patch_cb_group(site, (t, action_count), sub, (&ob.buttons, &nb.buttons), prop, depth + 1, out)?;
     }
     Ok(())
 }
+
 
 /// Columns of tabular-section and dynamic-list tables keep a link step number (`0`, `1`, ...) where a value-table
 /// column keeps its field name:
@@ -9577,8 +9629,12 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             }
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
             Property::Buttons => {
-                read_cb_buttons(site.entry.info().unwrap().node) == buttons_without_extras(&new.buttons)
-                    && cb_extras_match(site, &new.buttons)?
+                let resolved = cb_edit::resolved_for(original)?;
+                if let Some(list) = &resolved {
+                    cb_edit::verify(site, original, list)?;
+                }
+                let want = resolved.as_deref().unwrap_or(&new.buttons);
+                read_cb_buttons(site.entry.info().unwrap().node) == buttons_without_extras(want) && cb_extras_match(site, want)?
             }
             Property::BorderStyle => Some(info_int_slot(site, &[1, 3], 3, p)?.0) == new.border_style,
             _ => true,
@@ -10315,7 +10371,13 @@ impl FormPatchPlan<'_> {
     /// read back, and the bytes outside the authorized ranges are compared with the original.
     pub fn apply(&self) -> Result<PatchedForm> {
         if self.is_empty() {
-            return Ok(PatchedForm { bytes: self.source.emit(), replacements: Vec::new(), derived_pages: Vec::new(), allocated: Vec::new() });
+            return Ok(PatchedForm {
+                bytes: self.source.emit(),
+                replacements: Vec::new(),
+                derived_pages: Vec::new(),
+                allocated: Vec::new(),
+                button_lists: Vec::new(),
+            });
         }
         self.check_z_order_collisions()?;
         let mut replacements: Vec<AppliedReplacement> = Vec::new();
@@ -10378,6 +10440,7 @@ impl FormPatchPlan<'_> {
             self.verify_form_props(&index)?;
         }
         let mut derived_pages = Vec::new();
+        let mut button_lists = Vec::new();
         if self.diff.form_size_changed {
             let (Some(new_w), Some(new_h)) = self.diff.new_form_size else {
                 return Err(layout_err("form stream: new form size missing"));
@@ -10398,8 +10461,11 @@ impl FormPatchPlan<'_> {
             let patched = index.get(edit.id).expect("layout compared above");
             let original = Site { source: self.source, edit, entry };
             derived_pages.extend(read_back(&Site { source: &reparsed, edit, entry: patched }, &original)?);
+            if let Some(list) = cb_edit::resolved_for(&original)? {
+                button_lists.push((edit.id, list));
+            }
         }
-        Ok(PatchedForm { bytes, replacements, derived_pages, allocated })
+        Ok(PatchedForm { bytes, replacements, derived_pages, allocated, button_lists })
     }
 
     fn verify_form_props(&self, index: &ControlIndex) -> Result<()> {

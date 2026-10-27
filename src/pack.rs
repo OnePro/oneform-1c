@@ -61,6 +61,8 @@ pub struct LayoutPatch {
     pub requested: FormXml,
     /// `Form.xml` of the unmodified target, parsed: controls the edit does not touch must decode as they did.
     pub baseline: FormXml,
+    /// Non-fatal findings of the edit (a handler button whose procedure the form module does not declare).
+    pub warnings: Vec<String>,
 }
 
 /// Plan the edit of one form's `Form.xml` (`layout` is the form's manifest `layout` record). `existing` is the
@@ -92,6 +94,7 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
         .with("kind", "ambiguous-layout-edit")
         .with("paths", Value::Array(vec![Value::from(xml_path), Value::from(stream_path)])));
     }
+    let warnings = handler_warnings(&plan, existing, xml_path);
     let mut patched = plan.apply().map_err(|e| e.with("path", xml_path))?;
     PATCH_HOOK.with(|h| {
         if let Some(f) = h.borrow_mut().as_mut() {
@@ -107,7 +110,32 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
         patched,
         requested,
         baseline: baseline_xml,
+        warnings,
     }))
+}
+
+/// A new or renamed command bar handler whose procedure `FormModule.bsl` (next to `Form.xml`) does not declare.
+/// The handler is linked by name only, so a missing procedure is a warning, never an error; without the module
+/// nothing is checked.
+fn handler_warnings(plan: &crate::form_patch::FormPatchPlan, existing: &Tree, xml_path: &str) -> Vec<String> {
+    let module_path = match xml_path.rsplit_once('/') {
+        Some((dir, _)) => format!("{dir}/FormModule.bsl"),
+        None => "FormModule.bsl".to_string(),
+    };
+    let Some(bytes) = existing.get(&module_path) else { return Vec::new() };
+    let text = String::from_utf8_lossy(bytes.strip_prefix(&UTF8_BOM[..]).unwrap_or(bytes));
+    let mut out = Vec::new();
+    for edit in &plan.diff.edits {
+        for (button, proc) in crate::form_patch::new_handlers(edit) {
+            if !crate::form_patch::module_declares(&text, &proc) {
+                out.push(format!(
+                    "  warning {xml_path}: button '{button}' of '{}' calls the procedure '{proc}', which {module_path} does not declare",
+                    edit.name
+                ));
+            }
+        }
+    }
+    out
 }
 
 impl LayoutPatch {
@@ -137,6 +165,7 @@ impl LayoutPatch {
                 out.push(format!("  edit {at}: {what}"));
             }
         }
+        out.extend(self.warnings.iter().cloned());
         out
     }
 
@@ -159,6 +188,7 @@ impl LayoutPatch {
         let mut expected = self
             .requested
             .with_allocated_ids(&self.patched.allocated)
+            .with_button_lists(&self.patched.button_lists)
             .with_derived_pages(&self.patched.derived_pages)
             .in_decoder_order();
         // A control the edit does not touch must decode exactly as it did before the edit: take it from the
