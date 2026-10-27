@@ -200,7 +200,10 @@ pub(super) type NewEdges = [(AnchorEdge, AnchorEdge); 4];
 /// nearest control to its left (same container and page); with no such neighbour the edge stays unattached. A
 /// control left floating in the middle of a row or column makes the form's layout fall back to its design size
 /// in 1C, so the neighbours are what keeps the new control in the chain.
-fn neighbours(idx: &ControlIndex, c: &ControlXml, page: i64, deleted: &[i64]) -> (Option<AnchorEdge>, Option<AnchorEdge>) {
+///
+/// An existing control stands where the edited `Form.xml` puts it (`edited`), not where the stream has it: the same
+/// edit may move the control and add one next to it.
+fn neighbours(idx: &ControlIndex, edited: &FormXml, c: &ControlXml, page: i64, deleted: &[i64]) -> (Option<AnchorEdge>, Option<AnchorEdge>) {
     let v = &c.values;
     let (left, top, right, bottom) = (v.left, v.top, v.left + v.width, v.top + v.height);
     let mut above: Option<(i64, i64, i64)> = None; // (bottom, id, gap)
@@ -215,6 +218,10 @@ fn neighbours(idx: &ControlIndex, c: &ControlXml, page: i64, deleted: &[i64]) ->
             _ => None,
         };
         let (Some(l), Some(t), Some(r), Some(b), Some(visible)) = (at(1), at(2), at(3), at(4), at(5)) else { continue };
+        let (l, t, r, b) = match edited.control(e.id) {
+            Some(x) if x.type_name == e.type_name => (x.values.left, x.values.top, x.values.left + x.values.width, x.values.top + x.values.height),
+            _ => (l, t, r, b),
+        };
         if visible == 0 {
             continue;
         }
@@ -233,9 +240,11 @@ fn neighbours(idx: &ControlIndex, c: &ControlXml, page: i64, deleted: &[i64]) ->
 
 /// Resolve the edges of a new control `new_id` (XML id `xml_id`): Designer defaults (top below the nearest control
 /// above, left after the nearest control to the left, bottom/right to its own top/left plus `Height`/`Width`) for
-/// every edge the request does not name; explicitly named edges are validated.
+/// every edge the request does not name; explicitly named edges are validated. The neighbours are found in the layout
+/// of the edited form (`edited`).
 pub(super) fn resolve_new_edges(
     idx: &ControlIndex,
+    edited: &FormXml,
     c: &ControlXml,
     new_id: i64,
     page: i64,
@@ -243,7 +252,7 @@ pub(super) fn resolve_new_edges(
     deleted: &[i64],
 ) -> Result<NewEdges> {
     let v = &c.values;
-    let (above, beside) = neighbours(idx, c, page, deleted);
+    let (above, beside) = neighbours(idx, edited, c, page, deleted);
     let defaults = [
         above.unwrap_or(AnchorEdge::UNATTACHED),
         AnchorEdge { target: new_id, side: 0, offset: v.height },

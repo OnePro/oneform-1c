@@ -2419,6 +2419,9 @@ pub struct ControlXml {
     /// Whether the element has a `<ChoiceButton>` / `<OpenButton>` tag (an absent tag is `false` in `values`, but an
     /// added field bound to the object takes the default of the type of its attribute).
     pub explicit_buttons: [bool; 2],
+    /// Whether the element has a `<ValueType>` tag (an absent one is `None` in `values`, but an added field bound to
+    /// the object takes the type of its attribute).
+    pub explicit_value_type: bool,
     /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
     pub column_sources: Vec<ColumnSource>,
     /// The control element without nested controls (replaced by [`CONTROL_STUB`]) and without the
@@ -2889,6 +2892,7 @@ impl Parser<'_> {
                     values: ControlValues::empty(),
                     data_steps: None,
                     explicit_buttons: ["ChoiceButton", "OpenButton"].map(|t| c.children.iter().any(|x| x.tag == t)),
+                    explicit_value_type: c.children.iter().any(|x| x.tag == "ValueType"),
                     column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),
                 });
@@ -8101,7 +8105,11 @@ fn read_choice_list_values(info: &Node) -> Vec<ChoiceItemSpec> {
 }
 
 fn read_input_value_type(info: &Node) -> Option<ValueTypeSpec> {
-    let pat_item = info.children.get(1)?;
+    value_type_of_pattern(info.children.get(1)?)
+}
+
+/// The type a `{"Pattern",...}` node stands for; `None` for the empty pattern or one that cannot be read.
+fn value_type_of_pattern(pat_item: &Item) -> Option<ValueTypeSpec> {
     let vt = crate::oof_props::decode_pattern(pat_item).ok()??;
     let kind = vt.get("kind")?.as_str()?.to_string();
     let composite = vt.get("composite")?.as_bool()?;
@@ -10153,7 +10161,7 @@ impl FormPatchPlan<'_> {
                 crate::ts_table::bind_info(clone_info_mut(&mut clone)?, &tb.type_id, &tb.columns).map_err(layout_err)?;
             }
             let others: Vec<i64> = new_xml_ids.iter().copied().filter(|&x| x != c.id).collect();
-            let edges = anchors::resolve_new_edges(&self.index, c, max_id, page, &others, &deleted_ids)?;
+            let edges = anchors::resolve_new_edges(&self.index, &self.edited, c, max_id, page, &others, &deleted_ids)?;
             let container = anchors::container_holder(&self.index, c.parent);
             anchors::apply_new_edges(clone_geom_mut(&mut clone)?, max_id, &edges, container, &mut anchor_adds)?;
             set_clone_events(&mut clone, &xml_events(c)?, &c.describe())?;

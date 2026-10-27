@@ -3,8 +3,13 @@
 //! The donor prototype of an `InputField` has no buttons. The Configurator gives a field bound to a reference
 //! attribute the choice and open buttons, a date field the choice button (the calendar); a number, string or
 //! boolean field has none (as the donor). A button the XML does not mention takes that default; a mentioned one always wins.
+//!
+//! The same field has its own `<ValueType>` in the Configurator: the type of the bound data (string with its length,
+//! number with digits, date, boolean, reference). The donor prototype carries a `ValueList` there; a `<ValueType>` the
+//! XML does not state is taken from the schema (a single known type; a composite or unknown one stays as the donor has it).
 
-use super::FormXml;
+use super::{FormXml, ValueTypeSpec};
+use crate::brace::{parse_metadata, Item};
 use crate::object_schema::{ObjectSchema, Resolved};
 
 /// `(ChoiceButton, OpenButton)` of a field bound to a value of `kind` (see [`ObjectSchema::attr_kinds`]);
@@ -26,8 +31,19 @@ fn value_kind<'a>(schema: &'a ObjectSchema, name: &str) -> Option<&'a str> {
     }
 }
 
+/// The own value type of a field bound to `Root.name`: the pattern of the attribute, or of the standard attribute.
+fn own_value_type(schema: &ObjectSchema, name: &str) -> Option<ValueTypeSpec> {
+    let pattern = match schema.resolve_attr(name) {
+        Resolved::One(_) => schema.attr_pattern(name),
+        Resolved::Missing => schema.std_pattern(name),
+        Resolved::Ambiguous => None,
+    }?;
+    let spec = super::value_type_of_pattern(&Item::Node(parse_metadata(pattern.as_bytes()).ok()?))?;
+    (!spec.composite && !spec.lossy).then_some(spec)
+}
+
 /// Applies the defaults to the `InputField`s of `edited` that are not in `baseline` and are bound to an attribute of
-/// the object, for the buttons their XML does not mention. A path that cannot be resolved is left to the planner,
+/// the object, for the buttons and the `<ValueType>` their XML does not mention. A path that cannot be resolved is left to the planner,
 /// which refuses it.
 pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) {
     let Some(schema) = crate::object_schema::object_schema() else { return };
@@ -38,13 +54,19 @@ pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) {
         let Some((_, path)) = &c.values.data_path else { continue };
         let parts: Vec<&str> = path.split('.').collect();
         let [_, name] = parts.as_slice() else { continue };
-        let Some((choice, open)) = value_kind(&schema, name).and_then(buttons_of) else { continue };
-        let [has_choice, has_open] = c.explicit_buttons;
-        if !has_choice {
-            c.values.choice_button = Some(choice);
+        if let Some((choice, open)) = value_kind(&schema, name).and_then(buttons_of) {
+            let [has_choice, has_open] = c.explicit_buttons;
+            if !has_choice {
+                c.values.choice_button = Some(choice);
+            }
+            if !has_open {
+                c.values.open_button = Some(open);
+            }
         }
-        if !has_open {
-            c.values.open_button = Some(open);
+        if !c.explicit_value_type {
+            if let Some(spec) = own_value_type(&schema, name) {
+                c.values.value_type = Some(spec);
+            }
         }
     }
 }

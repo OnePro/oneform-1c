@@ -85,9 +85,13 @@ pub struct ObjectSchema {
     /// `ChartOfAccountsRef`, any other `...Ref`, `String`, `Number`, `Date`, `Time`, `Boolean`, `Composite`; `None` when it
     /// cannot be derived (the type is missing or not understood).
     pub attr_kinds: Vec<Option<String>>,
-    /// Stream pattern of each attribute of a processor container, parallel to `attrs` (empty for an object XML); only
-    /// a reference needs it, to find its kind with [`ObjectSchema::resolve_ref_kinds`].
+    /// Stream pattern of each attribute, parallel to `attrs`: read from the metadata tree of a processor container;
+    /// built from the `Type` of an object XML (a single primitive type, or a single reference type that the lookup
+    /// knows; `None` otherwise). [`ObjectSchema::resolve_ref_kinds`] uses it to find the kind of a reference.
     pub(crate) attr_patterns: Vec<Option<String>>,
+    /// `(name, stream pattern)` of the standard attributes whose type the object XML states: the `Код` /
+    /// `Наименование` of a catalog, the `Номер` / `Дата` of a document.
+    pub(crate) std_patterns: Vec<(String, String)>,
     pub tabular: Vec<TabularSchema>,
     /// Standard attributes of `kind` that this object does not have (a catalog without code, without
     /// description, not hierarchical, without owners); a link to them would be invalid.
@@ -156,6 +160,21 @@ impl ObjectSchema {
         }
     }
 
+    /// Stream pattern of the value type of the attribute `name` of the object itself (`{"Pattern",...}`); `None` when
+    /// the name is missing or ambiguous or the type is not a single one that is known.
+    pub fn attr_pattern(&self, name: &str) -> Option<&str> {
+        let mut found = self.attrs.iter().enumerate().filter(|(_, (n, _))| n == name);
+        match (found.next(), found.next()) {
+            (Some((i, _)), None) => self.attr_patterns.get(i)?.as_deref(),
+            _ => None,
+        }
+    }
+
+    /// Stream pattern of the value type of the standard attribute `name`, when the object XML states it.
+    pub fn std_pattern(&self, name: &str) -> Option<&str> {
+        self.std_patterns.iter().find(|(n, _)| n == name).map(|(_, p)| p.as_str())
+    }
+
     /// The tabular section `name`.
     pub fn resolve_tabular(&self, name: &str) -> Resolved<&TabularSchema> {
         let mut found = self.tabular.iter().filter(|t| t.name == name);
@@ -218,10 +237,24 @@ impl ObjectSchema {
             if prop("Hierarchical").is_some_and(|v| v != "true") {
                 schema.std_absent.push("Родитель".into());
             }
+            let (len, variable) = (prop("CodeLength").and_then(|v| v.parse::<i64>().ok()), prop("CodeAllowedLength").is_none_or(|v| v != "Fixed"));
+            if let (Some(len @ 1..), true) = (len, prop("CodeType").is_some_and(|v| v == "String")) {
+                schema.std_patterns.push(("Код".into(), string_pattern(len, variable)));
+            }
+            if let Some(len @ 1..) = prop("DescriptionLength").and_then(|v| v.parse::<i64>().ok()) {
+                schema.std_patterns.push(("Наименование".into(), string_pattern(len, true)));
+            }
             let owners = xchild(obj, "Properties").and_then(|p| xchild(p, "Owners"));
             if owners.is_some_and(|o| !o.children().any(|c| c.is_element())) {
                 schema.std_absent.push("Владелец".into());
             }
+        }
+        if obj.tag_name().name() == "Document" {
+            let prop = |name: &str| xchild(obj, "Properties").and_then(|p| xchild(p, name)).and_then(|e| e.text()).map(str::trim);
+            if let (Some(len @ 1..), Some("String")) = (prop("NumberLength").and_then(|v| v.parse::<i64>().ok()), prop("NumberType")) {
+                schema.std_patterns.push(("Номер".into(), string_pattern(len, prop("NumberAllowedLength") != Some("Fixed"))));
+            }
+            schema.std_patterns.push(("Дата".into(), r#"{"Pattern",{"D"}}"#.into()));
         }
         let Some(children) = xchild(obj, "ChildObjects") else { return Some(schema) };
         for e in children.children().filter(|c| c.is_element()) {
@@ -229,7 +262,9 @@ impl ObjectSchema {
             match e.tag_name().name() {
                 "Attribute" | "Dimension" | "Resource" => {
                     schema.attrs.push((name, uuid));
-                    schema.attr_kinds.push(xchild(e, "Properties").and_then(|p| xchild(p, "Type")).and_then(xml_type_kind));
+                    let ty = xchild(e, "Properties").and_then(|p| xchild(p, "Type"));
+                    schema.attr_kinds.push(ty.and_then(xml_type_kind));
+                    schema.attr_patterns.push(ty.and_then(|t| xml_type_pattern(t, lookup)).map(|(pattern, _)| pattern));
                 }
                 "TabularSection" => {
                     let mut columns = Vec::new();
@@ -404,6 +439,11 @@ fn pattern_kind(pattern: &str) -> Option<String> {
         _ => return None,
     }
     .to_string())
+}
+
+/// Pattern of a string of `len` characters (`{"S",len,1}` is a variable length, `{"S",len,0}` a fixed one).
+fn string_pattern(len: i64, variable: bool) -> String {
+    format!(r#"{{"Pattern",{{"S",{len},{}}}}}"#, i32::from(variable))
 }
 
 /// Stream pattern text of the `Type` element of an attribute (`v8:Type` with its qualifiers): a single

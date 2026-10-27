@@ -2598,6 +2598,30 @@ fn added_control_without_anchors_gets_designer_defaults_and_list_entries() {
     assert!(own[1].is_empty() && own[3].is_empty() && own[4].is_empty() && own[5].is_empty());
 }
 
+/// The new label (500,500 80x20) of `added_label`-like XML with panel 13 edited by `edit`; its resolved top edge.
+fn top_edge_of_label_next_to_edited_panel(from: &str, to: &str, anchors: &str) -> Option<(i64, i64, i64)> {
+    let moved = mutate_in("<Panel name=\"Панель1\" id=\"13\">", from, to);
+    let geometry = "<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height>";
+    let edited = insert_before_table1(&moved, &label_xml("Добавленная", 999, geometry, anchors));
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+    assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+    anchor_edges(&pf.bytes, pf.allocated[0].1)[0]
+}
+
+#[test]
+fn automatic_anchors_of_an_added_control_use_the_edited_geometry_of_existing_controls() {
+    // the panel (id 13, bottom 377) is the control above the new label in the stream; the same edit moves it below
+    // the label, so the label hangs below the next control above (the list box id 10, bottom 218)
+    assert_eq!(top_edge_of_label_next_to_edited_panel("<Top>223</Top>", "<Top>600</Top>", ""), Some((10, 1, 500 - 218)));
+    // the panel grows: it still is above the label, the gap is measured from its new bottom (223 + 200)
+    assert_eq!(top_edge_of_label_next_to_edited_panel("<Height>154</Height>", "<Height>200</Height>", ""), Some((13, 1, 500 - 423)));
+    // a shift of the panel that keeps it above the label changes nothing
+    assert_eq!(top_edge_of_label_next_to_edited_panel("<Left>420</Left>", "<Left>421</Left>", ""), Some((13, 1, 500 - 377)));
+    // explicit anchors of the new control still win
+    let explicit = "<Anchors top=\"Top\" topOffset=\"500\"/>";
+    assert_eq!(top_edge_of_label_next_to_edited_panel("<Top>223</Top>", "<Top>600</Top>", explicit), Some((0, 0, 500)));
+}
+
 #[test]
 fn explicit_anchors_to_an_existing_control_update_its_list() {
     let before = geom_lists(stream("DonorForm").source(), 7);
@@ -3168,6 +3192,160 @@ mod object_binding {
         let form = parse_form_xml(baseline("DonorForm").as_bytes(), "baseline").unwrap();
         let v = &form.control(id).unwrap().values;
         (v.choice_button, v.open_button)
+    }
+
+    const PARTNER_TYPE: &str = "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38";
+
+    /// An object whose attributes have the types of the own value type of a field (with qualifiers and a type lookup).
+    fn own_type_schema(kind: &str) -> ObjectSchema {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("Catalogs")).unwrap();
+        std::fs::write(
+            dir.path().join("Catalogs").join("Контрагенты.xml"),
+            format!(
+                r#"<Obj xmlns:xr="http://v8.1c.ru/8.3/xcf/readable"><InternalInfo><xr:GeneratedType name="CatalogRef.Контрагенты" category="Ref"><xr:TypeId>{PARTNER_TYPE}</xr:TypeId></xr:GeneratedType></InternalInfo></Obj>"#
+            ),
+        )
+        .unwrap();
+        let lookup = oneform::metaref::ConfigTypeLookup::from_config_dir(dir.path());
+        let string = |len: i64, allowed: &str| format!("<v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>{len}</v8:Length><v8:AllowedLength>{allowed}</v8:AllowedLength></v8:StringQualifiers>");
+        let date = |fractions: &str| format!("<v8:Type>xs:dateTime</v8:Type><v8:DateQualifiers><v8:DateFractions>{fractions}</v8:DateFractions></v8:DateQualifiers>");
+        let attrs: String = [
+            ("Комментарий", string(40, "Variable")),
+            ("ФиксСтрока", string(5, "Fixed")),
+            ("Срок", date("Date")),
+            ("Момент", date("DateTime")),
+            ("Сумма", "<v8:Type>xs:decimal</v8:Type><v8:NumberQualifiers><v8:Digits>15</v8:Digits><v8:FractionDigits>2</v8:FractionDigits><v8:AllowedSign>Nonnegative</v8:AllowedSign></v8:NumberQualifiers>".to_string()),
+            ("Флаг", "<v8:Type>xs:boolean</v8:Type>".to_string()),
+            ("Контрагент", "<v8:Type>cfg:CatalogRef.Контрагенты</v8:Type>".to_string()),
+            ("Чужой", "<v8:Type>cfg:CatalogRef.НетТакого</v8:Type>".to_string()),
+            ("Разное", "<v8:Type>cfg:CatalogRef.Контрагенты</v8:Type><v8:Type>xs:string</v8:Type>".to_string()),
+        ]
+        .iter()
+        .enumerate()
+        .map(|(i, (name, ty))| {
+            format!("<Attribute uuid=\"11111111-0000-0000-0000-0000000002{i:02}\"><Properties><Name>{name}</Name><Type>{ty}</Type></Properties></Attribute>")
+        })
+        .collect();
+        let xml = object_xml(kind)
+            .replace("<MetaDataObject ", "<MetaDataObject xmlns:v8=\"http://v8.1c.ru/8.1/data/core\" ")
+            .replace(
+                "<Properties><Name>Объект</Name></Properties>",
+                "<Properties><Name>Объект</Name><CodeLength>9</CodeLength><CodeType>String</CodeType><CodeAllowedLength>Fixed</CodeAllowedLength><DescriptionLength>50</DescriptionLength><NumberLength>11</NumberLength><NumberType>String</NumberType><NumberAllowedLength>Variable</NumberAllowedLength></Properties>",
+            )
+            .replace("<TabularSection", &format!("{attrs}<TabularSection"));
+        ObjectSchema::from_object_xml_with(&xml, Some(&lookup)).unwrap()
+    }
+
+    /// The patched stream of the pack that adds a field bound to `name` with `extra` XML.
+    fn patch_added_own_type(kind: &str, name: &str, extra: &str) -> PatchedForm {
+        let s = stream("DonorForm");
+        let edited = with_added_field("НовоеПоле", 999, &format!("{}{extra}", bind(name)), &baseline("DonorForm"));
+        let pf = with_object_schema(Some(own_type_schema(kind)), || patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes())).unwrap();
+        assert_only_authorized_changes(s.source(), &pf);
+        pf
+    }
+
+    /// The `ValueType` of the field that the pack of `extra` adds, read back from the stream.
+    fn added_value_type(kind: &str, name: &str, extra: &str) -> Option<oneform::form_patch::ValueTypeSpec> {
+        let pf = patch_added_own_type(kind, name, extra);
+        let id = pf.allocated[0].1;
+        let mut lookup = lookup(kind);
+        for (n, u) in &own_type_schema(kind).attrs {
+            lookup.insert(u.to_lowercase(), n.clone());
+        }
+        decode_with(&pf.bytes, &lookup).control(id).unwrap().values.value_type.clone()
+    }
+
+    fn vt(kind: &str, f: impl FnOnce(&mut oneform::form_patch::ValueTypeSpec)) -> Option<oneform::form_patch::ValueTypeSpec> {
+        let mut v = oneform::form_patch::ValueTypeSpec { kind: kind.to_string(), ..Default::default() };
+        f(&mut v);
+        Some(v)
+    }
+
+    #[test]
+    fn an_added_field_gets_the_own_value_type_of_its_attribute() {
+        // dates: `Date` and `DateTime` are different patterns
+        assert_eq!(added_value_type("Document", "Срок", ""), vt("Date", |_| {}));
+        assert_eq!(added_value_type("Document", "Момент", ""), vt("DateTime", |_| {}));
+        assert_eq!(added_value_type("Document", "Дата", ""), vt("DateTime", |_| {}));
+        // numbers: digits and fraction (the sign flag is not part of `Form.xml`)
+        assert_eq!(added_value_type("Document", "Сумма", ""), vt("Number", |v| (v.digits, v.fraction_digits) = (Some(15), Some(2))));
+        // strings: the length
+        assert_eq!(added_value_type("Document", "Комментарий", ""), vt("String", |v| v.length = Some(40)));
+        assert_eq!(added_value_type("Document", "Флаг", ""), vt("Boolean", |_| {}));
+        // a reference to a catalog of the configuration
+        assert_eq!(added_value_type("Document", "Контрагент", ""), vt("Ref", |v| v.ref_guids = vec![PARTNER_TYPE.to_string()]));
+        // standard attributes: the length that the object states
+        assert_eq!(added_value_type("Document", "Номер", ""), vt("String", |v| v.length = Some(11)));
+        assert_eq!(added_value_type("Catalog", "Код", ""), vt("String", |v| v.length = Some(9)));
+        assert_eq!(added_value_type("Catalog", "Наименование", ""), vt("String", |v| v.length = Some(50)));
+    }
+
+    #[test]
+    fn the_flags_of_the_own_value_type_reach_the_stream() {
+        let patterns = |kind: &str, name: &str| {
+            let pf = patch_added_own_type(kind, name, "");
+            let text = String::from_utf8_lossy(&pf.bytes).split_whitespace().collect::<String>();
+            ["{\"Pattern\",{\"N\",15,2,1}}", "{\"Pattern\",{\"S\",5,0}}", "{\"Pattern\",{\"S\",40,1}}", "{\"Pattern\",{\"S\",9,0}}"].map(|p| text.contains(p))
+        };
+        assert_eq!(patterns("Document", "Сумма"), [true, false, false, false], "non-negative number");
+        assert_eq!(patterns("Document", "ФиксСтрока"), [false, true, false, false], "fixed string");
+        assert_eq!(patterns("Document", "Комментарий"), [false, false, true, false], "variable string");
+        assert_eq!(patterns("Catalog", "Код"), [false, false, false, true], "fixed length code");
+    }
+
+    #[test]
+    fn an_explicit_value_type_wins_over_the_attribute_type() {
+        let own = r#"<ValueType kind="String" composite="false" length="7"/>"#;
+        assert_eq!(added_value_type("Document", "Комментарий", own), vt("String", |v| v.length = Some(7)));
+        assert_eq!(added_value_type("Document", "Контрагент", own), vt("String", |v| v.length = Some(7)));
+    }
+
+    #[test]
+    fn a_composite_or_unknown_type_leaves_the_value_type_of_the_donor() {
+        let donor = added_value_type("Document", "ИНН", "");
+        assert_eq!(donor.as_ref().map(|v| v.kind.as_str()), Some("ValueList"), "the donor field carries a value list");
+        for name in ["Разное", "Чужой"] {
+            assert_eq!(added_value_type("Document", name, ""), donor, "{name}");
+        }
+        // a standard attribute whose type the object XML does not state
+        assert_eq!(added_value_type("Catalog", "Родитель", ""), donor);
+    }
+
+    #[test]
+    fn the_pack_verification_expects_the_defaulted_value_type() {
+        let s = stream("DonorForm");
+        let base = baseline("DonorForm");
+        let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+        let tree = |xml: &str, bytes: &[u8]| -> oneform::transaction::Tree {
+            [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), bytes.to_vec())].into_iter().collect()
+        };
+        let plan = |edited: &str| {
+            with_object_schema(Some(own_type_schema("Document")), || {
+                oneform::pack::plan_layout_patch(&layout, &tree(edited, s.source()), &tree(&base, s.source()))
+            })
+            .unwrap()
+            .expect("a layout edit")
+        };
+        let edited = with_added_field("НовоеПоле", 999, &bind("Комментарий"), &base);
+        let lp = plan(&edited);
+        let mut lookup = lookup("Document");
+        for (n, u) in &own_type_schema("Document").attrs {
+            lookup.insert(u.to_lowercase(), n.clone());
+        }
+        let staged_xml = {
+            let doc = roxmltree::Document::parse(&base).unwrap();
+            let (id, fname) = (doc.root_element().attribute("id").unwrap(), doc.root_element().attribute("name").unwrap());
+            let model = decode_oof_stream(&lp.patched.bytes, id, Some(&lookup)).unwrap();
+            let xml = render_form_xml(&common::form_info(id, fname, &lp.patched.bytes), &model).unwrap();
+            String::from_utf8(enrich_ext_properties(&lp.patched.bytes, &xml).unwrap()).unwrap().replace("\r\n", "\n")
+        };
+        assert!(staged_xml.contains("<ValueType kind=\"String\" composite=\"false\" length=\"40\"/>"), "{staged_xml}");
+        lp.verify_staged(&tree(&staged_xml, &lp.patched.bytes)).unwrap_or_else(|e| panic!("{e} {:?}", e.params));
+        // a request for another length is a different request: the built field has 40
+        let other = with_added_field("НовоеПоле", 999, &format!("{}<ValueType kind=\"String\" composite=\"false\" length=\"10\"/>", bind("Комментарий")), &base);
+        assert!(plan(&other).verify_staged(&tree(&staged_xml, &lp.patched.bytes)).is_err(), "length 40 built, 10 requested");
     }
 
     #[test]
