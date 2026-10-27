@@ -15,3 +15,9 @@ author's machine and must be adjusted.
 
 Result (26.10.2026): catalog and document forms of a test configuration, a test processor — runtime `Данные` of the new
 controls equals the requested path and the fields show the values of an existing object; the other controls are unchanged.
+
+Tables (A1b, 26.10.2026): `mk_epf_table.py ro|ed` adds a `Table` bound to the tabular section `Корзина` of the test
+processor to its form `ФормаВыбораПоиска` (read-only or editable reference column); the same flow with a document of the test
+configuration (table with `НомерСтроки`, a reference column, an enum column, a number column; then rebinding a column,
+then adding and removing columns) gave runtime `Данные` and editors equal to the request, and the properties equal to
+those of the existing columns of the same kind.
