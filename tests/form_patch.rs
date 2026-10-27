@@ -6227,3 +6227,260 @@ mod panel_pages {
         assert!(text.contains("separate pack"), "{text}");
     }
 }
+
+// ---------------------------------------------------------------- form attributes on their own, value tables
+
+fn with_attributes(xml: &str, attributes: &str) -> String {
+    replace_once(xml, "  </Attributes>", &format!("{attributes}  </Attributes>"))
+}
+
+/// An added `Table` (before `ТабличноеПоле1`) with the given `DataPath` and `<Columns>` content.
+fn with_table(xml: &str, table_attribute: &str, columns: &str) -> String {
+    let table = format!(
+        "<Table name=\"ТаблицаДанных\" id=\"999\">\n          {table_attribute}\n          <Left>520</Left><Top>400</Top><Width>300</Width><Height>100</Height>\n          <ZOrder>60</ZOrder><TabOrder>60</TabOrder>\n          <Columns>\n{columns}          </Columns>\n        </Table>\n        "
+    );
+    replace_once(xml, "<Table name=\"ТабличноеПоле1\"", &format!("{table}<Table name=\"ТабличноеПоле1\""))
+}
+
+const VT_ATTRIBUTE: &str = "    <Attribute id=\"16\" name=\"Таблица\">\n      <ValueType kind=\"ValueTable\" composite=\"false\"/>\n    </Attribute>\n";
+
+fn vt_column(name: &str, id: i64, width: i64, children: &str) -> String {
+    format!(
+        "            <Column name=\"{name}\" id=\"{id}\">\n              <Header><Item language=\"ru\">{name}</Item></Header>\n              <Width>{width}</Width>\n              {children}\n            </Column>\n"
+    )
+}
+
+fn compact(bytes: &[u8]) -> String {
+    String::from_utf8(bytes.to_vec()).unwrap().chars().filter(|c| !c.is_whitespace()).collect()
+}
+
+fn squeezed(text: &str) -> String {
+    text.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
+#[test]
+fn form_attributes_of_every_simple_type_are_added_without_a_binding() {
+    let attributes = format!(
+        "    <Attribute id=\"16\" name=\"Строка\"><ValueType kind=\"String\" length=\"50\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"17\" name=\"Счётчик\"><ValueType kind=\"Number\" digits=\"10\" fractionDigits=\"0\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"18\" name=\"Сумма\"><ValueType kind=\"Number\" digits=\"15\" fractionDigits=\"2\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"19\" name=\"День\"><ValueType kind=\"Date\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"20\" name=\"Момент\"><ValueType kind=\"DateTime\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"21\" name=\"Флаг\"><ValueType kind=\"Boolean\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"22\" name=\"Ссылка\"><ValueType kind=\"Ref\" composite=\"false\" refGuid=\"{GUID_A}\"/></Attribute>\n\
+         \x20   <Attribute id=\"23\" name=\"Таблица\"><ValueType kind=\"ValueTable\" composite=\"false\"/></Attribute>\n\
+         \x20   <Attribute id=\"24\" name=\"БезТипа\"/>\n\
+         \x20   <Attribute id=\"25\" name=\"Главный\"><Main>true</Main><ValueType kind=\"String\" composite=\"false\"/></Attribute>\n"
+    );
+    let edited = with_attributes(&baseline("DonorForm"), &attributes);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let attr = |id: i64| got.attributes.iter().find(|a| a.id == id).unwrap_or_else(|| panic!("attribute {id}"));
+    assert_eq!((attr(16).name.as_str(), attr(16).kind.as_str(), attr(16).length), ("Строка", "String", Some(50)));
+    assert_eq!((attr(17).kind.as_str(), attr(17).fraction_digits), ("Number", Some(0)));
+    assert_eq!((attr(18).digits, attr(18).fraction_digits), (Some(15), Some(2)));
+    assert_eq!(attr(19).kind, "Date");
+    assert_eq!(attr(20).kind, "DateTime");
+    assert_eq!(attr(21).kind, "Boolean");
+    assert_eq!((attr(22).kind.as_str(), attr(22).ref_guids.clone()), ("Ref", vec![GUID_A.to_string()]));
+    assert_eq!(attr(23).kind, "ValueTable");
+    assert_eq!(attr(24).kind, "");
+    assert!(attr(25).main && !attr(16).main);
+    assert_eq!(got.controls.len(), parse_form_xml(baseline("DonorForm").as_bytes(), "baseline").unwrap().controls.len());
+
+    let text = compact(&pf.bytes);
+    // a string with a length is one of variable length; an attribute that is not bound to a control is not "main"
+    for needle in [
+        "{{16},0,0,1,\"Строка\",{\"Pattern\",{\"S\",50,1}}}",
+        "{{17},0,0,1,\"Счётчик\",{\"Pattern\",{\"N\",10,0,0}}}",
+        "{{18},0,0,1,\"Сумма\",{\"Pattern\",{\"N\",15,2,0}}}",
+        "{{19},0,0,1,\"День\",{\"Pattern\",{\"D\",\"D\"}}}",
+        "{{20},0,0,1,\"Момент\",{\"Pattern\",{\"D\"}}}",
+        "{{21},0,0,1,\"Флаг\",{\"Pattern\",{\"B\"}}}",
+        "{{23},0,0,1,\"Таблица\",{\"Pattern\",{\"#\",acf6192e-81ca-46ef-93a6-5a6968b78663}}}",
+        "{{25},1,0,1,\"Главный\"",
+    ] {
+        assert!(text.contains(&squeezed(needle)), "{needle}");
+    }
+    // the next attribute id follows the highest one
+    assert!(text.contains("{{1},26,{25,{{1},0,0,1"), "next attribute id");
+}
+
+fn stream_of(bytes: &[u8]) -> SpannedMetadata {
+    parse_spanned(bytes).unwrap()
+}
+
+#[test]
+fn an_unused_attribute_is_removed_and_a_used_one_is_refused() {
+    let edited = with_attributes(
+        &baseline("DonorForm"),
+        "    <Attribute id=\"16\" name=\"Счётчик\"><ValueType kind=\"Number\" digits=\"10\" fractionDigits=\"0\" composite=\"false\"/></Attribute>\n",
+    );
+    let (pf, _) = structural_round_trip("DonorForm", &edited);
+
+    // the packed form is the new baseline: the attribute is removed again
+    let packed = stream_of(&pf.bytes);
+    let base = decode_xml("DonorForm", &pf.bytes);
+    assert!(base.contains("name=\"Счётчик\""));
+    let (without, _) = cut_block(&base, "<Attribute id=\"16\"", "</Attribute>");
+    let pf2 = patch_form(&packed, base.as_bytes(), without.as_bytes()).unwrap();
+    assert_only_authorized_changes(packed.source(), &pf2);
+    let again = parse_form_xml(decode_xml("DonorForm", &pf2.bytes).as_bytes(), "decoded").unwrap();
+    assert!(again.attributes.iter().all(|a| a.id != 16));
+    assert_eq!(again.attributes.len(), parse_form_xml(baseline("DonorForm").as_bytes(), "baseline").unwrap().attributes.len());
+    assert!(!compact(&pf2.bytes).contains("\"Счётчик\""));
+    // the removed id is not given out again
+    assert!(compact(&pf2.bytes).contains(",17,{"), "next attribute id");
+
+    // ПолеВвода7 is bound to the attribute 14: the attribute stays while the field stays
+    let (without_attr, _) = cut_block(&baseline("DonorForm"), "<Attribute id=\"14\"", "</Attribute>");
+    let (kind, text) = rejected(&without_attr);
+    assert_eq!(kind, "form-attribute-in-use", "{text}");
+    assert!(text.contains("ПолеВвода7") && text.contains("cannot be removed") && text.contains("form attributes"), "{text}");
+
+    // removing the field together with its attribute is fine
+    let (without_both, _) = cut_block(&without_attr, "<InputField name=\"ПолеВвода7\"", "</InputField>");
+    let (_, got) = structural_round_trip("DonorForm", &without_both);
+    assert!(got.attributes.iter().all(|a| a.id != 14) && got.control(33).is_none());
+}
+
+#[test]
+fn an_attribute_that_cannot_be_read_says_so_in_terms_of_attributes() {
+    let with_columns = "    <Attribute id=\"16\" name=\"Таблица\">\n      <ValueType kind=\"ValueTable\" composite=\"false\"/>\n      <Columns><Column name=\"А\"/></Columns>\n    </Attribute>\n";
+    for (attribute, part) in [
+        (with_columns, "<Columns> is not supported inside an <Attribute>"),
+        ("    <Attribute id=\"16\" name=\"Число\"><ValueType kind=\"Number\" digits=\"0\" composite=\"false\"/></Attribute>\n", "this <ValueType> is not supported"),
+        ("    <Attribute id=\"16\" name=\"1плохо\"><ValueType kind=\"String\" composite=\"false\"/></Attribute>\n", "is not an identifier"),
+        ("    <Attribute id=\"3\" name=\"Дубль\"><ValueType kind=\"String\" composite=\"false\"/></Attribute>\n", "the id 3 is used twice"),
+    ] {
+        let (kind, text) = rejected(&with_attributes(&baseline("DonorForm"), attribute));
+        assert!(text.contains("form attributes") && text.contains(part), "{part}: {kind}: {text}");
+        if part != "the id 3 is used twice" {
+            assert!(!text.contains("existing controls can be edited"), "{text}");
+        }
+    }
+}
+
+#[test]
+fn a_table_is_bound_to_a_new_value_table_attribute_with_its_columns() {
+    let columns = [
+        vt_column("Наименование", 0, 150, "<ValueType kind=\"String\" length=\"50\" composite=\"false\"/><Editor>InputField</Editor>"),
+        vt_column("Сумма", 1, 80, "<ValueType kind=\"Number\" digits=\"12\" fractionDigits=\"2\" composite=\"false\"/>"),
+        vt_column("Пометка", 2, 60, "<ValueType kind=\"Boolean\" composite=\"false\"/>"),
+        vt_column("День", 3, 90, "<ValueType kind=\"Date\" composite=\"false\"/><ReadOnly>true</ReadOnly>"),
+        vt_column("Момент", 4, 110, "<ValueType kind=\"DateTime\" composite=\"false\"/><Visible>false</Visible>"),
+        vt_column("Примечание", 5, 120, "<DataPath attributeId=\"16\">Таблица.Заметка</DataPath>"),
+    ]
+    .concat();
+    let edited = with_table(&with_attributes(&baseline("DonorForm"), VT_ATTRIBUTE), "<DataPath attributeId=\"16\">Таблица</DataPath>", &columns);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let table = got.control(pf.allocated[0].1).unwrap();
+    assert_eq!(table.type_name, "Table");
+    assert_eq!(table.values.data_path, Some((16, "Таблица".to_string())));
+    let cols = &table.values.columns;
+    assert_eq!(
+        cols.iter().map(|c| (c.name.as_str(), c.id, c.field_name.as_deref(), c.width)).collect::<Vec<_>>(),
+        vec![
+            ("Наименование", Some(0), Some("Наименование"), 150),
+            ("Сумма", Some(1), Some("Сумма"), 80),
+            ("Пометка", Some(2), Some("Пометка"), 60),
+            ("День", Some(3), Some("День"), 90),
+            ("Момент", Some(4), Some("Момент"), 110),
+            ("Примечание", Some(5), Some("Заметка"), 120),
+        ]
+    );
+    assert_eq!(
+        cols.iter().map(|c| (c.read_only, c.visible)).collect::<Vec<_>>(),
+        vec![(false, true), (false, true), (false, true), (true, true), (false, false), (false, true)]
+    );
+    assert!(cols.iter().all(|c| c.editor.as_deref() == Some("InputField")));
+    assert_eq!(cols[0].header, vec![("ru".to_string(), "Наименование".to_string())]);
+
+    // `extract` shows the same columns, with the value types of the request and the field names in the paths
+    let decoded = decode_xml("DonorForm", &pf.bytes);
+    let at = decoded.find("<Table name=\"ТаблицаДанных\"").unwrap();
+    let shown = &decoded[at..at + decoded[at..].find("</Table>").unwrap()];
+    let flat = shown.split_whitespace().collect::<Vec<_>>().join(" ");
+    for needle in [
+        "<DataPath attributeId=\"16\">Таблица</DataPath>",
+        "<DataPath attributeId=\"16\">Таблица.Наименование</DataPath>",
+        "<ValueType kind=\"String\" composite=\"false\" length=\"50\"/>",
+        "<ValueType kind=\"Number\" composite=\"false\" digits=\"12\" fractionDigits=\"2\"/>",
+        "<ValueType kind=\"Boolean\" composite=\"false\"/>",
+        "<ValueType kind=\"Date\" composite=\"false\"/>",
+        "<ValueType kind=\"DateTime\" composite=\"false\"/>",
+        "<DataPath attributeId=\"16\">Таблица.Заметка</DataPath>",
+        "<ReadOnly>true</ReadOnly>",
+    ] {
+        assert!(flat.contains(needle), "{needle} is missing from:\n{shown}");
+    }
+
+    // the value table columns are in the stream: the field is named in the record, the patterns are the types'
+    let text = compact(&pf.bytes);
+    for needle in [
+        "{\"Pattern\",{\"S\",50,1}}",
+        "{\"Pattern\",{\"N\",12,2,0}}",
+        "{\"Pattern\",{\"B\"}}",
+        "{\"Pattern\",{\"D\",\"D\"}}",
+        "{\"Pattern\",{\"D\"}}",
+        "\"Заметка\",\"\",\"\",0",
+    ] {
+        assert!(text.contains(needle), "{needle}");
+    }
+    // the donor's own columns are not in the new table, the other tables keep theirs
+    assert_eq!(got.control(6).unwrap().values.columns.len(), 2);
+    // the table is linked to the attribute as the donor tables are: {1,{aid}}
+    assert!(text.contains(&format!("{{{},{{1,{{16}}}}}}", pf.allocated[0].1)), "the link of the table");
+}
+
+#[test]
+fn a_table_can_be_bound_to_an_existing_value_table_attribute() {
+    // ПолеВвода4 (id 11) is a value table attribute of the donor form
+    let columns = vt_column(
+        "Количество",
+        0,
+        100,
+        "<ValueType kind=\"Number\" digits=\"10\" fractionDigits=\"3\" nonNegative=\"true\" composite=\"false\"/>",
+    );
+    let edited = with_table(&baseline("DonorForm"), "<DataPath attributeId=\"11\">ПолеВвода4</DataPath>", &columns);
+    let (pf, got) = structural_round_trip("DonorForm", &edited);
+    let table = got.control(pf.allocated[0].1).unwrap();
+    assert_eq!(table.values.data_path, Some((11, "ПолеВвода4".to_string())));
+    assert_eq!(table.values.columns[0].field_name.as_deref(), Some("Количество"));
+    assert!(compact(&pf.bytes).contains("{\"Pattern\",{\"N\",10,3,1}}"));
+}
+
+#[test]
+fn columns_of_a_value_table_that_cannot_be_written_are_refused_with_the_reason() {
+    let base = with_attributes(&baseline("DonorForm"), VT_ATTRIBUTE);
+    let check = |columns: String, part: &str| {
+        let (kind, text) = rejected(&with_table(&base, "<DataPath attributeId=\"16\">Таблица</DataPath>", &columns));
+        assert!(text.contains(part), "{part}: {kind}: {text}");
+    };
+    check(
+        vt_column("А", 0, 100, "<ValueType kind=\"Ref\" composite=\"false\" refGuid=\"47e6dd42-cd5c-4e3a-9bc4-14816ed53d38\"/>"),
+        "is not supported for a column",
+    );
+    check(vt_column("А", 0, 100, "<ValueType kind=\"Time\" composite=\"false\"/>"), "not supported for a column");
+    check(vt_column("А", 0, 100, "<ValueType kind=\"Number\" digits=\"5\" fractionDigits=\"6\" composite=\"false\"/>"), "fractionDigits");
+    check(vt_column("А", 0, 100, "<Editor>CheckBox</Editor>"), "only InputField");
+    check(vt_column("А", 0, 100, "<Events><OnChange id=\"2147483647\">АПриИзменении</OnChange></Events>"), "<Events> is not supported");
+    check(vt_column("А", 0, 100, "<DataPath attributeId=\"16\">Другая.А</DataPath>"), "must be Таблица.<field");
+    check(vt_column("А", 0, 100, "<DataPath attributeId=\"3\">Таблица.А</DataPath>"), "attributeId must be 16");
+    check(vt_column("А", 0, 100, "<CheckBoxDataPath attributeId=\"16\">Таблица.А</CheckBoxDataPath>"), "<CheckBoxDataPath>");
+    check([vt_column("А", 0, 100, ""), vt_column("А", 1, 100, "")].concat(), "<Columns> is not understood");
+    check([vt_column("А", 0, 100, ""), vt_column("Б", 0, 100, "")].concat(), "the id 0 is used");
+    check(vt_column("1А", 0, 100, ""), "must be an identifier");
+
+    // Columns on a table that is bound to neither a tabular section nor a value table
+    for table_attribute in ["<DataPath attributeId=\"14\">ПолеВвода7</DataPath>", ""] {
+        let (_, text) = rejected(&with_table(&baseline("DonorForm"), table_attribute, &vt_column("А", 0, 100, "")));
+        assert!(text.contains("tabular section of the object") && text.contains("ValueTable"), "{text}");
+    }
+}
+
+#[test]
+fn columns_of_an_existing_value_table_are_not_added_or_removed() {
+    let (without, _) = cut_block(&baseline("DonorForm"), "<Column name=\"Колонка2\"", "</Column>");
+    let (kind, text) = rejected(&without);
+    assert!(text.contains("ТабличноеПоле1") && text.contains("olumn"), "{kind}: {text}");
+}

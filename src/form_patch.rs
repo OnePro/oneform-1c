@@ -2397,6 +2397,8 @@ pub struct ColumnSource {
     pub picture: Option<ColumnLink>,
     /// `(line, tag)` of the children of the column that the parser did not take into a value.
     pub leftovers: Vec<(u32, String)>,
+    /// The `<ValueType>` of the column: its line and the type (`None`: not a plain type).
+    pub value_type: Option<(u32, Option<ValueTypeSpec>)>,
 }
 
 /// A control element (a control tag directly inside `ChildItems`).
@@ -2474,6 +2476,8 @@ pub struct FormXml {
     pub form_props: FormRootProps,
     /// Non-main form attributes with deterministic ValueType patterns.
     pub attributes: Vec<FormAttribute>,
+    /// Why the list of the form attributes was not read (it then stays an opaque part of the form).
+    pub attributes_issue: Option<String>,
     /// Name of the main attribute (empty when there is none); it tells the kind of the form for `Standard:N` buttons.
     pub main_attribute: String,
     /// Controls in document order.
@@ -3538,6 +3542,13 @@ impl Parser<'_> {
                                     };
                                     ext.cell_height = Some(h);
                                 }
+                                "ValueType" => {
+                                    if !seen_tags.insert("ValueType") {
+                                        ok = false;
+                                        break;
+                                    }
+                                    source.value_type = Some((ch.line, parse_value_type_spec(ch)));
+                                }
                                 _ => {}
                             }
                         }
@@ -4068,7 +4079,9 @@ impl Parser<'_> {
     }
 }
 
-fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec<FormAttribute>) {
+/// The non-main form attributes of `Form.xml` (taken out of `shell`), the names of all attributes by id and, when
+/// the list cannot be read as a whole (so it stays an opaque part of the form), the reason.
+fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec<FormAttribute>, Option<String>) {
     let main_attr_id = shell
         .children
         .iter()
@@ -4077,10 +4090,10 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
         .and_then(|v| v.trim().parse::<i64>().ok());
     let mut attr_names: HashMap<i64, String> = HashMap::new();
     let Some(attrs_el) = shell.children.iter_mut().find(|e| e.tag == "Attributes") else {
-        return (attr_names, Vec::new());
+        return (attr_names, Vec::new(), None);
     };
     if !attrs_el.attrs.is_empty() || !attrs_el.text.trim().is_empty() {
-        return (attr_names, Vec::new());
+        return (attr_names, Vec::new(), Some("<Attributes> has attributes or text of its own".to_string()));
     }
     for a in &attrs_el.children {
         if a.tag == "Attribute" {
@@ -4092,25 +4105,37 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
             }
         }
     }
-    let mut ok = true;
     let mut extracted = Vec::new();
     let mut seen_ids = std::collections::HashSet::new();
     let mut seen_names = std::collections::HashSet::new();
-    for a in &attrs_el.children {
-        if a.tag != "Attribute" || a.attrs.len() != 2 || !a.text.trim().is_empty() {
-            ok = false;
+    let mut issue: Option<String> = None;
+    'attrs: for a in &attrs_el.children {
+        let shown = a.attrs.get("name").map_or(String::new(), |n| format!("'{n}': "));
+        let mut bad = |why: String| {
+            issue = Some(format!("line {}: attribute {shown}{why}", a.line));
+        };
+        if a.tag != "Attribute" {
+            bad(format!("<{}> is not an <Attribute>", a.tag));
             break;
         }
-        let Some(id) = a.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()).filter(|&i| i > 0) else {
-            ok = false;
+        if a.attrs.len() != 2 || !a.text.trim().is_empty() {
+            bad("only the attributes id and name are supported".to_string());
+            break;
+        }
+        let Some(id) = a.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()).filter(|&i| i >= 0) else {
+            bad("id must be a non-negative integer".to_string());
             break;
         };
         let Some(name) = a.attrs.get("name").filter(|n| !n.trim().is_empty()).cloned() else {
-            ok = false;
+            bad("name must not be empty".to_string());
             break;
         };
-        if !seen_ids.insert(id) || !seen_names.insert(name.clone()) {
-            ok = false;
+        if !seen_ids.insert(id) {
+            bad(format!("the id {id} is used twice"));
+            break;
+        }
+        if !seen_names.insert(name.clone()) {
+            bad("the name is used twice".to_string());
             break;
         }
         if Some(id) == main_attr_id {
@@ -4122,42 +4147,44 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
         let mut seen_tags = std::collections::HashSet::new();
         for ch in &a.children {
             match ch.tag.as_str() {
-                "Main" => {
-                    if !seen_tags.insert("Main") || !ch.children.is_empty() || !ch.attrs.is_empty() || (ch.text.trim() != "true" && ch.text.trim() != "false") {
-                        ok = false;
-                        break;
+                tag @ ("Main" | "StoredData") => {
+                    if !seen_tags.insert(tag.to_string()) || !ch.children.is_empty() || !ch.attrs.is_empty() || (ch.text.trim() != "true" && ch.text.trim() != "false") {
+                        bad(format!("<{tag}> must occur once and be true or false"));
+                        break 'attrs;
                     }
-                    main = ch.text.trim() == "true";
-                }
-                "StoredData" => {
-                    if !seen_tags.insert("StoredData") || !ch.children.is_empty() || !ch.attrs.is_empty() || (ch.text.trim() != "true" && ch.text.trim() != "false") {
-                        ok = false;
-                        break;
+                    if tag == "Main" {
+                        main = ch.text.trim() == "true";
+                    } else {
+                        stored = ch.text.trim() == "true";
                     }
-                    stored = ch.text.trim() == "true";
                 }
                 "ValueType" => {
-                    if !seen_tags.insert("ValueType") {
-                        ok = false;
-                        break;
+                    if !seen_tags.insert("ValueType".to_string()) {
+                        bad("<ValueType> occurs twice".to_string());
+                        break 'attrs;
                     }
                     if let Some(spec) = parse_value_type_spec(ch) {
                         vt_info = Some(spec);
                     } else {
-                        ok = false;
-                        break;
+                        bad(format!(
+                            "line {}: this <ValueType> is not supported (kind String with length, Number with digits and fractionDigits, Date, DateTime, Time, Boolean, a reference with refGuid, ValueTable, ValueTree and ValueList are)",
+                            ch.line
+                        ));
+                        break 'attrs;
                     }
                 }
-                _ => {
-                    ok = false;
-                    break;
+                other => {
+                    bad(format!("line {}: <{other}> is not supported inside an <Attribute> (columns of a value table are described by the <Table> that shows it)", ch.line));
+                    break 'attrs;
                 }
             }
         }
-        if !ok {
+        let vt = vt_info.unwrap_or_default();
+        if vt.fixed {
+            bad("strings of fixed length are not supported (a string with a length has a variable length)".to_string());
             break;
         }
-        let vt = vt_info.unwrap_or_default();
+        let variable_string = vt.kind == "String" && vt.length.is_some();
         let fa = FormAttribute {
             id,
             name,
@@ -4169,22 +4196,23 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
             digits: vt.digits,
             length: vt.length,
             non_negative: vt.non_negative,
-            fixed: vt.fixed,
+            // the flag of `{"S",length,flag}` is 1 for a string of variable length, the one a form attribute has
+            fixed: variable_string,
             ref_guids: vt.ref_guids,
         };
         if format_attr_pattern(&fa).is_none() {
-            ok = false;
+            bad("this value type cannot be written".to_string());
             break;
         }
         extracted.push(fa);
     }
-    if ok {
+    if issue.is_none() {
         attrs_el
             .children
             .retain(|a| a.attrs.get("id").and_then(|v| v.trim().parse::<i64>().ok()) == main_attr_id);
-        (attr_names, extracted)
+        (attr_names, extracted, None)
     } else {
-        (attr_names, Vec::new())
+        (attr_names, Vec::new(), issue)
     }
 }
 
@@ -4429,7 +4457,7 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         .find(|e| e.tag == "MainAttribute")
         .and_then(|e| e.attrs.get("attributeId"))
         .and_then(|v| v.trim().parse::<i64>().ok());
-    let (attr_names, attributes) = extract_form_attributes(&mut root);
+    let (attr_names, attributes, attributes_issue) = extract_form_attributes(&mut root);
     let main_attribute = main_attr_id.and_then(|id| attr_names.get(&id).cloned()).unwrap_or_default();
     let mut p = Parser { label, form: form_name, attr_names, main_attr_id, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
@@ -4442,6 +4470,7 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         form_events,
         form_props,
         attributes,
+        attributes_issue,
         main_attribute,
         controls: p.controls,
         shell,
@@ -4919,6 +4948,20 @@ fn unsupported(owner: &str, owner_type: Option<&str>, line: u32, path: &str, msg
     )
 }
 
+/// The refusal of a change of the `<Attributes>` list that is not made through the supported form attribute edits.
+fn unsupported_attribute(owner: &str, line: u32, path: &str, msg: &str, issue: Option<&String>) -> Problem {
+    let why = match issue {
+        Some(issue) => {
+            return problem(
+                "unsupported-form-value",
+                format!("line {line}: {owner}: form attributes: {issue}; the list is not supported as it is (an attribute is <Attribute id name> with <Main>, <StoredData> and a plain <ValueType>)"),
+            );
+        }
+        None => "; the main attribute of the form cannot be changed".to_string(),
+    };
+    problem("unsupported-form-value", format!("line {line}: {owner}: form attributes: {msg} at '{path}' is not supported{why}"))
+}
+
 /// How the pages of an existing panel map onto the requested ones: the result holds, for every old page, its position
 /// among the new pages (`None`: the page is removed). Pages are matched by name; when the page count is unchanged the
 /// pages whose names differ are paired by position (a rename). A reorder is a permutation of the same names.
@@ -5163,25 +5206,38 @@ pub fn diff_forms_full(
             // What the parser did not take into a value or an event cannot be written into the clone: say so
             // instead of dropping it silently (a `DataPath` whose text is not exactly the attribute name too).
             // the columns of a table bound to a tabular section are written; every refusal names its line
-            let bound = match table_binding(c) {
+            let mut refusals = |why: Vec<String>| {
+                for w in why {
+                    let text = match w.strip_prefix("line ").and_then(|t| t.split_once(": ")) {
+                        Some((line, rest)) => format!("line {line}: {}: {rest}", c.describe()),
+                        None => format!("line {}: {}: {w}", c.line, c.describe()),
+                    };
+                    problems.push(problem("added-control", text));
+                }
+            };
+            let section_bound = match table_binding(c) {
                 Ok(b) => b.is_some(),
                 Err(why) => {
-                    for w in why {
-                        let text = match w.strip_prefix("line ").and_then(|t| t.split_once(": ")) {
-                            Some((line, rest)) => format!("line {line}: {}: {rest}", c.describe()),
-                            None => format!("line {}: {}: {w}", c.line, c.describe()),
-                        };
-                        problems.push(problem("added-control", text));
-                    }
+                    refusals(why);
                     true
                 }
             };
+            let bound = section_bound
+                || match vt_binding(c, &edited.attributes) {
+                    Ok(b) => b.is_some(),
+                    Err(why) => {
+                        refusals(why);
+                        true
+                    }
+                };
             for e in &c.rest.children {
                 if matches!(e.tag.as_str(), "Events" | "ChildItems") || e.tag == CONTROL_STUB || (bound && e.tag == "Columns") {
                     continue;
                 }
                 let why = if e.tag == "DataPath" {
                     "only the name of a form attribute or \"<main attribute>.<Name>\" (an attribute of the object) is supported here"
+                } else if e.tag == "Columns" {
+                    "this element is not supported on an added control unless the table is bound to a tabular section of the object (DataPath Root.Section) or to a form attribute of the type ValueTable (DataPath is its name)"
                 } else {
                     "this element is not supported on an added control"
                 };
@@ -5193,6 +5249,7 @@ pub fn diff_forms_full(
             }
         }
     }
+    check_attribute_edits(baseline, edited, &mut problems);
     if !problems.is_empty() {
         return Err(fail(&baseline.name, &edited.label, problems));
     }
@@ -5222,7 +5279,17 @@ pub fn diff_forms_full(
     let mut diffs = Vec::new();
     diff_elements(&shell_a, &shell_b, "", &mut diffs);
     let owner = format!("form '{}'", baseline.name);
+    let mut attributes_reported = false;
     for (path, msg) in diffs {
+        if path.starts_with("Attributes") {
+            let issue = edited.attributes_issue.as_ref().or(baseline.attributes_issue.as_ref());
+            // an unreadable list differs from the baseline in every attribute: say why once
+            if issue.is_none() || !attributes_reported {
+                problems.push(unsupported_attribute(&owner, edited.shell.line, &path, &msg, issue));
+                attributes_reported = true;
+            }
+            continue;
+        }
         problems.push(unsupported(&owner, None, edited.shell.line, &path, &msg));
     }
 
@@ -5351,6 +5418,7 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     index.validate(&baseline)?;
     index.validate_mode(&edited, true)?;
     binding_defaults::apply(&mut edited, &baseline);
+    apply_value_table_defaults(&mut edited, &baseline);
     let diff = diff_forms_mode(&baseline, &edited, true)?;
     check_object_bindings(&diff, &baseline, &edited)?;
     Ok(FormPatchPlan { source, index, diff, edited })
@@ -5740,6 +5808,145 @@ fn table_binding(c: &ControlXml) -> std::result::Result<Option<TableBinding>, Ve
         .collect();
     let columns = crate::ts_table::plan_columns(root, *attr_id, ts, &requests)?;
     Ok(Some(TableBinding { uuid, type_id, columns }))
+}
+
+/// The columns of an added `Table` bound to a form attribute of the type ValueTable.
+struct VtBinding {
+    columns: Vec<crate::vt_table::VtColumn>,
+}
+
+/// The value table attribute that the `DataPath` of the added `Table` `c` names (`None`: not such a table).
+fn value_table_attribute<'a>(c: &ControlXml, attrs: &'a [FormAttribute]) -> Option<&'a FormAttribute> {
+    if c.type_name != "Table" {
+        return None;
+    }
+    let (attr_id, path) = c.values.data_path.as_ref()?;
+    if path.contains('.') {
+        return None;
+    }
+    attrs.iter().find(|a| a.id == *attr_id && a.kind == "ValueTable" && !a.composite)
+}
+
+/// The binding of an added `Table` whose `DataPath` is a ValueTable form attribute: `Ok(None)` for another table;
+/// a table without `<Columns>` keeps the columns of the donor. The errors are the refusals, each with its line.
+fn vt_binding(c: &ControlXml, attrs: &[FormAttribute]) -> std::result::Result<Option<VtBinding>, Vec<String>> {
+    use crate::vt_table::VtColumnRequest;
+    let Some(attr) = value_table_attribute(c, attrs) else { return Ok(None) };
+    let Some(columns_el) = c.rest.children.iter().find(|e| e.tag == "Columns") else { return Ok(None) };
+    if c.values.columns.len() != c.column_sources.len() || (c.values.columns.is_empty() && !columns_el.children.is_empty()) {
+        return Err(vec![format!(
+            "line {}: <Columns> is not understood (each <Column> needs name, id, Width and only the supported children)",
+            columns_el.line
+        )]);
+    }
+    let requests: Vec<VtColumnRequest> = c
+        .values
+        .columns
+        .iter()
+        .zip(&c.column_sources)
+        .map(|(v, src)| {
+            let mut unsupported: Vec<(u32, String)> =
+                src.leftovers.iter().filter(|(_, t)| t != "ValueType").map(|(line, tag)| (*line, format!("<{tag}>"))).collect();
+            for (present, what) in [
+                (!v.footer_text.is_empty(), "<FooterText>"),
+                (!v.tooltip.is_empty(), "<Tooltip>"),
+                (!v.events.is_empty(), "<Events>"),
+                (v.ext != ColumnExt::default(), "an extended property"),
+                (src.check_box.is_some(), "<CheckBoxDataPath>"),
+                (src.picture.is_some(), "<PictureDataPath>"),
+            ] {
+                if present {
+                    unsupported.push((src.line, what.to_string()));
+                }
+            }
+            VtColumnRequest {
+                line: src.line,
+                name: v.name.clone(),
+                id: v.id,
+                header: v.header.clone(),
+                width: v.width,
+                visible: v.visible,
+                read_only: v.read_only,
+                editor: v.editor.clone(),
+                attribute_id: src.attribute_id.clone(),
+                data_path: src.data_path.clone(),
+                steps: src.steps.clone(),
+                value_type: src.value_type.clone(),
+                unsupported,
+            }
+        })
+        .collect();
+    let columns = crate::vt_table::plan_columns(&attr.name, attr.id, &requests)?;
+    Ok(Some(VtBinding { columns }))
+}
+
+/// The defaults of the columns of an added table bound to a ValueTable attribute: the decoder writes the field named
+/// as the column when no `<DataPath>` is given and an `InputField` editor on every column, read-only or not.
+fn apply_value_table_defaults(edited: &mut FormXml, baseline: &FormXml) {
+    let attrs = edited.attributes.clone();
+    for c in &mut edited.controls {
+        if baseline.control(c.id).is_some() || value_table_attribute(c, &attrs).is_none() || c.values.columns.len() != c.column_sources.len() {
+            continue;
+        }
+        for v in &mut c.values.columns {
+            v.editor.get_or_insert_with(|| "InputField".to_string());
+            if v.field_name.is_none() {
+                v.field_name = Some(v.name.clone());
+            }
+        }
+    }
+}
+
+/// The control of `edited` that still uses the form attribute `aid` (its description), if any.
+fn attribute_user(edited: &FormXml, aid: i64) -> Option<String> {
+    let id = aid.to_string();
+    let same = |v: Option<&String>| v.is_some_and(|v| v.trim() == id);
+    edited
+        .controls
+        .iter()
+        .find(|c| {
+            c.values.data_path.as_ref().is_some_and(|(a, _)| *a == aid)
+                || c.values.type_link.as_ref().is_some_and(|t| t.attr_id == aid)
+                || c.rest.children.iter().any(|e| matches!(e.tag.as_str(), "DataPath" | "TypeLink") && same(e.attrs.get("attributeId")))
+                || c.column_sources.iter().any(|s| {
+                    same(s.attribute_id.as_ref())
+                        || s.check_box.as_ref().is_some_and(|l| same(l.attribute_id.as_ref()))
+                        || s.picture.as_ref().is_some_and(|l| same(l.attribute_id.as_ref()))
+                })
+        })
+        .map(ControlXml::describe)
+}
+
+/// The refusals of the form attribute edits: a new name that is not an identifier, and an attribute that is removed
+/// while a control still binds to it.
+fn check_attribute_edits(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Problem>) {
+    // a list that cannot be read stays as it is: the shell diff names the reason
+    if baseline.attributes_issue.is_some() || edited.attributes_issue.is_some() {
+        return;
+    }
+    for a in &edited.attributes {
+        let old = baseline.attributes.iter().find(|b| b.id == a.id);
+        if old.is_none_or(|b| b.name != a.name) && !crate::naming::is_identifier(&a.name) {
+            problems.push(problem(
+                "form-attribute",
+                format!("form attributes: the name '{}' of the attribute with id {} is not an identifier (letters, digits and _, not starting with a digit)", a.name, a.id),
+            ));
+        }
+    }
+    for b in &baseline.attributes {
+        if edited.attributes.iter().any(|a| a.id == b.id) {
+            continue;
+        }
+        if let Some(user) = attribute_user(edited, b.id) {
+            problems.push(problem(
+                "form-attribute-in-use",
+                format!(
+                    "form attributes: the attribute '{}' (id {}) cannot be removed: {user} is bound to it (remove the control or bind it to another attribute in the same request)",
+                    b.name, b.id
+                ),
+            ));
+        }
+    }
 }
 
 // ------------------------------------------------------------------ structural edits (add/remove)
@@ -10489,9 +10696,10 @@ impl FormPatchPlan<'_> {
         // ---- form attributes (root[2][1] and root[2][2])
         if self.diff.attributes_changed {
             let attr_sec = self.index.at_path(&[2])?;
-            let (_, next_id_span) = attr_sec
+            let (next_id_atom, next_id_span) = attr_sec
                 .atom(1)
                 .ok_or_else(|| layout_err("form stream: next attribute id slot missing at root[2][1]"))?;
+            let old_next_id = next_id_atom.value.parse::<i64>().unwrap_or(0);
             let attr_list = attr_sec
                 .child(2)
                 .ok_or_else(|| layout_err("form stream: attributes list missing at root[2][2]"))?;
@@ -10542,6 +10750,29 @@ impl FormPatchPlan<'_> {
                 };
                 kept_records.push(format_attr_record(a, raw_pattern)?);
             }
+            // an attribute that is removed must not be linked from a control that stays
+            for old in self.diff.old_attributes.iter().filter(|o| !self.diff.new_attributes.iter().any(|a| a.id == o.id)) {
+                if let Some(links) = self.index.links_list() {
+                    let mut linked: Vec<i64> = Vec::new();
+                    for row in links.node.children.iter().skip(1).filter_map(Item::as_node) {
+                        let owner = row.children.first().and_then(|i| i.as_atom()).and_then(|a| a.value.parse::<i64>().ok());
+                        let target = row.node(1).and_then(|b| b.node(1)).and_then(|a| a.atom(0)).and_then(|a| a.value.parse::<i64>().ok());
+                        if let (Some(owner), Some(target)) = (owner, target) {
+                            let released = self.diff.deletions.iter().any(|d| d.id == owner)
+                                || self.diff.edits.iter().any(|e| e.id == owner && e.changed.contains(&Property::DataPath));
+                            if target == old.id && !released {
+                                linked.push(owner);
+                            }
+                        }
+                    }
+                    if !linked.is_empty() {
+                        return Err(layout_err(format!(
+                            "form attributes: the attribute '{}' (id {}) cannot be removed: the controls with the ids {linked:?} are linked to it",
+                            old.name, old.id
+                        )));
+                    }
+                }
+            }
             let mut list_text = format!("{{{}" , kept_records.len());
             for r in &kept_records {
                 list_text.push(',');
@@ -10552,7 +10783,7 @@ impl FormPatchPlan<'_> {
                 control_id: 0,
                 properties: Vec::new(),
                 range: next_id_span,
-                bytes: (max_attr_id + 1).to_string().into_bytes(),
+                bytes: (max_attr_id + 1).max(old_next_id).to_string().into_bytes(),
             });
             out.push(AppliedReplacement {
                 control_id: 0,
@@ -10663,6 +10894,8 @@ impl FormPatchPlan<'_> {
             set_clone_props(&mut clone, &c.type_name, &c.values)?;
             if let Some(tb) = table_binding(c).map_err(|why| layout_err(why.join("; ")))? {
                 crate::ts_table::bind_info(clone_info_mut(&mut clone)?, &tb.type_id, &tb.columns).map_err(layout_err)?;
+            } else if let Some(vb) = vt_binding(c, &self.edited.attributes).map_err(|why| layout_err(why.join("; ")))? {
+                crate::vt_table::bind_info(clone_info_mut(&mut clone)?, &vb.columns).map_err(layout_err)?;
             }
             let others: Vec<i64> = new_xml_ids.iter().copied().filter(|&x| x != c.id).collect();
             let siblings: Vec<anchors::NewSibling> = match new_parent {
@@ -10938,6 +11171,11 @@ impl FormPatchPlan<'_> {
                 let parts = control_parts(&item).map_err(|x| bad(x.to_string()))?;
                 crate::ts_table::check_table(parts.info, &tb.type_id, &tb.columns)
                     .map_err(|why| bad(format!("added table '{}' (id {new_id}) bound to the tabular section {}: {why}", c.name, tb.uuid)))?;
+            } else if let Some(vb) = vt_binding(c, &self.edited.attributes).map_err(|why| bad(why.join("; ")))? {
+                let item = Item::Node(e.control.node.clone());
+                let parts = control_parts(&item).map_err(|x| bad(x.to_string()))?;
+                crate::vt_table::check_table(parts.info, &vb.columns)
+                    .map_err(|why| bad(format!("added table '{}' (id {new_id}) bound to the value table: {why}", c.name)))?;
             }
         }
         Ok(())

@@ -84,7 +84,7 @@ pub struct ColumnSpec {
 
 /// Value type of a column that has an editor template.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Primitive {
+pub(crate) enum Primitive {
     String { length: i64 },
     Number { digits: i64, fraction: i64, non_negative: i64 },
     DateTime,
@@ -94,7 +94,7 @@ enum Primitive {
 
 /// Kinds of references with an editor template (verified against real forms).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RefKind {
+pub(crate) enum RefKind {
     Catalog,
     Document,
     Enum,
@@ -226,7 +226,7 @@ fn editor_text(pattern: &str, prim: Primitive) -> String {
 
 /// Text in the layout the platform writes: a nested record starts on a new line and a record that ends with
 /// a nested record closes on a new line. Nothing parses it differently, it only keeps the blob like the real ones.
-fn format_1c(n: &Node, out: &mut String) {
+pub(crate) fn format_1c(n: &Node, out: &mut String) {
     out.push('{');
     for (i, c) in n.children.iter().enumerate() {
         if i > 0 {
@@ -259,14 +259,14 @@ fn format_1c(n: &Node, out: &mut String) {
 }
 
 /// `base64(header + deflate(u64 LE length of the text + text))` of the editor of a column with `pattern`.
-fn editor_blob(pattern: &str, prim: Primitive) -> Result<String, String> {
+pub(crate) fn editor_blob(pattern: &str, prim: Primitive) -> Result<String, String> {
     let tree = parse_metadata(editor_text(pattern, prim).as_bytes()).map_err(|e| format!("editor template: {e}"))?;
     let mut text = String::new();
     format_1c(&tree, &mut text);
     Ok(encode_blob(&text))
 }
 
-fn encode_blob(text: &str) -> String {
+pub(crate) fn encode_blob(text: &str) -> String {
     let mut inner = vec![0xef, 0xbb, 0xbf];
     inner.extend_from_slice(text.as_bytes());
     let mut payload = (inner.len() as u64).to_le_bytes().to_vec();
@@ -400,20 +400,20 @@ pub fn check_step(data: &ColumnData) -> String {
     }
 }
 
-fn bare(v: impl ToString) -> Item {
+pub(crate) fn bare(v: impl ToString) -> Item {
     Item::Atom(Atom::new(AtomKind::Bare, v.to_string()))
 }
 
-fn quoted(v: &str) -> Item {
+pub(crate) fn quoted(v: &str) -> Item {
     Item::Atom(Atom::new(AtomKind::Quoted, v))
 }
 
-fn parse(text: &str) -> Result<Node, String> {
+pub(crate) fn parse(text: &str) -> Result<Node, String> {
     parse_metadata(text.as_bytes()).map_err(|e| format!("template {text}: {e}"))
 }
 
 /// `{1,N,{"lang","text"}...}` (`{1,0}` without items).
-fn localized(items: &[(String, String)]) -> Node {
+pub(crate) fn localized(items: &[(String, String)]) -> Node {
     let mut n = Node { children: vec![bare(1), bare(items.len())] };
     for (lang, text) in items {
         n.children.push(Item::Node(Node { children: vec![quoted(lang), quoted(text)] }));
@@ -422,7 +422,7 @@ fn localized(items: &[(String, String)]) -> Node {
 }
 
 /// `ceil(width / 7)`: the slot 32 of the real forms.
-fn width_chars(width: i64) -> i64 {
+pub(crate) fn width_chars(width: i64) -> i64 {
     (width + 6) / 7
 }
 
@@ -770,7 +770,7 @@ pub struct ColumnRead {
     pub record: String,
 }
 
-fn text_of(n: &Node) -> String {
+pub(crate) fn text_of(n: &Node) -> String {
     let mut out = Vec::new();
     crate::donor::write_node(n, &mut out);
     String::from_utf8_lossy(&out).into_owned()

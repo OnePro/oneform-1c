@@ -227,6 +227,98 @@ fn the_new_form_takes_bound_fields_tables_and_buttons() {
     }
 }
 
+#[test]
+fn the_new_form_takes_form_attributes_and_a_value_table_with_columns() {
+    for c in CASES {
+        let (_tmp, root, object) = workspace(&c);
+        assert!(new_form(&object, c.kind, "Нов", &[]).status.success());
+        let form = object.join("src/Forms/Нов/Form.xml");
+        let xml = fs::read_to_string(&form).unwrap();
+        let next_id = xml.match_indices("<Attribute id=\"").map(|(at, m)| xml[at + m.len()..].split('"').next().unwrap().parse::<i64>().unwrap()).max().unwrap() + 1;
+        let (counter, table) = (next_id, next_id + 1);
+        let attributes = format!(
+            "    <Attribute id=\"{counter}\" name=\"Счётчик\">
+      <ValueType kind=\"Number\" digits=\"10\" fractionDigits=\"0\" composite=\"false\"/>
+    </Attribute>
+    <Attribute id=\"{table}\" name=\"Таблица\">
+      <ValueType kind=\"ValueTable\" composite=\"false\"/>
+    </Attribute>
+"
+        );
+        // an attribute without any binding
+        let alone = xml.replace("  </Attributes>", &format!("{}  </Attributes>", attributes.lines().take(3).map(|l| format!("{l}
+")).collect::<String>()));
+        fs::write(&form, &alone).unwrap();
+        let out = run(&["pack", root.to_str().unwrap(), "--no-progress"]);
+        assert!(out.status.success(), "{}: {}", c.kind, text(&out));
+        let shown = fs::read_to_string(&form).unwrap();
+        assert!(shown.contains("name=\"Счётчик\"") && !shown.contains("name=\"Таблица\""), "{}: {shown}", c.kind);
+
+        // a value table attribute with a table bound to it, columns of four types
+        let column = |name: &str, id: i64, ty: &str, extra: &str| {
+            format!("        <Column name=\"{name}\" id=\"{id}\"><Header><Item language=\"ru\">{name}</Item></Header><Width>100</Width>{extra}<ValueType {ty} composite=\"false\"/></Column>
+")
+        };
+        let columns = [
+            column("Наименование", 0, "kind=\"String\" length=\"50\"", ""),
+            column("Сумма", 1, "kind=\"Number\" digits=\"12\" fractionDigits=\"2\"", ""),
+            column("Пометка", 2, "kind=\"Boolean\"", ""),
+            column("Дата", 3, "kind=\"Date\"", "<ReadOnly>true</ReadOnly>"),
+        ]
+        .concat();
+        let added = format!(
+            "    <Table name=\"ТаблицаДанных\" id=\"60\">
+      <DataPath attributeId=\"{table}\">Таблица</DataPath>
+      <Left>8</Left><Top>8</Top><Width>400</Width><Height>120</Height><ZOrder>20</ZOrder><TabOrder>20</TabOrder>
+      <Columns>
+{columns}      </Columns>
+    </Table>
+"
+        );
+        let edited = shown
+            .replace("  </Attributes>", &format!("{}  </Attributes>", attributes.lines().skip(3).map(|l| format!("{l}
+")).collect::<String>()))
+            .replace("  </ChildItems>", &format!("{added}  </ChildItems>"));
+        fs::write(&form, edited).unwrap();
+        let out = run(&["pack", root.to_str().unwrap(), "--no-progress"]);
+        assert!(out.status.success(), "{}: {}", c.kind, text(&out));
+        let again = fs::read_to_string(&form).unwrap();
+        for needle in [
+            format!("<DataPath attributeId=\"{table}\">Таблица</DataPath>"),
+            format!("<DataPath attributeId=\"{table}\">Таблица.Сумма</DataPath>"),
+            "<ValueType kind=\"String\" composite=\"false\" length=\"50\"/>".to_string(),
+            "<ValueType kind=\"Number\" composite=\"false\" digits=\"12\" fractionDigits=\"2\"/>".to_string(),
+            "<ValueType kind=\"Boolean\" composite=\"false\"/>".to_string(),
+            "<ValueType kind=\"Date\" composite=\"false\"/>".to_string(),
+            "<Column name=\"Пометка\" id=\"2\">".to_string(),
+        ] {
+            assert!(again.contains(&needle), "{}: {needle} is missing after pack:
+{again}", c.kind);
+        }
+        let dry = run(&["pack", root.to_str().unwrap(), "--dry-run", "--no-progress"]);
+        assert!(text(&dry).contains("NO CHANGES"), "{}: {}", c.kind, text(&dry));
+        let check = run(&["check", root.to_str().unwrap(), "--no-progress"]);
+        assert!(check.status.success(), "{}: {}", c.kind, text(&check));
+
+        // the table still uses its attribute: the attribute stays; the unused one goes
+        let block = |name: &str| {
+            let at = again.find(&format!("<Attribute id=\"{}\" name=\"{name}\">", if name == "Счётчик" { counter } else { table })).unwrap();
+            again[at..at + again[at..].find("</Attribute>").unwrap() + "</Attribute>
+".len()].to_string()
+        };
+        fs::write(&form, again.replacen(&block("Таблица"), "", 1)).unwrap();
+        let out = run(&["pack", root.to_str().unwrap(), "--no-progress"]);
+        assert!(!out.status.success() && text(&out).contains("cannot be removed") && text(&out).contains("ТаблицаДанных"), "{}: {}", c.kind, text(&out));
+        fs::write(&form, again.replacen(&block("Счётчик"), "", 1)).unwrap();
+        let out = run(&["pack", root.to_str().unwrap(), "--no-progress"]);
+        assert!(out.status.success(), "{}: {}", c.kind, text(&out));
+        let last = fs::read_to_string(&form).unwrap();
+        assert!(!last.contains("Счётчик") && last.contains("name=\"Таблица\""), "{}: {last}", c.kind);
+        let dry = run(&["pack", root.to_str().unwrap(), "--dry-run", "--no-progress"]);
+        assert!(text(&dry).contains("NO CHANGES"), "{}: {}", c.kind, text(&dry));
+    }
+}
+
 /// Everything under `dir` with the content, for "nothing changed" checks.
 fn snapshot(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     let mut out = Vec::new();

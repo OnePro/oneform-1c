@@ -27,6 +27,12 @@ pub fn is_uuid(s: &str) -> bool {
         })
 }
 
+/// A 1C identifier: letters (any script), digits and `_`, not starting with a digit.
+pub fn is_identifier(s: &str) -> bool {
+    let mut chars = s.chars();
+    chars.next().is_some_and(|c| c.is_alphabetic() || c == '_') && chars.all(|c| c.is_alphanumeric() || c == '_')
+}
+
 pub fn is_reserved(name: &str) -> bool {
     let u = name.to_uppercase();
     if matches!(u.as_str(), "CON" | "PRN" | "AUX" | "NUL") {
