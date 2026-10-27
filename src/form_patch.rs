@@ -961,6 +961,8 @@ pub struct ColumnValues {
     pub id: Option<i64>,
     pub name: String,
     pub field_name: Option<String>,
+    /// Last segment of the `<CheckBoxDataPath>` of a column (the Boolean field it is bound to as check box data).
+    pub check_field: Option<String>,
     pub header: Vec<(String, String)>,
     pub footer_text: Vec<(String, String)>,
     pub tooltip: Vec<(String, String)>,
@@ -3194,6 +3196,7 @@ impl Parser<'_> {
                             break;
                         }
                         let mut field_name: Option<String> = None;
+                        let mut check_field: Option<String> = None;
                         let mut source = ColumnSource { line: col_el.line, ..ColumnSource::default() };
                         let mut header = Vec::new();
                         let mut footer_text = Vec::new();
@@ -3235,6 +3238,7 @@ impl Parser<'_> {
                                         steps: steps.unwrap_or_default(),
                                     };
                                     if tag == "CheckBoxDataPath" {
+                                        check_field = Some(link.text.rsplit('.').next().unwrap_or(&link.text).to_string());
                                         source.check_box = Some(link);
                                     } else {
                                         source.picture = Some(link);
@@ -3501,6 +3505,7 @@ impl Parser<'_> {
                             id: cid,
                             name: cname,
                             field_name,
+                            check_field,
                             header,
                             footer_text,
                             tooltip,
@@ -5202,8 +5207,10 @@ fn steps_len(steps: &Option<String>) -> usize {
 }
 
 /// Refuses the edits of a link that the text cannot express: its `steps` changed, a link of three or more rows
-/// (two or more steps) changed or removed, steps of two or more on an added control, a column check-box / picture
-/// path on an added control or column. Only the text of a link of at most one step may change (it is resolved by
+/// (two or more steps) changed or removed, steps of two or more on an added control, a column picture path on an
+/// added control or column, a column check-box path that is not on a table bound to a tabular section (there it is
+/// checked by [`check_existing_tables`] and the planner), added to or removed from an existing column, or of
+/// another attribute. Only the text of a link of at most one step may change (it is resolved by
 /// name), and a missing `steps` attribute of such a link is read as unchanged. An added control with one step is a
 /// copy of a two-row link: its text decides, `steps` is not looked at (as for an edited text).
 fn check_link_edits(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Problem>) {
@@ -5217,8 +5224,8 @@ fn check_link_edits(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Pro
                 refuse(c.line, c, format!("{shown}: steps of three or more rows on an added control"));
             }
             for src in &c.column_sources {
-                if src.check_box.is_some() || src.picture.is_some() {
-                    refuse(src.line, c, "a check-box or picture path on an added control".into());
+                if src.picture.is_some() || (src.check_box.is_some() && !is_section_table(c)) {
+                    refuse(src.line, c, "a check-box path (other than on a table bound to a tabular section) or a picture path on an added control".into());
                 }
             }
             continue;
@@ -5236,8 +5243,12 @@ fn check_link_edits(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Pro
         for (v, src) in c.values.columns.iter().zip(&c.column_sources) {
             let was = v.id.and_then(|id| b.values.columns.iter().position(|o| o.id == Some(id)));
             let Some(was) = was.map(|i| &b.column_sources[i]) else {
-                if src.check_box.is_some() || src.picture.is_some() {
-                    refuse(src.line, c, format!("column '{}': a check-box or picture path on a new column", v.name));
+                if src.picture.is_some() || (src.check_box.is_some() && !is_section_table(c)) {
+                    refuse(
+                        src.line,
+                        c,
+                        format!("column '{}': a check-box path (other than on a table bound to a tabular section) or a picture path on a new column", v.name),
+                    );
                 }
                 continue;
             };
@@ -5245,7 +5256,24 @@ fn check_link_edits(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Pro
                 refuse(src.line, c, format!("column '{}': the steps of <DataPath> are edited", v.name));
             }
             if src.check_box != was.check_box {
-                refuse(src.line, c, format!("column '{}': <CheckBoxDataPath> is edited", v.name));
+                // only the text of the path of a check box column of a section table is rebound (the steps, when
+                // they are given with the same text, must be the old ones); everything else changes the shape
+                let rebound = match (&src.check_box, &was.check_box) {
+                    (Some(n), Some(o)) => {
+                        is_section_table(c) && n.attribute_id == o.attribute_id && (n.text != o.text || n.steps.is_none() || n.steps == o.steps)
+                    }
+                    _ => false,
+                };
+                if !rebound {
+                    refuse(
+                        src.line,
+                        c,
+                        format!(
+                            "column '{}': <CheckBoxDataPath> is edited (only its path can change, to another Boolean column of the same section; adding or removing it, or another attributeId, changes the shape of the column)",
+                            v.name
+                        ),
+                    );
+                }
             }
             if src.picture != was.picture {
                 refuse(src.line, c, format!("column '{}': <PictureDataPath> is edited", v.name));
@@ -5303,7 +5331,7 @@ pub fn changed_column_ids(old: &[ColumnValues], new: &[ColumnValues]) -> Option<
     for n in new {
         match old.iter().find(|o| o.id == n.id) {
             None => skip.extend(n.id),
-            Some(o) if o.field_name != n.field_name => skip.extend(n.id),
+            Some(o) if o.field_name != n.field_name || o.check_field != n.check_field => skip.extend(n.id),
             Some(_) => {}
         }
     }
@@ -5337,7 +5365,7 @@ pub fn is_section_table(c: &ControlXml) -> bool {
 /// The columns of the existing tables bound to a tabular section: every `<DataPath>` is `Root.Section.Column` of the
 /// table's own section and a new or rebound column can be written (the data of the stream is not looked at here).
 fn check_existing_tables(diff: &FormDiff, edited: &FormXml, problems: &mut Vec<Problem>) {
-    use crate::ts_table::{column_field, field_data_for, new_column_data, ColumnData, ROW_NUMBER};
+    use crate::ts_table::{check_box_data, column_field, column_field_of, field_data_for, new_check_box_data, new_column_data, ColumnData, ROW_NUMBER};
     let Some(schema) = crate::object_schema::object_schema() else { return };
     let added: std::collections::HashSet<i64> = diff.additions.iter().map(|c| c.id).collect();
     for c in edited.controls.iter().filter(|c| c.type_name == "Table" && !added.contains(&c.id)) {
@@ -5355,9 +5383,33 @@ fn check_existing_tables(diff: &FormDiff, edited: &FormXml, problems: &mut Vec<P
             let fresh = old.is_some() && was.is_none();
             let rebound = was.is_some_and(|w| w.field_name != v.field_name);
             let mut push = |why: String| problems.push(problem("data-path", format!("{at}: {why}")));
+            if let Some(cb) = &src.check_box {
+                let check_rebound = was.is_some_and(|w| w.check_field != v.check_field);
+                if src.data_path.is_some() && (fresh || rebound || check_rebound) {
+                    push("<DataPath> together with <CheckBoxDataPath> is not supported (use one: <DataPath> for data, <CheckBoxDataPath> for a Boolean column)".to_string());
+                } else if fresh || check_rebound {
+                    match column_field_of("CheckBoxDataPath", root, *attr_id, ts, &cb.text, cb.attribute_id.as_deref()) {
+                        Err(why) => push(why),
+                        Ok(field) if fresh => {
+                            for (line, tag) in src.leftovers.iter().filter(|(_, t)| t != "ValueType") {
+                                push(format!("line {line}: <{tag}> is not supported on a new column"));
+                            }
+                            if let Err(why) = new_check_box_data(ts, &cb.text, field, cb.steps.as_deref(), v.visible, v.read_only, v.editor.as_deref()) {
+                                push(why);
+                            }
+                        }
+                        Ok(field) => {
+                            if let Err(why) = check_box_data(ts, field, cb.steps.as_deref()) {
+                                push(format!("CheckBoxDataPath '{}': cannot be rebound: {why}", cb.text));
+                            }
+                        }
+                    }
+                }
+                continue;
+            }
             let Some(dp) = src.data_path.as_deref() else {
                 if fresh || rebound {
-                    push(format!("<DataPath> is required: {root}.{}.<column of the section>", ts.name));
+                    push(format!("<DataPath> is required: {root}.{}.<column of the section> (<CheckBoxDataPath> for a Boolean column)", ts.name));
                 }
                 continue;
             };
@@ -5444,6 +5496,9 @@ fn table_binding(c: &ControlXml) -> std::result::Result<Option<TableBinding>, Ve
                 editor: v.editor.clone(),
                 attribute_id: src.attribute_id.clone(),
                 data_path: src.data_path.clone(),
+                check_attribute_id: src.check_box.as_ref().and_then(|l| l.attribute_id.clone()),
+                check_steps: src.check_box.as_ref().and_then(|l| l.steps.clone()),
+                check_path: src.check_box.as_ref().map(|l| l.text.clone()),
                 unsupported,
             }
         })
@@ -7704,7 +7759,7 @@ fn bound_tabular(site: &Site) -> Result<Option<crate::object_schema::TabularSche
 
 /// Whether the edit of the columns adds, removes, reorders or rebinds one: then the section of the table is needed.
 fn columns_need_section(old: &[ColumnValues], new: &[ColumnValues]) -> bool {
-    !old.iter().map(|c| c.id).eq(new.iter().map(|c| c.id)) || old.iter().zip(new).any(|(o, n)| o.field_name != n.field_name)
+    !old.iter().map(|c| c.id).eq(new.iter().map(|c| c.id)) || old.iter().zip(new).any(|(o, n)| o.field_name != n.field_name || o.check_field != n.check_field)
 }
 
 /// The counted list of the columns (`info[2][1][23]`) of a table with `expect` columns.
@@ -7742,8 +7797,15 @@ fn new_column_spec(site: &Site, ts: &crate::object_schema::TabularSchema, c: &Co
     if let Some(editor) = c.editor.as_deref().filter(|e| *e != "InputField") {
         return Err(bad(format!("the editor {editor} is not supported (only InputField)")));
     }
-    let field = c.field_name.as_deref().ok_or_else(|| bad("<DataPath> is required".into()))?;
     let table_path = site.edit.new.data_path.as_ref().map_or("", |(_, p)| p.as_str());
+    if let Some(field) = c.check_field.as_deref() {
+        if c.field_name.is_some() {
+            return Err(bad("<DataPath> together with <CheckBoxDataPath> is not supported".into()));
+        }
+        let data = crate::ts_table::new_check_box_data(ts, &format!("{table_path}.{field}"), field, None, c.visible, c.read_only, c.editor.as_deref()).map_err(bad)?;
+        return Ok(crate::ts_table::ColumnSpec { name: c.name.clone(), id, header: c.header.clone(), width: c.width, visible: false, read_only: true, data });
+    }
+    let field = c.field_name.as_deref().ok_or_else(|| bad("<DataPath> is required".into()))?;
     let data = crate::ts_table::new_column_data(ts, &format!("{table_path}.{field}"), field, c.read_only, c.editor.as_deref()).map_err(bad)?;
     Ok(crate::ts_table::ColumnSpec { name: c.name.clone(), id, header: c.header.clone(), width: c.width, visible: c.visible, read_only: c.read_only, data })
 }
@@ -7793,7 +7855,8 @@ fn column_list_piece(site: &Site, ts: &crate::object_schema::TabularSchema, prop
     Ok(piece(list.span.span, text, &[prop]))
 }
 
-/// Pieces that bind the column `rec` (props `cp`) of a table bound to `ts` to the column `field` of the section.
+/// Pieces that bind the column `rec` (props `cp`) of a table bound to `ts` to the column `field` of the section (or,
+/// for a check box column, `check_field`: then only the check box step and `P[7]` change).
 /// Only the data step, the ordinal, the pattern and the pattern inside the editor change; a change of the shape of the
 /// record is refused.
 fn rebind_pieces(
@@ -7802,20 +7865,39 @@ fn rebind_pieces(
     rec: NodeRef,
     cp: NodeRef,
     column: &str,
-    field: Option<&str>,
+    (field, check_field): (Option<&str>, Option<&str>),
     prop: Property,
 ) -> Result<Vec<Piece>> {
-    use crate::ts_table::{blob_class, blob_pattern, data_class, data_step, pattern_text, read_column, rebind_blob, ColumnData, ROW_NUMBER};
+    use crate::ts_table::{blob_class, blob_pattern, check_box_data, check_step, data_class, data_step, pattern_text, read_column, rebind_blob, ColumnData, ROW_NUMBER};
     let bad = |why: String| site.invalid("unsupported-table", "Columns", format!("column '{column}': {why}"));
-    let field = field.ok_or_else(|| bad("<DataPath> is required to rebind a column".into()))?;
     let cur = read_column(rec.node)
         .ok_or_else(|| site.layout("unexpected-shape", "Columns", format!("column '{column}': the record does not have the layout of a column")))?;
+    let is_check_box = cur.data == "{-1}" && cur.check_data.starts_with("{0,") && cur.picture_data == "{-1}";
+    match (is_check_box, field, check_field) {
+        (true, None, Some(check_field)) => {
+            let target = check_box_data(ts, check_field, None).map_err(|why| bad(format!("cannot be rebound to '{check_field}': {why}")))?;
+            let ColumnData::CheckBox { ordinal, .. } = &target else { return Err(bad("internal: no check box field".into())) };
+            let x = rec.child(1).and_then(|w| w.child(1)).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column data record missing".into()))?;
+            let step = x.child(3).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column check box step missing".into()))?;
+            return Ok(vec![
+                piece(step.span.span, check_step(&target), &[prop]),
+                piece(int_slot(site, cp, 7, "Columns", "CheckBoxOrdinal")?.1, ordinal, &[prop]),
+            ]);
+        }
+        (true, _, _) | (false, _, Some(_)) => {
+            return Err(bad(
+                "a column bound through <DataPath> cannot become a check box column (<CheckBoxDataPath>) or the other way round: the shape of the record differs; add a new column instead".into(),
+            ));
+        }
+        _ => {}
+    }
+    let field = field.ok_or_else(|| bad("<DataPath> is required to rebind a column".into()))?;
     if cur.data == "{-2}" {
         return Err(bad(format!("the column {ROW_NUMBER} cannot be rebound")));
     }
     if !cur.data.starts_with("{0,") || cur.check_data != "{-1}" {
         return Err(bad(format!(
-            "its data is {} / check box data {}: only a column bound to a field of the section through its data step can be rebound (a Boolean field is bound as check box data, a different record shape)",
+            "its data is {} / check box data {}: only a column bound to a field of the section through its data step can be rebound",
             cur.data, cur.check_data
         )));
     }
@@ -7887,12 +7969,24 @@ fn tabular_columns_match(site: &Site, original: &Site) -> Result<bool> {
         let got = &after[i];
         let prior = if same_list { Some(i) } else { old.iter().position(|oc| oc.id == nc.id) };
         let ok = match prior {
-            Some(j) if old[j].field_name == nc.field_name => {
+            Some(j) if old[j].field_name == nc.field_name && old[j].check_field == nc.check_field => {
                 let b = &before[j];
                 let key = |c: &crate::ts_table::ColumnRead| {
                     (c.data.clone(), c.check_data.clone(), c.picture_data.clone(), c.ordinal, c.pattern.clone(), c.slots, c.editor_guid.clone(), c.editor_pattern.clone())
                 };
                 key(got) == key(b) && (same_list || got.record == b.record)
+            }
+            Some(j) if nc.check_field.is_some() => {
+                let field = nc.check_field.as_deref().unwrap_or("");
+                let Ok(target) = crate::ts_table::check_box_data(&ts, field, None) else { return Ok(false) };
+                let crate::ts_table::ColumnData::CheckBox { ordinal, .. } = &target else { return Ok(false) };
+                got.data == "{-1}"
+                    && got.check_data == crate::ts_table::check_step(&target)
+                    && got.check_ordinal == *ordinal as i64
+                    && got.ordinal == before[j].ordinal
+                    && got.pattern == before[j].pattern
+                    && got.picture_data == before[j].picture_data
+                    && got.slots == before[j].slots
             }
             Some(_) => {
                 let field = nc.field_name.as_deref().unwrap_or("");
@@ -8241,6 +8335,8 @@ fn mask_field_slots(stream: &[ColumnValues], other: &mut [ColumnValues]) {
         if s.field_name.as_deref().is_some_and(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit())) {
             o.field_name = None;
         }
+        // the check box field is a link step as well; a stream column never names it
+        o.check_field = None;
     }
 }
 
@@ -8298,6 +8394,7 @@ fn read_table_column_values(site: &Site) -> Result<Vec<ColumnValues>> {
             id,
             name,
             field_name,
+            check_field: None,
             header,
             footer_text,
             tooltip,
@@ -8853,10 +8950,16 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         out.push(piece(span, quote(&nc.name), &[prop]));
                     }
                     if let (Some(ts), Some(list)) = (&tabular, records) {
-                        if oc.field_name != nc.field_name {
+                        if oc.field_name != nc.field_name || oc.check_field != nc.check_field {
                             let rec = list.child(1 + i).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column record missing".into()))?;
-                            out.extend(rebind_pieces(site, ts, rec, cp, &nc.name, nc.field_name.as_deref(), prop)?);
+                            out.extend(rebind_pieces(site, ts, rec, cp, &nc.name, (nc.field_name.as_deref(), nc.check_field.as_deref()), prop)?);
                         }
+                    } else if oc.check_field != nc.check_field {
+                        return Err(site.invalid(
+                            "unsupported-table",
+                            "Columns",
+                            format!("column '{}': <CheckBoxDataPath> can be edited only on a table bound to a tabular section", nc.name),
+                        ));
                     } else if oc.field_name != nc.field_name && stream_cols.get(i).is_none_or(|s| s.field_name.as_deref() != Some("0")) {
                         let (_, span) = wrapper
                             .atom(2)

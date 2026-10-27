@@ -3337,6 +3337,8 @@ mod tabular_binding {
     const NOTE: &str = "33333333-0000-0000-0000-000000000003";
     const ITEM: &str = "33333333-0000-0000-0000-000000000006";
     const KIND: &str = "33333333-0000-0000-0000-000000000007";
+    const FLAG: &str = "33333333-0000-0000-0000-000000000004";
+    const MARK: &str = "33333333-0000-0000-0000-00000000000a";
     const ITEM_TYPE: &str = "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38";
     const KIND_TYPE: &str = "52c49a35-3374-4995-9803-5fc37bb7d7cf";
 
@@ -3359,12 +3361,13 @@ mod tabular_binding {
           <Attribute uuid="{NAME}"><Properties><Name>Наименование</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>20</v8:Length><v8:AllowedLength>Variable</v8:AllowedLength></v8:StringQualifiers></Type></Properties></Attribute>
           <Attribute uuid="{QTY}"><Properties><Name>Количество</Name><Type><v8:Type>xs:decimal</v8:Type><v8:NumberQualifiers><v8:Digits>15</v8:Digits><v8:FractionDigits>2</v8:FractionDigits><v8:AllowedSign>Any</v8:AllowedSign></v8:NumberQualifiers></Type></Properties></Attribute>
           <Attribute uuid="{NOTE}"><Properties><Name>Комментарий</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>50</v8:Length><v8:AllowedLength>Variable</v8:AllowedLength></v8:StringQualifiers></Type></Properties></Attribute>
-          <Attribute uuid="33333333-0000-0000-0000-000000000004"><Properties><Name>Флаг</Name><Type><v8:Type>xs:boolean</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="{FLAG}"><Properties><Name>Флаг</Name><Type><v8:Type>xs:boolean</v8:Type></Type></Properties></Attribute>
           <Attribute uuid="33333333-0000-0000-0000-000000000005"><Properties><Name>Свободный</Name><Type><v8:Type>xs:string</v8:Type><v8:StringQualifiers><v8:Length>0</v8:Length></v8:StringQualifiers></Type></Properties></Attribute>
           <Attribute uuid="{ITEM}"><Properties><Name>Ссылка</Name><Type><v8:Type>cfg:CatalogRef.Номенклатура</v8:Type></Type></Properties></Attribute>
           <Attribute uuid="{KIND}"><Properties><Name>Вид</Name><Type><v8:Type>cfg:EnumRef.ВидыЦен</v8:Type></Type></Properties></Attribute>
           <Attribute uuid="33333333-0000-0000-0000-000000000008"><Properties><Name>Узел</Name><Type><v8:Type>cfg:ExchangePlanRef.Обмен</v8:Type></Type></Properties></Attribute>
           <Attribute uuid="33333333-0000-0000-0000-000000000009"><Properties><Name>Чужая</Name><Type><v8:Type>cfg:CatalogRef.НетТакого</v8:Type></Type></Properties></Attribute>
+          <Attribute uuid="{MARK}"><Properties><Name>Признак</Name><Type><v8:Type>xs:boolean</v8:Type></Type></Properties></Attribute>
         </ChildObjects>
       </TabularSection>
       <TabularSection uuid="22222222-0000-0000-0000-000000000002">
@@ -3784,7 +3787,11 @@ mod tabular_binding {
     }
 
     fn existing() -> Existing {
-        let first = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&good_columns()))));
+        existing_with(&good_columns())
+    }
+
+    fn existing_with(columns: &str) -> Existing {
+        let first = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(columns))));
         let id = first.allocated[0].1;
         let xml = decoded_xml(&first.bytes);
         Existing { first, xml, id }
@@ -4065,5 +4072,211 @@ mod tabular_binding {
         let edited = format!("{}{}", &base[..start], &base[end..]);
         let err = with_object_schema(Some(schema()), || plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply())).expect_err("must be refused");
         assert_eq!(err.code, GENERATED_FILE_MODIFIED, "{err}");
+    }
+
+    // ------------------------------------------------------------------ Boolean columns: check box data
+
+    /// A column bound to a Boolean field of the section as check box data, the way `extract` shows such columns.
+    fn check_col(name: &str, id: i64, path: &str, extra: &str) -> String {
+        format!(
+            "<Column name=\"{name}\" id=\"{id}\"><CheckBoxDataPath attributeId=\"1\">{path}</CheckBoxDataPath><Header><Item language=\"ru\">{name}</Item></Header><Width>60</Width><Visible>false</Visible><ReadOnly>true</ReadOnly>{extra}</Column>\n"
+        )
+    }
+
+    fn flag_columns() -> String {
+        [good_columns(), check_col("Флаг", 3, "ОбработкаОбъект.Товары.Флаг", "")].concat()
+    }
+
+    fn check_element(steps: Option<&str>, path: &str) -> String {
+        let steps = steps.map(|s| format!(" steps=\"{s}\"")).unwrap_or_default();
+        format!("<CheckBoxDataPath attributeId=\"1\"{steps}>{path}</CheckBoxDataPath>")
+    }
+
+    /// The `CheckBoxDataPath` element of the column `column` replaced by `element`.
+    fn with_check_element(xml: &str, column: &str, element: &str) -> String {
+        let start = xml.find(&format!("<Column name=\"{column}\"")).expect("the column");
+        let open = start + xml[start..].find("<CheckBoxDataPath").unwrap();
+        let close = open + xml[open..].find("</CheckBoxDataPath>").unwrap() + "</CheckBoxDataPath>".len();
+        format!("{}{element}{}", &xml[..open], &xml[close..])
+    }
+
+    /// The property record `P` of column `i` (0-based) of the table `id`.
+    fn column_props(bytes: &[u8], id: i64, i: usize) -> oneform::brace::Node {
+        let info = table_info(bytes, id);
+        info.node(2).unwrap().node(1).unwrap().node(23).unwrap().node(1 + i).unwrap().node(1).unwrap().node(1).unwrap().node(1).unwrap().clone()
+    }
+
+    #[test]
+    fn an_added_table_gets_a_check_box_column_for_a_boolean_field() {
+        let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&flag_columns())));
+        let pf = patch_with(&edited);
+        let id = pf.allocated[0].1;
+        let (_, _, columns) = read_table(&table_info(&pf.bytes, id)).unwrap();
+        let flag = &columns[4];
+        assert_eq!((flag.name.as_str(), flag.id, flag.slots), ("Флаг", 3, 45));
+        // the field is in P[7], the data step is not set, the check box step is the column
+        assert_eq!((flag.ordinal, flag.check_ordinal), (-1, 3));
+        assert_eq!((flag.data.as_str(), flag.picture_data.as_str()), ("{-1}", "{-1}"));
+        assert_eq!(flag.check_data, format!("{{0,{FLAG}}}"));
+        assert_eq!(flag.pattern, "{\"Pattern\",{\"S\",10,1}}");
+        assert_eq!((flag.editor_guid.as_str(), flag.editor_pattern.as_deref()), ("00000000-0000-0000-0000-000000000000", None));
+        let props = column_props(&pf.bytes, id, 4);
+        let slots: Vec<&str> = [4, 5, 6, 7, 8, 9, 25, 26, 27, 29, 32, 44].iter().map(|i| props.atom(*i).unwrap().value.as_str()).collect();
+        assert_eq!(slots, ["60", "3", "-1", "3", "-1", "12590592", "0", "0", "0", "0", "9", "60"]);
+        // the data columns are as before
+        assert_eq!(columns[1].check_data, "{-1}");
+        assert_eq!(columns[1].check_ordinal, -1);
+
+        // `extract` shows the same CheckBoxDataPath and no DataPath on the column
+        let xml = decoded_xml(&pf.bytes);
+        let (start, end) = column_block(&xml, "Флаг");
+        let block = &xml[start..end];
+        assert!(block.contains(&format!("<CheckBoxDataPath attributeId=\"1\" steps=\"{FLAG}\">ОбработкаОбъект.Товары.Флаг</CheckBoxDataPath>")), "{block}");
+        assert!(!block.contains("<DataPath") && !block.contains("PictureDataPath"), "{block}");
+        assert!(block.contains("<Visible>false</Visible>") && block.contains("<ReadOnly>true</ReadOnly>"), "{block}");
+        assert_eq!(column_values(edited.as_bytes(), "Товары"), column_values(xml.as_bytes(), "Товары"));
+
+        // `steps` is optional on input; when it is there it is the uuid of the column
+        let with_steps = edited.replace("<CheckBoxDataPath attributeId=\"1\">", &format!("<CheckBoxDataPath attributeId=\"1\" steps=\"{FLAG}\">"));
+        assert_ne!(with_steps, edited);
+        assert_eq!(patch_with(&with_steps).bytes, pf.bytes);
+    }
+
+    #[test]
+    fn a_check_box_column_is_added_to_an_existing_table_and_removed() {
+        let e = existing();
+        let before = e.columns(&e.first);
+        let block = check_col("Флаг", 3, "ОбработкаОбъект.Товары.Флаг", "");
+        let pf = e.patch(&with_column_after(&e.xml, Some("Наименование"), &block));
+        assert_eq!(pf.replacements.len(), 1, "the list is one replacement");
+        let after = e.columns(&pf);
+        assert_eq!(
+            after.iter().map(|c| (c.name.as_str(), c.id)).collect::<Vec<_>>(),
+            [("НомерСтроки", 0), ("Наименование", 1), ("Флаг", 3), ("Количество", 2), ("Комментарий", 7)]
+        );
+        for (got, was) in [(0, 0), (1, 1), (3, 2), (4, 3)] {
+            assert_eq!(after[got].record, before[was].record, "column {got} keeps its bytes");
+        }
+        // the record of the table builder
+        let reference = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&flag_columns()))));
+        let (_, _, built) = read_table(&table_info(&reference.bytes, reference.allocated[0].1)).unwrap();
+        assert_eq!(after[2].record, built[4].record);
+        let xml = decoded_xml(&pf.bytes);
+        assert!(xml.contains(&format!("<CheckBoxDataPath attributeId=\"1\" steps=\"{FLAG}\">")), "{xml}");
+
+        // removed again: the other columns keep their bytes
+        let e = existing_with(&flag_columns());
+        let before = e.columns(&e.first);
+        assert_eq!(before.len(), 5);
+        let pf = e.patch(&without_column(&e.xml, "Флаг"));
+        let after = e.columns(&pf);
+        assert_eq!(after.iter().map(|c| c.record.clone()).collect::<Vec<_>>(), before[..4].iter().map(|c| c.record.clone()).collect::<Vec<_>>());
+        // another Boolean column is added next to it
+        let block = check_col("Признак", 4, "ОбработкаОбъект.Товары.Признак", "");
+        let pf = e.patch(&with_column_after(&e.xml, Some("Флаг"), &block));
+        let after = e.columns(&pf);
+        assert_eq!((after[5].name.as_str(), after[5].check_data.clone(), after[5].check_ordinal), ("Признак", format!("{{0,{MARK}}}"), 9));
+    }
+
+    #[test]
+    fn a_check_box_column_is_rebound_to_another_boolean_column_of_the_section() {
+        let e = existing_with(&flag_columns());
+        let before = e.columns(&e.first);
+        assert!(e.xml.contains(&format!("<CheckBoxDataPath attributeId=\"1\" steps=\"{FLAG}\">")), "{}", e.xml);
+        let path = "ОбработкаОбъект.Товары.Признак";
+        // the stale `steps` of the extract does not fit the new column; the new uuid or none does
+        let text = e.refusal(&with_check_element(&e.xml, "Флаг", &check_element(Some(FLAG), path)));
+        assert!(text.contains("are not the uuid"), "{text}");
+        let pf = e.patch(&with_check_element(&e.xml, "Флаг", &check_element(Some(MARK), path)));
+        // the check box step and P[7]: nothing else
+        assert_eq!(pf.replacements.len(), 2);
+        assert_eq!(e.patch(&with_check_element(&e.xml, "Флаг", &check_element(None, path))).bytes, pf.bytes);
+        let after = e.columns(&pf);
+        assert_eq!((after[4].check_data.clone(), after[4].check_ordinal, after[4].ordinal, after[4].data.as_str()), (format!("{{0,{MARK}}}"), 9, -1, "{-1}"));
+        assert_eq!((after[4].name.as_str(), after[4].id, after[4].slots, after[4].pattern.as_str()), ("Флаг", 3, 45, "{\"Pattern\",{\"S\",10,1}}"));
+        for i in 0..4 {
+            assert_eq!(after[i].record, before[i].record, "column {i} is untouched");
+        }
+        let xml = decoded_xml(&pf.bytes);
+        let (start, end) = column_block(&xml, "Флаг");
+        assert!(xml[start..end].contains(&format!("<CheckBoxDataPath attributeId=\"1\" steps=\"{MARK}\">{path}</CheckBoxDataPath>")), "{}", &xml[start..end]);
+        // and back
+        let back = Existing { first: pf, xml, id: e.id };
+        let pf = back.patch(&with_check_element(&back.xml, "Флаг", &check_element(None, "ОбработкаОбъект.Товары.Флаг")));
+        assert_eq!(back.columns(&pf)[4].record, before[4].record);
+    }
+
+    #[test]
+    fn check_box_columns_that_cannot_be_written_are_refused_with_the_reason() {
+        let goods = |f: &str| format!("ОбработкаОбъект.Товары.{f}");
+        let flag = |extra: &str| check_col("Ф", 3, &goods("Флаг"), extra);
+        let table_with = |columns: &str| with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(columns)));
+        let cases: Vec<(String, &str)> = vec![
+            (check_col("Ф", 3, &goods("Наименование"), ""), "not Boolean"),
+            (check_col("Ф", 3, &goods("НомерСтроки"), ""), "not a Boolean column"),
+            (check_col("Ф", 3, &goods("Нет"), ""), "does not exist"),
+            (check_col("Ф", 3, "ОбработкаОбъект.Контакты.Значение", ""), "belongs to the tabular section 'Контакты'"),
+            (check_col("Ф", 3, "Товары.Флаг", ""), "CheckBoxDataPath 'Товары.Флаг' must be ОбработкаОбъект.Товары.<column>"),
+            (flag(&format!("<DataPath attributeId=\"1\">{}</DataPath>", goods("Флаг"))), "<DataPath> together with <CheckBoxDataPath>"),
+            (flag(&format!("<PictureDataPath attributeId=\"1\">{}</PictureDataPath>", goods("Флаг"))), "picture path"),
+            (flag("<Editor>InputField</Editor>"), "has no editor"),
+            (flag("<Foo/>"), "<Foo>"),
+            (flag("").replace("<Visible>false</Visible>", ""), "<Visible>false</Visible>"),
+            (flag("").replace("<ReadOnly>true</ReadOnly>", ""), "<ReadOnly>true</ReadOnly>"),
+            (flag("").replace("<CheckBoxDataPath attributeId=\"1\">", &format!("<CheckBoxDataPath attributeId=\"1\" steps=\"{NAME}\">")), "are not the uuid"),
+            (flag("").replace("<CheckBoxDataPath attributeId=\"1\">", "<CheckBoxDataPath attributeId=\"2\">"), "attributeId must be 1"),
+        ];
+        for (columns, why) in cases {
+            let text = refusal(&table_with(&columns));
+            assert!(text.contains(why), "{why}: {text}");
+            assert!(text.contains("line "), "{why}: {text}");
+        }
+        // existing tables
+        let e = existing_with(&flag_columns());
+        let path = goods("Признак");
+        let data_of = |column: &str| {
+            let start = e.xml.find(&format!("<Column name=\"{column}\"")).unwrap();
+            let open = start + e.xml[start..].find("<DataPath").unwrap();
+            (open, open + e.xml[open..].find("</DataPath>").unwrap() + "</DataPath>".len())
+        };
+        let (from, to) = data_of("Наименование");
+        let cases: Vec<(String, &str)> = vec![
+            // the shape of the column cannot change, both ways
+            (format!("{}{}{}", &e.xml[..from], check_element(None, &goods("Флаг")), &e.xml[to..]), "<CheckBoxDataPath> is edited"),
+            (with_check_element(&e.xml, "Флаг", &format!("<DataPath attributeId=\"1\">{}</DataPath>", goods("Флаг"))), "<CheckBoxDataPath> is edited"),
+            (with_check_element(&e.xml, "Флаг", ""), "<CheckBoxDataPath> is edited"),
+            (format!("{}{}{}", &e.xml[..to], check_element(None, &goods("Флаг")), &e.xml[to..]), "<CheckBoxDataPath> is edited"),
+            // both paths on a column
+            (
+                with_check_element(
+                    &e.xml,
+                    "Флаг",
+                    &format!("{}<DataPath attributeId=\"1\">{}</DataPath>", check_element(Some(FLAG), &goods("Флаг")), goods("Наименование")),
+                ),
+                "<DataPath> together with <CheckBoxDataPath>",
+            ),
+            // the target
+            (with_check_element(&e.xml, "Флаг", &check_element(None, &goods("Количество"))), "not Boolean"),
+            (with_check_element(&e.xml, "Флаг", &check_element(None, &goods("НомерСтроки"))), "not a Boolean column"),
+            (with_check_element(&e.xml, "Флаг", &check_element(None, "ОбработкаОбъект.Контакты.Значение")), "belongs to the tabular section 'Контакты'"),
+            (with_check_element(&e.xml, "Флаг", &check_element(None, &goods("Нет"))), "does not exist"),
+            (with_check_element(&e.xml, "Флаг", &check_element(None, "Другой.Товары.Признак")), "starts with 'Другой'"),
+            // the attribute and the steps alone
+            (with_check_element(&e.xml, "Флаг", &format!("<CheckBoxDataPath attributeId=\"2\">{path}</CheckBoxDataPath>")), "<CheckBoxDataPath> is edited"),
+            (with_check_element(&e.xml, "Флаг", &check_element(Some(MARK), &goods("Флаг"))), "<CheckBoxDataPath> is edited"),
+            // new columns
+            (with_column_after(&e.xml, None, &check_col("Н", 9, &path, "").replace("<Visible>false</Visible>", "")), "<Visible>false</Visible>"),
+            (with_column_after(&e.xml, None, &check_col("Н", 9, &goods("Количество"), "")), "not Boolean"),
+            (with_column_after(&e.xml, None, &check_col("Н", 9, &path, "<Events><OnChange id=\"2147483647\">Изм</OnChange></Events>")), "<Events>"),
+            (with_column_after(&e.xml, None, &check_col("Н", 9, &path, &format!("<PictureDataPath attributeId=\"1\">{path}</PictureDataPath>"))), "picture path"),
+            (
+                with_column_after(&e.xml, None, &check_col("Н", 9, &path, &format!("<DataPath attributeId=\"1\">{path}</DataPath>"))),
+                "<DataPath> together with <CheckBoxDataPath>",
+            ),
+        ];
+        for (edited, why) in cases {
+            let text = e.refusal(&edited);
+            assert!(text.contains(why), "{why}: {text}");
+        }
     }
 }

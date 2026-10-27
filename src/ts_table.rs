@@ -13,6 +13,11 @@
 //! pattern, 38 editor guid, 39 editor blob `{{#base64:...},0}`, last slot the width again.
 //! A column of a reference type has the same `P` as a string column; only `P[35]` (the pattern of the schema) and the
 //! editor blob differ, see [`editor_text`].
+//!
+//! A Boolean attribute of the section is bound as check box data (`X[2]` = `{-1}`, `X[3]` = `{0,<column uuid>}`): `P` has
+//! 45 slots (no editor, so the column reads as read-only), 6 = -1, 7 = the ordinal of the field, 25/27/29 = 0 (the column
+//! reads as not visible, as in all real check box columns) and the default pattern `{"Pattern",{"S",10,1}}` in 35,
+//! see [`CHECK_BOX_PROPS`].
 //! Slots that are copied from the templates unexplained: 7, 8, 9 (bit 1), 10-24, 27-29, 31, 33, 34, 36, 37, 40-44.
 
 use std::io::Write;
@@ -44,6 +49,12 @@ const EDITABLE_PROPS: &str = r#"{19,{1,0},{1,0},{1,0},100,0,0,-1,-1,12590592,{4,
 /// of the editable column.
 const ROW_NUMBER_PROPS: &str = r#"{19,{1,0},{1,0},{1,0},28,0,-2,-1,-1,12590594,{4,0,{0},"",-1,-1,1,0,""},{4,0,{0},"",-1,-1,1,0,""},{4,0,{0},"",-1,-1,1,0,""},16,16,d2314b5d-8da4-4e0f-822b-45e7500eae09,{3,4,{0}},{3,4,{0}},{3,4,{0}},{3,4,{0}},{3,4,{0}},{3,4,{0}},{7,3,0,1,100},{7,3,0,1,100},{7,3,0,1,100},1,0,1,4,1,"",{},4,0,{1,0},{"Pattern"},0,1,00000000-0000-0000-0000-000000000000,0,0,0,0,0,28}"#;
 
+/// Column `P` of a check box column (45 slots), the most frequent real record of a column bound to a Boolean field of
+/// the section through its check box data (30 of 36 such columns in the real forms of version 19, the others have an
+/// editor): the
+/// ordinal of the field is in `P[7]`, `P[6]` and `P[8]` are -1.
+const CHECK_BOX_PROPS: &str = r#"{19,{1,0},{1,0},{1,0},100,0,-1,-1,-1,12590592,{4,0,{0},"",-1,-1,1,0,""},{4,0,{0},"",-1,-1,1,0,""},{4,0,{0},"",-1,-1,1,0,""},16,16,d2314b5d-8da4-4e0f-822b-45e7500eae09,{3,4,{0}},{3,4,{0}},{3,4,{0}},{3,4,{0}},{3,4,{0}},{3,4,{0}},{7,3,0,1,100},{7,3,0,1,100},{7,3,0,1,100},0,0,0,4,0,"",{},15,0,{1,0},{"Pattern",{"S",10,1}},0,1,00000000-0000-0000-0000-000000000000,0,0,0,0,0,100}"#;
+
 /// Flags word `P[9]` of a column bound to a field of the section (the most frequent value in real forms).
 const FIELD_FLAGS: i64 = 12590592;
 
@@ -55,6 +66,8 @@ pub enum ColumnData {
     /// A column of the tabular section: its uuid, 0-based position in the TS, the value pattern text and, for a
     /// reference type, the kind of the reference (`CatalogRef`, ...) as the object XML names it.
     Field { uuid: String, ordinal: usize, pattern: String, ref_kind: Option<String> },
+    /// A Boolean column of the tabular section bound as check box data: its uuid and 0-based position in the TS.
+    CheckBox { uuid: String, ordinal: usize },
 }
 
 /// Everything a column record is built from.
@@ -141,7 +154,7 @@ fn classify(pattern: &str, ref_kind: Option<&str>) -> Result<Primitive, String> 
         (Some("D"), 2) if atom(1) == Some("D") => Ok(Primitive::Date),
         (Some("D"), 2) => Err("value type Time is not supported for a column yet".to_string()),
         (Some("B"), _) => Err(
-            "value type Boolean is not supported for a column yet (the Configurator binds it as check box data, a different record shape)"
+            "value type Boolean is not bound through <DataPath>: the Configurator binds it as check box data, use <CheckBoxDataPath> (and <ReadOnly>true</ReadOnly>, <Visible>false</Visible>) instead"
                 .to_string(),
         ),
         (Some("#"), 2) if atom(1).is_some_and(crate::naming::is_uuid) => match ref_kind {
@@ -375,6 +388,15 @@ pub fn data_step(data: &ColumnData) -> String {
     match data {
         ColumnData::RowNumber => "{-2}".to_string(),
         ColumnData::Field { uuid, .. } => format!("{{0,{uuid}}}"),
+        ColumnData::CheckBox { .. } => "{-1}".to_string(),
+    }
+}
+
+/// Text of the check box data step `X[3]` of a column.
+pub fn check_step(data: &ColumnData) -> String {
+    match data {
+        ColumnData::CheckBox { uuid, .. } => format!("{{0,{uuid}}}"),
+        _ => "{-1}".to_string(),
     }
 }
 
@@ -404,6 +426,10 @@ fn width_chars(width: i64) -> i64 {
     (width + 6) / 7
 }
 
+/// Why a check box column is built only read-only and not visible.
+const CHECK_BOX_SHAPE: &str =
+    "a column bound through <CheckBoxDataPath> is built the way the real ones are (no editor, the visibility slot 0): write <ReadOnly>true</ReadOnly> and <Visible>false</Visible>, as `extract` shows such columns";
+
 /// The record of one column.
 pub fn column_record(spec: &ColumnSpec) -> Result<Node, String> {
     let (mut props, data, ordinal) = match &spec.data {
@@ -414,13 +440,23 @@ pub fn column_record(spec: &ColumnSpec) -> Result<Node, String> {
             (props, format!("{{0,{uuid}}}"), *ordinal as i64)
         }
         ColumnData::Field { uuid, ordinal, .. } => (parse(EDITABLE_PROPS)?, format!("{{0,{uuid}}}"), *ordinal as i64),
+        ColumnData::CheckBox { ordinal, .. } => {
+            if spec.visible || !spec.read_only {
+                return Err(CHECK_BOX_SHAPE.to_string());
+            }
+            let mut props = parse(CHECK_BOX_PROPS)?;
+            props.children[7] = bare(*ordinal);
+            (props, "{-1}".to_string(), -1)
+        }
     };
     let last = props.len() - 1;
     props.children[1] = Item::Node(localized(&spec.header));
     props.children[4] = bare(spec.width);
     props.children[5] = bare(spec.id);
     props.children[6] = bare(ordinal);
-    props.children[25] = bare(i32::from(spec.visible));
+    if !matches!(spec.data, ColumnData::CheckBox { .. }) {
+        props.children[25] = bare(i32::from(spec.visible));
+    }
     props.children[30] = quoted(&spec.name);
     props.children[32] = bare(width_chars(spec.width));
     props.children[last] = bare(spec.width);
@@ -434,7 +470,9 @@ pub fn column_record(spec: &ColumnSpec) -> Result<Node, String> {
     } else if !spec.read_only {
         return Err("the column НомерСтроки is read-only".to_string());
     }
-    let x = Node { children: vec![bare(8), Item::Node(props), Item::Node(parse(&data)?), Item::Node(parse("{-1}")?), Item::Node(parse("{-1}")?)] };
+    let x = Node {
+        children: vec![bare(8), Item::Node(props), Item::Node(parse(&data)?), Item::Node(parse(&check_step(&spec.data))?), Item::Node(parse("{-1}")?)],
+    };
     let w = Node { children: vec![bare(1), Item::Node(x), bare(0), bare(0)] };
     Ok(Node { children: vec![Item::Atom(Atom::new(AtomKind::Bare, COLUMN_GUID)), Item::Node(w)] })
 }
@@ -491,6 +529,10 @@ pub struct ColumnRequest {
     /// `attributeId` attribute and text of the `<DataPath>` of the column.
     pub attribute_id: Option<String>,
     pub data_path: Option<String>,
+    /// `attributeId`, normalized `steps` and text of the `<CheckBoxDataPath>` of the column.
+    pub check_attribute_id: Option<String>,
+    pub check_steps: Option<String>,
+    pub check_path: Option<String>,
     /// `(line, what)` of everything else the column carries that cannot be written.
     pub unsupported: Vec<(u32, String)>,
 }
@@ -498,19 +540,24 @@ pub struct ColumnRequest {
 /// The column name of `path` = `Root.Section.Column` of a column of the table bound to the section `ts` of the main
 /// attribute `root` (id `attr_id`). The error names the path and the reason.
 pub fn column_field<'p>(root: &str, attr_id: i64, ts: &TabularSchema, path: &'p str, attribute_id: Option<&str>) -> Result<&'p str, String> {
+    column_field_of("DataPath", root, attr_id, ts, path, attribute_id)
+}
+
+/// [`column_field`] for the path element `tag` (`DataPath` or `CheckBoxDataPath`).
+pub fn column_field_of<'p>(tag: &str, root: &str, attr_id: i64, ts: &TabularSchema, path: &'p str, attribute_id: Option<&str>) -> Result<&'p str, String> {
     if attribute_id.map(str::trim) != Some(attr_id.to_string().as_str()) {
-        return Err(format!("DataPath '{path}': attributeId must be {attr_id} (the main attribute)"));
+        return Err(format!("{tag} '{path}': attributeId must be {attr_id} (the main attribute)"));
     }
     let parts: Vec<&str> = path.split('.').collect();
     let [path_root, section, field] = parts.as_slice() else {
-        return Err(format!("DataPath '{path}' must be {root}.{}.<column>", ts.name));
+        return Err(format!("{tag} '{path}' must be {root}.{}.<column>", ts.name));
     };
     if *path_root != root {
-        return Err(format!("DataPath '{path}': the path starts with '{path_root}', the table's path with '{root}'"));
+        return Err(format!("{tag} '{path}': the path starts with '{path_root}', the table's path with '{root}'"));
     }
     if *section != ts.name {
         return Err(format!(
-            "DataPath '{path}': the column belongs to the tabular section '{section}', the table is bound to '{}'",
+            "{tag} '{path}': the column belongs to the tabular section '{section}', the table is bound to '{}'",
             ts.name
         ));
     }
@@ -547,6 +594,57 @@ pub fn field_data_for(ts: &TabularSchema, field: &str, read_only: bool) -> Resul
     Ok(ColumnData::Field { uuid: ts.columns[ordinal].1.to_ascii_lowercase(), ordinal, pattern: pattern.to_string(), ref_kind: ref_kind.map(str::to_string) })
 }
 
+/// What a check box column bound to the Boolean column `field` of the section `ts` is built on; the error is the
+/// reason why it cannot be built (not found, not Boolean). `steps` (`steps` of the element, normalized) must be the
+/// uuid of the column when it is given.
+pub fn check_box_data(ts: &TabularSchema, field: &str, steps: Option<&str>) -> Result<ColumnData, String> {
+    if field == ROW_NUMBER {
+        return Err(format!("{ROW_NUMBER} is not a Boolean column; bind it through <DataPath>"));
+    }
+    let Some(ordinal) = ts.column_ordinal(field) else {
+        let known: Vec<&str> = ts.columns.iter().map(|(n, _)| n.as_str()).collect();
+        let why = if known.iter().filter(|n| **n == field).count() > 1 { "occurs twice" } else { "does not exist" };
+        return Err(format!("the column '{field}' {why} in the tabular section '{}' (columns: {})", ts.name, known.join(", ")));
+    };
+    let uuid = ts.columns[ordinal].1.to_ascii_lowercase();
+    match ts.column_pattern(ordinal) {
+        Some(p) if is_boolean(p) => {}
+        Some(p) => return Err(format!("the column '{field}' has the value type {p}, not Boolean: check box data can be bound only to a Boolean column; use <DataPath>")),
+        None => return Err(format!("the value type of the column '{field}' is not known, so it is not known to be Boolean")),
+    }
+    if let Some(steps) = steps.filter(|s| !s.eq_ignore_ascii_case(&uuid)) {
+        return Err(format!("steps '{steps}' are not the uuid {uuid} of the column '{field}' (write that uuid or drop the steps attribute)"));
+    }
+    Ok(ColumnData::CheckBox { uuid, ordinal })
+}
+
+/// [`check_box_data`] for a new column: the request must have the shape of the real check box columns (read-only, not
+/// visible, no editor). The error is the reason (without the position).
+pub fn new_check_box_data(
+    ts: &TabularSchema,
+    path: &str,
+    field: &str,
+    steps: Option<&str>,
+    visible: bool,
+    read_only: bool,
+    editor: Option<&str>,
+) -> Result<ColumnData, String> {
+    if visible || !read_only {
+        return Err(CHECK_BOX_SHAPE.to_string());
+    }
+    if editor.is_some() {
+        return Err("a column bound through <CheckBoxDataPath> has no editor: remove <Editor>".to_string());
+    }
+    check_box_data(ts, field, steps).map_err(|why| format!("CheckBoxDataPath '{path}': {why}"))
+}
+
+/// Whether a value pattern is the Boolean one (`{"Pattern",{"B"}}`).
+pub fn is_boolean(pattern: &str) -> bool {
+    let Ok(tree) = parse_metadata(pattern.as_bytes()) else { return false };
+    let branches: Vec<&Node> = tree.children.iter().skip(1).filter_map(Item::as_node).collect();
+    matches!(branches.as_slice(), [b] if b.len() == 1 && b.atom(0).is_some_and(|a| a.value == "B"))
+}
+
 /// What a column bound to `field` (the last segment of `path`) is built on, given the request: `read_only` and the
 /// `editor` it names. The error is the reason (without the position).
 pub fn new_column_data(ts: &TabularSchema, path: &str, field: &str, read_only: bool, editor: Option<&str>) -> Result<ColumnData, String> {
@@ -560,6 +658,13 @@ pub fn new_column_data(ts: &TabularSchema, path: &str, field: &str, read_only: b
         return Err("a read-only column has no editor: remove <Editor> or use <ReadOnly>false</ReadOnly>".to_string());
     }
     field_data_for(ts, field, read_only).map_err(|why| format!("DataPath '{path}': {why}"))
+}
+
+/// The check box column the request `r` with the `<CheckBoxDataPath>` text `path` asks for.
+fn check_box_spec(root: &str, attr_id: i64, ts: &TabularSchema, r: &ColumnRequest, path: &str) -> Result<ColumnSpec, String> {
+    let field = column_field_of("CheckBoxDataPath", root, attr_id, ts, path, r.check_attribute_id.as_deref())?;
+    let data = new_check_box_data(ts, path, field, r.check_steps.as_deref(), r.visible, r.read_only, r.editor.as_deref())?;
+    Ok(ColumnSpec { name: r.name.clone(), id: r.id.unwrap_or(0), header: r.header.clone(), width: r.width, visible: false, read_only: true, data })
 }
 
 /// The column records of an added table bound to the tabular section `ts` of the main attribute `root` (whose id
@@ -586,8 +691,25 @@ pub fn plan_columns(root: &str, attr_id: i64, ts: &TabularSchema, requests: &[Co
         if let Some(editor) = r.editor.as_deref().filter(|e| *e != "InputField") {
             problems.push(format!("{at}: the editor {editor} is not supported (only InputField)"));
         }
+        if let (Some(_), Some(_)) = (&r.data_path, &r.check_path) {
+            problems.push(format!(
+                "{at}: <DataPath> together with <CheckBoxDataPath> is not supported on a new column (use one: <DataPath> for data, <CheckBoxDataPath> for a Boolean column)"
+            ));
+            continue;
+        }
+        if let Some(path) = r.check_path.as_deref() {
+            match check_box_spec(root, attr_id, ts, r, path) {
+                Ok(spec) if problems.len() == before => specs.push(spec),
+                Ok(_) => {}
+                Err(why) => problems.push(format!("{at}: {why}")),
+            }
+            continue;
+        }
         let Some(path) = r.data_path.as_deref() else {
-            problems.push(format!("{at}: <DataPath> is required: {root}.{}.<column of the section> or {root}.{}.{ROW_NUMBER}", ts.name, ts.name));
+            problems.push(format!(
+                "{at}: <DataPath> is required: {root}.{}.<column of the section> or {root}.{}.{ROW_NUMBER} (<CheckBoxDataPath> for a Boolean column)",
+                ts.name, ts.name
+            ));
             continue;
         };
         let field = match column_field(root, attr_id, ts, path, r.attribute_id.as_deref()) {
@@ -630,6 +752,8 @@ pub struct ColumnRead {
     pub name: String,
     pub id: i64,
     pub ordinal: i64,
+    /// `P[7]`: the ordinal of the field of a check box column (-1 for other columns).
+    pub check_ordinal: i64,
     /// Text of the data step `X[2]` (`{0,<uuid>}`, `{-2}`, `{-1}`).
     pub data: String,
     pub slots: usize,
@@ -661,6 +785,7 @@ pub fn read_column(col: &Node) -> Option<ColumnRead> {
         name: props.atom(30)?.value.clone(),
         id: props.atom(5)?.value.parse().ok()?,
         ordinal: props.atom(6)?.value.parse().ok()?,
+        check_ordinal: props.atom(7)?.value.parse().ok()?,
         data: text_of(x.node(2)?),
         slots: props.len(),
         check_data: text_of(x.node(3)?),
@@ -701,14 +826,18 @@ pub fn check_table(info: &Node, type_id: &str, specs: &[ColumnSpec]) -> Result<(
         return Err(format!("the table has {} columns, expected {}", columns.len(), specs.len()));
     }
     for (got, spec) in columns.iter().zip(specs) {
-        let (ordinal, data) = match &spec.data {
-            ColumnData::RowNumber => (-2, "{-2}".to_string()),
-            ColumnData::Field { uuid, ordinal, .. } => (*ordinal as i64, format!("{{0,{uuid}}}")),
+        let (ordinal, check_ordinal) = match &spec.data {
+            ColumnData::RowNumber => (-2, -1),
+            ColumnData::Field { ordinal, .. } => (*ordinal as i64, -1),
+            ColumnData::CheckBox { ordinal, .. } => (-1, *ordinal as i64),
         };
-        if (got.name.as_str(), got.id, got.ordinal, got.data.as_str()) != (spec.name.as_str(), spec.id, ordinal, data.as_str()) {
+        let (data, check) = (data_step(&spec.data), check_step(&spec.data));
+        if (got.name.as_str(), got.id, got.ordinal, got.check_ordinal, got.data.as_str(), got.check_data.as_str())
+            != (spec.name.as_str(), spec.id, ordinal, check_ordinal, data.as_str(), check.as_str())
+        {
             return Err(format!(
-                "column '{}': stored as name '{}', id {}, ordinal {}, data {}; expected id {}, ordinal {ordinal}, data {data}",
-                spec.name, got.name, got.id, got.ordinal, got.data, spec.id
+                "column '{}': stored as name '{}', id {}, ordinal {}/{}, data {}, check box data {}; expected id {}, ordinal {ordinal}/{check_ordinal}, data {data}, check box data {check}",
+                spec.name, got.name, got.id, got.ordinal, got.check_ordinal, got.data, got.check_data, spec.id
             ));
         }
         if got.record != text_of(&column_record(spec)?) {
@@ -870,7 +999,7 @@ mod tests {
 
     #[test]
     fn every_template_parses_and_has_the_slot_count() {
-        for (t, n) in [(EDITABLE_PROPS, 46), (ROW_NUMBER_PROPS, 45)] {
+        for (t, n) in [(EDITABLE_PROPS, 46), (ROW_NUMBER_PROPS, 45), (CHECK_BOX_PROPS, 45)] {
             assert_eq!(parse(t).unwrap().len(), n);
         }
         assert_eq!(width_chars(100), 15);
@@ -973,6 +1102,82 @@ mod tests {
         assert_eq!(decoded["id"], 5);
         assert_eq!(decoded["width"], 100);
         assert_eq!(decoded["valueType"]["kind"], "Number");
+    }
+
+    fn flags_section() -> TabularSchema {
+        TabularSchema {
+            name: "Товары".into(),
+            uuid: "22222222-0000-0000-0000-000000000001".into(),
+            type_id: Some("32dc563e-0b51-4621-9936-5bfc9fd58ef3".into()),
+            columns: vec![
+                ("Наименование".into(), "33333333-0000-0000-0000-000000000001".into()),
+                ("Флаг".into(), "33333333-0000-0000-0000-00000000000A".into()),
+            ],
+            column_patterns: vec![Some(r#"{"Pattern",{"S",20,1}}"#.into()), Some(r#"{"Pattern",{"B"}}"#.into())],
+            column_ref_kinds: vec![None, None],
+        }
+    }
+
+    #[test]
+    fn a_check_box_column_is_built_from_the_modal_record_and_read_back() {
+        let ts = flags_section();
+        let data = check_box_data(&ts, "Флаг", Some("33333333-0000-0000-0000-00000000000a")).unwrap();
+        assert_eq!(data, ColumnData::CheckBox { uuid: "33333333-0000-0000-0000-00000000000a".into(), ordinal: 1 });
+        assert_eq!((data_step(&data), check_step(&data)), ("{-1}".to_string(), "{0,33333333-0000-0000-0000-00000000000a}".to_string()));
+        let mut s = spec("Флаг", 6, data.clone(), true);
+        s.visible = false;
+        s.width = 60;
+        let rec = column_record(&s).unwrap();
+        let x = rec.node(1).unwrap().node(1).unwrap().clone();
+        let p = x.node(1).unwrap().clone();
+        assert_eq!(p.len(), 45);
+        let atoms: Vec<&str> = [4, 5, 6, 7, 8, 9, 25, 26, 27, 29, 32, 38, 44].iter().map(|i| p.atom(*i).unwrap().value.as_str()).collect();
+        assert_eq!(atoms, ["60", "6", "-1", "1", "-1", "12590592", "0", "0", "0", "0", "9", NO_EDITOR_GUID, "60"]);
+        assert_eq!((text_of(x.node(2).unwrap()), text_of(x.node(3).unwrap()), text_of(x.node(4).unwrap())), ("{-1}".into(), "{0,33333333-0000-0000-0000-00000000000a}".into(), "{-1}".into()));
+        assert_eq!(text_of(p.node(35).unwrap()), r#"{"Pattern",{"S",10,1}}"#);
+        // the decoder shows it the way it shows the real ones, and the data step is not set
+        let decoded = crate::oof_props::decode_column_props(&p).unwrap();
+        assert_eq!((decoded["visible"].clone(), decoded["readOnly"].clone(), decoded["valueType"]["kind"].clone()), (false.into(), true.into(), "String".into()));
+        let read = read_column(&rec).unwrap();
+        assert_eq!((read.ordinal, read.check_ordinal, read.data.as_str(), read.slots), (-1, 1, "{-1}", 45));
+        // a table with data, row number and check box columns reads back
+        let donor = crate::donor::prototype("Table").unwrap();
+        let mut info = donor.node(2).unwrap().clone();
+        let specs = vec![spec("Номер", 0, ColumnData::RowNumber, true), spec("Наименование", 1, field(0, r#"{"Pattern",{"S",20,1}}"#), false), s];
+        bind_info(&mut info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &specs).unwrap();
+        check_table(&info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &specs).unwrap();
+        let mut other = specs.clone();
+        other[2].data = ColumnData::CheckBox { uuid: "33333333-0000-0000-0000-00000000000b".into(), ordinal: 1 };
+        assert!(check_table(&info, "32dc563e-0b51-4621-9936-5bfc9fd58ef3", &other).unwrap_err().contains("check box data"));
+        // the shape of the real columns only: not visible, read-only
+        let mut bad = specs[2].clone();
+        bad.visible = true;
+        assert!(column_record(&bad).unwrap_err().contains("<Visible>false</Visible>"));
+        bad.visible = false;
+        bad.read_only = false;
+        assert!(column_record(&bad).unwrap_err().contains("<ReadOnly>true</ReadOnly>"));
+    }
+
+    #[test]
+    fn check_box_data_is_bound_only_to_a_boolean_column_of_the_section() {
+        let ts = flags_section();
+        for (field, steps, why) in [
+            ("Наименование", None, "not Boolean"),
+            ("НомерСтроки", None, "not a Boolean column"),
+            ("Нет", None, "does not exist"),
+            ("Флаг", Some("33333333-0000-0000-0000-000000000001"), "are not the uuid"),
+        ] {
+            let e = check_box_data(&ts, field, steps).unwrap_err();
+            assert!(e.contains(why), "{field}: {e}");
+        }
+        let mut unknown = ts.clone();
+        unknown.column_patterns[1] = None;
+        assert!(check_box_data(&unknown, "Флаг", None).unwrap_err().contains("not known"));
+        assert!(is_boolean(r#"{"Pattern",{"B"}}"#));
+        assert!(!is_boolean(r#"{"Pattern",{"S",10,1}}"#) && !is_boolean(r#"{"Pattern",{"B"},{"S"}}"#) && !is_boolean("{"));
+        // the data path refuses it and names the way out
+        let e = check_pattern(r#"{"Pattern",{"B"}}"#, None).unwrap_err();
+        assert!(e.contains("<CheckBoxDataPath>"), "{e}");
     }
 
     #[test]
