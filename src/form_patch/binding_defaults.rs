@@ -8,7 +8,7 @@
 //! number with digits, date, boolean, reference). The donor prototype carries a `ValueList` there; a `<ValueType>` the
 //! XML does not state is taken from the schema (a single known type; a composite or unknown one stays as the donor has it).
 
-use super::{FormXml, ValueTypeSpec};
+use super::{FormAttribute, FormXml, ValueTypeSpec};
 use crate::brace::{parse_metadata, Item};
 use crate::object_schema::{ObjectSchema, Resolved};
 
@@ -42,31 +42,66 @@ fn own_value_type(schema: &ObjectSchema, name: &str) -> Option<ValueTypeSpec> {
     (!spec.composite && !spec.lossy).then_some(spec)
 }
 
+/// The value type of a field bound to the plain attribute `a` of the form: the attribute's own simple type (string with
+/// its length, number with digits, date, boolean, reference). A composite attribute or a table keeps the donor's type.
+fn form_attribute_type(a: &FormAttribute) -> Option<ValueTypeSpec> {
+    let known = matches!(a.kind.as_str(), "String" | "Number" | "Date" | "DateTime" | "Boolean") || a.kind.ends_with("Ref");
+    (known && !a.composite && !a.main).then(|| ValueTypeSpec {
+        kind: a.kind.clone(),
+        composite: false,
+        fraction_digits: a.fraction_digits,
+        digits: a.digits,
+        length: a.length,
+        non_negative: a.non_negative,
+        fixed: false,
+        ref_guids: a.ref_guids.clone(),
+        lossy: false,
+    })
+}
+
 /// Applies the defaults to the `InputField`s of `edited` that are not in `baseline` and are bound to an attribute of
-/// the object, for the buttons and the `<ValueType>` their XML does not mention. A path that cannot be resolved is left to the planner,
-/// which refuses it.
+/// the object or of the form, for the buttons and the `<ValueType>` their XML does not mention. A path that cannot be
+/// resolved is left to the planner, which refuses it.
+///
+/// A field of a known simple type is not a list or a spin field: the donor's drop-down and spin buttons (it carries a
+/// `ValueList` type) are off unless the XML says otherwise.
 pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) {
-    let Some(schema) = crate::object_schema::object_schema() else { return };
+    let schema = crate::object_schema::object_schema();
+    let attributes = edited.attributes.clone();
     for c in &mut edited.controls {
         if c.type_name != "InputField" || baseline.control(c.id).is_some() {
             continue;
         }
-        let Some((_, path)) = &c.values.data_path else { continue };
+        let Some((attr_id, path)) = c.values.data_path.clone() else { continue };
         let parts: Vec<&str> = path.split('.').collect();
-        let [_, name] = parts.as_slice() else { continue };
-        if let Some((choice, open)) = value_kind(&schema, name).and_then(buttons_of) {
-            let [has_choice, has_open] = c.explicit_buttons;
-            if !has_choice {
-                c.values.choice_button = Some(choice);
+        match (parts.as_slice(), &schema) {
+            ([_, name], Some(schema)) => {
+                if let Some((choice, open)) = value_kind(schema, name).and_then(buttons_of) {
+                    let [has_choice, has_open] = c.explicit_buttons;
+                    if !has_choice {
+                        c.values.choice_button = Some(choice);
+                    }
+                    if !has_open {
+                        c.values.open_button = Some(open);
+                    }
+                }
+                if !c.explicit_value_type {
+                    if let Some(spec) = own_value_type(schema, name) {
+                        c.values.value_type = Some(spec);
+                    }
+                }
             }
-            if !has_open {
-                c.values.open_button = Some(open);
+            ([name], _) if !c.explicit_value_type => {
+                let attribute = attributes.iter().find(|a| a.id == attr_id && a.name == *name);
+                if let Some(spec) = attribute.and_then(form_attribute_type) {
+                    c.values.value_type = Some(spec);
+                }
             }
+            _ => {}
         }
-        if !c.explicit_value_type {
-            if let Some(spec) = own_value_type(&schema, name) {
-                c.values.value_type = Some(spec);
-            }
+        if c.values.value_type.as_ref().is_some_and(|vt| !vt.composite && !vt.kind.is_empty() && vt.kind != "ValueList") {
+            c.values.drop_list_button.get_or_insert(false);
+            c.values.spin_button.get_or_insert(false);
         }
     }
 }

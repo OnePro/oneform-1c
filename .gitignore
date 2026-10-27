@@ -8,3 +8,4 @@
 openspec/
 
 pi-session-*
+__pycache__/

@@ -15,6 +15,7 @@
 | Кнопки командной панели | [edit-command-bar-buttons](edit-command-bar-buttons.md) | подтверждено наличие, текст и действие; нажатие не проверялось |
 | `new-form` | [add-new-form-command](add-new-form-command.md) | формы открываются; отчёт — по шаблону обработки (V3) |
 | Панель со страницами | [add-panel-with-pages](add-panel-with-pages.md) | **только этап A**; этап B в 1С **не проверялся** (V1) |
+| Страницы и `ShowTabs` существующей панели настоящего отчёта | [functional-report](functional-report.md) | подтверждено платформой (сборка `.erf` + выгрузка) для переименования, добавления, удаления, перестановки и `ShowTabs` 0 ↔ 1; в живой 1С открыты итоговая форма и перестановка/`ShowTabs` 0 → 1 (V1, V2) |
 | Реквизиты формы и таблица значений | [add-form-attributes-and-value-tables](add-form-attributes-and-value-tables.md) | таблица значений — да; простые реквизиты формы — **нет артефакта** (V6) |
 | Кнопки выбора у ссылочного поля | [input-field-selection-buttons](input-field-selection-buttons.md) | **не закрыто**, только состояние «до» (V5) |
 | Сплошная проверка свойств | [property-sweep](property-sweep.md) | частично: 9 наблюдаемых изменений из 40 мутаций, 1 566 строк кнопок панелей не разобраны |

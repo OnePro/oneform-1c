@@ -892,16 +892,6 @@ fn assert_discovered_properties_pack(target: Target) {
     );
     xml.replace_range(tbl_at..tbl_end, &tbl_block);
 
-    // Patch Панель1: ShowTabs code=1 (Top)
-    let pnl_at = xml.find("<Panel name=\"Панель1\"").expect("panel");
-    let pnl_end = pnl_at + xml[pnl_at..].find("<ChildItems>").unwrap();
-    let pnl_block = xml[pnl_at..pnl_end].replacen(
-        "<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>",
-        "<ShowTabs type=\"ShowTabs\" member=\"Top\" code=\"1\"/>",
-        1,
-    );
-    xml.replace_range(pnl_at..pnl_end, &pnl_block);
-
     fs::write(&xml_file, &xml).unwrap();
     let out = run(w.root(), &["pack", "."]);
     assert!(out.status.success(), "{target:?}: {}", text(&out));
@@ -921,7 +911,6 @@ fn assert_discovered_properties_pack(target: Target) {
         "<Hyperlink>true</Hyperlink>",
         "<Footer>true</Footer>",
         "<SelectionMode>Multi</SelectionMode>",
-        "<ShowTabs type=\"ShowTabs\" member=\"Top\" code=\"1\"/>",
     ] {
         assert!(packed_xml.contains(needle), "{target:?}: missing {needle} in:\n{packed_xml}");
     }
@@ -1034,7 +1023,7 @@ fn assert_form_attributes_and_datapath_pack(target: Target) {
     // Add attribute id=18 name=НовыйСтроковыйРеквизит
     xml = xml.replacen(
         "  </Attributes>",
-        "    <Attribute id=\"18\" name=\"НовыйСтроковыйРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"String\" composite=\"false\"/>\n    </Attribute>\n  </Attributes>",
+        "    <Attribute id=\"18\" name=\"НовыйСтроковыйРеквизит\">\n      <Main>true</Main>\n      <ValueType kind=\"String\" composite=\"false\"/>\n    </Attribute>\n    <Attribute id=\"19\" name=\"СтрокаСДлиной\">\n      <ValueType kind=\"String\" composite=\"false\" length=\"100\"/>\n    </Attribute>\n  </Attributes>",
         1,
     );
     // Rebind ПолеВвода1 to attributeId=18
@@ -1060,6 +1049,7 @@ fn assert_form_attributes_and_datapath_pack(target: Target) {
     let packed_xml = String::from_utf8(after[&rel(&w, &xml_file)].clone()).unwrap();
     for needle in [
         r#"<Attribute id="18" name="НовыйСтроковыйРеквизит">"#,
+        r#"<ValueType kind="String" composite="false" length="100"/>"#, // a string with a length reads back equal to the request
         r#"<DataPath attributeId="18">НовыйСтроковыйРеквизит</DataPath>"#,
         r#"<InputField name="НовоеПолеСПривязкой" id="37">"#,
         r#"<DataPath attributeId="14">ПолеВвода7</DataPath>"#,

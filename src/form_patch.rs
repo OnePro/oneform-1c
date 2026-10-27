@@ -2655,7 +2655,9 @@ impl FormXml {
         out.form_props = FormRootProps::default();
         for a in &mut out.attributes {
             a.non_negative = false;
-            a.fixed = false;
+            // `parse_form_xml` reads a string with a length as `fixed` (the flag of `{"S",length,flag}` is 1 for a string
+            // of variable length), so a decoded attribute carries it; a requested one must too
+            a.fixed = a.kind == "String" && a.length.is_some();
         }
         reorder(&mut out.shell, &z);
         for c in &mut out.controls {
@@ -7821,14 +7823,18 @@ fn panel_page_pieces(site: &Site) -> Result<Vec<Piece>> {
     let layout = read_panel(site)?;
     let titles = panel_pages(panel_info(site)?.node, old.width, old.height).1;
     let overflow = |what: &str| site.invalid("invalid-geometry", "geometry", format!("{what} overflows"));
+    let (tabs_dx, tabs_dy) = tabs_area_delta(site.edit);
     let mut out = Vec::new();
     for page in &layout.edged {
         let name = titles[page.index]["name"].as_str().unwrap_or_default();
-        for (edge, property, old_extent, new_extent) in [
-            (&page.right, Property::Width, old.width, new.width),
-            (&page.bottom, Property::Height, old.height, new.height),
+        for (edge, property, old_extent, new_extent, tabs) in [
+            (&page.right, Property::Width, old.width, new.width, tabs_dx),
+            (&page.bottom, Property::Height, old.height, new.height, tabs_dy),
         ] {
-            let delta = new_extent.checked_sub(old_extent).ok_or_else(|| overflow("the size change"))?;
+            let delta = new_extent
+                .checked_sub(old_extent)
+                .and_then(|d| d.checked_add(tabs))
+                .ok_or_else(|| overflow("the size change"))?;
             if delta == 0 {
                 continue;
             }
@@ -7843,6 +7849,13 @@ fn panel_page_pieces(site: &Site) -> Result<Vec<Piece>> {
                 ));
             }
             let new_area = area.checked_add(delta).ok_or_else(|| overflow("the page area"))?;
+            if new_area > new_extent {
+                return Err(site.layout(
+                    "unexpected-shape",
+                    "panel",
+                    format!("the client area {new_area} of page '{name}' would exceed the panel size {new_extent}; its geometry cannot be derived exactly"),
+                ));
+            }
             if new_area < 1 {
                 let label = property.xml_name();
                 return Err(site.invalid(
@@ -7852,7 +7865,8 @@ fn panel_page_pieces(site: &Site) -> Result<Vec<Piece>> {
                 ));
             }
             let coord = in_i32(site, property, new_area - edge.margin)?;
-            out.push(piece(edge.coord.1, coord, &[property]));
+            let causes: &[Property] = if tabs != 0 { &[property, Property::ShowTabs] } else { &[property] };
+            out.push(piece(edge.coord.1, coord, causes));
         }
     }
     Ok(out)
@@ -7880,11 +7894,22 @@ fn expected_panel(site: &Site) -> Result<(i64, Vec<Value>)> {
     let info = panel_info(site)?;
     let (show_tabs, before) = panel_pages(info.node, old.width, old.height);
     let (_, mut pages) = panel_pages(info.node, new.width, new.height);
+    let (tabs_dx, tabs_dy) = tabs_area_delta(site.edit);
     for page in &layout.edged {
         let mut kept = before[page.index].clone();
-        kept["width"] = (before[page.index]["width"].as_i64().unwrap_or_default() + (new.width - old.width)).into();
-        kept["height"] = (before[page.index]["height"].as_i64().unwrap_or_default() + (new.height - old.height)).into();
+        kept["width"] = (before[page.index]["width"].as_i64().unwrap_or_default() + (new.width - old.width) + tabs_dx).into();
+        kept["height"] = (before[page.index]["height"].as_i64().unwrap_or_default() + (new.height - old.height) + tabs_dy).into();
         pages[page.index] = kept;
+    }
+    if (tabs_dx, tabs_dy) != (0, 0) {
+        // the pages without edge records are derived from the panel size under the NEW tab setting
+        let (w, h) = if tabs_dx < 0 { ((new.width - 2).max(1), (new.height - 20).max(1)) } else { (new.width, new.height) };
+        for (i, page) in pages.iter_mut().enumerate() {
+            if !layout.edged.iter().any(|e| e.index == i) {
+                page["width"] = w.into();
+                page["height"] = h.into();
+            }
+        }
     }
     Ok((show_tabs, pages))
 }
@@ -7907,7 +7932,22 @@ fn derived_pages(panel_id: i64, pages: &[Value]) -> Vec<DerivedPage> {
 }
 
 fn is_panel_resize(edit: &ControlEdit) -> bool {
-    edit.type_name == "Panel" && (edit.changed.contains(&Property::Width) || edit.changed.contains(&Property::Height))
+    edit.type_name == "Panel"
+        && (edit.changed.contains(&Property::Width) || edit.changed.contains(&Property::Height) || tabs_area_delta(edit) != (0, 0))
+}
+
+/// How the client area of every page changes when `ShowTabs` of an existing panel goes 0 (None) <-> 1 (Top): the
+/// tab strip takes 2 px of width and 20 px of height (`new_panel_page_area`: `W-2 x H-20` with tabs, `W x H`
+/// without). Any other change of the code is refused before this is asked (`show_tabs_piece`).
+fn tabs_area_delta(edit: &ControlEdit) -> (i64, i64) {
+    if edit.type_name != "Panel" || !edit.changed.contains(&Property::ShowTabs) {
+        return (0, 0);
+    }
+    match (edit.old.show_tabs, edit.new.show_tabs) {
+        (Some(0), Some(1)) => (-2, -20),
+        (Some(1), Some(0)) => (2, 20),
+        _ => (0, 0),
+    }
 }
 
 fn visible_pieces(site: &Site, g: &GeomSlots) -> Result<Vec<Piece>> {
@@ -9698,7 +9738,27 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     return Err(site.mismatch("ShowTabs", &format!("{:?}", old.show_tabs), &layout.show_tabs.0.to_string()));
                 }
                 let want = new.show_tabs.unwrap_or(0);
+                if !matches!((layout.show_tabs.0, want), (0, 1) | (1, 0)) {
+                    return Err(site.invalid(
+                        "unsupported-panel",
+                        "ShowTabs",
+                        format!(
+                            "<ShowTabs code=\"{want}\"> of an existing panel: only 0 (None) <-> 1 (Top) is recomputed, the stream holds {}; other tab codes (side tabs) change the page area in ways that are not known - set them in the Configurator",
+                            layout.show_tabs.0
+                        ),
+                    ));
+                }
+                if page_plan(site.edit).is_some_and(|m| !plan_is_positional(&m, site.edit.new.pages.len())) {
+                    return Err(site.invalid(
+                        "unsupported-panel",
+                        "ShowTabs",
+                        "<ShowTabs> and the page set (added, removed or reordered pages) cannot change in one pack: change the tabs first, then the pages".to_string(),
+                    ));
+                }
                 out.push(piece(layout.show_tabs.1, in_i32(site, prop, want)?, &[prop]));
+                if !GEOMETRY.iter().any(|p| site.edit.changed.contains(p)) {
+                    out.extend(panel_page_pieces(site)?); // else `geometry_pieces` adds them
+                }
             }
             Property::Pages if restructures_pages(site.edit) => {} // rebuilt by `restructure_pages`
             Property::Pages => {
@@ -10388,7 +10448,25 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
             }
         }
         let actual = panel_pages(panel_info(site)?.node, new.width, new.height);
-        if actual.0 != expected.0 || (!site.edit.changed.contains(&Property::ShowTabs) && actual != expected) {
+        let tabs_toggle = tabs_area_delta(site.edit) != (0, 0);
+        // a tab toggle moves the page origin too (the decoder derives it), and a rename in the same pack changes the
+        // page names (checked with the `Pages` property): compare flags and sizes only
+        let sizes = |pages: &[Value]| -> Vec<Value> {
+            pages
+                .iter()
+                .map(|p| {
+                    let mut p = p.clone();
+                    for key in ["left", "top", "name", "title"] {
+                        p[key] = 0.into();
+                    }
+                    p
+                })
+                .collect()
+        };
+        if actual.0 != expected.0
+            || (!site.edit.changed.contains(&Property::ShowTabs) && actual != expected)
+            || (tabs_toggle && sizes(&actual.1) != sizes(&expected.1))
+        {
             return Err(site.layout(
                 "verification-failed",
                 "panel",

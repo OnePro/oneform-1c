@@ -1527,11 +1527,7 @@ fn discovered_label_checkbox_table_panel_and_commandbar_properties_round_trip() 
             ("<HorizontalAlign>Right</HorizontalAlign>", "<HorizontalAlign>Left</HorizontalAlign>"),
         ],
     );
-    edited = edit_ctl(
-        &edited,
-        "Панель1",
-        &[("<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>", "<ShowTabs type=\"ShowTabs\" member=\"Top\" code=\"1\"/>")],
-    );
+    // ShowTabs of an existing panel has its own tests (`show_tabs_of_an_existing_panel_moves_the_page_area`)
     let pf = round_trip("DonorForm", &edited);
     let got = parse_form_xml(decode_xml("DonorForm", &pf.bytes).as_bytes(), "decoded").unwrap();
     let lbl = got.control(5).unwrap();
@@ -1548,8 +1544,6 @@ fn discovered_label_checkbox_table_panel_and_commandbar_properties_round_trip() 
     let bar = got.control(2).unwrap();
     assert_eq!(bar.values.auto_fill, Some(true));
     assert_eq!(bar.values.horizontal_align, "");
-    let pnl = got.control(13).unwrap();
-    assert_eq!(pnl.values.show_tabs, Some(1));
 }
 
 #[test]
@@ -1778,6 +1772,46 @@ fn remaining_colors_fonts_scrollbars_valuetype_buttons_and_form_header_round_tri
     let cf = got.control(pf.allocated[0].1).unwrap();
     assert_eq!(cf.values.choice_list.len(), 1);
     assert_eq!(cf.values.choice_list[0].value, "Зн1");
+}
+
+/// An added field bound to a plain attribute of the form takes the attribute's type and, being a typed field and not
+/// a value list, has no drop-down and spin buttons (seen on screen in 1C: the donor's buttons stayed on every field).
+#[test]
+fn a_field_bound_to_a_form_attribute_takes_its_type_and_has_no_list_buttons() {
+    let name = "DonorForm";
+    let attribute = "    <Attribute id=\"16\" name=\"Примечание\">
+      <ValueType kind=\"String\" composite=\"false\" length=\"100\"/>
+    </Attribute>
+";
+    let field = |extra: &str| {
+        format!(
+            "<InputField name=\"ПолеПримечание\" id=\"999\">
+          <DataPath attributeId=\"16\">Примечание</DataPath>
+          <Left>520</Left><Top>500</Top><Width>120</Width><Height>20</Height>
+          <ZOrder>55</ZOrder><TabOrder>55</TabOrder>{extra}
+        </InputField>
+        "
+        )
+    };
+    let build = |extra: &str| {
+        let edited = with_attributes(&baseline(name), attribute);
+        let edited = replace_once(&edited, "<Table name=\"ТабличноеПоле1\"", &format!("{}<Table name=\"ТабличноеПоле1\"", field(extra)));
+        let s = stream(name);
+        let pf = patch_form(&s, baseline(name).as_bytes(), edited.as_bytes()).unwrap_or_else(|e| panic!("{e} {:?}", e.params.get("problems")));
+        assert_only_authorized_changes(s.source(), &pf);
+        let got = parse_form_xml(decode_xml(name, &pf.bytes).as_bytes(), "decoded").unwrap();
+        let c = got.control(pf.allocated[0].1).unwrap().clone();
+        c.values
+    };
+    let v = build("");
+    let vt = v.value_type.expect("the type of the attribute");
+    assert_eq!((vt.kind.as_str(), vt.length), ("String", Some(100)));
+    assert_eq!((v.drop_list_button, v.spin_button), (Some(false), Some(false)));
+    // an explicit type and explicit buttons win
+    let v = build("<ValueType kind=\"Number\" composite=\"false\" digits=\"5\" fractionDigits=\"0\"/><SpinButton>true</SpinButton>");
+    assert_eq!(v.value_type.map(|t| t.kind), Some("Number".to_string()));
+    // (`true` is the donor's value: the sparse extract does not write it)
+    assert_eq!((v.drop_list_button, v.spin_button), (Some(false), None));
 }
 
 const GUID_A: &str = "47e6dd42-cd5c-4e3a-9bc4-14816ed53d38";
@@ -6237,6 +6271,110 @@ mod panel_pages {
         let xml = swapped.replacen("<Table name=\"ТабличноеПоле2\"", &format!("{new}<Table name=\"ТабличноеПоле2\""), 1);
         let text = refused_xml(&xml);
         assert!(text.contains("separate pack"), "{text}");
+    }
+
+    // ---- ShowTabs of an existing panel: 0 (None) <-> 1 (Top) moves the page area, other codes are refused
+
+    fn show_tabs_tag(code: i64) -> String {
+        let member = if code == 0 { "None" } else { "Top" };
+        format!("<ShowTabs type=\"ShowTabs\" member=\"{member}\" code=\"{code}\"/>")
+    }
+
+    /// The donor stream with the ShowTabs code of panel `id` set to `from`, its XML baseline, and the pack of the
+    /// request that changes the code to `to` (and the size, when `size` is given).
+    fn toggle_tabs(id: i64, from: i64, to: i64, size: Option<(i64, i64)>) -> (SpannedMetadata, PatchedForm, String) {
+        let name = "DonorForm";
+        let s = tweak_panel(name, id, |_, p, base| vec![set(p.atom(base + 1).unwrap().1, &from.to_string())]);
+        let base = decode_xml(name, s.source());
+        let mut edited = edit_ctl(&base, panel_name(id), &[(&show_tabs_tag(from), &show_tabs_tag(to))]);
+        if let Some((w, h)) = size {
+            edited = resized_panel(&edited, id, [None, None, Some(w), Some(h)]);
+        }
+        let pf = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply()).unwrap_or_else(|e| panic!("{e} {:?}", e.params.get("problems")));
+        (s, pf, edited)
+    }
+
+    #[test]
+    fn show_tabs_of_an_existing_panel_moves_the_page_area() {
+        for (id, from, to, size) in [
+            (PANEL1, 0, 1, None),
+            (PANEL1, 1, 0, None),
+            (PANEL2, 0, 1, None),
+            (PANEL1, 0, 1, Some((300, 200))), // the tab strip and the size change add up
+            (PANEL1, 1, 0, Some((300, 200))),
+        ] {
+            let name = "DonorForm";
+            let (s, pf, edited) = toggle_tabs(id, from, to, size);
+            assert_only_authorized_changes(s.source(), &pf);
+            assert_eq!(violations(&pf.bytes), Vec::<String>::new());
+            let (before, after) = (decoded_panel(name, s.source(), id), decoded_panel(name, &pf.bytes, id));
+            assert_eq!(after["showTabs"], to, "panel {id} {from}->{to}");
+            let (dw, dh) = size.map_or((0, 0), |(w, h)| (w - before["width"].as_i64().unwrap(), h - before["height"].as_i64().unwrap()));
+            let (tw, th) = if to == 1 { (-2, -20) } else { (2, 20) };
+            let (pb, pa) = (before["pages"].as_array().unwrap(), after["pages"].as_array().unwrap());
+            assert_eq!(pb.len(), pa.len());
+            for (b, a) in pb.iter().zip(pa) {
+                for key in ["name", "title", "visible", "enabled"] {
+                    assert_eq!(b[key], a[key], "panel {id} page {} {key}", b["name"]);
+                }
+                assert_eq!(a["width"].as_i64().unwrap(), b["width"].as_i64().unwrap() + dw + tw, "panel {id} {from}->{to} page width");
+                assert_eq!(a["height"].as_i64().unwrap(), b["height"].as_i64().unwrap() + dh + th, "panel {id} {from}->{to} page height");
+            }
+            for key in ["id", "name", "type", "caption", "visible", "page", "ordinal", "tabOrder", "events", "props", "children"] {
+                assert_eq!(before[key], after[key], "panel {id} {key}");
+            }
+            // the packed form decodes to the request with the derived page geometry
+            let got = parse_form_xml(decode_xml(name, &pf.bytes).as_bytes(), "decoded").unwrap();
+            let mut requested = parse_form_xml(edited.as_bytes(), "requested").unwrap().with_derived_pages(&pf.derived_pages).in_decoder_order();
+            let mut got = got;
+            got.mask_anchors_like(&requested);
+            requested.mask_anchors_like(&got);
+            let diff = diff_forms(&requested, &got);
+            if id == PANEL2 {
+                // one page, no elements: the extract shows the panel with <Page> only while it has tabs, so the
+                // request (written with or without <Page>) cannot equal the decoded form and pack stops
+                let e = diff.expect_err("a single empty page toggles between shown and hidden");
+                assert!(e.to_string().contains("keeps at least one page"), "{e}");
+            } else if let Err(e) = diff {
+                panic!("panel {id} {from}->{to}: decoded XML differs from the request: {e} {:?}", e.params.get("problems"));
+            }
+        }
+    }
+
+    #[test]
+    fn show_tabs_codes_other_than_none_and_top_are_refused_on_an_existing_panel() {
+        // Панель1 holds code 2 (not 0/1): the page area of a side-tab code is unknown
+        let xml = replace_once(&baseline("DonorForm"), "<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>", &show_tabs_tag(1));
+        let text = refused_xml(&xml);
+        assert!(text.contains("only 0 (None) <-> 1 (Top)") && text.contains("the stream holds 2"), "{text}");
+        // 0 -> 2 on a panel with tabs off
+        let s = tweak_panel("DonorForm", PANEL2, |_, p, base| vec![set(p.atom(base + 1).unwrap().1, "0")]);
+        let base = decode_xml("DonorForm", s.source());
+        let edited = edit_ctl(&base, panel_name(PANEL2), &[(&show_tabs_tag(0), "<ShowTabs type=\"ShowTabs\" member=\"Unknown\" code=\"2\"/>")]);
+        let e = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply()).expect_err("must be refused");
+        assert!(e.to_string().contains("only 0 (None) <-> 1 (Top)"), "{e}");
+    }
+
+    #[test]
+    fn show_tabs_off_is_refused_when_the_page_area_would_exceed_the_panel() {
+        // the fixture's second panel holds a page area of a side-tab code (147x102 in 185x104): +20 high does not fit
+        let s = tweak_panel("DonorForm", PANEL2, |_, p, base| vec![set(p.atom(base + 1).unwrap().1, "1")]);
+        let base = decode_xml("DonorForm", s.source());
+        let edited = edit_ctl(&base, panel_name(PANEL2), &[(&show_tabs_tag(1), &show_tabs_tag(0))]);
+        let e = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply()).expect_err("must be refused");
+        assert!(e.to_string().contains("would exceed the panel size"), "{e}");
+    }
+
+    #[test]
+    fn show_tabs_and_the_page_set_cannot_change_in_one_pack() {
+        let name = "DonorForm";
+        let s = tweak_panel(name, PANEL1, |_, p, base| vec![set(p.atom(base + 1).unwrap().1, "0")]);
+        let base = decode_xml(name, s.source());
+        let ((a, b), (c, d)) = page_blocks(&base);
+        let swapped = format!("{}{}{}{}", &base[..a], &base[c..d], &base[a..b], &base[d..]);
+        let edited = edit_ctl(&swapped, "Панель1", &[(&show_tabs_tag(0), &show_tabs_tag(1))]);
+        let e = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply()).expect_err("must be refused");
+        assert!(e.to_string().contains("change the tabs first, then the pages"), "{e}");
     }
 }
 
