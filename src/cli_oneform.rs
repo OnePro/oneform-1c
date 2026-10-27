@@ -798,10 +798,10 @@ pub struct Cli {
 fn build_command() -> Command {
     Command::new("oneform")
         .version(env!("CARGO_PKG_VERSION"))
-        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate] [PATH]")
+        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|clone-form|new-form] [PATH]")
         .about("Extract, pack, check and preview 1C ordinary forms of EPF files and configuration dumps.")
         .after_help(EPILOG)
-        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate]").help("command (default: extract)"))
+        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form]").help("command (default: extract; clone-form and new-form take the object directory as PATH)"))
         .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .)"))
         .arg(
             Arg::new("workers")

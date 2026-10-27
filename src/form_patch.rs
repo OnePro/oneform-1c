@@ -4940,12 +4940,33 @@ fn unsupported(owner: &str, owner_type: Option<&str>, line: u32, path: &str, msg
         _ => "unsupported-property",
     };
     let prop = if path.is_empty() { String::new() } else { format!(", property '{path}'") };
-    problem(
-        kind,
-        format!(
-            "line {line}: {owner}{prop}: {msg} ({cat}; only Caption, Left, Top, Width, Height, Visible, ZOrder and TabOrder of existing controls can be edited)"
-        ),
-    )
+    let hint = unsupported_hint(cat, owner_type.is_none(), msg);
+    problem(kind, format!("line {line}: {owner}{prop}: {msg} ({cat}; {hint})"))
+}
+
+/// What the refusal of an `unsupported-*` change means, by what changed: the editable set is much larger than a few
+/// geometry properties, so the hint names the part of the form that was touched and where its rules are written.
+fn unsupported_hint(cat: &str, form_level: bool, msg: &str) -> &'static str {
+    let structural = msg.starts_with("element <");
+    match (cat, form_level) {
+        ("attribute", true) => "the attributes of the <Form> element cannot be changed",
+        ("attribute", false) => "of the XML attributes of an existing control only name can be changed (id identifies the control)",
+        ("event", _) => "this change of <Events> is not supported; events of existing controls are edited inside <Events>, see docs/agent-guide.md",
+        ("form-value", _) if structural => {
+            "this element of the form itself cannot be added or removed; the form editable through Form.xml: Caption, Width, Height, events and <Attributes>, see docs/agent-guide.md"
+        }
+        ("form-value", _) => "this value of the form itself is not editable or is invalid; the form editable through Form.xml: Caption, Width, Height, events and <Attributes>, see docs/agent-guide.md",
+        ("panel", _) => "panel pages and <ShowTabs> are changed as described in docs/agent-guide.md (rows about panels)",
+        ("table", _) => "table columns are added, removed and changed as described in docs/agent-guide.md (rows about tables)",
+        ("command-bar", _) => "command bar buttons are changed as described in docs/agent-guide.md (rows about command bars)",
+        ("child-items", _) => "this change of <ChildItems> is not supported; controls are added, removed and edited in place, moving a control to another parent or page is not supported",
+        (_, true) if structural => "this element of the form cannot be added or removed through Form.xml; what is editable at the form level (Caption, Width, Height, events, <Attributes>) is in docs/agent-guide.md",
+        (_, true) => "this value of the form cannot be changed through Form.xml; what is editable at the form level (Caption, Width, Height, events, <Attributes>) is in docs/agent-guide.md",
+        ("unknown-element", false) if structural => {
+            "an element that this kind of control does not have, or that pack does not write; the tags per control kind are in docs/xml-reference.md"
+        }
+        _ => "this property of an existing control cannot be edited through Form.xml in this way; the editable properties per control kind are in docs/xml-reference.md",
+    }
 }
 
 /// The refusal of a change of the `<Attributes>` list that is not made through the supported form attribute edits.

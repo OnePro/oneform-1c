@@ -320,6 +320,18 @@ fn panel_table_and_command_bar_differences_are_rejected() {
 }
 
 #[test]
+fn a_refusal_names_the_part_that_was_touched_and_does_not_claim_a_tiny_editable_set() {
+    let (_, control) = rejected(&mutate_in(
+        r#"<InputField name="ПолеВвода1" id="7">"#,
+        "<ChoiceButton>true</ChoiceButton>",
+        "<ChoiceButton>true</ChoiceButton><Surprise>1</Surprise>",
+    ));
+    assert!(control.contains("docs/xml-reference.md") && !control.contains("only Caption"), "{control}");
+    let (_, form) = rejected(&mutate("<DataProcessorFormExtension/>", "<DataProcessorFormExtension/><Surprise/>"));
+    assert!(form.contains("of the form") && form.contains("docs/agent-guide.md") && !form.contains("only Caption"), "{form}");
+}
+
+#[test]
 fn property_attribute_and_unknown_element_differences_are_rejected() {
     assert_unsupported(
         mutate("<DataPath attributeId=\"3\">ПолеВвода1</DataPath>", "<DataPath attributeId=\"4\">ПолеВвода1</DataPath>"),
