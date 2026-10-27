@@ -63,6 +63,12 @@ oneform pack <PATH> [--backup] [--dry-run]
 # Пересобрать только FormPreview.html и .oneform/index.html
 oneform preview <PATH>
 
+# Новая пустая обычная форма объекта (каталог объекта выгрузки), регистрация в объекте и extract
+oneform new-form <каталог объекта> --kind processor|report|catalog-item|catalog-list|document --name <Имя> [--synonym <текст>] [--default]
+
+# Копия существующей формы объекта конфигурации
+oneform clone-form <каталог объекта> --from <Форма> --name <Имя> [--synonym <текст>]
+
 # Инспекция и сравнение низкоуровневых свойств элементов FormStream.bin / Form.bin
 oneform props <FormStream.bin|Form.bin> [--control <Имя>] [--diff <Other.bin>]
 

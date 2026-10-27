@@ -21,6 +21,7 @@ pub mod manifest;
 pub mod metadata;
 pub mod metaref;
 pub mod naming;
+pub mod new_form;
 pub mod object_schema;
 pub mod oof;
 pub mod oof_props;

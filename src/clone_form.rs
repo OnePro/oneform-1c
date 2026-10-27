@@ -20,12 +20,12 @@ fn err(message: impl Into<String>) -> ExtractionError {
 }
 
 /// A 1C identifier: letters (any alphabet), digits and `_`, not starting with a digit.
-fn valid_name(name: &str) -> bool {
+pub(crate) fn valid_name(name: &str) -> bool {
     let mut chars = name.chars();
     chars.next().is_some_and(|c| c.is_alphabetic() || c == '_') && chars.all(|c| c.is_alphanumeric() || c == '_')
 }
 
-fn xml_escape(s: &str) -> String {
+pub(crate) fn xml_escape(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
@@ -80,7 +80,7 @@ fn matching_close(xml: &str, open: usize) -> Option<usize> {
 }
 
 /// Add `<Form>name</Form>` after the last `<Form>` entry of the object's `ChildObjects`, keeping its indentation.
-fn register_in_object(object_xml: &str, name: &str) -> Result<String> {
+pub(crate) fn register_in_object(object_xml: &str, name: &str) -> Result<String> {
     let entry = format!("<Form>{}</Form>", xml_escape(name));
     let Some(co_start) = object_xml.find("<ChildObjects>") else {
         // an object without children: `<ChildObjects/>` or no list at all
@@ -98,26 +98,48 @@ fn register_in_object(object_xml: &str, name: &str) -> Result<String> {
         return Err(err(format!("the object already lists a form named {name}")));
     }
     let Some(last) = body.rfind("<Form>").map(|p| p + co_start) else {
-        return Ok(format!("{}{entry}{}", &object_xml[..co_end], &object_xml[co_end..]));
+        // the platform lists forms before templates and commands
+        let next = ["<Template>", "<Command "].iter().filter_map(|t| body.find(t)).min().map(|p| p + co_start);
+        return Ok(match next {
+            Some(next) => insert_at_line(object_xml, next, &entry),
+            None => format!("{}{entry}{}", &object_xml[..co_end], &object_xml[co_end..]),
+        });
     };
     let end = object_xml[last..].find("</Form>").ok_or_else(|| err("a <Form> entry is not closed"))? + last + "</Form>".len();
-    let line_start = object_xml[..last].rfind('\n').map_or(0, |p| p + 1);
-    let indent = &object_xml[line_start..last];
-    let sep = if line_start > 0 && indent.chars().all(char::is_whitespace) {
-        let eol = if object_xml[..line_start].ends_with("\r\n") { "\r\n" } else { "\n" };
-        format!("{eol}{indent}")
-    } else {
-        String::new()
-    };
-    Ok(format!("{}{sep}{entry}{}", &object_xml[..end], &object_xml[end..]))
+    Ok(insert_after_line(object_xml, last, end, &entry))
 }
 
-fn read_text(path: &Path) -> Result<String> {
+/// `entry` before the element at `at`, on its own line when the element starts one (same indentation).
+fn insert_at_line(xml: &str, at: usize, entry: &str) -> String {
+    let (indent, eol) = line_style(xml, at);
+    let sep = indent.map(|i| format!("{eol}{i}")).unwrap_or_default();
+    format!("{}{entry}{sep}{}", &xml[..at], &xml[at..])
+}
+
+/// `entry` after the element that spans `start..end`, on a new line when the element starts one.
+fn insert_after_line(xml: &str, start: usize, end: usize, entry: &str) -> String {
+    let (indent, eol) = line_style(xml, start);
+    let sep = indent.map(|i| format!("{eol}{i}")).unwrap_or_default();
+    format!("{}{sep}{entry}{}", &xml[..end], &xml[end..])
+}
+
+/// Indentation of the line the element at `at` starts (if it starts one) and the line ending of the text.
+fn line_style(xml: &str, at: usize) -> (Option<&str>, &'static str) {
+    let line_start = xml[..at].rfind('\n').map_or(0, |p| p + 1);
+    let indent = &xml[line_start..at];
+    if line_start > 0 && indent.chars().all(char::is_whitespace) {
+        (Some(indent), if xml[..line_start].ends_with("\r\n") { "\r\n" } else { "\n" })
+    } else {
+        (None, "\n")
+    }
+}
+
+pub(crate) fn read_text(path: &Path) -> Result<String> {
     let bytes = fs::read(path).map_err(|e| err(format!("cannot read {}: {e}", path.display())))?;
     String::from_utf8(bytes).map_err(|_| err(format!("{} is not UTF-8", path.display())))
 }
 
-fn object_xml_path(object_dir: &Path) -> Result<PathBuf> {
+pub(crate) fn object_xml_path(object_dir: &Path) -> Result<PathBuf> {
     let name = object_dir.file_name().and_then(|n| n.to_str()).ok_or_else(|| err("the object directory has no name"))?;
     let parent = object_dir.parent().ok_or_else(|| err("the object directory has no parent"))?;
     Ok(parent.join(format!("{name}.xml")))
@@ -190,6 +212,11 @@ mod tests {
         assert_eq!(
             register_in_object("<MetaDataObject><A><ChildObjects/></A></MetaDataObject>", "Один").unwrap(),
             "<MetaDataObject><A><ChildObjects><Form>Один</Form></ChildObjects></A></MetaDataObject>"
+        );
+        let before_template = "<A>\n\t<ChildObjects>\n\t\t<Attribute/>\n\t\t<Template>Т</Template>\n\t</ChildObjects>\n</A>";
+        assert_eq!(
+            register_in_object(before_template, "Один").unwrap(),
+            "<A>\n\t<ChildObjects>\n\t\t<Attribute/>\n\t\t<Form>Один</Form>\n\t\t<Template>Т</Template>\n\t</ChildObjects>\n</A>"
         );
         let flat = "<A><ChildObjects><Form>Один</Form></ChildObjects></A>";
         assert_eq!(

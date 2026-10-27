@@ -38,7 +38,7 @@ use crate::preview::{
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
 
-pub const COMMANDS: [&str; 5] = ["extract", "pack", "preview", "check", "clone-form"];
+pub const COMMANDS: [&str; 6] = ["extract", "pack", "preview", "check", "clone-form", "new-form"];
 pub const DEFAULT_WORKERS: usize = 3;
 const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", WORKSPACE_DIR, "src"];
 /// `json.dumps` of the Reference (default separators).
@@ -52,6 +52,9 @@ Without a command, PATH is extracted (oneform DIR == oneform extract DIR). Every
 used for Forms/<name>/ and Templates/<name>/. Every configuration object with Forms/<Form>/Ext/Form.bin
 (or CommonForms/<Form>/Ext/Form.bin) gets <ObjDir>/src/. pack writes edited FormModule.bsl / FormStream.bin /
 ObjectModule.bsl back; preview renders FormPreview.html next to every ordinary Form.xml.
+clone-form OBJDIR --from FORM --name NAME copies a form of a configuration object; new-form OBJDIR --kind
+processor|report|catalog-item|catalog-list|document --name NAME [--synonym TEXT] [--default] creates a blank ordinary form
+(OBJDIR: an object directory of a configuration dump or of the dump of an external processor/report) and extracts it.
 The viewer is PATH/.oneform/index.html. Exit codes: 0 ok, 1 failure, 2 usage/config error, 3 check found differences.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -780,6 +783,8 @@ pub struct Cli {
     pub from: Option<String>,
     pub name: Option<String>,
     pub synonym: Option<String>,
+    pub kind: Option<String>,
+    pub default_form: bool,
 }
 
 fn build_command() -> Command {
@@ -824,8 +829,10 @@ fn build_command() -> Command {
         )
         .arg(Arg::new("no_progress").long("no-progress").action(ArgAction::SetTrue).help("disable progress bar"))
         .arg(Arg::new("from").long("from").value_name("FORM").help("clone-form: the existing form of the object to copy"))
-        .arg(Arg::new("name").long("name").value_name("NAME").help("clone-form: name of the new form"))
-        .arg(Arg::new("synonym").long("synonym").value_name("TEXT").help("clone-form: synonym (title) of the new form; default: the name"))
+        .arg(Arg::new("name").long("name").value_name("NAME").help("clone-form, new-form: name of the new form"))
+        .arg(Arg::new("synonym").long("synonym").value_name("TEXT").help("clone-form, new-form: synonym (title) of the new form; default: the name"))
+        .arg(Arg::new("kind").long("kind").value_name("KIND").help("new-form: processor, report, catalog-item, catalog-list or document"))
+        .arg(Arg::new("default").long("default").action(ArgAction::SetTrue).help("new-form: make the new form the default form of the object"))
         .arg(
             Arg::new("carriers")
                 .long("carriers")
@@ -864,6 +871,8 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
         from: m.get_one::<String>("from").cloned(),
         name: m.get_one::<String>("name").cloned(),
         synonym: m.get_one::<String>("synonym").cloned(),
+        kind: m.get_one::<String>("kind").cloned(),
+        default_form: m.get_flag("default"),
     })
 }
 
@@ -972,6 +981,31 @@ pub fn main(argv: &[String]) -> i32 {
                 EXIT_FAILED
             }
         };
+    }
+    if command == "new-form" {
+        let (Some(kind), Some(name)) = (args.kind.as_deref(), args.name.as_deref()) else {
+            return fail(&format!("new-form needs --kind <{}> and --name <new form>", crate::new_form::KINDS.join("|")));
+        };
+        let result = crate::new_form::Kind::parse(kind)
+            .and_then(|k| crate::new_form::new_form(Path::new(&path), k, name, args.synonym.as_deref(), args.default_form));
+        return match result {
+            Ok(done) => {
+                println!("{path}: CREATED, blank {kind} form {name}");
+                for f in done.files {
+                    println!("  {f}");
+                }
+                println!("  extract: {}", done.extract);
+                println!("  next: edit src/Forms/{name}/Form.xml, oneform pack");
+                EXIT_OK
+            }
+            Err(e) => {
+                eprintln!("oneform: error: {}", e.message);
+                EXIT_FAILED
+            }
+        };
+    }
+    if args.default_form || args.kind.is_some() {
+        return fail("--kind and --default are only valid for new-form");
     }
     if args.workers < 1 {
         return fail("--workers must be at least 1");
@@ -1092,7 +1126,7 @@ mod tests {
         assert_eq!(resolve_command(Some("dir"), None), Ok(("extract".into(), "dir".into())));
         assert_eq!(
             resolve_command(Some("bogus"), Some(".")),
-            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form".to_string())
+            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form".to_string())
         );
         assert_eq!(py_repr("it's"), "\"it's\"");
     }
