@@ -10,6 +10,11 @@ copy with the binary under test, then for each scenario edits one panel per form
   swap    - the first two handler buttons of such a panel exchange their places
   prepend - a separator and a handler button before the first button of a panel with buttons
   fill    - two handlers and a separator in a panel without buttons
+  std     - a `Standard:142` button at the end of a panel with two or more handler buttons
+  addsub  - a user sub-menu holding a copy of a handler (new name, same procedure) at the end of such a panel
+  rmsub   - the first user sub-menu of a panel is removed (with its buttons)
+  movein  - the last top-level handler moves into the first user sub-menu with buttons; then (second round, on the
+            packed and re-extracted copy) it moves back to the end of the root
 Per scenario: `pack --dry-run` must say WOULD PACK, a real `pack` + `extract` + a second `pack --dry-run` must say
 NO CHANGES (idempotent). Numbers and the refusal reasons are printed; <work-dir> is deleted at the end.
 """
@@ -17,7 +22,7 @@ import collections, os, re, shutil, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXE = sys.argv[4] if len(sys.argv) > 4 else os.path.join(ROOT, "target", "release", "oneform.exe")
-SCENARIOS = ("append", "remove", "swap", "prepend", "fill")
+SCENARIOS = ("append", "remove", "swap", "prepend", "fill", "std", "addsub", "rmsub", "movein")
 CAPTION = '<Caption><Item language="ru">%s</Item></Caption>'
 
 
@@ -26,7 +31,8 @@ def nl_of(line):
 
 
 def panels(lines):
-    """[(buttons_open, buttons_close, [(start, end, is_handler, is_submenu)])] of the root buttons of every CommandBar."""
+    """[(buttons_open, buttons_close, [(start, end, is_handler, is_submenu, is_user_submenu)], indent)] of the root
+    buttons of every CommandBar."""
     out = []
     for i, l in enumerate(lines):
         m = re.match(r"^(\s*)<CommandBar name=", l)
@@ -48,11 +54,17 @@ def panels(lines):
                 last = j
                 if not lines[j].rstrip().endswith("/>"):
                     last = next(k for k in range(j + 1, bc + 1) if lines[k].rstrip("\r\n") == f"{bi}</Button>")
-                items.append((j, last, 'actionKind="Handler"' in lines[j], 'kind="Submenu"' in lines[j]))
+                items.append((j, last, 'actionKind="Handler"' in lines[j], 'kind="Submenu"' in lines[j],
+                              'kind="Submenu"' in lines[j] and 'actionKind="Submenu"' in lines[j]))
                 j = last
             j += 1
-        out.append((bo, bc, items))
+        out.append((bo, bc, items, bi))
     return out
+
+
+def sub_buttons_close(lines, item, bi):
+    """Index of the `</Buttons>` that closes the nested buttons of the sub-menu `item`, or None when it has none."""
+    return next((k for k in range(item[0] + 1, item[1] + 1) if lines[k].rstrip("\r\n") == f"{bi}  </Buttons>"), None)
 
 
 def empty_panel(lines):
@@ -77,8 +89,10 @@ def write(path, lines):
         f.write("".join(lines))
 
 
-def edit(lines, scenario):
-    """The edited lines, or None when the form has no panel for the scenario."""
+def edit(lines, scenario, state=None):
+    """The edited lines, or None when the form has no panel for the scenario. `state` carries the name of the button
+    that `movein` moved to `moveback`."""
+    state = {} if state is None else state
     if scenario == "fill":
         end = empty_panel(lines)
         if end is None:
@@ -98,10 +112,52 @@ def edit(lines, scenario):
         new = ['<Button name="ФаззРазделитель" kind="Separator"/>' + nl,
                '<Button name="ФаззПервая" kind="Action" action="ФаззПервая">' + CAPTION % "Первая" + "</Button>" + nl]
         return lines[:p[0] + 1] + new + lines[p[0] + 1:]
+    if scenario == "rmsub":
+        for p in panels(lines):
+            sub = next((it for it in p[2] if it[4]), None)
+            if sub is not None:
+                return lines[:sub[0]] + lines[sub[1] + 1:]
+        return None
+    if scenario == "movein":
+        for bo, bc, items, bi in panels(lines):
+            sub = next((it for it in items if it[4] and sub_buttons_close(lines, it, bi) is not None), None)
+            flat = [it for it in items if it[2] and not it[3]]
+            if sub is None or not flat:
+                continue
+            moved, close = flat[-1], sub_buttons_close(lines, sub, bi)
+            block = lines[moved[0]:moved[1] + 1]
+            state["name"] = re.search(r'<Button name="([^"]+)"', lines[moved[0]]).group(1)
+            out = []
+            for i, l in enumerate(lines):
+                if i == close:
+                    out += block
+                if not moved[0] <= i <= moved[1]:
+                    out.append(l)
+            return out
+        return None
+    if scenario == "moveback":
+        for bo, bc, items, bi in panels(lines):
+            for sub in (it for it in items if it[4]):
+                close = sub_buttons_close(lines, sub, bi)
+                first = next((k for k in range(sub[0], close or sub[0]) if f'<Button name="{state["name"]}"' in lines[k]), None)
+                if close is None or first is None:
+                    continue
+                last = first
+                if not lines[first].rstrip().endswith("/>"):
+                    indent = lines[first][:len(lines[first]) - len(lines[first].lstrip())]
+                    last = next(k for k in range(first + 1, close) if lines[k].rstrip("\r\n") == f"{indent}</Button>")
+                out = []
+                for i, l in enumerate(lines):
+                    if i == bc:
+                        out += lines[first:last + 1]
+                    if not first <= i <= last:
+                        out.append(l)
+                return out
+        return None
     p = next((p for p in panels(lines) if sum(1 for it in p[2] if it[2]) >= 2), None)
     if p is None:
         return None
-    bo, bc, items = p
+    bo, bc, items, _bi = p
     if scenario == "append":
         new = ['<Button name="ФаззКнопка" kind="Action" action="ФаззПроцедура">' + CAPTION % "Новая" + "</Button>" + nl_of(lines[bo])]
         return lines[:bc] + new + lines[bc:]
@@ -110,6 +166,17 @@ def edit(lines, scenario):
         if not flat:
             return None
         return lines[:flat[-1][0]] + lines[flat[-1][1] + 1:]
+    if scenario == "std":
+        new = ['<Button name="ФаззЗакрыть" kind="Action" action="Standard:142"/>' + nl_of(lines[bo])]
+        return lines[:bc] + new + lines[bc:]
+    if scenario == "addsub":
+        h = next(it for it in items if it[2])
+        m = re.search(r'action="([^"]+)"', lines[h[0]])
+        nl = nl_of(lines[bo])
+        new = ['<Button name="ФаззПодменю" kind="Submenu">' + CAPTION % "Действия" + "<Buttons>" + nl,
+               '<Button name="ФаззКопия" kind="Action" action="%s">' % m.group(1) + CAPTION % "Копия" + "</Button>" + nl,
+               "</Buttons></Button>" + nl]
+        return lines[:bc] + new + lines[bc:]
     if scenario == "swap":
         (s1, e1, *_), (s2, e2, *_) = [it for it in items if it[2]][:2]
         return lines[:s1] + lines[s2:e2 + 1] + lines[e1 + 1:s2] + lines[s1:e1 + 1] + lines[e2 + 1:]
@@ -184,9 +251,11 @@ def main():
             shutil.rmtree(work, ignore_errors=True)
             shutil.copytree(pristine, work)
             edited = 0
+            states = {}
             for obj, form in chosen_by[scenario]:
                 path = os.path.join(work, os.path.relpath(obj, corpus), "src", "Forms", form, "Form.xml")
-                new = edit(read(path), scenario)
+                states[(obj, form)] = {}
+                new = edit(read(path), scenario, states[(obj, form)])
                 if new is not None:
                     write(path, new)
                     edited += 1
@@ -207,6 +276,27 @@ def main():
                 if k not in idem:
                     print("    NOT IDEMPOTENT:", k, again.get(k))
             total[scenario] = len(idem)
+            if scenario == "movein":
+                # second round: the moved handler goes back to the end of the root of the packed and re-extracted copy
+                back = 0
+                for obj, form in chosen_by[scenario]:
+                    path = os.path.join(work, os.path.relpath(obj, corpus), "src", "Forms", form, "Form.xml")
+                    new = edit(read(path), "moveback", states[(obj, form)]) if states[(obj, form)] else None
+                    if new is not None:
+                        write(path, new)
+                        back += 1
+                dry2 = statuses(run("pack", "--dry-run", work))
+                would = [k for k in packed if dry2.get(k, ("?",))[0] == "WOULD PACK"]
+                bad = collections.Counter(" ".join(v[1][:2])[:200] for k, v in dry2.items() if k in packed and v[0] == "FAILED")
+                packed2 = [k for k, v in statuses(run("pack", work)).items() if v[0] == "PACKED" and k in packed]
+                run("extract", work)
+                again2 = statuses(run("pack", "--dry-run", work))
+                idem2 = [k for k in packed2 if again2.get(k, ("?",))[0] == "NO CHANGES"]
+                print(f"[moveback] edited {back}; dry-run WOULD PACK {len(would)}/{len(packed)}; packed {len(packed2)}; "
+                      f"idempotent {len(idem2)}/{len(packed2)}")
+                for r, n in bad.most_common(8):
+                    print(f"    {n} x {r}")
+                total["moveback"] = len(idem2)
     finally:
         shutil.rmtree(work, ignore_errors=True)
         shutil.rmtree(pristine, ignore_errors=True)

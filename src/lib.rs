@@ -3,6 +3,7 @@
 #![allow(clippy::chunks_exact_to_as_chunks, clippy::manual_is_multiple_of)]
 pub mod brace;
 pub mod canonical;
+pub mod cb_standard;
 pub mod cli_epf;
 pub mod cli_oneform;
 pub mod clone_form;

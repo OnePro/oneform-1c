@@ -2467,6 +2467,8 @@ pub struct FormXml {
     pub form_props: FormRootProps,
     /// Non-main form attributes with deterministic ValueType patterns.
     pub attributes: Vec<FormAttribute>,
+    /// Name of the main attribute (empty when there is none); it tells the kind of the form for `Standard:N` buttons.
+    pub main_attribute: String,
     /// Controls in document order.
     pub controls: Vec<ControlXml>,
     /// The `Form` element with every control replaced by a [`CONTROL_STUB`] (`id` attribute only).
@@ -4401,6 +4403,7 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         .and_then(|e| e.attrs.get("attributeId"))
         .and_then(|v| v.trim().parse::<i64>().ok());
     let (attr_names, attributes) = extract_form_attributes(&mut root);
+    let main_attribute = main_attr_id.and_then(|id| attr_names.get(&id).cloned()).unwrap_or_default();
     let mut p = Parser { label, form: form_name, attr_names, main_attr_id, controls: Vec::new() };
     let shell = p.walk(&root, None, None)?;
     Ok(FormXml {
@@ -4412,6 +4415,7 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
         form_events,
         form_props,
         attributes,
+        main_attribute,
         controls: p.controls,
         shell,
     })
@@ -4707,6 +4711,8 @@ pub struct ControlEdit {
     pub new: ControlValues,
     /// Non-empty; ordered as [`Property`].
     pub changed: Vec<Property>,
+    /// Class of the form by its main attribute (`crate::cb_standard::form_class`): picks the `Standard:N` template.
+    pub form_class: &'static str,
 }
 
 /// Result of a clean diff: only supported edits, in document order. `additions`/`deletions` are
@@ -5080,6 +5086,7 @@ pub fn diff_forms_full(
                 old: b.values.clone(),
                 new: new_values,
                 changed,
+                form_class: crate::cb_standard::form_class(&baseline.main_attribute),
             });
         }
     }

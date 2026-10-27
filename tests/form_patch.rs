@@ -4454,7 +4454,11 @@ mod command_bar_edit {
         let part = &xml[start..end];
         let Some(open) = part.find("<Buttons>") else { return Vec::new() };
         let close = part.rfind("</Buttons>").unwrap();
-        let inner = &part[open + "<Buttons>".len()..close];
+        split_buttons(&part[open + "<Buttons>".len()..close])
+    }
+
+    /// The `<Button>` elements at the top level of `inner`.
+    fn split_buttons(inner: &str) -> Vec<String> {
         let (mut out, mut depth, mut from) = (Vec::new(), 0usize, 0usize);
         let re = regex::Regex::new(r"<Button\b[^>]*?/>|<Button\b[^>]*>|</Button>").unwrap();
         for m in re.find_iter(inner) {
@@ -4476,6 +4480,27 @@ mod command_bar_edit {
             }
         }
         out
+    }
+
+    /// The buttons nested in a sub-menu `block`.
+    fn kids(block: &str) -> Vec<String> {
+        match (block.find("<Buttons>"), block.rfind("</Buttons>")) {
+            (Some(a), Some(b)) => split_buttons(&block[a + "<Buttons>".len()..b]),
+            _ => Vec::new(),
+        }
+    }
+
+    /// `block` with its nested buttons replaced by `list`.
+    fn with_kids(block: &str, list: &[String]) -> String {
+        let inner = format!("<Buttons>
+{}
+</Buttons>", list.join("
+"));
+        match (block.find("<Buttons>"), block.rfind("</Buttons>")) {
+            (Some(a), Some(b)) => format!("{}{inner}{}", &block[..a], &block[b + "</Buttons>".len()..]),
+            _ if block.ends_with("/>") => format!("{}>{inner}</Button>", &block[..block.len() - 2]),
+            _ => block.replace("</Button>", &format!("{inner}</Button>")),
+        }
     }
 
     /// `xml` with the `<Buttons>` of `panel` replaced by `list` (the element is created for an empty panel).
@@ -4668,6 +4693,100 @@ mod command_bar_edit {
         assert_eq!((before.pos, after.pos), (-1, -1), "-1 stays");
     }
 
+    /// `(code, body atoms 1..=3 and the origin group)` of every standard action of panel `id`, in table order.
+    fn standard_actions(bytes: &[u8], id: i64) -> Vec<(i64, Vec<String>)> {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let t = idx.get(id).unwrap().info().unwrap().node.node(1).unwrap().node(7).unwrap();
+        let n_act: usize = atom(t, 4).parse().unwrap();
+        (0..n_act)
+            .map(|i| t.node(5 + i).unwrap())
+            .filter(|a| atom(a, 3) == "fbe38877-b914-4fd5-8540-07dde06ba2e1")
+            .map(|a| {
+                let body = a.node(4).unwrap();
+                assert_eq!((atom(a, 2), atom(body, 0), atom(a, 5)), ("1".into(), "6".into(), "0".into()), "{a:?}");
+                let origin = body.node(4).unwrap();
+                let mut v: Vec<String> = [1, 2].iter().map(|i| atom(body, *i)).collect();
+                v.extend((1..=4).map(|i| atom(origin, i)));
+                (atom(body, 3).parse().unwrap(), v)
+            })
+            .collect()
+    }
+
+    fn standard(name: &str, code: u32) -> String {
+        format!("<Button name=\"{name}\" kind=\"Action\" action=\"Standard:{code}\"/>")
+    }
+
+    #[test]
+    fn standard_commands_are_added_to_a_flat_and_to_an_empty_panel() {
+        use oneform::cb_standard::{CODES, TEMPLATES};
+        let template = |code: u32| {
+            TEMPLATES.iter().find(|t| t.code == code && t.class == oneform::cb_standard::form_class("")).or_else(|| TEMPLATES.iter().find(|t| t.code == code && t.class.is_empty())).unwrap()
+        };
+        let caption = |code: u32| CODES.iter().find(|c| c.code == code).unwrap().caption.to_string();
+        // a flat panel: the new commands go to the beginning and the end, a given caption is kept
+        let b = blocks(&base(V2), MAIN);
+        let own = "<Button name=\"Провести2\" kind=\"Action\" action=\"Standard:24\"><Caption><Item language=\"ru\">Провести документ</Item></Caption></Button>".to_string();
+        let list = [own, b[0].clone(), b[1].clone(), b[2].clone(), standard("ОК2", 141)];
+        let (pf, before, after, got) = edit(V2, MAIN, &list);
+        assert_eq!((before.n_act, after.n_act, after.t2), (3, 5, 5));
+        assert_eq!(after.ids(), vec![4, 1, 2, 3, 5]);
+        assert_eq!((got[0].kind.as_str(), got[0].action_kind.as_str(), got[0].action.as_str()), ("Action", "Standard", "Standard:24"));
+        assert_eq!(got[0].caption, vec![("ru".to_string(), "Провести документ".to_string())]);
+        assert_eq!(got[4].action, "Standard:141");
+        assert_eq!(got[4].caption, vec![("ru".to_string(), caption(141))], "the mined caption");
+        assert!(got[4].tooltip.is_empty());
+        let std = standard_actions(&pf.bytes, panel_id(V2, MAIN));
+        assert_eq!(std.iter().map(|s| s.0).collect::<Vec<_>>(), vec![142, 24, 141]);
+        for (code, atoms) in &std[1..] {
+            let t = template(*code as u32);
+            assert_eq!(atoms.iter().map(String::as_str).collect::<Vec<_>>(), t.body.to_vec(), "code {code}");
+        }
+        // the empty panel: the same two
+        let (pf, _, after, got) = edit(V2, EMPTY, &[standard("Провести", 24), separator("Р"), standard("Закрыть", 142)]);
+        assert_eq!(after.ids(), vec![31, 32, 33]);
+        assert_eq!(names(&got), vec!["Провести", "Р", "Закрыть"]);
+        assert_eq!((got[0].action.as_str(), got[2].action.as_str()), ("Standard:24", "Standard:142"));
+        assert_eq!(standard_actions(&pf.bytes, panel_id(V2, EMPTY)).iter().map(|s| s.0).collect::<Vec<_>>(), vec![24, 142]);
+        // extract of the result and a pack of it again change nothing
+        let xml = decode(V2, &pf.bytes);
+        assert!(xml.contains("actionKind=\"Standard\" action=\"Standard:24\""));
+        assert!(patch_form(&parse_spanned(&pf.bytes).unwrap(), xml.as_bytes(), xml.as_bytes()).unwrap().replacements.is_empty());
+    }
+
+    #[test]
+    fn every_template_decodes_to_its_standard_action() {
+        use oneform::cb_standard::{form_class, CODES, TEMPLATES};
+        assert!(CODES.len() >= 50);
+        for code in [140, 141, 142, 24, 29, 38, 40, 80, 82, 83, 84, 85, 86, 90, 95, 300, 143, 144, 145, 146, 147] {
+            assert!(CODES.iter().any(|c| c.code == code), "code {code} has no template");
+        }
+        assert!(CODES.iter().all(|c| c.seen >= 10 && TEMPLATES.iter().any(|t| t.code == c.code && t.class.is_empty())));
+        assert!(TEMPLATES.iter().all(|t| ["", "Document", "Catalog", "List", "Other"].contains(&t.class)));
+        assert_eq!([form_class("ДокументОбъект"), form_class("СправочникСписок"), form_class("ЖурналДокументов"), form_class("ОбработкаОбъект"), form_class("")], ["Document", "List", "List", "Other", "Other"]);
+        // all codes, in two panels of different shapes
+        let list: Vec<String> = CODES.iter().map(|c| standard(&format!("Кнопка{}", c.code), c.code)).collect();
+        for (panel, offset) in [(EMPTY, 0), (MAIN, 3)] {
+            let mut all = if offset == 0 { Vec::new() } else { blocks(&base(V2), panel) };
+            all.extend(list.iter().cloned());
+            let (pf, _, after, got) = edit(V2, panel, &all);
+            assert_eq!(got.len(), CODES.len() + offset);
+            for (c, b) in CODES.iter().zip(&got[offset..]) {
+                assert_eq!((b.action.as_str(), b.action_kind.as_str()), (format!("Standard:{}", c.code).as_str(), "Standard"));
+                assert_eq!(b.caption.is_empty(), c.caption.is_empty(), "code {}", c.code);
+            }
+            assert_eq!(after.root.len(), CODES.len() + offset);
+            let codes: Vec<i64> = standard_actions(&pf.bytes, panel_id(V2, panel)).iter().map(|s| s.0).collect();
+            assert_eq!(codes.len(), CODES.len() + usize::from(offset > 0), "{codes:?}");
+        }
+    }
+
+    #[test]
+    fn a_standard_command_of_an_unknown_code_lists_the_supported_ones() {
+        refused(V2, EMPTY, &[standard("Х", 9999)], "supported codes: 1, 2, 6");
+        refused(V2, EMPTY, &[standard("Х", 0)], "no template for Standard:0");
+    }
+
     #[test]
     fn a_separator_and_a_handler_are_removed() {
         let b = blocks(&base(V2), MAIN);
@@ -4832,10 +4951,17 @@ mod command_bar_edit {
         let ok = handler("Выполнить", "ВыполнитьНажатие", "Выполнить");
         let cap = "<Caption><Item language=\"ru\">П</Item></Caption>";
         let cases: Vec<(String, &str)> = vec![
-            (format!("<Button name=\"Закрыть2\" kind=\"Action\" actionKind=\"Standard\" action=\"Standard:142\">{cap}</Button>"), "Standard:N"),
-            (format!("<Button name=\"Закрыть2\" kind=\"Action\" action=\"Standard:24\">{cap}</Button>"), "Standard:N"),
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" actionKind=\"Standard\" action=\"Проц\">{cap}</Button>"), "Standard:N"),
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" actionKind=\"Handler\" action=\"Standard:24\">{cap}</Button>"), "Standard:N"),
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" action=\"Standard:abc\">{cap}</Button>"), "Standard:N"),
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" action=\"Standard:9999\">{cap}</Button>"), "no template for Standard:9999; supported codes: 1, 2, 6"),
+            (format!("<Button name=\"Закрыть2\" kind=\"Action\" action=\"Standard:24\">{cap}<Tooltip><Item language=\"ru\">П</Item></Tooltip></Button>"), "tooltip"),
             (format!("<Button name=\"Меню\" kind=\"Action\" actionKind=\"StdSubmenu\" action=\"x\">{cap}</Button>"), "handler buttons"),
-            (format!("<Button name=\"Меню\" kind=\"Submenu\">{cap}</Button>"), "sub-menu cannot be created"),
+            (format!("<Button name=\"Меню\" kind=\"Submenu\" actionKind=\"StdSubmenu\">{cap}</Button>"), "platform sub-menus"),
+            (format!("<Button name=\"Меню\" kind=\"Submenu\" action=\"Проц\">{cap}</Button>"), "user sub-menu"),
+            ("<Button name=\"Меню\" kind=\"Submenu\"/>".to_string(), "needs a <Caption>"),
+            (format!("<Button name=\"Меню\" kind=\"Submenu\">{cap}<Tooltip><Item language=\"ru\">П</Item></Tooltip></Button>"), "no tooltip"),
+            (format!("<Button name=\"Движения\" kind=\"Action\" actionKind=\"OpenMovements\">{cap}</Button>"), "handler buttons"),
             (format!("<Button name=\"Пустая\" kind=\"Action\">{cap}</Button>"), "needs action"),
             ("<Button name=\"БезПодписи\" kind=\"Action\" action=\"Проц\"/>".to_string(), "needs a <Caption>"),
             (format!("<Button name=\"Плохое Имя\" kind=\"Action\" action=\"Проц\">{cap}</Button>"), "identifier"),
@@ -4861,25 +4987,358 @@ mod command_bar_edit {
         refused(V2, MAIN, &[b[0].clone(), b[0].clone()], "used twice");
     }
 
+    fn submenu(name: &str, caption: &str, list: &[String]) -> String {
+        format!(
+            "<Button name=\"{name}\" kind=\"Submenu\"><Caption><Item language=\"ru\">{caption}</Item></Caption><Buttons>\n{}\n</Buttons></Button>",
+            list.join("\n")
+        )
+    }
+
+    /// One group of a panel as the stream holds it.
+    #[derive(Debug, PartialEq)]
+    struct G {
+        key: (String, String),
+        ids: Vec<i64>,
+        subs: Vec<i64>,
+        refs: Vec<i64>,
+        pos: i64,
+    }
+
+    /// All groups of panel `id` in stream order; asserts the invariants of a sub-menu layout.
+    fn layout(bytes: &[u8], id: i64) -> Vec<G> {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let x = idx.get(id).unwrap().info().unwrap().node.node(1).unwrap();
+        let t = x.node(7).unwrap();
+        let n_act: usize = atom(t, 4).parse().unwrap();
+        let n_groups: usize = atom(t, 5 + n_act).parse().unwrap();
+        let t1 = atom(t, 1);
+        // action guid -> group key of a sub-menu action
+        let acts: std::collections::HashMap<String, Option<(String, String)>> = (0..n_act)
+            .map(|i| {
+                let a = t.node(5 + i).unwrap();
+                let body = a.node(4).unwrap();
+                let key = (atom(a, 3).starts_with("abde0c9a") || atom(a, 3).starts_with("c93a51ed"))
+                    .then(|| (atom(body, 1), atom(body, 2)))
+                    .filter(|k| k.1 != "0");
+                (atom(a, 1), key)
+            })
+            .collect();
+        let root_key = (atom(x, 8), atom(x, 9));
+        let mut groups = Vec::new();
+        let mut buttons: std::collections::HashMap<i64, (String, String)> = std::collections::HashMap::new();
+        for gi in 0..n_groups {
+            let g = t.node(6 + n_act + gi).unwrap();
+            let k: usize = atom(g, 4).parse().unwrap();
+            let tail = g.node(5 + 2 * k).unwrap();
+            let nr: usize = atom(tail, 1).parse().unwrap();
+            let sub = tail.node(2 + 2 * nr).unwrap();
+            let ids: Vec<i64> = (0..k).map(|i| atom(g.node(6 + 2 * i).unwrap(), 7).parse().unwrap()).collect();
+            for (i, bid) in ids.iter().enumerate() {
+                buttons.insert(*bid, (atom(g, 5 + 2 * i), atom(g.node(6 + 2 * i).unwrap(), 9)));
+            }
+            let subs: Vec<i64> = (0..atom(sub, 0).parse::<usize>().unwrap()).map(|i| atom(sub, 2 + 3 * i).parse().unwrap()).collect();
+            let refs = (0..nr).map(|i| atom(tail, 3 + 2 * i).parse().unwrap()).collect();
+            groups.push(G { key: (atom(g, 1), atom(g, 2)), ids, subs, refs, pos: atom(tail, 0).parse().unwrap() });
+        }
+        // every listed sub-menu is a sub-menu button of its group, in button order
+        for g in &groups {
+            let at: Vec<usize> = g.subs.iter().map(|s| g.ids.iter().position(|i| i == s).expect("listed sub-menu is in the group")).collect();
+            assert!(at.windows(2).all(|w| w[0] < w[1]), "sub-menu list in button order {g:?}");
+            assert!(g.subs.iter().all(|s| buttons[s].1 == "1"), "listed buttons are sub-menus {g:?}");
+        }
+        // every user sub-menu button has its group, every user group is shown by exactly one button
+        let mut shown = std::collections::HashMap::new();
+        for (guid, _) in buttons.values() {
+            if let Some(key) = acts[guid].clone().filter(|k| k.0 == t1) {
+                assert!(groups.iter().any(|g| g.key == key), "group {key:?} of a sub-menu button exists");
+                *shown.entry(key).or_insert(0) += 1;
+            }
+        }
+        for g in groups.iter().filter(|g| g.key.0 == t1) {
+            assert_eq!(shown.get(&g.key), Some(&1), "group {:?} is shown once", g.key);
+        }
+        assert!(groups.iter().filter(|g| g.key == root_key).count() == 1);
+        groups
+    }
+
+    const ROOT_GUID: &str = "b78f2e80-ec68-11d4-9dcf-0050bae2bc79";
+
+    fn group<'a>(groups: &'a [G], code: &str) -> &'a G {
+        groups.iter().find(|g| g.key.1 == code && g.key.0 != ROOT_GUID).unwrap_or_else(|| panic!("group {code} in {groups:?}"))
+    }
+
+    fn root(groups: &[G]) -> &G {
+        groups.iter().find(|g| g.key.0 == ROOT_GUID).unwrap()
+    }
+
+    /// The buttons of a decoded panel as `name[child, child]` text.
+    fn shape(list: &[CommandBarButton]) -> String {
+        list.iter()
+            .map(|b| if b.buttons.is_empty() { b.name.clone() } else { format!("{}[{}]", b.name, shape(&b.buttons)) })
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
+
+    /// The extracted XML of the result, packed again, changes nothing.
+    fn idempotent(pf: &PatchedForm, name: &str) {
+        let xml = decode(name, &pf.bytes);
+        let again = patch_form(&parse_spanned(&pf.bytes).unwrap(), xml.as_bytes(), xml.as_bytes()).unwrap();
+        assert!(again.replacements.is_empty());
+    }
+
+    fn handlers(names: &[&str]) -> Vec<String> {
+        names.iter().map(|n| handler(n, &format!("{n}Нажатие"), n)).collect()
+    }
+
+    fn table_guid(bytes: &[u8], id: i64) -> String {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        atom(idx.get(id).unwrap().info().unwrap().node.node(1).unwrap().node(7).unwrap(), 1)
+    }
+
     #[test]
-    fn sub_menus_and_moves_between_levels_are_refused() {
+    fn a_submenu_with_two_handlers_is_added_to_the_empty_donor_panel() {
+        let list = [submenu("Действия", "Действия", &handlers(&["Первая", "Вторая"]))];
+        let (pf, before, after, got) = edit(V2, EMPTY, &list);
+        assert_eq!((before.n_act, before.t2), (0, 30));
+        // the button takes 31, its group code 32, the buttons below 33 and 34
+        assert_eq!((after.n_act, after.t2), (3, 34));
+        assert_eq!(after.ids(), vec![31]);
+        assert_eq!(after.subs, vec![31]);
+        assert_eq!(shape(&got), "Действия[Первая, Вторая]");
+        assert_eq!((got[0].id, got[0].kind.as_str(), got[0].action_kind.as_str()), (Some(31), "Submenu", "Submenu"));
+        assert_eq!(got[0].buttons.iter().map(|b| b.id.unwrap()).collect::<Vec<_>>(), vec![33, 34]);
+        let id = panel_id(V2, EMPTY);
+        let groups = layout(&pf.bytes, id);
+        assert_eq!(groups.len(), 2);
+        let sub = group(&groups, "32");
+        assert_eq!((sub.ids.clone(), sub.subs.clone(), sub.pos), (vec![33, 34], vec![], -1));
+        assert_eq!(sub.key.0, table_guid(&pf.bytes, id));
+        assert_eq!(pf.button_lists[0].1[0].buttons.len(), 2);
+        idempotent(&pf, V2);
+    }
+
+    #[test]
+    fn submenus_nest_up_to_three_levels() {
+        let h = handlers(&["А", "Б", "В"]);
+        let two = submenu("Верх", "Верх", &[h[0].clone(), submenu("Низ", "Низ", &[h[1].clone()])]);
+        let (pf, _, after, got) = edit(V2, EMPTY, &[two]);
+        assert_eq!(shape(&got), "Верх[А, Низ[Б]]");
+        // Верх 31, group 32, А 33, Низ 34, group 35, Б 36
+        assert_eq!(after.t2, 36);
+        assert_eq!((got[0].id, got[0].buttons[1].id, got[0].buttons[1].buttons[0].id), (Some(31), Some(34), Some(36)));
+        let groups = layout(&pf.bytes, panel_id(V2, EMPTY));
+        assert_eq!(groups.len(), 3);
+        assert_eq!((group(&groups, "32").ids.clone(), group(&groups, "32").subs.clone()), (vec![33, 34], vec![34]));
+        assert_eq!(group(&groups, "35").ids, vec![36]);
+        assert_eq!(root(&groups).subs, vec![31]);
+        idempotent(&pf, V2);
+        // a sibling sub-menu and a separator
+        let both = [
+            submenu("Один", "Один", &[h[0].clone(), h[1].clone()]),
+            separator("Р"),
+            submenu("Два", "Два", &[submenu("Внутри", "Внутри", &[h[2].clone()])]),
+        ];
+        let (pf, _, after, got) = edit(V2, EMPTY, &both);
+        assert_eq!(shape(&got), "Один[А, Б], Р, Два[Внутри[В]]");
+        let groups = layout(&pf.bytes, panel_id(V2, EMPTY));
+        // Один 31/32, А 33, Б 34, Р 35, Два 36/37, Внутри 38/39, В 40
+        assert_eq!((root(&groups).ids.clone(), root(&groups).subs.clone()), (vec![31, 35, 36], vec![31, 36]));
+        assert_eq!(after.t2, 40);
+        idempotent(&pf, V2);
+        // a fourth level is refused
+        let four = submenu("А1", "А1", &[submenu("А2", "А2", &[submenu("А3", "А3", &[h[0].clone()])])]);
+        refused(V2, EMPTY, &[four], "deeper than three levels");
+    }
+
+    #[test]
+    fn handlers_move_into_and_out_of_a_submenu() {
         let xml = base(V2);
         let b = blocks(&xml, SUB);
-        assert_eq!(b.len(), 2);
-        // removing the sub-menu
-        let e = run(V2, &set_buttons(&xml, SUB, &b[..1])).expect_err("sub-menu removal");
-        assert!(e.to_string().contains("removing a sub-menu"), "{e}");
-        // a nested button as a root button
-        let (start, end) = panel_bounds(&xml, SUB);
-        let part = &xml[start..end];
-        let a = part.find("<Button name=\"Действие\"").unwrap();
-        let nested = part[a..a + part[a..].find("</Button>").unwrap() + "</Button>".len()].to_string();
-        let e = run(V2, &set_buttons(&xml, SUB, &[b[0].clone(), nested, b[1].clone()])).expect_err("move");
-        assert!(e.to_string().contains("between sub-menu levels"), "{e}");
-        // the kind of a kept button cannot change
-        let sep = "<Button name=\"НоваяКнопка\" id=\"1\" kind=\"Separator\" checked=\"false\"/>".to_string();
-        let e = run(V2, &set_buttons(&xml, SUB, &[sep, b[1].clone(), handler("Ещё", "Ещё1", "Ещё")])).expect_err("kind");
-        assert!(e.to_string().contains("kind of an existing button"), "{e}");
+        let (id, was) = (panel_id(V2, SUB), buttons_of(V2, &raw(V2), SUB));
+        assert_eq!(shape(&was), "НоваяКнопкаНаПанели, Подменю[Действие, Действие1]");
+        let k = kids(&b[1]);
+        assert_eq!(k.len(), 2);
+        // into: the root handler becomes the first button of the sub-menu
+        let (pf, _, after, got) = edit(V2, SUB, &[with_kids(&b[1], &[b[0].clone(), k[0].clone(), k[1].clone()])]);
+        assert_eq!(shape(&got), "Подменю[НоваяКнопкаНаПанели, Действие, Действие1]");
+        assert_eq!(after.t2, 5, "no ids are allocated");
+        assert_eq!(after.n_act, 4);
+        let groups = layout(&pf.bytes, id);
+        assert_eq!(group(&groups, "3").ids, vec![1, 4, 5]);
+        assert_eq!((root(&groups).ids.clone(), root(&groups).subs.clone()), (vec![2], vec![2]));
+        // the button record and its action are the old ones
+        assert_eq!(got[0].buttons[0], was[0]);
+        assert_eq!(got[0].buttons[1..], was[1].buttons[..]);
+        idempotent(&pf, V2);
+        // out: a nested handler goes to the root, between the old root button and the sub-menu
+        let (pf, _, after, got) = edit(V2, SUB, &[b[0].clone(), k[0].clone(), with_kids(&b[1], &[k[1].clone()])]);
+        assert_eq!(shape(&got), "НоваяКнопкаНаПанели, Действие, Подменю[Действие1]");
+        assert_eq!(after.ids(), vec![1, 4, 2]);
+        let groups = layout(&pf.bytes, id);
+        assert_eq!(group(&groups, "3").ids, vec![5]);
+        assert_eq!(root(&groups).subs, vec![2]);
+        assert_eq!(got[1], was[1].buttons[0]);
+        idempotent(&pf, V2);
+        // moves and a new button in one edit
+        let (_, _, after, got) = edit(V2, SUB, &[with_kids(&b[1], &[k[1].clone(), handler("Н", "Н1", "Н")]), k[0].clone(), b[0].clone()]);
+        assert_eq!(shape(&got), "Подменю[Действие1, Н], Действие, НоваяКнопкаНаПанели");
+        assert_eq!(after.t2, 6);
+    }
+
+    #[test]
+    fn a_submenu_is_removed_with_its_group_and_actions() {
+        let b = blocks(&base(V2), SUB);
+        let id = panel_id(V2, SUB);
+        let was = buttons_of(V2, &raw(V2), SUB);
+        let (pf, before, after, got) = edit(V2, SUB, &b[..1]);
+        assert_eq!((before.n_act, before.t2, after.n_act, after.t2), (4, 5, 1, 5), "T2 never shrinks");
+        assert_eq!(got, vec![was[0].clone()], "the other button is identical");
+        let groups = layout(&pf.bytes, id);
+        assert_eq!(groups.len(), 1);
+        assert_eq!((root(&groups).ids.clone(), root(&groups).subs.clone()), (vec![1], vec![]));
+        let text = String::from_utf8_lossy(&pf.bytes);
+        assert!(!text.contains("КоманднаяПанель2Действие1"), "the actions of the sub-menu are gone");
+        idempotent(&pf, V2);
+        // the first button goes, the sub-menu stays; then everything goes
+        let (pf, _, after, got) = edit(V2, SUB, &b[1..]);
+        assert_eq!((after.n_act, shape(&got)), (3, "Подменю[Действие, Действие1]".to_string()));
+        layout(&pf.bytes, id);
+        let (pf, _, after, got) = edit(V2, SUB, &[]);
+        assert_eq!((after.n_act, got.len(), layout(&pf.bytes, id).len()), (0, 0, 1));
+        // a sub-menu is removed but one of its buttons is moved out
+        let k = kids(&b[1]);
+        let (pf, _, after, got) = edit(V2, SUB, &[b[0].clone(), k[1].clone()]);
+        assert_eq!((after.n_act, shape(&got)), (2, "НоваяКнопкаНаПанели, Действие1".to_string()));
+        assert_eq!(layout(&pf.bytes, id).len(), 1);
+        // an emptied sub-menu stays as a sub-menu with an empty group
+        let (pf, _, _, got) = edit(V2, SUB, &[b[0].clone(), with_kids(&b[1], &[])]);
+        assert_eq!(shape(&got), "НоваяКнопкаНаПанели, Подменю");
+        assert_eq!(group(&layout(&pf.bytes, id), "3").ids, Vec::<i64>::new());
+        idempotent(&pf, V2);
+    }
+
+    #[test]
+    fn buttons_are_added_removed_and_reordered_inside_a_submenu() {
+        let b = blocks(&base(V2), SUB);
+        let k = kids(&b[1]);
+        let id = panel_id(V2, SUB);
+        let with = |list: &[String]| vec![b[0].clone(), with_kids(&b[1], list)];
+        // reorder
+        let (pf, _, after, got) = edit(V2, SUB, &with(&[k[1].clone(), k[0].clone()]));
+        assert_eq!((shape(&got), after.t2), ("НоваяКнопкаНаПанели, Подменю[Действие1, Действие]".to_string(), 5));
+        assert_eq!(group(&layout(&pf.bytes, id), "3").ids, vec![5, 4]);
+        idempotent(&pf, V2);
+        // add a handler, a separator and a nested sub-menu
+        let extra = [k[0].clone(), handler("Нов", "Нов1", "Нов"), separator("Р"), submenu("Вн", "Вн", &handlers(&["Я"])), k[1].clone()];
+        let (pf, _, after, got) = edit(V2, SUB, &with(&extra));
+        assert_eq!(shape(&got), "НоваяКнопкаНаПанели, Подменю[Действие, Нов, Р, Вн[Я], Действие1]");
+        // Нов 6, Р 7, Вн 8 with the code 9, Я 10
+        assert_eq!(after.t2, 10);
+        let groups = layout(&pf.bytes, id);
+        assert_eq!(group(&groups, "3").ids, vec![4, 6, 7, 8, 5]);
+        assert_eq!(group(&groups, "3").subs, vec![8]);
+        assert_eq!(group(&groups, "9").ids, vec![10]);
+        idempotent(&pf, V2);
+        // remove one
+        let (pf, _, after, got) = edit(V2, SUB, &with(&k[1..]));
+        assert_eq!((shape(&got), after.n_act), ("НоваяКнопкаНаПанели, Подменю[Действие1]".to_string(), 3));
+        assert_eq!(group(&layout(&pf.bytes, id), "3").ids, vec![5]);
+        // a renamed caption of a nested button is applied in the same pass
+        let renamed = k[0].replacen("<Item language=\"ru\">Действие</Item>", "<Item language=\"ru\">Другое</Item>", 1);
+        assert_ne!(renamed, k[0]);
+        let (_, _, _, got) = edit(V2, SUB, &with(&[k[1].clone(), renamed]));
+        assert_eq!(got[1].buttons[1].caption[0].1, "Другое");
+    }
+
+    #[test]
+    fn a_kept_submenu_moves_into_a_new_one_and_out_again() {
+        let b = blocks(&base(V2), SUB);
+        let id = panel_id(V2, SUB);
+        let was = buttons_of(V2, &raw(V2), SUB);
+        let (pf, _, after, got) = edit(V2, SUB, &[b[0].clone(), submenu("Внешнее", "Внешнее", &[b[1].clone()])]);
+        assert_eq!(shape(&got), "НоваяКнопкаНаПанели, Внешнее[Подменю[Действие, Действие1]]");
+        // Внешнее 6 with the code 7
+        assert_eq!((after.t2, after.n_act), (7, 5));
+        assert_eq!(got[1].buttons[0], was[1]);
+        let groups = layout(&pf.bytes, id);
+        assert_eq!(group(&groups, "7").ids, vec![2]);
+        assert_eq!(group(&groups, "7").subs, vec![2]);
+        assert_eq!(root(&groups).subs, vec![6]);
+        idempotent(&pf, V2);
+        let again = decode(V2, &pf.bytes);
+        let nb = blocks(&again, SUB);
+        let inner = kids(&nb[1]);
+        let pf2 = patch_form(&parse_spanned(&pf.bytes).unwrap(), again.as_bytes(), set_buttons(&again, SUB, &[nb[0].clone(), inner[0].clone()]).as_bytes()).unwrap();
+        assert_eq!(shape(&buttons_of(V2, &pf2.bytes, SUB)), "НоваяКнопкаНаПанели, Подменю[Действие, Действие1]");
+        assert_eq!(layout(&pf2.bytes, id).len(), 2);
+    }
+
+    #[test]
+    fn platform_submenus_are_kept_and_moved_but_not_created_or_changed() {
+        let name = "MailGroupForm";
+        let xml = base(name);
+        let m = parse_form_xml(xml.as_bytes(), "b").unwrap();
+        let c = m.controls.iter().find(|c| c.type_name == "CommandBar" && c.values.buttons.iter().any(|b| b.kind == "Submenu")).unwrap();
+        let (panel, was) = (c.name.clone(), c.values.buttons.clone());
+        let b = blocks(&xml, &panel);
+        let at = was.iter().position(|b| b.kind == "Submenu").unwrap();
+        // moved to the end with its buttons behind a new handler: the group stays as it is
+        let mut list = b.clone();
+        let sub = list.remove(at);
+        list.insert(0, handler("Нов0", "Нов01", "Нов0"));
+        list.push(sub);
+        let (pf, before, after, got) = edit(name, &panel, &list);
+        assert_eq!(got.last().unwrap(), &was[at]);
+        assert_eq!(after.root.len(), before.root.len() + 1);
+        let id = panel_id(name, &panel);
+        assert_eq!(layout(&pf.bytes, id).len(), layout(&raw(name), id).len());
+        // a button cannot be added to it, removed from it or moved out of it
+        if !kids(&b[at]).is_empty() {
+            let mut list = b.clone();
+            list[at] = with_kids(&b[at], &[]);
+            refused(name, &panel, &list, "platform sub-menu");
+            let mut list = b.clone();
+            list[at] = with_kids(&b[at], &[kids(&b[at]), vec![handler("Нов", "Нов1", "Нов")]].concat());
+            refused(name, &panel, &list, "platform sub-menu");
+        }
+        // it cannot be removed either
+        let mut list = b.clone();
+        list.remove(at);
+        let e = run(name, &set_buttons(&xml, &panel, &list)).expect_err("removal");
+        assert!(e.to_string().contains("removing a platform sub-menu"), "{e}");
+    }
+
+    #[test]
+    fn an_edit_of_a_nested_button_and_a_new_root_button_combine() {
+        let b = blocks(&base(V2), SUB);
+        let k = kids(&b[1]);
+        let renamed = k[1].replacen("<Item language=\"ru\">Действие1</Item>", "<Item language=\"ru\">Иначе</Item>", 1);
+        let list = [handler("Первая", "Первая1", "Первая"), b[0].clone(), with_kids(&b[1], &[k[0].clone(), renamed])];
+        let (pf, _, after, got) = edit(V2, SUB, &list);
+        assert_eq!((shape(&got), got[2].buttons[1].caption[0].1.as_str()), ("Первая, НоваяКнопкаНаПанели, Подменю[Действие, Действие1]".to_string(), "Иначе"));
+        assert_eq!(after.t2, 6);
+        layout(&pf.bytes, panel_id(V2, SUB));
+    }
+
+    #[test]
+    fn invalid_submenu_edits_are_refused() {
+        let b = blocks(&base(V2), SUB);
+        let k = kids(&b[1]);
+        // the same button twice
+        refused(V2, SUB, &[b[0].clone(), with_kids(&b[1], &[k[0].clone(), k[0].clone()])], "used twice");
+        // a button of the root that is also inside
+        refused(V2, SUB, &[b[0].clone(), with_kids(&b[1], &[b[0].clone()])], "used twice");
+        // the kind of a kept button changes
+        let sep = "<Button name=\"Действие\" id=\"4\" kind=\"Separator\" checked=\"false\"/>".to_string();
+        let more = handler("Ещё", "Ещё1", "Ещё");
+        refused(V2, SUB, &[b[0].clone(), with_kids(&b[1], &[sep, k[1].clone(), more])], "kind of an existing button");
+        // a new name that exists
+        refused(V2, SUB, &[b[0].clone(), with_kids(&b[1], &[k[0].clone(), k[1].clone(), handler("Подменю", "П", "П")])], "name exists");
+        // the name of a removed button is free again
+        let (_, _, _, got) = edit(V2, SUB, &[b[0].clone(), with_kids(&b[1], &[k[1].clone(), handler("Действие", "Новое1", "Новое")])]);
+        assert_eq!(shape(&got), "НоваяКнопкаНаПанели, Подменю[Действие1, Действие]");
     }
 
     #[test]
