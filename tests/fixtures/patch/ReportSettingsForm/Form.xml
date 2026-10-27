@@ -1,0 +1,770 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="ea757d64-82fe-46db-9708-5c1f00ab9bba" name="ФормаОтчета" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Отчет  ВнешнийОтчет1</Item>
+  </Caption>
+  <Width>520</Width>
+  <Height>300</Height>
+  <MainAttribute attributeId="3"/>
+  <FormExtension guid="343b4e00-29f0-11d6-a3c7-0050bae0a776"/>
+  <Attributes>
+    <Attribute id="3" name="ОтчетОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="5" name="ПолеВвода1">
+      <Main>true</Main>
+      <ValueType kind="String" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <SpreadsheetDocumentField name="Результат" id="1">
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>353</Width>
+      <Height>259</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Bottom" bottomOffset="-8" right="Left" rightOffset="361" rightAlt="Right" rightAltOffset="-159"/>
+      <ShowGrid>true</ShowGrid>
+      <ShowGroups>true</ShowGroups>
+    </SpreadsheetDocumentField>
+    <CommandBar name="ДействияФормы" id="2">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>520</Width>
+      <Height>25</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="Подменю" id="10" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="#">Подменю</Item>
+          </Caption>
+          <Buttons>
+            <Button name="Действие" id="11" kind="Action" checked="false" representation="PictureAndText" actionKind="Standard" action="Standard:1">
+              <Caption>
+                <Item language="#">Действие</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель" id="12" kind="Separator" checked="false"/>
+            <Button name="Действие1" id="13" kind="Action" checked="false" representation="PictureAndText" actionKind="Standard" action="Standard:88">
+              <Caption>
+                <Item language="#">Действие1</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель1" id="14" kind="Separator" checked="false"/>
+            <Button name="Действие2" id="15" kind="Action" checked="false" actionKind="Standard" action="Standard:2">
+              <Caption>
+                <Item language="#">Действие2</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель2" id="16" kind="Separator" checked="false"/>
+            <Button name="Действие3" id="17" kind="Action" checked="false" actionKind="Standard" action="Standard:144">
+              <Caption>
+                <Item language="#">Действие3</Item>
+              </Caption>
+            </Button>
+            <Button name="Действие4" id="18" kind="Action" checked="false" actionKind="Standard" action="Standard:143">
+              <Caption>
+                <Item language="#">Действие4</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель3" id="19" kind="Separator" checked="false"/>
+            <Button name="Действие5" id="20" kind="Action" checked="false" actionKind="Standard" action="Standard:142">
+              <Caption>
+                <Item language="#">Действие5</Item>
+              </Caption>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Разделитель" id="21" kind="Separator" checked="false"/>
+        <Button name="Действие" id="22" kind="Action" checked="false" representation="PictureAndText" actionKind="Standard" action="Standard:1">
+          <Caption>
+            <Item language="#">Действие</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель1" id="23" kind="Separator" checked="false"/>
+        <Button name="Действие1" id="24" kind="Action" checked="false" representation="PictureAndText" actionKind="Standard" action="Standard:88">
+          <Caption>
+            <Item language="#">Действие1</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель2" id="25" kind="Separator" checked="false"/>
+        <Button name="Действие2" id="26" kind="Action" checked="false" actionKind="Standard" action="Standard:2">
+          <Caption>
+            <Item language="#">Действие2</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель3" id="27" kind="Separator" checked="false"/>
+        <Button name="Действие3" id="28" kind="Action" checked="false" actionKind="Standard" action="Standard:144">
+          <Caption>
+            <Item language="#">Действие3</Item>
+          </Caption>
+        </Button>
+        <Button name="Действие4" id="29" kind="Action" checked="false" actionKind="Standard" action="Standard:143">
+          <Caption>
+            <Item language="#">Действие4</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель4" id="30" kind="Separator" checked="false"/>
+        <Button name="Действие5" id="31" kind="Action" checked="false" actionKind="Standard" action="Standard:300">
+          <Caption>
+            <Item language="#">Действие5</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+    <InputField name="ПолеВвода1" id="4">
+      <DataPath attributeId="5">ПолеВвода1</DataPath>
+      <Left>428</Left>
+      <Top>52</Top>
+      <Width>87</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors bottom="Top" bottomTarget="4" bottomOffset="19" left="Right" leftTarget="1" leftOffset="67" right="Right" rightOffset="-5"/>
+      <ValueType kind="String" composite="false"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="Надпись1" id="5">
+      <Caption>
+        <Item language="ru">Надпись1</Item>
+      </Caption>
+      <Left>366</Left>
+      <Top>52</Top>
+      <Width>57</Width>
+      <Height>19</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Top" bottomTarget="5" bottomOffset="19" left="Right" leftTarget="1" leftOffset="5" right="Left" rightTarget="5" rightOffset="57"/>
+    </LabelDecoration>
+    <Button name="Кнопка1" id="6">
+      <Caption>
+        <Item language="ru">Кнопка1</Item>
+      </Caption>
+      <Left>428</Left>
+      <Top>75</Top>
+      <Width>87</Width>
+      <Height>19</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="6" bottomOffset="19" left="Right" leftTarget="1" leftOffset="67" right="Left" rightTarget="6" rightOffset="87"/>
+      <Events>
+        <Click id="0">Кнопка1Нажатие</Click>
+      </Events>
+    </Button>
+    <Table name="Отбор" id="7">
+      <DataPath attributeId="3" steps="b9754f01-29e9-11d6-a3c7-0050bae0a776 0 1">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1]</DataPath>
+      <Left>366</Left>
+      <Top>114</Top>
+      <Width>149</Width>
+      <Height>133</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors bottom="Bottom" bottomOffset="-53" left="Right" leftTarget="1" leftOffset="5" right="Right" rightOffset="-5"/>
+      <Footer>false</Footer>
+      <SelectionMode>Multi</SelectionMode>
+      <InitialTreeView>ExpandAllLevels</InitialTreeView>
+      <EnableStartDrag>true</EnableStartDrag>
+      <ChangePositionOfColumns>false</ChangePositionOfColumns>
+      <ChoiceMode>true</ChoiceMode>
+      <Columns>
+        <Column name="Использование" id="0">
+          <CheckBoxDataPath attributeId="3" steps="0">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[0]</CheckBoxDataPath>
+          <Width>22</Width>
+          <Visible>false</Visible>
+          <ValueType kind="String" composite="false" length="10"/>
+          <Editor>CheckBox</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляПодробногоОтображенияЭлемента" id="1">
+          <DataPath attributeId="3" steps="1">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[1]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляПодробногоОтображенияЭлемента" id="2">
+          <DataPath attributeId="3" steps="2">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[2]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляПодробногоОтображенияЭлемента" id="3">
+          <DataPath attributeId="3" steps="3">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[3]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияЭлемента" id="4">
+          <DataPath attributeId="3" steps="4">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[4]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляКраткогоОтображенияЭлемента" id="5">
+          <DataPath attributeId="3" steps="5">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[5]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляКраткогоОтображенияЭлемента" id="6">
+          <DataPath attributeId="3" steps="6">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[6]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляКраткогоОтображенияЭлемента" id="7">
+          <DataPath attributeId="3" steps="7">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[7]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляКраткогоОтображенияЭлемента" id="8">
+          <DataPath attributeId="3" steps="8">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[8]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ТипДляПодробногоОтображенияГруппы" id="9">
+          <DataPath attributeId="3" steps="9">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[9]</DataPath>
+          <Header>
+            <Item language="ru">Тип группы</Item>
+          </Header>
+          <Width>275</Width>
+          <ValueType kind="Ref" composite="false" refGuid="b1668747-cd01-442e-84b7-15a47d05c599"/>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияГруппы" id="10">
+          <DataPath attributeId="3" steps="10">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[10]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ТипДляКраткогоОтображенияГруппы" id="11">
+          <DataPath attributeId="3" steps="11">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[11]</DataPath>
+          <Header>
+            <Item language="ru">Тип группы</Item>
+          </Header>
+          <Width>275</Width>
+          <ValueType kind="Ref" composite="false" refGuid="b1668747-cd01-442e-84b7-15a47d05c599"/>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляПодробногоОтображенияЭлементаЛокальногоОтбора" id="12">
+          <DataPath attributeId="3" steps="12">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[12]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляПодробногоОтображенияЭлементаЛокальногоОтбора" id="13">
+          <DataPath attributeId="3" steps="13">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[13]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляПодробногоОтображенияЭлементаЛокальногоОтбора" id="14">
+          <DataPath attributeId="3" steps="14">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[14]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПрименениеДляПодробногоОтображенияЭлементаЛокальногоОтбора" id="15">
+          <DataPath attributeId="3" steps="15">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[15]</DataPath>
+          <Header>
+            <Item language="ru">Применение</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="27d7d459-265e-4fac-9685-d86b957f211f"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияЭлементаЛокальногоОтбора" id="16">
+          <DataPath attributeId="3" steps="16">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[16]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляКраткогоОтображенияЭлементаЛокальногоОтбора" id="17">
+          <DataPath attributeId="3" steps="17">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[17]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляКраткогоОтображенияЭлементаЛокальногоОтбора" id="18">
+          <DataPath attributeId="3" steps="18">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[18]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляКраткогоОтображенияЭлементаЛокальногоОтбора" id="19">
+          <DataPath attributeId="3" steps="19">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[19]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПрименениеДляКраткогоОтображенияЭлементаЛокальногоОтбора" id="20">
+          <DataPath attributeId="3" steps="20">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[20]</DataPath>
+          <Header>
+            <Item language="ru">Применение</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="27d7d459-265e-4fac-9685-d86b957f211f"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ТипДляПодробногоОтображенияГруппыЛокальногоОтбора" id="21">
+          <DataPath attributeId="3" steps="21">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[21]</DataPath>
+          <Header>
+            <Item language="ru">Тип группы</Item>
+          </Header>
+          <Width>275</Width>
+          <ValueType kind="Ref" composite="false" refGuid="b1668747-cd01-442e-84b7-15a47d05c599"/>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПрименениеДляПодробногоОтображенияГруппыЛокальногоОтбора" id="22">
+          <DataPath attributeId="3" steps="22">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[22]</DataPath>
+          <Header>
+            <Item language="ru">Применение</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="27d7d459-265e-4fac-9685-d86b957f211f"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияГруппыЛокальногоОтбора" id="23">
+          <DataPath attributeId="3" steps="23">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[23]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ТипДляКраткогоОтображенияГруппыЛокальногоОтбора" id="24">
+          <DataPath attributeId="3" steps="24">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[24]</DataPath>
+          <Header>
+            <Item language="ru">Тип группы</Item>
+          </Header>
+          <Width>275</Width>
+          <ValueType kind="Ref" composite="false" refGuid="b1668747-cd01-442e-84b7-15a47d05c599"/>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПрименениеДляКраткогоОтображенияГруппыЛокальногоОтбора" id="25">
+          <DataPath attributeId="3" steps="25">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[25]</DataPath>
+          <Header>
+            <Item language="ru">Применение</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="27d7d459-265e-4fac-9685-d86b957f211f"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляПодробногоОтображенияЭлементаГлавногоОтбора" id="26">
+          <DataPath attributeId="3" steps="26">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[26]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляПодробногоОтображенияЭлементаГлавногоОтбора" id="27">
+          <DataPath attributeId="3" steps="27">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[27]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляПодробногоОтображенияЭлементаГлавногоОтбора" id="28">
+          <DataPath attributeId="3" steps="28">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[28]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="РежимОтображенияДляПодробногоОтображенияЭлементаГлавногоОтбора" id="29">
+          <DataPath attributeId="3" steps="29">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[29]</DataPath>
+          <Header>
+            <Item language="ru">Режим отображения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияЭлементаГлавногоОтбора" id="30">
+          <DataPath attributeId="3" steps="30">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[30]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ТипДляПодробногоОтображенияГруппыГлавногоОтбора" id="31">
+          <DataPath attributeId="3" steps="31">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[31]</DataPath>
+          <Header>
+            <Item language="ru">Тип группы</Item>
+          </Header>
+          <Width>275</Width>
+          <ValueType kind="Ref" composite="false" refGuid="b1668747-cd01-442e-84b7-15a47d05c599"/>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="РежимОтображенияДляПодробногоОтображенияГруппыГлавногоОтбора" id="32">
+          <DataPath attributeId="3" steps="32">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[32]</DataPath>
+          <Header>
+            <Item language="ru">Режим отображения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияГруппыГлавногоОтбора" id="33">
+          <DataPath attributeId="3" steps="33">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[33]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляПодробногоОтображенияЭлементаСДатой" id="34">
+          <DataPath attributeId="3" steps="34">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[34]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляПодробногоОтображенияЭлементаСДатой" id="35">
+          <DataPath attributeId="3" steps="35">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[35]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляПодробногоОтображенияЭлементаСДатой" id="36">
+          <DataPath attributeId="3" steps="36">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[36]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДатаПравоеЗначениеДляПодробногоОтображенияЭлементаСДатой" id="37">
+          <DataPath attributeId="3" steps="37">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[37]</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияЭлементаСДатой" id="38">
+          <DataPath attributeId="3" steps="38">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[38]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляКраткогоОтображенияЭлементаСДатой" id="39">
+          <DataPath attributeId="3" steps="39">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[39]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляКраткогоОтображенияЭлементаСДатой" id="40">
+          <DataPath attributeId="3" steps="40">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[40]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляКраткогоОтображенияЭлементаСДатой" id="41">
+          <DataPath attributeId="3" steps="41">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[41]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДатаПравоеЗначениеДляКраткогоОтображенияЭлементаСДатой" id="42">
+          <DataPath attributeId="3" steps="42">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[42]</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляПодробногоОтображенияЭлементаЛокальногоОтбораСДатой" id="43">
+          <DataPath attributeId="3" steps="43">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[43]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляПодробногоОтображенияЭлементаЛокальногоОтбораСДатой" id="44">
+          <DataPath attributeId="3" steps="44">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[44]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляПодробногоОтображенияЭлементаЛокальногоОтбораСДатой" id="45">
+          <DataPath attributeId="3" steps="45">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[45]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДатаПравоеЗначениеДляПодробногоОтображенияЭлементаЛокальногоОтбораСДатой" id="46">
+          <DataPath attributeId="3" steps="46">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[46]</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПрименениеДляПодробногоОтображенияЭлементаЛокальногоОтбораСДатой" id="47">
+          <DataPath attributeId="3" steps="47">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[47]</DataPath>
+          <Header>
+            <Item language="ru">Применение</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="27d7d459-265e-4fac-9685-d86b957f211f"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияЭлементаЛокальногоОтбораСДатой" id="48">
+          <DataPath attributeId="3" steps="48">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[48]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляКраткогоОтображенияЭлементаЛокальногоОтбораСДатой" id="49">
+          <DataPath attributeId="3" steps="49">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[49]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляКраткогоОтображенияЭлементаЛокальногоОтбораСДатой" id="50">
+          <DataPath attributeId="3" steps="50">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[50]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляКраткогоОтображенияЭлементаЛокальногоОтбораСДатой" id="51">
+          <DataPath attributeId="3" steps="51">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[51]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДатаПравоеЗначениеДляКраткогоОтображенияЭлементаЛокальногоОтбораСДатой" id="52">
+          <DataPath attributeId="3" steps="52">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[52]</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПрименениеДляКраткогоОтображенияЭлементаЛокальногоОтбораСДатой" id="53">
+          <DataPath attributeId="3" steps="53">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[53]</DataPath>
+          <Header>
+            <Item language="ru">Применение</Item>
+          </Header>
+          <Width>75</Width>
+          <ValueType kind="Ref" composite="false" refGuid="27d7d459-265e-4fac-9685-d86b957f211f"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЛевоеЗначениеДляПодробногоОтображенияЭлементаГлавногоОтбораСДатой" id="54">
+          <DataPath attributeId="3" steps="54">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[54]</DataPath>
+          <Header>
+            <Item language="ru">Левое значение</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Boolean" composite="true">
+            <Type kind="Boolean"/>
+            <Type kind="Ref" refGuid="913e8016-6e90-47a0-b2a0-4513f4edad61"/>
+            <Type kind="String"/>
+            <Type kind="DateTime"/>
+            <Type kind="Number"/>
+          </ValueType>
+          <ReadOnly>true</ReadOnly>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидыСравненияДляПодробногоОтображенияЭлементаГлавногоОтбораСДатой" id="55">
+          <DataPath attributeId="3" steps="55">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[55]</DataPath>
+          <Header>
+            <Item language="ru">Вид сравнения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПравоеЗначениеДляПодробногоОтображенияЭлементаГлавногоОтбораСДатой" id="56">
+          <DataPath attributeId="3" steps="56">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[56]</DataPath>
+          <Header>
+            <Item language="ru">Правое значение</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДатаПравоеЗначениеДляПодробногоОтображенияЭлементаГлавногоОтбораСДатой" id="57">
+          <DataPath attributeId="3" steps="57">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[57]</DataPath>
+          <Header>
+            <Item language="ru">Дата</Item>
+          </Header>
+          <Width>50</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="РежимОтображенияДляПодробногоОтображенияЭлементаГлавногоОтбораСДатой" id="58">
+          <DataPath attributeId="3" steps="58">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[58]</DataPath>
+          <Header>
+            <Item language="ru">Режим отображения</Item>
+          </Header>
+          <Width>75</Width>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПредставлениеДляПодробногоОтображенияЭлементаГлавногоОтбораСДатой" id="59">
+          <DataPath attributeId="3" steps="59">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1].[59]</DataPath>
+          <Header>
+            <Item language="ru">Представление</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+      </Columns>
+    </Table>
+  </ChildItems>
+</Form>

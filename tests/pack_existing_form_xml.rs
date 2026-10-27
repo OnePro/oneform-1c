@@ -1559,3 +1559,44 @@ fn epf_added_button_packs_and_reports_a_missing_procedure() {
 fn config_added_button_packs_and_reports_a_missing_procedure() {
     assert_added_button_packs_with_a_warning(Target::Config);
 }
+
+/// A form made by the Configurator for an external report (settings table `Отбор`, report form extension): new
+/// controls may be written anywhere among their siblings, `pack` reads the packed form back; 1C keeps the control list
+/// in creation order, so the new controls decode after the existing ones.
+#[test]
+fn report_form_accepts_new_controls_in_front_of_existing_ones() {
+    let dir = tempfile::tempdir().unwrap();
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    copy_dir(&manifest.join("tests/fixtures/patch/ReportSettingsForm/dump"), dir.path());
+    let out = run(dir.path(), &["extract", "."]);
+    assert!(out.status.success(), "extract failed: {}", text(&out));
+    let src = dir.path().join("ВнешнийОтчет1/src/Forms/ФормаОтчета");
+    let xml_path = src.join("Form.xml");
+    let xml = fs::read_to_string(&xml_path).unwrap();
+    let label = "    <LabelDecoration name=\"НадписьАгента\" id=\"40\">\n      <Caption><Item language=\"ru\">Добавлено агентом</Item></Caption>\n      <Left>366</Left><Top>100</Top><Width>140</Width><Height>19</Height>\n      <ZOrder>30</ZOrder><TabOrder>30</TabOrder>\n    </LabelDecoration>\n";
+    let button = "    <Button name=\"Сформировать\" id=\"41\">\n      <Caption><Item language=\"ru\">Сформировать</Item></Caption>\n      <Left>366</Left><Top>130</Top><Width>87</Width><Height>23</Height>\n      <ZOrder>31</ZOrder><TabOrder>31</TabOrder>\n      <Events><Click id=\"0\">СформироватьНажатие</Click></Events>\n    </Button>\n";
+    let table = "    <Table name=\"Отбор\" id=\"7\">";
+    assert_eq!(xml.matches(table).count(), 1);
+    fs::write(&xml_path, xml.replacen(table, &format!("{label}{button}{table}"), 1)).unwrap();
+    let bsl_path = src.join("FormModule.bsl");
+    let mut bsl = fs::read_to_string(&bsl_path).unwrap();
+    bsl.push_str("\nПроцедура СформироватьНажатие(Элемент)\n\tСообщить(\"Сформировать\");\nКонецПроцедуры\n");
+    fs::write(&bsl_path, &bsl).unwrap();
+
+    let out = run(dir.path(), &["pack", "."]);
+    assert!(out.status.success(), "pack failed: {}", text(&out));
+    let out = run(dir.path(), &["extract", ".", "--replace-generated"]);
+    assert!(out.status.success(), "extract failed: {}", text(&out));
+    let got = fs::read_to_string(&xml_path).unwrap();
+    let names: Vec<&str> = got[got.find("<ChildItems>").unwrap()..]
+        .lines()
+        .filter(|l| l.starts_with("    <") && !l.starts_with("    </") && l.contains(" name=\""))
+        .map(|l| l.split('"').nth(1).unwrap())
+        .collect();
+    assert_eq!(
+        names,
+        ["Результат", "ДействияФормы", "ПолеВвода1", "Надпись1", "Кнопка1", "Отбор", "НадписьАгента", "Сформировать"]
+    );
+    assert!(got.contains("<Click id=\"0\">СформироватьНажатие</Click>"), "{got}");
+    assert_eq!(fs::read_to_string(&bsl_path).unwrap(), bsl);
+}

@@ -2597,6 +2597,30 @@ impl FormXml {
         out
     }
 
+    /// The model where the controls added by the structural patcher (`new_ids`: their allocated ids) stand last among their
+    /// siblings, in the order of the request. A new record is appended to the list of its parent and 1C itself
+    /// re-saves a form with the new controls after the existing ones (checked on the platform), so the place of an added element in `<ChildItems>` carries no meaning: the
+    /// element decodes after the existing siblings, wherever the request wrote it.
+    pub fn with_additions_last(&self, new_ids: &[i64]) -> FormXml {
+        fn last(el: &mut XmlElement, new_ids: &[i64]) {
+            if el.tag == "ChildItems" {
+                let is_new = |c: &XmlElement| {
+                    c.tag == CONTROL_STUB && c.attrs.get("id").and_then(|v| v.parse::<i64>().ok()).is_some_and(|id| new_ids.contains(&id))
+                };
+                el.children.sort_by_key(|c| is_new(c));
+            }
+            for c in &mut el.children {
+                last(c, new_ids);
+            }
+        }
+        let mut out = self.clone();
+        last(&mut out.shell, new_ids);
+        for c in &mut out.controls {
+            last(&mut c.rest, new_ids);
+        }
+        out
+    }
+
     /// The model where the command bars whose buttons were added, removed or reordered carry the buttons the patched
     /// stream decodes to (new buttons with their allocated ids).
     pub fn with_button_lists(&self, lists: &[(i64, Vec<CommandBarButton>)]) -> FormXml {

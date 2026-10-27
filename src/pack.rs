@@ -192,6 +192,7 @@ impl LayoutPatch {
         let mut expected = self
             .requested
             .with_allocated_ids(&self.patched.allocated)
+            .with_additions_last(&self.patched.allocated.iter().map(|(_, id)| *id).collect::<Vec<_>>())
             .with_button_lists(&self.patched.button_lists)
             .with_derived_pages(&self.patched.derived_pages)
             .in_decoder_order();

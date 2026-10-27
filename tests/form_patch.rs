@@ -6496,3 +6496,98 @@ fn columns_of_an_existing_value_table_are_not_added_or_removed() {
     let (kind, text) = rejected(&without);
     assert!(text.contains("ТабличноеПоле1") && text.contains("olumn"), "{kind}: {text}");
 }
+
+// ---------------------------------------------------------------- report form made by the Configurator
+
+fn report_label(name: &str, id: i64, top: i64) -> String {
+    format!(
+        "    <LabelDecoration name=\"{name}\" id=\"{id}\">\n      <Caption><Item language=\"ru\">{name}</Item></Caption>\n      <Left>366</Left><Top>{top}</Top><Width>140</Width><Height>19</Height>\n      <ZOrder>{id}</ZOrder><TabOrder>{id}</TabOrder>\n    </LabelDecoration>\n"
+    )
+}
+
+fn report_button(name: &str, id: i64, top: i64) -> String {
+    format!(
+        "    <Button name=\"{name}\" id=\"{id}\">\n      <Caption><Item language=\"ru\">{name}</Item></Caption>\n      <Left>366</Left><Top>{top}</Top><Width>87</Width><Height>23</Height>\n      <ZOrder>{id}</ZOrder><TabOrder>{id}</TabOrder>\n      <Events><Click id=\"0\">{name}Нажатие</Click></Events>\n    </Button>\n"
+    )
+}
+
+/// `text` inserted in front of the element `<tag name="name"` of the form-level `ChildItems`.
+fn insert_before_control(xml: &str, tag: &str, name: &str, text: &str) -> String {
+    let anchor = format!("    <{tag} name=\"{name}\"");
+    assert_eq!(xml.matches(&anchor).count(), 1, "fixture anchor must be unique: {anchor}");
+    xml.replacen(&anchor, &format!("{text}{anchor}"), 1)
+}
+
+fn insert_at_end(xml: &str, text: &str) -> String {
+    let at = xml.rfind("  </ChildItems>").unwrap();
+    format!("{}{text}{}", &xml[..at], &xml[at..])
+}
+
+/// Names of the form-level controls in document order.
+fn top_level_names(xml: &FormXml) -> Vec<String> {
+    xml.controls.iter().filter(|c| c.parent.is_none()).map(|c| c.name.clone()).collect()
+}
+
+/// Patch `edited`, decode the result and require the form-level controls in stream order: the existing ones as they
+/// were, then the new ones in the order of the request (1C keeps its control list in creation order, so the place of an
+/// added element in `<ChildItems>` is not kept; `pack` expects the same).
+fn assert_additions_last(edited: &str, added: usize) -> PatchedForm {
+    let (pf, got) = structural_round_trip("ReportSettingsForm", edited);
+    assert_eq!(pf.allocated.len(), added);
+    let parsed = parse_form_xml(edited.as_bytes(), "requested").unwrap();
+    let requested = top_level_names(&parsed);
+    let new_names: Vec<&String> = parsed
+        .controls
+        .iter()
+        .filter(|c| pf.allocated.iter().any(|(x, _)| *x == c.id))
+        .map(|c| &c.name)
+        .collect();
+    let mut want: Vec<String> = requested.iter().filter(|n| !new_names.contains(n)).cloned().collect();
+    want.extend(new_names.into_iter().cloned());
+    assert_eq!(top_level_names(&got), want);
+    assert_eq!(want.len(), 6 + added);
+    pf
+}
+
+#[test]
+fn report_form_adds_a_control_in_front_of_the_settings_table() {
+    // The Configurator's report form: a table bound to the settings composer (`Отбор`, 60 columns) is the last control.
+    let edited = insert_before_control(&baseline("ReportSettingsForm"), "Table", "Отбор", &report_label("НадписьАгента", 40, 100));
+    let pf = assert_additions_last(&edited, 1);
+    assert_eq!(pf.allocated, vec![(40, 8)]);
+    let s = parse_spanned(&pf.bytes).unwrap();
+    let index = ControlIndex::build(&s).unwrap();
+    assert!(index.get(8).unwrap().list_index > index.get(7).unwrap().list_index);
+}
+
+#[test]
+fn report_form_adds_controls_at_start_middle_and_end() {
+    let base = baseline("ReportSettingsForm");
+    let first = insert_before_control(&base, "SpreadsheetDocumentField", "Результат", &report_label("Первая", 40, 100));
+    assert_additions_last(&first, 1);
+    let middle = insert_before_control(&base, "InputField", "ПолеВвода1", &report_label("Средняя", 40, 100));
+    assert_additions_last(&middle, 1);
+    let last = insert_at_end(&base, &report_button("Сформировать", 41, 130));
+    assert_additions_last(&last, 1);
+    // several records, written in front of different controls and at the end: all decode after the existing ones
+    let many = insert_before_control(&base, "Table", "Отбор", &(report_label("А", 40, 100) + &report_button("Б", 41, 130)));
+    let many = insert_before_control(&many, "Button", "Кнопка1", &report_label("В", 42, 150));
+    let many = insert_at_end(&many, &report_label("Г", 43, 190));
+    assert_additions_last(&many, 4);
+}
+
+#[test]
+fn report_form_adds_a_control_where_a_removed_one_stood() {
+    let base = baseline("ReportSettingsForm");
+    let at = base.find("    <Button name=\"Кнопка1\"").unwrap();
+    let end = at + base[at..].find("    </Button>
+").unwrap() + "    </Button>
+".len();
+    let edited = format!("{}{}{}", &base[..at], report_label("НадписьАгента", 40, 100), &base[end..]);
+    let (pf, got) = structural_round_trip("ReportSettingsForm", &edited);
+    assert_eq!(pf.allocated.len(), 1);
+    let names = top_level_names(&got);
+    assert_eq!(names.len(), 6);
+    assert_eq!(names.last().map(String::as_str), Some("НадписьАгента"));
+    assert!(!names.iter().any(|n| n == "Кнопка1"));
+}
