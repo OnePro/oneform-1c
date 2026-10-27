@@ -19,7 +19,7 @@ use crate::errors::{
     ExtractionError, Result, ENCODING_INVALID, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
     PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
-use crate::form_patch::{diff_forms_full, diff_forms_mode, parse_form_xml, plan_form_patch, verify_preserved, FormXml, PatchedForm};
+use crate::form_patch::{diff_forms_full, parse_form_xml, FormDiff, plan_form_patch, verify_preserved, FormXml, PatchedForm};
 use crate::manifest::MANIFEST_PATH;
 use crate::metadata::discover;
 use crate::object_schema::with_object_schema;
@@ -59,6 +59,9 @@ pub struct LayoutPatch {
     pub patched: PatchedForm,
     /// The user's edited `Form.xml`, parsed.
     pub requested: FormXml,
+    /// The supported edits of `requested` against `baseline`, as the plan found them (with the object schema of the form
+    /// in scope; a diff made later would not resolve the tables bound to a tabular section).
+    pub diff: FormDiff,
     /// `Form.xml` of the unmodified target, parsed: controls the edit does not touch must decode as they did.
     pub baseline: FormXml,
     /// Non-fatal findings of the edit (a handler button whose procedure the form module does not declare).
@@ -95,13 +98,13 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
         .with("paths", Value::Array(vec![Value::from(xml_path), Value::from(stream_path)])));
     }
     let warnings = handler_warnings(&plan, existing, xml_path);
+    let (requested, diff) = (plan.edited.clone(), plan.diff.clone());
     let mut patched = plan.apply().map_err(|e| e.with("path", xml_path))?;
     PATCH_HOOK.with(|h| {
         if let Some(f) = h.borrow_mut().as_mut() {
             f(&mut patched);
         }
     });
-    let requested = parse_form_xml(edited, "edited").map_err(|e| e.with("path", xml_path))?;
     let baseline_xml = parse_form_xml(baseline, "baseline").map_err(|e| e.with("path", xml_path))?;
     Ok(Some(LayoutPatch {
         xml_path: xml_path.to_string(),
@@ -109,6 +112,7 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
         original: original.clone(),
         patched,
         requested,
+        diff,
         baseline: baseline_xml,
         warnings,
     }))
@@ -142,7 +146,7 @@ impl LayoutPatch {
     /// What the edit does, one line per control and one for each form-level change.
     pub fn summary(&self) -> Vec<String> {
         let mut out = Vec::new();
-        let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) else { return out };
+        let d = &self.diff;
         let at = &self.xml_path;
         for e in &d.edits {
             let props: Vec<&str> = e.changed.iter().map(|p| p.xml_name()).collect();
@@ -195,7 +199,8 @@ impl LayoutPatch {
         // decoded baseline instead of predicting the decoder's output for it.
         // A touched control decodes as its baseline with the requested properties applied.
         let mut removed: std::collections::HashSet<i64> = std::collections::HashSet::new();
-        if let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) {
+        {
+            let d = &self.diff;
             removed.extend(d.deletions.iter().map(|c| c.id));
             let touched: std::collections::HashMap<i64, &Vec<crate::form_patch::Property>> =
                 d.edits.iter().map(|e| (e.id, &e.changed)).collect();
@@ -224,7 +229,8 @@ impl LayoutPatch {
         // The columns of a table bound to a tabular section that the edit adds or rebinds decode with the
         // `<ValueType>` of their field, which the requested stub does not carry: those stubs are not compared
         // (the stream is read back column by column when it is patched).
-        if let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) {
+        {
+            let d = &self.diff;
             for e in d.edits.iter().filter(|e| e.changed.contains(&crate::form_patch::Property::Columns)) {
                 let Some(skip) = crate::form_patch::changed_column_ids(&e.old.columns, &e.new.columns) else { continue };
                 if !expected.control(e.id).is_some_and(crate::form_patch::is_section_table) {

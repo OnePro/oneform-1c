@@ -3039,6 +3039,137 @@ mod object_binding {
         assert_eq!(got.control(id).unwrap().values.data_path, Some((1, "ОбработкаОбъект.КПП".to_string())));
     }
 
+    /// An object whose attributes have the types of the selection-button defaults.
+    fn typed_schema(kind: &str) -> ObjectSchema {
+        let attrs: String = [
+            ("Контрагент", "cfg:CatalogRef.Контрагенты"),
+            ("Основание", "cfg:DocumentRef.Заказ"),
+            ("Вид", "cfg:EnumRef.Виды"),
+            ("Счёт", "cfg:ChartOfAccountsRef.Основной"),
+            ("Срок", "xs:dateTime"),
+            ("Сумма", "xs:decimal"),
+            ("Комментарий", "xs:string"),
+            ("Флаг", "xs:boolean"),
+            ("Разное", "cfg:CatalogRef.Контрагенты</v8:Type><v8:Type>xs:string"),
+        ]
+        .iter()
+        .enumerate()
+        .map(|(i, (name, ty))| {
+            format!(
+                "<Attribute uuid=\"11111111-0000-0000-0000-0000000001{i:02}\"><Properties><Name>{name}</Name><Type><v8:Type>{ty}</v8:Type></Type></Properties></Attribute>"
+            )
+        })
+        .collect();
+        let xml = object_xml(kind).replace("<MetaDataObject ", "<MetaDataObject xmlns:v8=\"http://v8.1c.ru/8.1/data/core\" ").replace("<TabularSection", &format!("{attrs}<TabularSection"));
+        ObjectSchema::from_object_xml(&xml).unwrap()
+    }
+
+    /// The buttons `(ChoiceButton, OpenButton, ClearButton)` of the field that the pack of `extra` adds, read back from the stream.
+    fn added_buttons(kind: &str, name: &str, extra: &str) -> (Option<bool>, Option<bool>, Option<bool>) {
+        let s = stream("DonorForm");
+        let edited = with_added_field("НовоеПоле", 999, &format!("{}{extra}", bind(name)), &baseline("DonorForm"));
+        let pf = with_object_schema(Some(typed_schema(kind)), || patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes())).unwrap();
+        assert_only_authorized_changes(s.source(), &pf);
+        let id = pf.allocated[0].1;
+        let mut lookup = lookup(kind);
+        for (n, u) in &typed_schema(kind).attrs {
+            lookup.insert(u.to_lowercase(), n.clone());
+        }
+        let form = decode_with(&pf.bytes, &lookup);
+        let v = &form.control(id).unwrap().values;
+        (v.choice_button, v.open_button, v.clear_button)
+    }
+
+    #[test]
+    fn an_added_field_bound_to_a_reference_attribute_gets_the_selection_buttons() {
+        for name in ["Контрагент", "Основание"] {
+            assert_eq!(added_buttons("Document", name, ""), (Some(true), Some(true), Some(false)), "{name}");
+        }
+        for name in ["Вид", "Счёт", "Срок"] {
+            assert_eq!(added_buttons("Document", name, ""), (Some(true), Some(false), Some(false)), "{name}");
+        }
+        // the standard attribute `Дата` of a document is a date
+        assert_eq!(added_buttons("Document", "Дата", ""), (Some(true), Some(false), Some(false)));
+    }
+
+    /// The staged-result check of `oneform pack` for a field added with the defaults: the decoded `Form.xml` holds
+    /// the buttons that were built, and the report lists the edit.
+    #[test]
+    fn the_pack_verification_expects_the_defaulted_buttons() {
+        let s = stream("DonorForm");
+        let base = baseline("DonorForm");
+        let edited = with_added_field("НовоеПоле", 999, &bind("Контрагент"), &base);
+        let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+        let tree = |xml: &str, bytes: &[u8]| -> oneform::transaction::Tree {
+            [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), bytes.to_vec())].into_iter().collect()
+        };
+        let lp = with_object_schema(Some(typed_schema("Document")), || {
+            oneform::pack::plan_layout_patch(&layout, &tree(&edited, s.source()), &tree(&base, s.source()))
+        })
+        .unwrap()
+        .expect("a layout edit");
+        assert!(lp.summary().iter().any(|l| l.contains("add InputField 'НовоеПоле'")), "{:?}", lp.summary());
+        let mut lookup = lookup("Document");
+        for (n, u) in &typed_schema("Document").attrs {
+            lookup.insert(u.to_lowercase(), n.clone());
+        }
+        let staged_xml = {
+            let doc = roxmltree::Document::parse(&base).unwrap();
+            let (id, fname) = (doc.root_element().attribute("id").unwrap(), doc.root_element().attribute("name").unwrap());
+            let model = decode_oof_stream(&lp.patched.bytes, id, Some(&lookup)).unwrap();
+            let xml = render_form_xml(&common::form_info(id, fname, &lp.patched.bytes), &model).unwrap();
+            String::from_utf8(enrich_ext_properties(&lp.patched.bytes, &xml).unwrap()).unwrap().replace("\r\n", "\n")
+        };
+        assert!(staged_xml.contains("<ChoiceButton>true</ChoiceButton>"));
+        lp.verify_staged(&tree(&staged_xml, &lp.patched.bytes)).unwrap_or_else(|e| panic!("{e} {:?}", e.params));
+        // the same XML with the buttons turned off explicitly is a different request: the built field has them on
+        let off = with_added_field("НовоеПоле", 999, &format!("{}<ChoiceButton>false</ChoiceButton><OpenButton>false</OpenButton>", bind("Контрагент")), &base);
+        let lp_off = with_object_schema(Some(typed_schema("Document")), || {
+            oneform::pack::plan_layout_patch(&layout, &tree(&off, s.source()), &tree(&base, s.source()))
+        })
+        .unwrap()
+        .expect("a layout edit");
+        assert!(lp_off.verify_staged(&tree(&staged_xml, &lp.patched.bytes)).is_err(), "buttons built on, requested off");
+    }
+
+    #[test]
+    fn an_explicit_button_value_wins_over_the_default() {
+        let off = "<ChoiceButton>false</ChoiceButton>";
+        assert_eq!(added_buttons("Document", "Контрагент", off), (Some(false), Some(true), Some(false)));
+        let both = "<ChoiceButton>false</ChoiceButton><OpenButton>false</OpenButton>";
+        assert_eq!(added_buttons("Catalog", "Контрагент", both), (Some(false), Some(false), Some(false)));
+        let open = "<OpenButton>true</OpenButton><ClearButton>true</ClearButton>";
+        assert_eq!(added_buttons("Catalog", "Вид", open), (Some(true), Some(true), Some(true)));
+    }
+
+    #[test]
+    fn an_added_field_of_a_plain_or_unknown_type_keeps_no_buttons() {
+        for name in ["Сумма", "Комментарий", "Флаг", "Разное", "ИНН", "Код"] {
+            let kind = if name == "Код" { "Catalog" } else { "Document" };
+            assert_eq!(added_buttons(kind, name, ""), (Some(false), Some(false), Some(false)), "{name}");
+        }
+    }
+
+    #[test]
+    fn the_button_defaults_do_not_touch_existing_fields() {
+        let s = stream("DonorForm");
+        let edited = rebind_existing("Контрагент");
+        let pf = with_object_schema(Some(typed_schema("Document")), || patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes())).unwrap();
+        let mut lookup = lookup("Document");
+        for (n, u) in &typed_schema("Document").attrs {
+            lookup.insert(u.to_lowercase(), n.clone());
+        }
+        let form = decode_with(&pf.bytes, &lookup);
+        let v = &form.control(7).unwrap().values;
+        assert_eq!((v.choice_button, v.open_button), baseline_buttons(7), "a rebound field keeps its buttons");
+    }
+
+    fn baseline_buttons(id: i64) -> (Option<bool>, Option<bool>) {
+        let form = parse_form_xml(baseline("DonorForm").as_bytes(), "baseline").unwrap();
+        let v = &form.control(id).unwrap().values;
+        (v.choice_button, v.open_button)
+    }
+
     #[test]
     fn standard_attributes_are_written_with_the_code_of_the_object_kind() {
         for (kind, name, code) in [("Catalog", "Код", -2), ("Catalog", "Наименование", -3), ("Document", "Номер", -2), ("Document", "Дата", -3)] {
@@ -3827,6 +3958,7 @@ mod tabular_binding {
             let (current, existing) = (tree(&self.xml), tree(edited));
             let lp = with_object_schema(Some(schema()), || oneform::pack::plan_layout_patch(&layout, &existing, &current)).unwrap().expect("a layout edit");
             assert_eq!(lp.patched.bytes, pf.bytes);
+            assert!(!lp.summary().is_empty(), "the pack report lists the edits, tables bound to a tabular section included");
             let mut staged = tree(&decoded_xml(&pf.bytes));
             staged.insert("FormStream.bin".to_string(), pf.bytes.clone());
             lp.verify_staged(&staged).unwrap_or_else(|e| panic!("{e} {:?}", e.params));

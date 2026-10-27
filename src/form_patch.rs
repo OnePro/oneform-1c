@@ -44,6 +44,7 @@ mod anchors;
 pub use anchors::{anchor_graph_stale_entries, anchor_graph_violations};
 mod ext_read;
 pub use ext_read::enrich_ext_properties;
+mod binding_defaults;
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].
@@ -2415,6 +2416,9 @@ pub struct ControlXml {
     pub values: ControlValues,
     /// `steps` of the `<DataPath>` that is in `values.data_path` (tokens separated by one space).
     pub data_steps: Option<String>,
+    /// Whether the element has a `<ChoiceButton>` / `<OpenButton>` tag (an absent tag is `false` in `values`, but an
+    /// added field bound to the object takes the default of the type of its attribute).
+    pub explicit_buttons: [bool; 2],
     /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
     pub column_sources: Vec<ColumnSource>,
     /// The control element without nested controls (replaced by [`CONTROL_STUB`]) and without the
@@ -2884,6 +2888,7 @@ impl Parser<'_> {
                     line: c.line,
                     values: ControlValues::empty(),
                     data_steps: None,
+                    explicit_buttons: ["ChoiceButton", "OpenButton"].map(|t| c.children.iter().any(|x| x.tag == t)),
                     column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),
                 });
@@ -5127,6 +5132,8 @@ pub struct FormPatchPlan<'a> {
     pub source: &'a SpannedMetadata,
     pub index: ControlIndex<'a>,
     pub diff: FormDiff,
+    /// The edited `Form.xml` as the plan builds it: the defaults of an added field bound to the object are applied.
+    pub edited: FormXml,
 }
 
 impl<'a> FormPatchPlan<'a> {
@@ -5150,13 +5157,14 @@ impl<'a> FormPatchPlan<'a> {
 /// projections against it and diff the whole projection. No stream bytes are changed.
 pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edited_xml: &[u8]) -> Result<FormPatchPlan<'a>> {
     let baseline = parse_form_xml(baseline_xml, "baseline")?;
-    let edited = parse_form_xml(edited_xml, "edited")?;
+    let mut edited = parse_form_xml(edited_xml, "edited")?;
     let index = ControlIndex::build(source)?;
     index.validate(&baseline)?;
     index.validate_mode(&edited, true)?;
+    binding_defaults::apply(&mut edited, &baseline);
     let diff = diff_forms_mode(&baseline, &edited, true)?;
     check_object_bindings(&diff, &baseline, &edited)?;
-    Ok(FormPatchPlan { source, index, diff })
+    Ok(FormPatchPlan { source, index, diff, edited })
 }
 
 /// What a link of `root[2][3]` holds after the attribute id.
@@ -10634,6 +10642,7 @@ mod link_step_tests {
             attrs: vec![("ИНН".into(), ATTR.into()), ("Двойной".into(), "a".into()), ("Двойной".into(), "b".into())],
             tabular: Vec::new(),
             std_absent: Vec::new(),
+            ..Default::default()
         }
     }
 

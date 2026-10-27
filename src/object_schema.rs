@@ -81,6 +81,13 @@ pub struct ObjectSchema {
     pub kind: Option<String>,
     /// `(name, uuid)` in declaration order (registers: dimensions and resources included).
     pub attrs: Vec<(String, String)>,
+    /// Kind of the value type of each attribute, parallel to `attrs`: `CatalogRef`, `DocumentRef`, `EnumRef`,
+    /// `ChartOfAccountsRef`, any other `...Ref`, `String`, `Number`, `Date`, `Time`, `Boolean`, `Composite`; `None` when it
+    /// cannot be derived (the type is missing or not understood).
+    pub attr_kinds: Vec<Option<String>>,
+    /// Stream pattern of each attribute of a processor container, parallel to `attrs` (empty for an object XML); only
+    /// a reference needs it, to find its kind with [`ObjectSchema::resolve_ref_kinds`].
+    pub(crate) attr_patterns: Vec<Option<String>>,
     pub tabular: Vec<TabularSchema>,
     /// Standard attributes of `kind` that this object does not have (a catalog without code, without
     /// description, not hierarchical, without owners); a link to them would be invalid.
@@ -101,10 +108,21 @@ impl ObjectSchema {
     /// the schema does not name (the container of a processor); `lookup` is built only when there is such a column.
     pub fn resolve_ref_kinds(&mut self, lookup: impl FnOnce() -> Option<Arc<ConfigTypeLookup>>) {
         let wanted = |t: &TabularSchema, i: usize| t.column_ref_kinds[i].is_none() && t.column_pattern(i).and_then(crate::ts_table::single_ref_guid).is_some();
-        if !self.tabular.iter().any(|t| t.column_ref_kinds.len() == t.columns.len() && (0..t.columns.len()).any(|i| wanted(t, i))) {
+        let attr_ref = |p: &Option<String>| p.as_deref().and_then(crate::ts_table::single_ref_guid);
+        let attrs_wanted = self.attr_patterns.iter().zip(&self.attr_kinds).any(|(p, k)| k.as_deref() == Some("Ref") && attr_ref(p).is_some());
+        if !attrs_wanted && !self.tabular.iter().any(|t| t.column_ref_kinds.len() == t.columns.len() && (0..t.columns.len()).any(|i| wanted(t, i))) {
             return;
         }
         let Some(lookup) = lookup() else { return };
+        for (pattern, kind) in self.attr_patterns.iter().zip(&mut self.attr_kinds) {
+            if kind.as_deref() != Some("Ref") {
+                continue;
+            }
+            *kind = attr_ref(pattern)
+                .and_then(|guid| lookup.resolve_guid(&guid))
+                .and_then(crate::ts_table::ref_kind_of_canonical)
+                .map(str::to_string);
+        }
         for t in &mut self.tabular {
             if t.column_ref_kinds.len() != t.columns.len() {
                 continue;
@@ -126,6 +144,16 @@ impl ObjectSchema {
     /// uuid of the attribute `name` of the object itself (not of its tabular sections).
     pub fn resolve_attr(&self, name: &str) -> Resolved<&str> {
         resolve(&self.attrs, name)
+    }
+
+    /// Kind of the value type of the attribute `name` of the object itself (see [`ObjectSchema::attr_kinds`]); `None`
+    /// when the name is missing or ambiguous or the kind is not known.
+    pub fn attr_kind(&self, name: &str) -> Option<&str> {
+        let mut found = self.attrs.iter().enumerate().filter(|(_, (n, _))| n == name);
+        match (found.next(), found.next()) {
+            (Some((i, _)), None) => self.attr_kinds.get(i)?.as_deref(),
+            _ => None,
+        }
     }
 
     /// The tabular section `name`.
@@ -199,7 +227,10 @@ impl ObjectSchema {
         for e in children.children().filter(|c| c.is_element()) {
             let Some((name, uuid)) = xml_entry(e) else { continue };
             match e.tag_name().name() {
-                "Attribute" | "Dimension" | "Resource" => schema.attrs.push((name, uuid)),
+                "Attribute" | "Dimension" | "Resource" => {
+                    schema.attrs.push((name, uuid));
+                    schema.attr_kinds.push(xchild(e, "Properties").and_then(|p| xchild(p, "Type")).and_then(xml_type_kind));
+                }
                 "TabularSection" => {
                     let mut columns = Vec::new();
                     let mut column_patterns = Vec::new();
@@ -237,7 +268,13 @@ impl ObjectSchema {
         for group in props.children.iter().skip(2).filter_map(as_node) {
             match group_class(group) {
                 Some(ATTRIBUTES_CLASS_ID) => {
-                    schema.attrs.extend(group_items(group).filter_map(item_entry));
+                    for item in group_items(group) {
+                        let Some(entry) = item_entry(item) else { continue };
+                        let pattern = item.node(0).and_then(item_pattern);
+                        schema.attrs.push(entry);
+                        schema.attr_kinds.push(pattern.as_deref().and_then(pattern_kind));
+                        schema.attr_patterns.push(pattern);
+                    }
                 }
                 Some(TABULAR_CLASS_ID) => {
                     for item in group_items(group) {
@@ -325,6 +362,48 @@ fn tabular_type_id(info: roxmltree::Node<'_, '_>) -> Option<String> {
         .find(|c| c.is_element() && c.tag_name().name() == "GeneratedType" && c.attribute("category") == Some("TabularSection"))?;
     let id = xchild(generated, "TypeId")?.text()?.trim().to_lowercase();
     is_uuid(&id).then_some(id)
+}
+
+/// Kind of the single type of the `Type` element of an attribute (see [`ObjectSchema::attr_kinds`]); several
+/// types: `Composite`.
+fn xml_type_kind(ty: roxmltree::Node<'_, '_>) -> Option<String> {
+    let mut types = ty.children().filter(|c| c.is_element() && c.tag_name().name() == "Type");
+    let (one, rest) = (types.next()?, types.next());
+    if rest.is_some() {
+        return Some("Composite".to_string());
+    }
+    let name = one.text()?.trim();
+    Some(match name {
+        "xs:boolean" => "Boolean".to_string(),
+        "xs:string" => "String".to_string(),
+        "xs:decimal" => "Number".to_string(),
+        "xs:dateTime" => match xchild(ty, "DateQualifiers").and_then(|q| xchild(q, "DateFractions")).and_then(|f| f.text()).map(str::trim) {
+            Some("Time") => "Time".to_string(),
+            _ => "Date".to_string(),
+        },
+        other => {
+            let (kind, _) = other.strip_prefix("cfg:")?.split_once('.')?;
+            kind.ends_with("Ref").then(|| kind.to_string())?
+        }
+    })
+}
+
+/// [`xml_type_kind`] for a stream pattern: a reference is `Ref` until [`ObjectSchema::resolve_ref_kinds`] names it.
+fn pattern_kind(pattern: &str) -> Option<String> {
+    let tree = crate::brace::parse_metadata(pattern.as_bytes()).ok()?;
+    let branches: Vec<&Node> = tree.children.iter().skip(1).filter_map(as_node).collect();
+    let [b] = branches.as_slice() else { return (branches.len() > 1).then(|| "Composite".to_string()) };
+    let atom = |i: usize| b.atom(i).map(|a| a.value.as_str());
+    Some(match (atom(0)?, atom(1)) {
+        ("S", _) => "String",
+        ("N", _) => "Number",
+        ("B", _) => "Boolean",
+        ("D", Some("T")) => "Time",
+        ("D", _) => "Date",
+        ("#", _) => "Ref",
+        _ => return None,
+    }
+    .to_string())
 }
 
 /// Stream pattern text of the `Type` element of an attribute (`v8:Type` with its qualifiers): a single
@@ -503,6 +582,34 @@ mod tests {
         // without a lookup a reference has neither a pattern nor a kind
         let s = ObjectSchema::from_object_xml(&xml).unwrap();
         assert_eq!((s.tabular[0].column_pattern(0), s.tabular[0].column_ref_kind(0)), (None, None));
+    }
+
+    #[test]
+    fn attribute_kinds_come_from_the_type_of_the_object_xml_and_the_stream_pattern() {
+        let attr = |n: u8, ty: &str| {
+            format!(r#"<Attribute uuid="11111111-0000-0000-0000-00000000000{n}"><Properties><Name>А{n}</Name><Type>{ty}</Type></Properties></Attribute>"#)
+        };
+        let attrs = [
+            attr(1, "<v8:Type>cfg:CatalogRef.Номенклатура</v8:Type>"),
+            attr(2, "<v8:Type>xs:dateTime</v8:Type><v8:DateQualifiers><v8:DateFractions>Time</v8:DateFractions></v8:DateQualifiers>"),
+            attr(3, "<v8:Type>xs:decimal</v8:Type>"),
+            attr(4, "<v8:Type>cfg:EnumRef.Виды</v8:Type><v8:Type>xs:string</v8:Type>"),
+            attr(5, "<v8:Type>cfg:CatalogObject.Номенклатура</v8:Type>"),
+            r#"<Attribute uuid="11111111-0000-0000-0000-000000000006"><Properties><Name>А6</Name></Properties></Attribute>"#.to_string(),
+        ]
+        .concat();
+        let xml = format!(
+            r#"<MetaDataObject xmlns:v8="urn:v8"><Document uuid="aaaaaaaa-0000-0000-0000-000000000001"><ChildObjects>{attrs}</ChildObjects></Document></MetaDataObject>"#
+        );
+        let s = ObjectSchema::from_object_xml(&xml).unwrap();
+        let kinds: Vec<Option<&str>> = (1..=6).map(|n| s.attr_kind(&format!("А{n}"))).collect();
+        assert_eq!(kinds, [Some("CatalogRef"), Some("Time"), Some("Number"), Some("Composite"), None, None]);
+        assert_eq!(s.attr_kind("Нет"), None);
+        assert_eq!(pattern_kind(r#"{"Pattern",{"S",10,1}}"#).as_deref(), Some("String"));
+        assert_eq!(pattern_kind(r#"{"Pattern",{"D","D"}}"#).as_deref(), Some("Date"));
+        assert_eq!(pattern_kind(r#"{"Pattern",{"D","T"}}"#).as_deref(), Some("Time"));
+        assert_eq!(pattern_kind(r#"{"Pattern",{"B"},{"S"}}"#).as_deref(), Some("Composite"));
+        assert_eq!(pattern_kind(r##"{"Pattern",{"#",47e6dd42-cd5c-4e3a-9bc4-14816ed53d38}}"##).as_deref(), Some("Ref"));
     }
 
     #[test]
