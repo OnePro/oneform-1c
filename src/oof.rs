@@ -28,12 +28,15 @@ use crate::metaref::ConfigTypeLookup;
 pub use crate::oof_props::{
     at, at_n, atom, child, control_caption, decode_color, decode_column_props, decode_font, decode_pattern,
     decode_props, int, int_or_first, is_bare, is_guid, localized, localized_value, node, node_opt, num,
-    resolve_column_step, resolve_data_path, std_attr_code, std_attr_name, str_val, OofError, EVENT_GUID, META_KIND_KEY,
+    std_attr_code, std_attr_name, str_val, OofError, EVENT_GUID, META_KIND_KEY,
+};
+pub use crate::oof_props::{
+    column_segment, column_steps, parse_steps, render_path, steps_text, DataStep, ROW_ROOT_ID, ROW_ROOT_NAME,
 };
 use crate::oof_props::{index_error, py_get, py_slice};
 
 pub const FORM_XML_NAME: &str = "Form.xml";
-pub const ORDINARY_FORM_VERSION: &str = "2.1";
+pub const ORDINARY_FORM_VERSION: &str = "2.2";
 pub const EXTERNAL_TIMEOUT_SECONDS: u64 = 60;
 
 /// `lowercase metadata uuid -> name` (see `formbin.read_meta_lookup`); the reserved key
@@ -366,15 +369,18 @@ fn column(n: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
         Item::Node(_) => None,
     };
     let mut field_name: Option<String> = None;
+    // Link steps of a tabular or list column: DATA, CHECK, PIC (`None`: unset), each with its path segment.
+    let mut link_steps: Vec<Value> = Vec::new();
     if matches!(col_guid, COLUMN_GUID | LIST_COLUMN_GUID) {
         if let Some(x) = x {
-            if x.len() > 2 {
-                let is_tab = col_guid == COLUMN_GUID;
-                field_name = resolve_column_step(x.children.get(2), is_tab, meta_lookup);
-                if field_name.is_none() && x.len() > 3 {
-                    field_name = resolve_column_step(x.children.get(3), is_tab, meta_lookup);
-                }
-            }
+            let is_tab = col_guid == COLUMN_GUID;
+            link_steps = column_steps(x)
+                .iter()
+                .map(|s| match s {
+                    Some(s) => json!({"token": s.token(), "segment": column_segment(s, is_tab, meta_lookup)}),
+                    None => Value::Null,
+                })
+                .collect();
         }
     } else if col_guid == VT_COLUMN_GUID {
         let w2 = wrapper.children.get(2).map(atom).unwrap_or("");
@@ -392,6 +398,9 @@ fn column(n: &Node, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
     out.extend(decode_column_props(props)?);
     if let Some(f) = field_name {
         out.insert("_field".into(), f.into());
+    }
+    if link_steps.iter().any(|s| !s.is_null()) {
+        out.insert("_steps".into(), Value::Array(link_steps));
     }
     let ev = column_editor_events(props, editor_type);
     if !ev.is_empty() {
@@ -966,7 +975,12 @@ fn annotate_value_type(vt: &mut Map<String, Value>, type_lookup: Option<&ConfigT
 
 type Attributes = (Option<i64>, Vec<Value>, HashMap<i64, Value>);
 
-fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Option<&ConfigTypeLookup>) -> Res<Attributes> {
+fn attributes(
+    section: &Node,
+    meta_lookup: Option<&MetaLookup>,
+    type_lookup: Option<&ConfigTypeLookup>,
+    tables: &HashMap<i64, String>,
+) -> Res<Attributes> {
     let main_id = int_or_first(child(section, 0)?, "main attribute id")?;
     let kind = meta_lookup.and_then(|m| m.get(META_KIND_KEY)).map(String::as_str);
     let mut attrs: Vec<Value> = Vec::new();
@@ -1007,49 +1021,55 @@ fn attributes(section: &Node, meta_lookup: Option<&MetaLookup>, type_lookup: Opt
         for link in table(Some(&section.children[3]), "data paths")? {
             let link = node(link, "data path", 2)?;
             let body = node(&link.children[1], "data path", 2)?;
-            if is_bare(&body.children[0], "1") {
-                let attr_id = int_or_first(&body.children[1], "attribute id")?;
-                let resolved = resolve_data_path(attr_id, None, &names, meta_lookup, None);
-                links.insert(int(&link.children[0], "control id")?, resolved);
-            } else if is_bare(&body.children[0], "2") {
-                let attr_id = int_or_first(&body.children[1], "attribute id")?;
-                let step = body.children.get(2);
-                let resolved = resolve_data_path(attr_id, step, &names, meta_lookup, if attr_id == main_id { kind } else { None });
-                links.insert(int(&link.children[0], "control id")?, resolved);
-            } else if is_bare(&body.children[0], "4") {
-                // Nested display path through a reference field:
-                // {4,{aid},{-60001},{0,<field uuid>},{<std code>}} -> "Attr.Field" (the std code belongs to the
-                // referenced object of unknown kind, so it is not named)
-                let attr_id = int_or_first(&body.children[1], "attribute id")?;
-                let mut resolved = resolve_data_path(attr_id, None, &names, meta_lookup, None);
-                let root_path = resolved.get("path").and_then(Value::as_str).map(str::to_string);
-                if let Some(root_path) = root_path {
-                    let mut parts = vec![root_path];
-                    if let Some(Item::Node(f)) = body.children.get(3) {
-                        if f.len() > 1 {
-                            let u = atom(&f.children[1]).to_lowercase();
-                            if let Some(n) = meta_lookup.and_then(|m| m.get(&u)) {
-                                parts.push(n.clone());
-                            }
-                        }
-                    }
-                    if parts.len() > 1 {
-                        if let Value::Object(map) = &mut resolved {
-                            map.insert("path".into(), parts.join(".").into());
-                        }
-                    }
+            // `{K,{aid},step...}` with K = 1 + the number of steps; a row of another shape is not shown
+            let steps: Option<Vec<DataStep>> = body.children.iter().skip(2).map(DataStep::from_item).collect();
+            let Some(steps) = steps.filter(|_| int(&body.children[0], "data path size").ok() == Some(body.len() as i64 - 1)) else {
+                continue;
+            };
+            let attr_id = int_or_first(&body.children[1], "attribute id")?;
+            let mut out = Map::new();
+            out.insert("attributeId".into(), attr_id.into());
+            let first_kind = if attr_id == main_id { kind } else { None };
+            let (root, rest): (Option<String>, &[DataStep]) = match (attr_id, steps.first()) {
+                // `{N, {-2}, {<id of a Table>}, ...}`: a row of a form table
+                (ROW_ROOT_ID, Some(DataStep::Code(id))) if tables.contains_key(id) => {
+                    (Some(format!("{ROW_ROOT_NAME}.{}", tables[id])), &steps[1..])
                 }
-                // The nested path is only a readable name; the link record itself is kept verbatim.
-                if let Value::Object(map) = &mut resolved {
-                    let mut raw = Vec::new();
-                    crate::donor::write_node(body, &mut raw);
-                    map.insert("raw".into(), String::from_utf8_lossy(&raw).into_owned().into());
+                (ROW_ROOT_ID, _) => (Some(ROW_ROOT_NAME.to_string()), &steps[..]),
+                (_, _) => (names.get(&attr_id).cloned(), &steps[..]),
+            };
+            let skip_kind = rest.len() != steps.len();
+            match root {
+                Some(root) => {
+                    out.insert("path".into(), render_path(&root, rest, if skip_kind { None } else { first_kind }, meta_lookup).into());
                 }
-                links.insert(int(&link.children[0], "control id")?, resolved);
+                // the attribute of the root is not in the form: the text still holds one segment per step
+                None if !steps.is_empty() => {
+                    out.insert("path".into(), render_path(&format!("[{attr_id}]"), rest, None, meta_lookup).into());
+                }
+                None => {}
             }
+            if !steps.is_empty() {
+                out.insert("steps".into(), steps_text(&steps).into());
+            }
+            links.insert(int(&link.children[0], "control id")?, Value::Object(out));
         }
     }
     Ok((if has_main { Some(main_id) } else { None }, attrs, links))
+}
+
+/// `id -> name` of every `Table` control (the step of a `-2` link names one).
+fn table_names(ctrls: &[Value], out: &mut HashMap<i64, String>) {
+    for c in ctrls {
+        if c.get("type").and_then(Value::as_str) == Some("Table") {
+            if let (Some(id), Some(name)) = (c.get("id").and_then(Value::as_i64), c.get("name").and_then(Value::as_str)) {
+                out.insert(id, name.to_string());
+            }
+        }
+        if let Some(Value::Array(ch)) = c.get("children") {
+            table_names(ch, out);
+        }
+    }
 }
 
 fn apply_links(ctrls: &mut [Value], links: &HashMap<i64, Value>) {
@@ -1062,18 +1082,37 @@ fn apply_links(ctrls: &mut [Value], links: &HashMap<i64, Value>) {
         if let Some(Value::Array(cols)) = obj.get_mut("columns") {
             for col in cols {
                 let Some(col_obj) = col.as_object_mut() else { continue };
-                if let Some(Value::String(field)) = col_obj.remove("_field") {
-                    if let Some(dp) = &parent_dp {
-                        let mut cdp = Map::new();
-                        cdp.insert("attributeId".into(), dp["attributeId"].clone());
-                        if let Some(root_path) = dp.get("path").and_then(Value::as_str) {
-                            cdp.insert("path".into(), format!("{root_path}.{field}").into());
+                // the path of a column: the path of its table plus one segment
+                let column_path = |segment: &str, token: Option<&str>| {
+                    let mut cdp = Map::new();
+                    match &parent_dp {
+                        Some(dp) => {
+                            cdp.insert("attributeId".into(), dp["attributeId"].clone());
+                            match dp.get("path").and_then(Value::as_str) {
+                                Some(root_path) => cdp.insert("path".into(), format!("{root_path}.{segment}").into()),
+                                None => None,
+                            };
                         }
-                        col_obj.insert("dataPath".into(), Value::Object(cdp));
-                    } else {
-                        let mut cdp = Map::new();
-                        cdp.insert("path".into(), field.into());
-                        col_obj.insert("dataPath".into(), Value::Object(cdp));
+                        None => {
+                            cdp.insert("path".into(), segment.into());
+                        }
+                    }
+                    if let Some(token) = token {
+                        cdp.insert("steps".into(), token.into());
+                    }
+                    Value::Object(cdp)
+                };
+                if let Some(Value::String(field)) = col_obj.remove("_field") {
+                    col_obj.insert("dataPath".into(), column_path(&field, None));
+                }
+                if let Some(Value::Array(steps)) = col_obj.remove("_steps") {
+                    for (key, step) in ["dataPath", "checkBoxDataPath", "pictureDataPath"].into_iter().zip(&steps) {
+                        let (Some(token), Some(segment)) =
+                            (step.get("token").and_then(Value::as_str), step.get("segment").and_then(Value::as_str))
+                        else {
+                            continue;
+                        };
+                        col_obj.insert(key.into(), column_path(segment, Some(token)));
                     }
                 }
             }
@@ -1138,7 +1177,9 @@ pub fn decode_oof_stream_with_types(
         Item::Node(pinfo) => panel_pages(pinfo, width, height),
         Item::Atom(_) => (0, Vec::new()),
     };
-    let (main_id, attrs, links) = attributes(node(&root.children[2], "attributes section", 3)?, meta_lookup, type_lookup)?;
+    let mut tables = HashMap::new();
+    table_names(&controls, &mut tables);
+    let (main_id, attrs, links) = attributes(node(&root.children[2], "attributes section", 3)?, meta_lookup, type_lookup, &tables)?;
     apply_links(&mut controls, &links);
     let ext = node(&root.children[3], "extension section", 1)?;
     let is_dp_ext = is_bare(&ext.children[0], EXTENSION_GUID);
@@ -1604,10 +1645,8 @@ impl Writer {
         if let Some(dp) = c.get("dataPath") {
             let path = dp.get("path").filter(|v| !v.is_null()).map(pystr);
             let mut attrs: Attrs = vec![("attributeId", pystr(&dp["attributeId"]))];
-            if let Some(raw) = dp.get("raw").filter(|_| carriers_on()) {
-                // `sig` ties the verbatim link to the id and the path text written next to it.
-                attrs.push(("raw", pystr(raw)));
-                attrs.push(("sig", fnv(&format!("{}|{}", pystr(&dp["attributeId"]), path.as_deref().unwrap_or("")))));
+            if let Some(steps) = dp.get("steps").filter(|v| !v.is_null()) {
+                attrs.push(("steps", pystr(steps)));
             }
             self.leaf("DataPath", path.as_deref(), &attrs);
         }
@@ -1696,13 +1735,17 @@ impl Writer {
                     col_attrs.push(("id", pystr(&col["id"])));
                 }
                 self.open("Column", &col_attrs);
-                if let Some(dp) = col.get("dataPath") {
+                for (key, tag) in [("dataPath", "DataPath"), ("checkBoxDataPath", "CheckBoxDataPath"), ("pictureDataPath", "PictureDataPath")] {
+                    let Some(dp) = col.get(key) else { continue };
                     let path = dp.get("path").filter(|v| !v.is_null()).map(pystr);
                     let mut dp_attrs: Attrs = Vec::new();
                     if dp.get("attributeId").is_some_and(|v| !v.is_null()) {
                         dp_attrs.push(("attributeId", pystr(&dp["attributeId"])));
                     }
-                    self.leaf("DataPath", path.as_deref(), &dp_attrs);
+                    if let Some(steps) = dp.get("steps").filter(|v| !v.is_null()) {
+                        dp_attrs.push(("steps", pystr(steps)));
+                    }
+                    self.leaf(tag, path.as_deref(), &dp_attrs);
                 }
                 self.localized("Header", arr(col, "header"));
                 self.localized("FooterText", arr(col, "footerText"));
@@ -1949,7 +1992,11 @@ fn summarize_xml(data: &[u8]) -> Result<Summary, ()> {
         if let Some(dp) = child_elements(e, Some("DataPath")).first() {
             let path = xml_text(*dp).unwrap_or_default().trim().to_string();
             let path = if path.is_empty() { Value::Null } else { path.into() };
-            out.insert("dataPath".into(), json!({"attributeId": opt_str(dp.attribute("attributeId")), "path": path}));
+            let mut link = json!({"attributeId": opt_str(dp.attribute("attributeId")), "path": path});
+            if let Some(steps) = dp.attribute("steps") {
+                link["steps"] = steps.into();
+            }
+            out.insert("dataPath".into(), link);
         }
         let mut kids: Vec<roxmltree::Node> = Vec::new();
         for ci in child_elements(e, Some("ChildItems")) {

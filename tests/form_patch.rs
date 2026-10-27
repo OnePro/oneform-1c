@@ -23,6 +23,19 @@ fn stream(name: &str) -> SpannedMetadata {
     parse_spanned(&std::fs::read(dir(name).join("FormStream.bin")).unwrap()).unwrap()
 }
 
+/// `xml` without the `steps="..."` attributes.
+fn strip_steps(xml: &str) -> String {
+    let mut out = String::new();
+    let mut rest = xml;
+    while let Some(at) = rest.find(" steps=\"") {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at + " steps=\"".len()..];
+        rest = &tail[tail.find('"').unwrap() + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
 fn baseline(name: &str) -> String {
     std::fs::read_to_string(dir(name).join("Form.xml")).unwrap().replace("\r\n", "\n")
 }
@@ -264,7 +277,7 @@ fn form_level_differences_are_rejected() {
     );
     assert_unsupported(mutate("<MainAttribute attributeId=\"1\"/>", "<MainAttribute attributeId=\"2\"/>"), "unsupported-form-value", &["MainAttribute"]);
     assert_unsupported(mutate("name=\"ОбработкаОбъект\"", "name=\"Другое\""), "unsupported-form-value", &["Attributes"]);
-    assert_unsupported(mutate("ordinaryFormVersion=\"2.1\"", "ordinaryFormVersion=\"2.2\""), "unsupported-form-attribute", &["ordinaryFormVersion"]);
+    assert_unsupported(mutate("ordinaryFormVersion=\"2.2\"", "ordinaryFormVersion=\"2.3\""), "unsupported-form-attribute", &["ordinaryFormVersion"]);
     assert_unsupported(mutate("reconstructionComplete=\"false\"", "reconstructionComplete=\"true\""), "unsupported-form-attribute", &["reconstructionComplete"]);
 }
 
@@ -3138,6 +3151,135 @@ mod object_binding {
         let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), edited.as_bytes())).unwrap();
         assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some("{2,{1},{-2}}"));
     }
+
+    const MULTI: &str = "editing multi-step links is not supported yet";
+    const K3: &str = "ОбработкаОбъект.ИНН.КПП";
+    const K4: &str = "ОбработкаОбъект.ИНН.КПП.[-2]";
+
+    /// The DonorForm stream whose link row of control 7 (`ПолеВвода1`) has `steps` after `{1}`, and a baseline
+    /// `Form.xml` that shows that link as `steps` + `text`.
+    fn linked(steps: &[&str], text: &str) -> (SpannedMetadata, String) {
+        let row = "{7,\r\n{1,\r\n{3}\r\n}\r\n}";
+        let braces: String = steps.iter().map(|t| format!(",\r\n{}", oneform::oof::DataStep::parse_token(t).unwrap().brace())).collect();
+        let wide = format!("{{7,\r\n{{{},\r\n{{1}}{braces}\r\n}}\r\n}}", steps.len() + 1);
+        let mut raw = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+        let at = raw.windows(row.len()).position(|w| w == row.as_bytes()).expect("link row of control 7");
+        raw.splice(at..at + row.len(), wide.bytes());
+        (parse_spanned(&raw).unwrap(), shown("1", steps, text))
+    }
+
+    fn shown(aid: &str, steps: &[&str], text: &str) -> String {
+        mutate(
+            "<DataPath attributeId=\"3\">ПолеВвода1</DataPath>",
+            &format!("<DataPath attributeId=\"{aid}\" steps=\"{}\">{text}</DataPath>", steps.join(" ")),
+        )
+    }
+
+    fn steps_of(n: usize) -> Vec<&'static str> {
+        [INN, KPP, "-2"][..n].to_vec()
+    }
+
+    fn refused(s: &SpannedMetadata, base: &str, edited: &str) -> String {
+        let Err(e) = with_object_schema(Some(schema("Catalog")), || plan_form_patch(s, base.as_bytes(), edited.as_bytes())) else {
+            panic!("must be refused");
+        };
+        assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+        format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+    }
+
+    #[test]
+    fn an_unrelated_edit_keeps_the_rows_of_links_with_three_to_five_rows() {
+        for (steps, text) in [(steps_of(2), K3), (steps_of(3), K4)] {
+            let (s, base) = linked(&steps, text);
+            let edited = edit_ctl(&base, "ПолеВвода1", &[("<Width>278</Width>", "<Width>279</Width>")]);
+            let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), edited.as_bytes())).unwrap();
+            assert_only_authorized_changes(s.source(), &pf);
+            assert_eq!(link_of(&pf.bytes, 7), link_of(s.source(), 7), "{text}");
+            assert!(pf.bytes != s.source(), "the width must change");
+        }
+    }
+
+    #[test]
+    fn editing_steps_or_the_text_of_a_longer_link_is_refused() {
+        for (steps, text) in [(steps_of(2), K3), (steps_of(3), K4)] {
+            let (s, base) = linked(&steps, text);
+            let shorter = steps[..steps.len() - 1].join(" ");
+            let short_text = text.rsplit_once('.').unwrap().0;
+            let cases = [
+                ("steps edited", replace_once(&base, &steps.join(" "), &shorter)),
+                ("steps and text edited", replace_once(&replace_once(&base, &steps.join(" "), &shorter), text, short_text)),
+                ("text edited", replace_once(&base, text, "ОбработкаОбъект.КПП.ИНН")),
+                ("link removed", replace_once(&base, &format!("<DataPath attributeId=\"1\" steps=\"{}\">{text}</DataPath>
+          ", steps.join(" ")), "")),
+            ];
+            for (what, edited) in cases {
+                let why = refused(&s, &base, &edited);
+                assert!(why.contains(MULTI) && why.contains("line ") && why.contains("ПолеВвода1"), "{what}: {why}");
+                if what != "link removed" {
+                    assert!(why.contains("ОбработкаОбъект."), "{what}: {why}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_text_of_a_link_with_two_rows_is_still_resolved_by_name() {
+        // `steps` stays, only the text moves: the text decides (as before `steps` existed)
+        let (s, base) = linked(&[INN], "ОбработкаОбъект.ИНН");
+        let edited = replace_once(&base, ">ОбработкаОбъект.ИНН<", ">ОбработкаОбъект.КПП<");
+        let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), edited.as_bytes())).unwrap();
+        assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some(format!("{{2,{{1}},{{0,{KPP}}}}}").as_str()));
+        // `steps` dropped: the same
+        let edited = replace_once(&edited, &format!(" steps=\"{INN}\""), "");
+        let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), edited.as_bytes())).unwrap();
+        assert_eq!(link_of(&pf.bytes, 7).as_deref(), Some(format!("{{2,{{1}},{{0,{KPP}}}}}").as_str()));
+        // `steps` changed: refused
+        let edited = replace_once(&base, &format!("steps=\"{INN}\""), &format!("steps=\"{KPP}\""));
+        assert!(refused(&s, &base, &edited).contains(MULTI));
+        // a single-row link may not gain steps
+        let (s, base) = (stream("DonorForm"), baseline("DonorForm"));
+        let edited = replace_once(&base, "<DataPath attributeId=\"3\">ПолеВвода1<", &format!("<DataPath attributeId=\"3\" steps=\"{INN}\">ПолеВвода1<"));
+        let why = refused(&s, &base, &edited);
+        assert!(why.contains("DataPath") && why.contains("line "), "{why}");
+    }
+
+    #[test]
+    fn a_copy_with_two_rows_is_bound_by_its_text_and_a_longer_one_is_refused() {
+        let (s, base) = linked(&[INN], "ОбработкаОбъект.ИНН");
+        let field = |path: &str, steps: &str| format!("<DataPath attributeId=\"1\" steps=\"{steps}\">{path}</DataPath>");
+        let added = with_added_field("НовоеПоле", 999, &field("ОбработкаОбъект.КПП", INN), &base);
+        let pf = with_object_schema(Some(schema("Catalog")), || patch_form(&s, base.as_bytes(), added.as_bytes())).unwrap();
+        assert_eq!(link_of(&pf.bytes, pf.allocated[0].1).as_deref(), Some(format!("{{2,{{1}},{{0,{KPP}}}}}").as_str()));
+        for (path, steps) in [(K3, format!("{INN} {KPP}")), (K4, format!("{INN} {KPP} -2"))] {
+            let added = with_added_field("НовоеПоле", 999, &field(path, &steps), &base);
+            let why = refused(&s, &base, &added);
+            assert!(why.contains(MULTI) && why.contains("line ") && why.contains(path), "{why}");
+        }
+    }
+
+    #[test]
+    fn column_check_and_picture_paths_cannot_be_edited_yet() {
+        let (s, base) = (stream("DonorForm"), baseline("DonorForm"));
+        let column = "<DataPath attributeId=\"2\">ТабличноеПоле1.Колонка1</DataPath>";
+        for tag in ["CheckBoxDataPath", "PictureDataPath"] {
+            let edited = replace_once(&base, column, &format!("{column}
+              <{tag} attributeId=\"2\" steps=\"{INN}\">ТабличноеПоле1.Колонка1</{tag}>"));
+            let why = refused(&s, &base, &edited);
+            assert!(why.contains(MULTI) && why.contains(tag) && why.contains("Колонка1") && why.contains("line "), "{tag}: {why}");
+        }
+    }
+
+    #[test]
+    fn xml_of_an_older_version_is_refused_with_a_hint() {
+        let (s, base) = (stream("DonorForm"), baseline("DonorForm"));
+        let old = mutate("ordinaryFormVersion=\"2.2\"", "ordinaryFormVersion=\"2.1\"");
+        for (b, e) in [(&old, &base), (&base, &old)] {
+            let Err(err) = plan_form_patch(&s, b.as_bytes(), e.as_bytes()) else { panic!("must be refused") };
+            assert_eq!(err.code, GENERATED_FILE_MODIFIED);
+            assert_eq!(err.params["kind"], "stale-form-xml");
+            assert!(err.to_string().contains("oneform extract") && err.to_string().contains("2.1"), "{err}");
+        }
+    }
 }
 
 // ---------------------------------------------------------------- tables bound to tabular sections of the object
@@ -3362,6 +3504,54 @@ mod tabular_binding {
         info
     }
 
+    /// The `<Column name="Количество">` block of the `extract` of `bytes` where its three steps (data, check box,
+    /// picture) are replaced by `steps`.
+    fn quantity_column(bytes: &[u8], steps: &str) -> String {
+        let text = String::from_utf8_lossy(bytes).to_string();
+        let was = format!("{{0,{QTY}}},{{-1}},{{-1}}}}");
+        assert_eq!(text.matches(&was).count(), 1);
+        let xml = decoded_xml(text.replace(&was, &format!("{steps}}}")).as_bytes());
+        let at = xml.find("<Column name=\"Количество\"").expect("the column");
+        xml[at..at + xml[at..].find("</Column>").unwrap()].to_string()
+    }
+
+    #[test]
+    fn column_steps_are_shown_as_data_check_box_and_picture_paths() {
+        let pf = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&good_columns()))));
+        let (q, n, path) = (QTY, NOTE, "ОбработкаОбъект.Товары");
+        let unknown = "99999999-0000-0000-0000-000000000009";
+        let data = |tag: &str, steps: &str, name: &str| format!("<{tag} attributeId=\"1\" steps=\"{steps}\">{path}.{name}</{tag}>");
+        // (steps in the stream, elements that must be there, tags that must not)
+        let cases: [(String, Vec<String>, Vec<&str>); 7] = [
+            (format!("{{0,{q}}},{{-1}},{{-1}}"), vec![data("DataPath", q, "Количество")], vec!["CheckBoxDataPath", "PictureDataPath"]),
+            // the check-box step does not stand in for the data step
+            (format!("{{-1}},{{0,{q}}},{{-1}}"), vec![data("CheckBoxDataPath", q, "Количество")], vec!["<DataPath", "PictureDataPath"]),
+            (format!("{{-1}},{{-1}},{{0,{q}}}"), vec![data("PictureDataPath", q, "Количество")], vec!["<DataPath", "CheckBoxDataPath"]),
+            (
+                format!("{{0,{n}}},{{-2}},{{0,{q}}}"),
+                vec![data("DataPath", n, "Комментарий"), data("CheckBoxDataPath", "-2", "НомерСтроки"), data("PictureDataPath", q, "Количество")],
+                vec![],
+            ),
+            (format!("{{2,{q}}},{{-1}},{{-1}}"), vec![data("DataPath", &format!("2:{q}"), "Количество")], vec!["CheckBoxDataPath"]),
+            (format!("{{0,{unknown}}},{{-1}},{{-1}}"), vec![data("DataPath", unknown, &format!("[{unknown}]"))], vec![]),
+            ("{-1},{-1},{-1}".to_string(), vec![], vec!["<DataPath", "CheckBoxDataPath", "PictureDataPath"]),
+        ];
+        for (steps, want, absent) in cases {
+            let block = quantity_column(&pf.bytes, &steps);
+            for w in &want {
+                assert!(block.contains(w.as_str()), "{steps}: {w} is missing in
+{block}");
+            }
+            for tag in absent {
+                assert!(!block.contains(tag), "{steps}: {tag} must not be there
+{block}");
+            }
+        }
+        // the data step of the row-number column
+        let xml = decoded_xml(&pf.bytes);
+        assert!(xml.contains(&data("DataPath", "-2", "НомерСтроки")), "{xml}");
+    }
+
     #[test]
     fn an_added_table_is_bound_to_a_tabular_section_with_its_columns() {
         let edited = with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&good_columns())));
@@ -3398,7 +3588,7 @@ mod tabular_binding {
         // `extract` of the patched stream shows the same table and columns
         let xml = decoded_xml(&pf.bytes);
         let at = xml.find("<Table name=\"Товары\"").expect("the table is extracted");
-        let block = &xml[at..at + xml[at..].find("</Table>").unwrap()];
+        let block = strip_steps(&xml[at..at + xml[at..].find("</Table>").unwrap()]);
         for want in [
             "<DataPath attributeId=\"1\">ОбработкаОбъект.Товары</DataPath>",
             "<Column name=\"НомерСтроки\" id=\"0\">",
@@ -3643,7 +3833,8 @@ mod tabular_binding {
     /// The `DataPath` of the column `column` set to `field` of the section `Товары`.
     fn rebound(xml: &str, column: &str, path: &str) -> String {
         let start = xml.find(&format!("<Column name=\"{column}\"")).expect("the column");
-        let from = start + xml[start..].find("<DataPath attributeId=\"1\">").unwrap() + "<DataPath attributeId=\"1\">".len();
+        let open = start + xml[start..].find("<DataPath attributeId=\"1\"").unwrap();
+        let from = open + xml[open..].find('>').unwrap() + 1;
         let to = from + xml[from..].find("</DataPath>").unwrap();
         format!("{}{path}{}", &xml[..from], &xml[to..])
     }
@@ -3705,7 +3896,8 @@ mod tabular_binding {
         // `extract` shows the new DataPath
         let xml = decoded_xml(&pf.bytes);
         let at = xml.find("<Column name=\"Наименование\"").unwrap();
-        assert!(xml[at..at + 200].contains("<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.Комментарий</DataPath>"), "{}", &xml[at..at + 200]);
+        let head = strip_steps(&xml[at..at + 300]);
+        assert!(head.contains("<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.Комментарий</DataPath>"), "{head}");
         // the stale <ValueType> of the stub is tolerated: the column is rebound and the stub follows its field
         assert!(xml[at..].contains("length=\"50\""));
     }

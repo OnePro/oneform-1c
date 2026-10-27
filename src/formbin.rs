@@ -200,8 +200,10 @@ fn meta_of_doc(doc: &roxmltree::Document<'_>) -> Option<Meta> {
     Some(meta)
 }
 
-/// `lowercase uuid -> Name` of every `Attribute` and `TabularSection` (nested ones included), plus
-/// `META_KIND_KEY -> <object kind>` (the element under `MetaDataObject`, e.g. `Catalog`).
+/// `lowercase uuid -> Name` of every `Attribute`, `TabularSection`, `Dimension`, `Resource`, `AddressingAttribute`,
+/// `AccountingFlag`, `ExtDimensionAccountingFlag` and journal `Column` (nested ones included) and of the object itself
+/// when it is a constant or a register, plus `META_KIND_KEY -> <object kind>` (the element under `MetaDataObject`,
+/// e.g. `Catalog`).
 pub fn read_meta_lookup(path: &Path) -> MetaLookup {
     let Some(text) = read_xml_text(path) else { return HashMap::new() };
     open_doc(&text).map(|doc| lookup_of_doc(&doc)).unwrap_or_default()
@@ -235,7 +237,24 @@ fn lookup_of_doc(doc: &roxmltree::Document<'_>) -> MetaLookup {
         }
     }
     for e in doc.descendants().filter(|n| n.is_element()) {
-        if !matches!(e.tag_name().name(), "Attribute" | "TabularSection") {
+        let tag = e.tag_name().name();
+        let is_member = matches!(
+            tag,
+            "Attribute"
+                | "TabularSection"
+                | "Dimension"
+                | "Resource"
+                | "AddressingAttribute"
+                | "AccountingFlag"
+                | "ExtDimensionAccountingFlag"
+                | "Column"
+        );
+        let is_object = e.parent().is_some_and(|p| p.tag_name().name() == "MetaDataObject")
+            && matches!(
+                tag,
+                "Constant" | "InformationRegister" | "AccumulationRegister" | "AccountingRegister" | "CalculationRegister"
+            );
+        if !is_member && !is_object {
             continue;
         }
         let Some(name) = child(e, "Properties").and_then(|p| child(p, "Name")) else { continue };

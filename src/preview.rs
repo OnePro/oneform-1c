@@ -20,7 +20,8 @@ use crate::encoding::decode_payload;
 use crate::errors::{ExtractionError, Result, FORM_PREVIEW_FAILED, IO_ERROR, OUTPUT_NOT_OWNED};
 
 pub const FORM_PREVIEW_NAME: &str = "FormPreview.html";
-const VERSION: &str = "2.1";
+/// `ordinaryFormVersion` values the preview reads (the format only grew by attributes it ignores).
+const VERSIONS: [&str; 2] = ["2.1", "2.2"];
 
 pub const WORKSPACE_DIR: &str = ".oneform";
 pub const WORKSPACE_SCHEMA_VERSION: i64 = 1;
@@ -219,12 +220,12 @@ fn loc(e: roxmltree::Node) -> BTreeMap<String, String> {
     m
 }
 
-/// True when `data` is a `Form.xml` of an ordinary form (`<Form ordinaryFormVersion="2.1">`).
+/// True when `data` is a `Form.xml` of an ordinary form (`<Form ordinaryFormVersion="2.2">`).
 pub fn is_ordinary_form_xml(data: &[u8]) -> bool {
     let Ok(text) = std::str::from_utf8(data) else { return false };
     let Ok(doc) = parse_xml(text) else { return false };
     let root = doc.root_element();
-    is_tag(root, "Form") && root.attribute("ordinaryFormVersion") == Some(VERSION)
+    is_tag(root, "Form") && root.attribute("ordinaryFormVersion").is_some_and(|v| VERSIONS.contains(&v))
 }
 
 fn normalize_nl(s: &str) -> String {
@@ -921,6 +922,7 @@ mod tests {
     #[test]
     fn ordinary_form_detection() {
         assert!(is_ordinary_form_xml(br#"<Form ordinaryFormVersion="2.1"/>"#));
+        assert!(is_ordinary_form_xml(br#"<Form ordinaryFormVersion="2.2"/>"#));
         assert!(!is_ordinary_form_xml(br#"<Form ordinaryFormVersion="2.0"/>"#));
         assert!(!is_ordinary_form_xml(b"<Form"));
         assert!(!is_ordinary_form_xml(br#"<Other ordinaryFormVersion="2.1"/>"#));

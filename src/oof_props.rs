@@ -1229,62 +1229,147 @@ pub fn decode_column_props(props: &Node) -> Result<Map<String, Value>, OofError>
     Ok(out)
 }
 
-pub fn resolve_column_step(
-    step: Option<&Item>,
-    is_tabular: bool,
-    meta_lookup: Option<&HashMap<String, String>>,
-) -> Option<String> {
-    let kind = meta_lookup.and_then(|m| m.get(META_KIND_KEY)).map(String::as_str);
-    let Some(Item::Node(step)) = step else { return None };
-    let first = atom(step.children.first()?);
-    if first == "-2" && is_tabular {
-        return Some("НомерСтроки".to_string());
-    }
-    let b = first.as_bytes();
-    if b.len() >= 2 && b[0] == b'-' && b[1..].iter().all(|c| c.is_ascii_digit()) {
-        // a tabular row has no standard attribute other than the row number
-        let kind = if is_tabular { None } else { kind };
-        return first.parse::<i64>().ok().and_then(|c| std_attr_name(kind, c)).map(str::to_string);
-    }
-    if first == "0" && step.len() > 1 {
-        return meta_lookup.and_then(|m| m.get(&atom(&step.children[1]).to_lowercase()).cloned());
-    }
-    None
+// ---------------------------------------------------------------- data link steps
+
+/// Attribute id of the pseudo root `-2` of a link: the current row of a form table.
+pub const ROW_ROOT_ID: i64 = -2;
+/// How the pseudo root `-2` is shown in `Form.xml`.
+pub const ROW_ROOT_NAME: &str = "ЭлементыФормы";
+/// Standard code of the filter of a list or of a settings composer (named in any context).
+const FILTER_CODE: i64 = -60001;
+
+/// One step of a data link `{K,{aid},step...}` or of a column `{8,P,DATA,CHECK,PIC}`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DataStep {
+    /// `{0,<uuid>}`: token `<uuid>`.
+    Uuid(String),
+    /// `{N}` (a standard attribute for `N < 0`, a property ordinal for `N >= 0`): token `N`.
+    Code(i64),
+    /// `{q,<uuid>}` with `q != 0` (accounting register columns): token `q:<uuid>`.
+    Q(i64, String),
 }
 
-// ---------------------------------------------------------------- data paths
-
-/// `{attributeId, path?}` of a link `{2,{attrId},{elem}}`; `path` is `Attribute[.Element]`.
-/// `kind` is the object kind owning the standard attributes of the step (`None`: unknown).
-pub fn resolve_data_path(
-    attr_id: i64,
-    step: Option<&Item>,
-    names: &HashMap<i64, String>,
-    meta_lookup: Option<&HashMap<String, String>>,
-    kind: Option<&str>,
-) -> Value {
-    let mut out = Map::new();
-    out.insert("attributeId".into(), attr_id.into());
-    let Some(root) = names.get(&attr_id) else { return Value::Object(out) };
-    out.insert("path".into(), root.clone().into());
-    if let Some(Item::Node(step)) = step {
-        if let Some(first) = step.children.first() {
-            let first = atom(first);
-            let mut name: Option<String> = None;
-            let b = first.as_bytes();
-            if b.len() >= 2 && b[0] == b'-' && b[1..].iter().all(|c| c.is_ascii_digit()) {
-                name = first.parse::<i64>().ok().and_then(|c| std_attr_name(kind, c)).map(str::to_string);
-            } else if first == "0" && step.len() > 1 {
-                name = meta_lookup.and_then(|m| m.get(&atom(&step.children[1]).to_lowercase()).cloned());
-            }
-            if let Some(name) = name {
-                if !name.is_empty() {
-                    out.insert("path".into(), format!("{root}.{name}").into());
-                }
+impl DataStep {
+    /// The step of a link row; `None` for any other shape (nested steps, extra elements, a malformed uuid).
+    pub fn from_item(item: &Item) -> Option<DataStep> {
+        let Item::Node(n) = item else { return None };
+        fn bare(i: &Item) -> Option<&str> {
+            match i {
+                Item::Atom(a) if a.kind == BARE => Some(a.value.as_str()),
+                _ => None,
             }
         }
+        let int = |s: &str| s.parse::<i64>().ok().filter(|v| v.to_string() == s);
+        match n.children.as_slice() {
+            [c] => int(bare(c)?).map(DataStep::Code),
+            [q, u] => {
+                let (q, u) = (int(bare(q)?)?, bare(u)?);
+                if !is_uuid(u) {
+                    return None;
+                }
+                Some(if q == 0 { DataStep::Uuid(u.to_string()) } else { DataStep::Q(q, u.to_string()) })
+            }
+            _ => None,
+        }
     }
-    Value::Object(out)
+
+    /// The token of `steps="..."`.
+    pub fn token(&self) -> String {
+        match self {
+            DataStep::Uuid(u) => u.clone(),
+            DataStep::Code(c) => c.to_string(),
+            DataStep::Q(q, u) => format!("{q}:{u}"),
+        }
+    }
+
+    /// The step of one token; `None` when the token is not canonical (so `token()` is the exact inverse).
+    pub fn parse_token(token: &str) -> Option<DataStep> {
+        if is_uuid(token) {
+            return Some(DataStep::Uuid(token.to_string()));
+        }
+        if let Some((q, u)) = token.split_once(':') {
+            let q = q.parse::<i64>().ok().filter(|v| *v != 0 && v.to_string() == q)?;
+            return is_uuid(u).then(|| DataStep::Q(q, u.to_string()));
+        }
+        token.parse::<i64>().ok().filter(|v| v.to_string() == token).map(DataStep::Code)
+    }
+
+    /// The step as it is stored in the stream: `{0,<uuid>}`, `{N}`, `{q,<uuid>}`.
+    pub fn brace(&self) -> String {
+        match self {
+            DataStep::Uuid(u) => format!("{{0,{u}}}"),
+            DataStep::Code(c) => format!("{{{c}}}"),
+            DataStep::Q(q, u) => format!("{{{q},{u}}}"),
+        }
+    }
+}
+
+/// The steps of a `steps="..."` attribute; `None` when it is empty or a token is not canonical.
+pub fn parse_steps(text: &str) -> Option<Vec<DataStep>> {
+    let steps: Option<Vec<DataStep>> = text.split_whitespace().map(DataStep::parse_token).collect();
+    steps.filter(|s| !s.is_empty())
+}
+
+/// The value of `steps="..."`: tokens separated by one space.
+pub fn steps_text(steps: &[DataStep]) -> String {
+    steps.iter().map(DataStep::token).collect::<Vec<_>>().join(" ")
+}
+
+/// Name of the standard attribute `code` for the display of a link: the table of the `kind` plus the codes that are
+/// named in a link only (`Document` `-8` Движения, `-60001` Отбор of any kind). Not used to resolve a text.
+pub fn std_display_name(kind: Option<&str>, code: i64) -> Option<&'static str> {
+    if code == FILTER_CODE {
+        return Some("Отбор");
+    }
+    if kind == Some("Document") && code == -8 {
+        return Some("Движения");
+    }
+    std_attr_name(kind, code)
+}
+
+/// The path segment of a step: its name, else `[token]` (nothing is guessed). `kind` is the object kind that owns
+/// the standard attributes at this step (`None`: unknown).
+pub fn step_segment(step: &DataStep, kind: Option<&str>, meta_lookup: Option<&HashMap<String, String>>) -> String {
+    let named = |uuid: &str| meta_lookup.and_then(|m| m.get(uuid)).filter(|n| !n.is_empty()).cloned();
+    match step {
+        DataStep::Uuid(u) | DataStep::Q(_, u) => named(u),
+        DataStep::Code(c) if *c < 0 => std_display_name(kind, *c).map(str::to_string),
+        DataStep::Code(_) => None,
+    }
+    .unwrap_or_else(|| format!("[{}]", step.token()))
+}
+
+/// `Root(.Seg)*` of a link: one segment per step; only the first step can have a known `kind`.
+pub fn render_path(
+    root: &str,
+    steps: &[DataStep],
+    first_kind: Option<&str>,
+    meta_lookup: Option<&HashMap<String, String>>,
+) -> String {
+    let mut out = root.to_string();
+    for (i, s) in steps.iter().enumerate() {
+        out.push('.');
+        out.push_str(&step_segment(s, if i == 0 { first_kind } else { None }, meta_lookup));
+    }
+    out
+}
+
+/// The three link steps of a column `{8,P,DATA,CHECK,PIC}`: `None` for an unset step `{-1}` (or a missing one).
+pub fn column_steps(x: &Node) -> [Option<DataStep>; 3] {
+    let at = |i: usize| match x.children.get(i).and_then(DataStep::from_item) {
+        Some(DataStep::Code(-1)) | None => None,
+        Some(s) => Some(s),
+    };
+    [at(2), at(3), at(4)]
+}
+
+/// Segment of a column step: a tabular row has no standard attribute other than the row number.
+pub fn column_segment(step: &DataStep, is_tabular: bool, meta_lookup: Option<&HashMap<String, String>>) -> String {
+    if is_tabular && *step == DataStep::Code(-2) {
+        return "НомерСтроки".to_string();
+    }
+    let kind = meta_lookup.and_then(|m| m.get(META_KIND_KEY)).map(String::as_str);
+    step_segment(step, if is_tabular { None } else { kind }, meta_lookup)
 }
 
 #[cfg(test)]
@@ -1319,28 +1404,71 @@ mod tests {
         }
     }
 
+    fn lookup(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    const U1: &str = "32c6f63b-a441-4745-a7a0-4b173052935c";
+    const U2: &str = "17fd118e-1906-418c-8ae8-3b5f8518eb01";
+
     #[test]
-    fn data_path_step_is_named_by_object_kind() {
-        let names: HashMap<i64, String> = [(1, "Объект".to_string())].into_iter().collect();
-        let path = |kind: Option<&str>, code: &str| {
-            let v = resolve_data_path(1, Some(&item(&format!("{{{code}}}"))), &names, None, kind);
-            v["path"].as_str().unwrap().to_string()
-        };
-        assert_eq!(path(Some("Catalog"), "-2"), "Объект.Код");
-        assert_eq!(path(Some("Catalog"), "-3"), "Объект.Наименование");
-        assert_eq!(path(Some("Document"), "-2"), "Объект.Номер");
-        assert_eq!(path(Some("Document"), "-9"), "Объект");
-        assert_eq!(path(None, "-2"), "Объект");
+    fn step_tokens_round_trip_with_the_brace_form() {
+        for (brace, token) in [
+            (format!("{{0,{U1}}}"), U1.to_string()),
+            ("{-3}".to_string(), "-3".to_string()),
+            ("{-60001}".to_string(), "-60001".to_string()),
+            ("{0}".to_string(), "0".to_string()),
+            ("{275}".to_string(), "275".to_string()),
+            (format!("{{2,{U2}}}"), format!("2:{U2}")),
+        ] {
+            let step = DataStep::from_item(&item(&brace)).unwrap_or_else(|| panic!("{brace}"));
+            assert_eq!(step.token(), token);
+            assert_eq!(step.brace(), brace);
+            assert_eq!(DataStep::parse_token(&token), Some(step));
+        }
+        for bad in ["", "+3", "03", "-0", "0:32c6f63b-a441-4745-a7a0-4b173052935c", "x", "32C6F63B-a441-4745-a7a0-4b173052935c", "1:abc"] {
+            assert_eq!(DataStep::parse_token(bad), None, "{bad:?}");
+        }
+        // shapes outside the grammar are not steps
+        for brace in ["{1,2}", "{0,1,2}", "{0,x}", "{{1}}", "{}"] {
+            assert_eq!(DataStep::from_item(&item(brace)), None, "{brace}");
+        }
+        let steps = parse_steps(&format!("-8 {U1}  3 {}", format_args!("1:{U2}"))).unwrap();
+        assert_eq!(steps_text(&steps), format!("-8 {U1} 3 1:{U2}"));
+        assert_eq!(parse_steps(""), None);
+        assert_eq!(parse_steps("-8 zz"), None);
     }
 
     #[test]
-    fn column_step_uses_kind_from_lookup_and_row_number_in_tabular() {
-        let lookup: HashMap<String, String> = [(META_KIND_KEY.to_string(), "Catalog".to_string())].into_iter().collect();
-        let step = item("{-3}");
-        assert_eq!(resolve_column_step(Some(&step), false, Some(&lookup)).as_deref(), Some("Наименование"));
-        assert_eq!(resolve_column_step(Some(&step), true, Some(&lookup)), None);
-        assert_eq!(resolve_column_step(Some(&item("{-2}")), true, Some(&lookup)).as_deref(), Some("НомерСтроки"));
-        assert_eq!(resolve_column_step(Some(&step), false, None), None);
+    fn path_segments_name_only_what_is_known() {
+        let m = lookup(&[(U1, "Организация"), (META_KIND_KEY, "Document")]);
+        let steps = parse_steps(&format!("-8 {U1} {U2} 0 -6 -60001 7:{U1} 2:{U2}")).unwrap();
+        assert_eq!(
+            render_path("ДокументОбъект", &steps, Some("Document"), Some(&m)),
+            format!("ДокументОбъект.Движения.Организация.[{U2}].[0].[-6].Отбор.Организация.[2:{U2}]")
+        );
+        // the kind matters for the first step only, an unknown code stays bracketed
+        assert_eq!(render_path("Р", &parse_steps("-8 -8").unwrap(), Some("Document"), None), "Р.Движения.[-8]");
+        assert_eq!(render_path("Р", &parse_steps("-8").unwrap(), Some("Catalog"), None), "Р.[-8]");
+        assert_eq!(render_path("Р", &parse_steps("-2").unwrap(), None, None), "Р.[-2]");
+        assert_eq!(render_path("Р", &parse_steps("-60001").unwrap(), None, None), "Р.Отбор");
+        assert_eq!(render_path("Р", &[], None, None), "Р");
+        // positive ordinals are never named
+        assert_eq!(render_path("Р", &parse_steps("0 1 275").unwrap(), Some("Catalog"), None), "Р.[0].[1].[275]");
+    }
+
+    #[test]
+    fn column_steps_skip_unset_and_name_the_row_number() {
+        let m = lookup(&[(META_KIND_KEY, "Catalog"), (U1, "Сумма")]);
+        let Item::Node(x) = item(&format!("{{8,{{}},{{-1}},{{0,{U1}}},{{-1}}}}")) else { unreachable!() };
+        let [data, check, pic] = column_steps(&x);
+        assert_eq!((data, pic), (None, None));
+        assert_eq!(check, Some(DataStep::Uuid(U1.to_string())));
+        assert_eq!(column_segment(&DataStep::Code(-2), true, Some(&m)), "НомерСтроки");
+        assert_eq!(column_segment(&DataStep::Code(-3), true, Some(&m)), "[-3]");
+        assert_eq!(column_segment(&DataStep::Code(-3), false, Some(&m)), "Наименование");
+        assert_eq!(column_segment(&DataStep::Code(4), false, Some(&m)), "[4]");
+        assert_eq!(column_segment(&DataStep::Q(2, U1.to_string()), false, Some(&m)), "Сумма");
     }
 
     // port: tests/test_oof.py::test_num_parses_scientific_notation_and_rejects_text

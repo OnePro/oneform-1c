@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Form id="250de08a-81ce-43bb-8de9-316e00a8ca38" name="ФормаОписанияТовара" ordinaryFormVersion="2.1" reconstructionComplete="false">
+<Form id="250de08a-81ce-43bb-8de9-316e00a8ca38" name="ФормаОписанияТовара" ordinaryFormVersion="2.2" reconstructionComplete="false">
   <Caption>
     <Item language="ru">Описание товара</Item>
   </Caption>

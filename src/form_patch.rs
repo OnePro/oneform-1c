@@ -2342,7 +2342,26 @@ impl ControlValues {
 }
 
 /// Children of a `<Column>` that the parser takes into [`ColumnValues`] (they are not left in the control's `rest`).
-const COLUMN_VALUE_TAGS: [&str; 41] = ["DataPath", "Header", "FooterText", "Tooltip", "Width", "Visible", "ReadOnly", "Editor", "Events", "ShowHierarchy", "CheckBoxThreeState", "ShowInHeader", "ShowInFooter", "ChangeSetting", "ChangePosition", "MarkNegatives", "ChangeVisible", "AutoMarkIncomplete", "AutoCellHeight", "Hyperlink", "CheckData", "RowsPictures", "HeaderPicture", "FooterPicture", "Location", "SizeChange", "EditMode", "FieldBackColor", "FieldTextColor", "HeaderBackColor", "HeaderTextColor", "FooterBackColor", "FooterTextColor", "TextFont", "HeaderFont", "FooterFont", "HeaderHorizontalAlign", "HorizontalAlignInColumn", "FooterHorizontalAlign", "Format", "CellHeight"];
+const COLUMN_VALUE_TAGS: [&str; 43] = ["DataPath", "CheckBoxDataPath", "PictureDataPath", "Header", "FooterText", "Tooltip", "Width", "Visible", "ReadOnly", "Editor", "Events", "ShowHierarchy", "CheckBoxThreeState", "ShowInHeader", "ShowInFooter", "ChangeSetting", "ChangePosition", "MarkNegatives", "ChangeVisible", "AutoMarkIncomplete", "AutoCellHeight", "Hyperlink", "CheckData", "RowsPictures", "HeaderPicture", "FooterPicture", "Location", "SizeChange", "EditMode", "FieldBackColor", "FieldTextColor", "HeaderBackColor", "HeaderTextColor", "FooterBackColor", "FooterTextColor", "TextFont", "HeaderFont", "FooterFont", "HeaderHorizontalAlign", "HorizontalAlignInColumn", "FooterHorizontalAlign", "Format", "CellHeight"];
+
+/// A `<CheckBoxDataPath>` or `<PictureDataPath>` of a `<Column>` as written.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ColumnLink {
+    pub attribute_id: Option<String>,
+    pub text: String,
+    /// Normalized `steps` (tokens separated by one space).
+    pub steps: Option<String>,
+}
+
+/// `steps="..."` of a link element, normalized; `Err` when the attribute is not a list of tokens.
+fn link_steps(el: &XmlElement) -> std::result::Result<Option<String>, String> {
+    match el.attrs.get("steps") {
+        None => Ok(None),
+        Some(t) => crate::oof_props::parse_steps(t)
+            .map(|s| Some(crate::oof_props::steps_text(&s)))
+            .ok_or_else(|| format!("steps '{t}' is not a list of tokens (a uuid, -N, N or q:uuid, separated by spaces)")),
+    }
+}
 
 /// What the parser saw of the `<DataPath>` of a `<Column>` (the column value keeps only the last segment).
 #[derive(Debug, Clone, Default)]
@@ -2351,6 +2370,11 @@ pub struct ColumnSource {
     /// The `attributeId` attribute and the text of the element.
     pub attribute_id: Option<String>,
     pub data_path: Option<String>,
+    /// `steps` of the `<DataPath>` (tokens separated by one space).
+    pub steps: Option<String>,
+    /// The `<CheckBoxDataPath>` and the `<PictureDataPath>`; they are not editable yet.
+    pub check_box: Option<ColumnLink>,
+    pub picture: Option<ColumnLink>,
     /// `(line, tag)` of the children of the column that the parser did not take into a value.
     pub leftovers: Vec<(u32, String)>,
 }
@@ -2370,6 +2394,8 @@ pub struct ControlXml {
     pub page: Option<String>,
     pub line: u32,
     pub values: ControlValues,
+    /// `steps` of the `<DataPath>` that is in `values.data_path` (tokens separated by one space).
+    pub data_steps: Option<String>,
     /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
     pub column_sources: Vec<ColumnSource>,
     /// The control element without nested controls (replaced by [`CONTROL_STUB`]) and without the
@@ -2824,12 +2850,14 @@ impl Parser<'_> {
                     page: page.map(str::to_string),
                     line: c.line,
                     values: ControlValues::empty(),
+                    data_steps: None,
                     column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),
                 });
                 let inner = self.walk(c, Some(id), None)?;
-                let (values, rest, column_sources) = self.split_values(slot, &inner)?;
+                let (values, data_steps, rest, column_sources) = self.split_values(slot, &inner)?;
                 self.controls[slot].values = values;
+                self.controls[slot].data_steps = data_steps;
                 self.controls[slot].column_sources = column_sources;
                 self.controls[slot].rest = rest;
                 let mut stub = XmlElement::new(CONTROL_STUB, c.line);
@@ -2843,7 +2871,7 @@ impl Parser<'_> {
         Ok(shell)
     }
 
-    fn split_values(&self, slot: usize, inner: &XmlElement) -> Result<(ControlValues, XmlElement, Vec<ColumnSource>)> {
+    fn split_values(&self, slot: usize, inner: &XmlElement) -> Result<(ControlValues, Option<String>, XmlElement, Vec<ColumnSource>)> {
         let who = self.controls[slot].describe();
         let type_name = self.controls[slot].type_name.clone();
         let ctrl_name = self.controls[slot].name.clone();
@@ -3185,9 +3213,32 @@ impl Parser<'_> {
                                         break;
                                     }
                                     let p = ch.text.trim();
+                                    let Ok(steps) = link_steps(ch) else {
+                                        ok = false;
+                                        break;
+                                    };
                                     field_name = Some(p.rsplit('.').next().unwrap_or(p).to_string());
                                     source.attribute_id = ch.attrs.get("attributeId").cloned();
                                     source.data_path = Some(p.to_string());
+                                    source.steps = steps;
+                                }
+                                "CheckBoxDataPath" | "PictureDataPath" => {
+                                    let tag = if ch.tag == "CheckBoxDataPath" { "CheckBoxDataPath" } else { "PictureDataPath" };
+                                    let steps = link_steps(ch);
+                                    if !seen_tags.insert(tag) || !ch.children.is_empty() || ch.text.trim().is_empty() || steps.is_err() {
+                                        ok = false;
+                                        break;
+                                    }
+                                    let link = ColumnLink {
+                                        attribute_id: ch.attrs.get("attributeId").cloned(),
+                                        text: ch.text.trim().to_string(),
+                                        steps: steps.unwrap_or_default(),
+                                    };
+                                    if tag == "CheckBoxDataPath" {
+                                        source.check_box = Some(link);
+                                    } else {
+                                        source.picture = Some(link);
+                                    }
                                 }
                                 "Header" => {
                                     if !seen_tags.insert("Header") {
@@ -3474,8 +3525,10 @@ impl Parser<'_> {
             }
         }
         let mut data_path: Option<(i64, String)> = None;
+        let mut data_steps: Option<String> = None;
         if let Some(e) = found.get("DataPath") {
-            let mut valid = e.children.is_empty() && e.attrs.len() == 1;
+            let steps = link_steps(e).map_err(|why| self.bad(e.line, format!("{who}: <DataPath> {why}")))?;
+            let mut valid = e.children.is_empty() && e.attrs.keys().all(|k| k == "attributeId" || k == "steps");
             if valid {
                 if let Some(aid) = e.attrs.get("attributeId").and_then(|v| v.trim().parse::<i64>().ok()) {
                     let path = e.text.trim();
@@ -3483,8 +3536,9 @@ impl Parser<'_> {
                     // `Main.Name` reaches into the object: kept as text, resolved by the planner (changed/added only)
                     let object_path = self.main_attr_id == Some(aid)
                         && root.is_some_and(|r| path.strip_prefix(r).is_some_and(|t| t.starts_with('.')));
-                    if root == Some(path) || object_path {
+                    if (root == Some(path) && steps.is_none()) || object_path {
                         data_path = Some((aid, path.to_string()));
+                        data_steps = steps;
                     } else {
                         valid = false;
                     }
@@ -3945,7 +3999,7 @@ impl Parser<'_> {
             save_view_properties: opt_bool_of("SaveViewProperties")?,
             fixed_background: opt_bool_of("FixedBackground")?,
         };
-        Ok((values, rest, column_sources))
+        Ok((values, data_steps, rest, column_sources))
     }
 }
 
@@ -4263,6 +4317,18 @@ fn strip_carriers(e: &mut XmlElement) {
     }
 }
 
+/// `major.minor` of `version` is lower than that of [`crate::oof::ORDINARY_FORM_VERSION`].
+fn version_is_older(version: &str) -> bool {
+    let parts = |v: &str| -> Option<(u32, u32)> {
+        let (a, b) = v.trim().split_once('.')?;
+        Some((a.parse().ok()?, b.parse().ok()?))
+    };
+    match (parts(version), parts(crate::oof::ORDINARY_FORM_VERSION)) {
+        (Some(have), Some(now)) => have < now,
+        _ => false,
+    }
+}
+
 pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     let malformed = |m: String| {
         ExtractionError::new(GENERATED_FILE_MODIFIED, format!("{label} Form.xml is not valid: {m}"))
@@ -4278,6 +4344,17 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     if root.tag != "Form" {
         let p = Parser { label, form: form_name, attr_names: HashMap::new(), main_attr_id: None, controls: Vec::new() };
         return Err(p.bad(root.line, format!("root element must be <Form>, found <{}>", root.tag)));
+    }
+    if let Some(old) = root.attrs.get("ordinaryFormVersion").filter(|v| version_is_older(v)) {
+        return Err(ExtractionError::new(
+            GENERATED_FILE_MODIFIED,
+            format!(
+                "{label} Form.xml was extracted by an older oneform (ordinaryFormVersion=\"{old}\", now \"{}\"); run `oneform extract` again",
+                crate::oof::ORDINARY_FORM_VERSION
+            ),
+        )
+        .with("kind", "stale-form-xml")
+        .with("source", label));
     }
     let (form_caption, form_width, form_height, form_events) = extract_form_header(&mut root);
     let form_props = extract_form_root_props(&mut root);
@@ -5035,7 +5112,7 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     index.validate(&baseline)?;
     index.validate_mode(&edited, true)?;
     let diff = diff_forms_mode(&baseline, &edited, true)?;
-    check_object_bindings(&diff, &edited)?;
+    check_object_bindings(&diff, &baseline, &edited)?;
     Ok(FormPatchPlan { source, index, diff })
 }
 
@@ -5117,10 +5194,71 @@ fn resolve_link_step(path: &str) -> std::result::Result<LinkStep, String> {
     }
 }
 
+const MULTI_STEP_EDIT: &str = "editing multi-step links is not supported yet";
+
+/// Number of steps of a normalized `steps` value.
+fn steps_len(steps: &Option<String>) -> usize {
+    steps.as_deref().map_or(0, |t| t.split(' ').count())
+}
+
+/// Refuses the edits of a link that the text cannot express: its `steps` changed, a link of three or more rows
+/// (two or more steps) changed or removed, steps of two or more on an added control, a column check-box / picture
+/// path on an added control or column. Only the text of a link of at most one step may change (it is resolved by
+/// name), and a missing `steps` attribute of such a link is read as unchanged. An added control with one step is a
+/// copy of a two-row link: its text decides, `steps` is not looked at (as for an edited text).
+fn check_link_edits(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Problem>) {
+    let mut refuse = |line: u32, c: &ControlXml, what: String| {
+        problems.push(problem("data-path", format!("line {line}: {}: {what}: {MULTI_STEP_EDIT}", c.describe())));
+    };
+    for c in &edited.controls {
+        let shown = c.values.data_path.as_ref().map_or(String::new(), |(_, p)| format!("DataPath '{p}'"));
+        let Some(b) = baseline.control(c.id) else {
+            if steps_len(&c.data_steps) >= 2 {
+                refuse(c.line, c, format!("{shown}: steps of three or more rows on an added control"));
+            }
+            for src in &c.column_sources {
+                if src.check_box.is_some() || src.picture.is_some() {
+                    refuse(src.line, c, "a check-box or picture path on an added control".into());
+                }
+            }
+            continue;
+        };
+        let n = steps_len(&b.data_steps);
+        if b.data_steps != c.data_steps && !(c.data_steps.is_none() && n <= 1) {
+            refuse(c.line, c, format!("{shown}: steps are edited"));
+        } else if b.values.data_path != c.values.data_path && n >= 2 {
+            let what = if c.values.data_path.is_some() { "the text of the link is edited" } else { "the link is removed" };
+            refuse(c.line, c, format!("{shown}: {what}"));
+        }
+        if c.type_name != "Table" || c.column_sources.len() != c.values.columns.len() || b.column_sources.len() != b.values.columns.len() {
+            continue;
+        }
+        for (v, src) in c.values.columns.iter().zip(&c.column_sources) {
+            let was = v.id.and_then(|id| b.values.columns.iter().position(|o| o.id == Some(id)));
+            let Some(was) = was.map(|i| &b.column_sources[i]) else {
+                if src.check_box.is_some() || src.picture.is_some() {
+                    refuse(src.line, c, format!("column '{}': a check-box or picture path on a new column", v.name));
+                }
+                continue;
+            };
+            if src.steps.is_some() && src.steps != was.steps {
+                refuse(src.line, c, format!("column '{}': the steps of <DataPath> are edited", v.name));
+            }
+            if src.check_box != was.check_box {
+                refuse(src.line, c, format!("column '{}': <CheckBoxDataPath> is edited", v.name));
+            }
+            if src.picture != was.picture {
+                refuse(src.line, c, format!("column '{}': <PictureDataPath> is edited", v.name));
+            }
+        }
+    }
+}
+
 /// Refuses an added or changed `DataPath` that cannot be written as a link (see [`resolve_link_step`]).
 /// Unchanged paths are not looked at: their links stay as they are.
-fn check_object_bindings(diff: &FormDiff, edited: &FormXml) -> Result<()> {
+fn check_object_bindings(diff: &FormDiff, baseline: &FormXml, edited: &FormXml) -> Result<()> {
     let mut problems: Vec<Problem> = Vec::new();
+    check_link_edits(baseline, edited, &mut problems);
     let mut check = |c: &ControlXml, path: &str, added: bool| match resolve_link_step(path) {
         Err(why) => problems.push(problem("data-path", format!("line {}: {}: {why}", c.line, c.describe()))),
         Ok(LinkStep::Tabular(_)) if c.type_name != "Table" => problems.push(problem(
