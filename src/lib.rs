@@ -17,6 +17,7 @@ pub mod explore;
 pub mod form_basic;
 pub mod form_patch;
 pub mod formbin;
+pub mod lint;
 pub mod manifest;
 pub mod metadata;
 pub mod metaref;
