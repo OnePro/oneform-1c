@@ -4928,6 +4928,13 @@ pub fn diff_forms_full(
             (strip_stubs(&b.rest, &skip), strip_stubs(&c.rest, &skip))
         };
         // Added controls (sparse user XML vs full decoded projection) compare identity and values only.
+        let (rest_a, rest_b) = match changed_column_ids(&b.values.columns, &c.values.columns) {
+            Some(skip_cols) if is_section_table(c) => (
+                neutral_column_stubs(&rest_a, &b.values.columns, &skip_cols),
+                neutral_column_stubs(&rest_b, &c.values.columns, &skip_cols),
+            ),
+            _ => (rest_a, rest_b),
+        };
         if !skip_rest.contains(&c.id) {
             diff_elements(&rest_a, &rest_b, "", &mut diffs);
         }
@@ -5140,10 +5147,105 @@ fn check_object_bindings(diff: &FormDiff, edited: &FormXml) -> Result<()> {
             check(c, path, false);
         }
     }
+    check_existing_tables(diff, edited, &mut problems);
     if problems.is_empty() {
         return Ok(());
     }
     Err(fail(&edited.name, &edited.label, problems))
+}
+
+/// The ids of the columns of a table bound to a tabular section that the edit adds, removes or rebinds; `None` when
+/// the columns have the same ids in the same order and the same fields (or an id is missing: the planner refuses
+/// that). The `<ValueType>` of such a column follows its field, so its stub in the rest of the table is not compared.
+pub fn changed_column_ids(old: &[ColumnValues], new: &[ColumnValues]) -> Option<std::collections::HashSet<i64>> {
+    let old_ids: Option<Vec<i64>> = old.iter().map(|c| c.id).collect();
+    let new_ids: Option<Vec<i64>> = new.iter().map(|c| c.id).collect();
+    let (old_ids, new_ids) = (old_ids?, new_ids?);
+    let mut skip = std::collections::HashSet::new();
+    for n in new {
+        match old.iter().find(|o| o.id == n.id) {
+            None => skip.extend(n.id),
+            Some(o) if o.field_name != n.field_name => skip.extend(n.id),
+            Some(_) => {}
+        }
+    }
+    skip.extend(old_ids.iter().filter(|id| !new_ids.contains(id)));
+    (!skip.is_empty() || old_ids != new_ids).then_some(skip)
+}
+
+/// The rest of a table without the `<Columns>` stubs of the columns in `skip` and without the `_col` index and the
+/// order of the others (`cols` are the columns the stubs were made from).
+pub fn neutral_column_stubs(rest: &XmlElement, cols: &[ColumnValues], skip: &std::collections::HashSet<i64>) -> XmlElement {
+    let mut out = rest.clone();
+    for el in out.children.iter_mut().filter(|e| e.tag == "Columns") {
+        let mut stubs: Vec<XmlElement> = Vec::new();
+        for mut ch in std::mem::take(&mut el.children) {
+            let id = ch.attrs.remove("_col").and_then(|i| i.parse::<usize>().ok()).and_then(|i| cols.get(i)).and_then(|c| c.id);
+            if !id.is_some_and(|i| skip.contains(&i)) {
+                stubs.push(ch);
+            }
+        }
+        stubs.sort_by_key(|e| e.attrs.get("id").and_then(|v| v.parse::<i64>().ok()));
+        el.children = stubs;
+    }
+    out
+}
+
+/// Whether the columns of this table are bound to a tabular section (its `DataPath` is `Root.Section`).
+pub fn is_section_table(c: &ControlXml) -> bool {
+    c.type_name == "Table" && c.values.data_path.as_ref().is_some_and(|(_, p)| p.contains('.'))
+}
+
+/// The columns of the existing tables bound to a tabular section: every `<DataPath>` is `Root.Section.Column` of the
+/// table's own section and a new or rebound column can be written (the data of the stream is not looked at here).
+fn check_existing_tables(diff: &FormDiff, edited: &FormXml, problems: &mut Vec<Problem>) {
+    use crate::ts_table::{column_field, field_data, new_column_data, ColumnData, ROW_NUMBER};
+    let Some(schema) = crate::object_schema::object_schema() else { return };
+    let added: std::collections::HashSet<i64> = diff.additions.iter().map(|c| c.id).collect();
+    for c in edited.controls.iter().filter(|c| c.type_name == "Table" && !added.contains(&c.id)) {
+        let Some((attr_id, path)) = &c.values.data_path else { continue };
+        let Ok(LinkStep::Tabular(uuid)) = resolve_link_step(path) else { continue };
+        let Some(ts) = schema.tabular.iter().find(|t| t.uuid.eq_ignore_ascii_case(&uuid)) else { continue };
+        if c.values.columns.len() != c.column_sources.len() {
+            continue;
+        }
+        let (root, _) = path.split_once('.').unwrap_or((path, ""));
+        let old = diff.edits.iter().find(|e| e.id == c.id).map(|e| &e.old.columns);
+        for (v, src) in c.values.columns.iter().zip(&c.column_sources) {
+            let at = format!("line {}: {}: column '{}'", src.line, c.describe(), v.name);
+            let was = old.and_then(|o| v.id.and_then(|id| o.iter().find(|x| x.id == Some(id))));
+            let fresh = old.is_some() && was.is_none();
+            let rebound = was.is_some_and(|w| w.field_name != v.field_name);
+            let mut push = |why: String| problems.push(problem("data-path", format!("{at}: {why}")));
+            let Some(dp) = src.data_path.as_deref() else {
+                if fresh || rebound {
+                    push(format!("<DataPath> is required: {root}.{}.<column of the section>", ts.name));
+                }
+                continue;
+            };
+            let field = match column_field(root, *attr_id, ts, dp, src.attribute_id.as_deref()) {
+                Ok(f) => f,
+                Err(why) => {
+                    push(why);
+                    continue;
+                }
+            };
+            if fresh {
+                for (line, tag) in src.leftovers.iter().filter(|(_, t)| t != "ValueType") {
+                    push(format!("line {line}: <{tag}> is not supported on a new column"));
+                }
+                if let Err(why) = new_column_data(ts, dp, field, v.read_only, v.editor.as_deref()) {
+                    push(why);
+                }
+            } else if rebound {
+                match field_data(ts, field) {
+                    Ok(ColumnData::RowNumber) => push(format!("cannot be rebound to {ROW_NUMBER}: it is read-only and has no editor (the shape of the column would change)")),
+                    Ok(_) => {}
+                    Err(why) => push(format!("DataPath '{dp}': cannot be rebound: {why}")),
+                }
+            }
+        }
+    }
 }
 
 /// A `Table` bound to a tabular section of the object.
@@ -7417,7 +7519,8 @@ fn patch_column_editor_events(site: &Site, cp: NodeRef, ed_type: &str, new_event
     crate::donor::write_node(&list_node, &mut list_bytes);
     let patched_tree = inner_src.apply(&[Replacement { range: cur_span.span, bytes: list_bytes }])?;
     let mut payload = Vec::with_capacity(8 + patched_tree.len());
-    payload.extend_from_slice(&inflated[..8]);
+    // the u64 LE length of the inner text, the text patched here has another one
+    payload.extend_from_slice(&(patched_tree.len() as u64).to_le_bytes());
     payload.extend_from_slice(&patched_tree);
     let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
     enc.write_all(&payload).map_err(|e| site.layout("unexpected-shape", "Columns", e.to_string()))?;
@@ -7428,6 +7531,250 @@ fn patch_column_editor_events(site: &Site, cp: NodeRef, ed_type: &str, new_event
     use base64::Engine;
     let b64 = base64::engine::general_purpose::STANDARD.encode(&full);
     Ok(piece(span, format!("{{#base64:{b64}}}"), &[prop]))
+}
+
+// ---- columns of a table bound to a tabular section
+
+/// The tabular section the table of `site` is bound to: its row source is the one of a section and its link row
+/// names a section of the object (`None`: the table is bound to something else).
+fn bound_tabular(site: &Site) -> Result<Option<crate::object_schema::TabularSchema>> {
+    let Some(info) = site.entry.info() else { return Ok(None) };
+    let is_section = info.node.node(3).and_then(|n| n.atom(0)).is_some_and(|a| a.value.eq_ignore_ascii_case(crate::ts_table::ROW_SOURCE_GUID));
+    if !is_section {
+        return Ok(None);
+    }
+    let link = site.source.root.node(2).and_then(|r| r.node(3)).and_then(|l| read_control_link(l, site.edit.id));
+    let Some((_, LinkStep::Attr(uuid))) = link else {
+        return Err(site.layout("unexpected-shape", "Columns", "the table has the row source of a tabular section but no link to one".into()));
+    };
+    let Some(schema) = crate::object_schema::object_schema() else {
+        return Err(site.invalid(
+            "unsupported-table",
+            "Columns",
+            "the table is bound to a tabular section but the object metadata is not available for this form, so its columns cannot be resolved".into(),
+        ));
+    };
+    match schema.tabular.iter().find(|t| t.uuid.eq_ignore_ascii_case(&uuid)) {
+        Some(ts) => Ok(Some(ts.clone())),
+        None => Err(site.invalid(
+            "unsupported-table",
+            "Columns",
+            format!("the table is bound to the tabular section {uuid}, which the object metadata does not have"),
+        )),
+    }
+}
+
+/// Whether the edit of the columns adds, removes, reorders or rebinds one: then the section of the table is needed.
+fn columns_need_section(old: &[ColumnValues], new: &[ColumnValues]) -> bool {
+    !old.iter().map(|c| c.id).eq(new.iter().map(|c| c.id)) || old.iter().zip(new).any(|(o, n)| o.field_name != n.field_name)
+}
+
+/// The counted list of the columns (`info[2][1][23]`) of a table with `expect` columns.
+fn column_list<'a>(site: &Site<'_, 'a>, expect: usize) -> Result<NodeRef<'a>> {
+    let list = site
+        .entry
+        .info()
+        .and_then(|i| i.child(2))
+        .and_then(|t| t.child(1))
+        .and_then(|t| t.child(23))
+        .ok_or_else(|| site.layout("unexpected-shape", "Columns", "the table has no column list at [2][1][23]".into()))?;
+    if list.node.len() != expect + 1 || list.node.atom(0).and_then(|a| a.value.parse::<usize>().ok()) != Some(expect) {
+        return Err(site.layout("unexpected-shape", "Columns", "the column list does not hold the columns of the table".into()));
+    }
+    Ok(list)
+}
+
+/// The column of the XML as a column to be built: the errors are the refusals.
+fn new_column_spec(site: &Site, ts: &crate::object_schema::TabularSchema, c: &ColumnValues) -> Result<crate::ts_table::ColumnSpec> {
+    let bad = |why: String| site.invalid("unsupported-table", "Columns", format!("new column '{}': {why}", c.name));
+    let id = c.id.filter(|id| *id >= 0).ok_or_else(|| bad("the id attribute is missing or negative".into()))?;
+    if c.width <= 0 {
+        return Err(bad("Width must be positive".into()));
+    }
+    for (present, what) in [
+        (!c.footer_text.is_empty(), "<FooterText>"),
+        (!c.tooltip.is_empty(), "<Tooltip>"),
+        (!c.events.is_empty(), "<Events>"),
+        (c.ext != ColumnExt::default(), "an extended property"),
+    ] {
+        if present {
+            return Err(bad(format!("{what} is not supported on a new column")));
+        }
+    }
+    if let Some(editor) = c.editor.as_deref().filter(|e| *e != "InputField") {
+        return Err(bad(format!("the editor {editor} is not supported (only InputField)")));
+    }
+    let field = c.field_name.as_deref().ok_or_else(|| bad("<DataPath> is required".into()))?;
+    let table_path = site.edit.new.data_path.as_ref().map_or("", |(_, p)| p.as_str());
+    let data = crate::ts_table::new_column_data(ts, &format!("{table_path}.{field}"), field, c.read_only, c.editor.as_deref()).map_err(bad)?;
+    Ok(crate::ts_table::ColumnSpec { name: c.name.clone(), id, header: c.header.clone(), width: c.width, visible: c.visible, read_only: c.read_only, data })
+}
+
+/// The record of a new column as text, the way a stream read back shows it.
+fn new_column_record(site: &Site, ts: &crate::object_schema::TabularSchema, c: &ColumnValues) -> Result<Vec<u8>> {
+    let spec = new_column_spec(site, ts, c)?;
+    let record = crate::ts_table::column_record(&spec).map_err(|why| site.invalid("unsupported-table", "Columns", format!("new column '{}': {why}", c.name)))?;
+    let mut bytes = Vec::new();
+    crate::donor::write_node(&record, &mut bytes);
+    Ok(bytes)
+}
+
+/// The whole column list of a table bound to a section in the order of the XML: the records of the columns that
+/// stay are the stream's own bytes, the new ones are built.
+fn column_list_piece(site: &Site, ts: &crate::object_schema::TabularSchema, prop: Property) -> Result<Piece> {
+    let (old, new) = (&site.edit.old.columns, &site.edit.new.columns);
+    let list = column_list(site, old.len())?;
+    let mut seen = std::collections::HashSet::new();
+    let mut text = format!("{{{}", new.len());
+    for nc in new {
+        let id = nc.id.ok_or_else(|| site.invalid("unsupported-table", "Columns", format!("column '{}' has no id", nc.name)))?;
+        if !seen.insert(id) {
+            return Err(site.invalid("unsupported-table", "Columns", format!("the id {id} is used by two columns")));
+        }
+        text.push(',');
+        match old.iter().position(|oc| oc.id == Some(id)) {
+            Some(j) => {
+                if old[j] != *nc {
+                    return Err(site.invalid(
+                        "unsupported-table",
+                        "Columns",
+                        format!(
+                            "columns are added, removed or reordered and column '{}' (id {id}) is changed too; edit columns in two steps: first add or remove columns and pack, then change the others",
+                            nc.name
+                        ),
+                    ));
+                }
+                let rec = list.child(1 + j).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column record missing".into()))?;
+                let bytes = site.source.source().get(rec.span.span.start..rec.span.span.end).unwrap_or_default();
+                text.push_str(std::str::from_utf8(bytes).map_err(|_| site.layout("unexpected-shape", "Columns", "column record is not UTF-8".into()))?);
+            }
+            None => text.push_str(&String::from_utf8_lossy(&new_column_record(site, ts, nc)?)),
+        }
+    }
+    text.push('}');
+    Ok(piece(list.span.span, text, &[prop]))
+}
+
+/// Pieces that bind the column `rec` (props `cp`) of a table bound to `ts` to the column `field` of the section.
+/// Only the data step, the ordinal, the pattern and the pattern inside the editor change; a change of the shape of the
+/// record is refused.
+fn rebind_pieces(
+    site: &Site,
+    ts: &crate::object_schema::TabularSchema,
+    rec: NodeRef,
+    cp: NodeRef,
+    column: &str,
+    field: Option<&str>,
+    prop: Property,
+) -> Result<Vec<Piece>> {
+    use crate::ts_table::{blob_class, blob_pattern, data_class, data_step, pattern_text, read_column, rebind_blob, ColumnData, ROW_NUMBER};
+    let bad = |why: String| site.invalid("unsupported-table", "Columns", format!("column '{column}': {why}"));
+    let field = field.ok_or_else(|| bad("<DataPath> is required to rebind a column".into()))?;
+    let cur = read_column(rec.node)
+        .ok_or_else(|| site.layout("unexpected-shape", "Columns", format!("column '{column}': the record does not have the layout of a column")))?;
+    if cur.data == "{-2}" {
+        return Err(bad(format!("the column {ROW_NUMBER} cannot be rebound")));
+    }
+    if !cur.data.starts_with("{0,") || cur.check_data != "{-1}" {
+        return Err(bad(format!(
+            "its data is {} / check box data {}: only a column bound to a field of the section through its data step can be rebound (a Boolean field is bound as check box data, a different record shape)",
+            cur.data, cur.check_data
+        )));
+    }
+    let target = match crate::ts_table::field_data(ts, field) {
+        Ok(ColumnData::RowNumber) => {
+            return Err(bad(format!("rebinding to {ROW_NUMBER} changes the shape of the column (it is read-only and has no editor)")));
+        }
+        Ok(t) => t,
+        Err(why) => return Err(bad(format!("cannot be rebound to '{field}': {why}"))),
+    };
+    let ColumnData::Field { ordinal, pattern, .. } = &target else { return Err(bad("internal: no field".into())) };
+    let editable = cur.editor_guid != "00000000-0000-0000-0000-000000000000";
+    let mut out = Vec::new();
+    let x = rec.child(1).and_then(|w| w.child(1)).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column data record missing".into()))?;
+    let step = x.child(2).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column data step missing".into()))?;
+    out.push(piece(step.span.span, data_step(&target), &[prop]));
+    out.push(piece(int_slot(site, cp, 6, "Columns", "Ordinal")?.1, ordinal, &[prop]));
+    let text = pattern_text(pattern).map_err(bad)?;
+    if cur.pattern != text {
+        let node = cp.child(35).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column pattern missing".into()))?;
+        out.push(piece(node.span.span, &text, &[prop]));
+    }
+    if editable {
+        let blob = cp
+            .child(39)
+            .and_then(|b| b.atom(0))
+            .filter(|(a, _)| a.kind == AtomKind::Base64)
+            .ok_or_else(|| site.layout("unexpected-shape", "Columns", format!("column '{column}': the editor blob is missing")))?;
+        let (have, want) = (blob_class(&blob.0.value), data_class(&target));
+        if have.is_none() || have != want {
+            return Err(bad(format!(
+                "its editor ({have:?}) does not fit '{field}' ({want:?}): the parameters of the editor depend on the kind of the type; add a new column instead"
+            )));
+        }
+        if blob_pattern(&blob.0.value).as_deref() != Some(text.as_str()) {
+            let b64 = rebind_blob(&blob.0.value, pattern).map_err(bad)?;
+            out.push(piece(blob.1, format!("{{#base64:{b64}}}"), &[prop]));
+        }
+    }
+    Ok(out)
+}
+
+/// What the stream holds for the `expect` columns of the table of `site`.
+fn read_tabular_columns(site: &Site, expect: usize) -> Result<Vec<crate::ts_table::ColumnRead>> {
+    let list = column_list(site, expect)?;
+    (1..=expect)
+        .map(|i| {
+            list.node
+                .node(i)
+                .and_then(crate::ts_table::read_column)
+                .ok_or_else(|| site.layout("unexpected-shape", "Columns", format!("column record {i} does not have the layout of a column")))
+        })
+        .collect()
+}
+
+/// The patched columns of a table bound to a section hold what was requested: the data step, ordinal, pattern and
+/// editor pattern of a rebound column, the whole record of a new column and, in a changed list, of one that stays.
+/// The other columns keep their data. `original` is the site over the original stream.
+fn tabular_columns_match(site: &Site, original: &Site) -> Result<bool> {
+    let (old, new) = (&original.edit.old.columns, &site.edit.new.columns);
+    if !columns_need_section(old, new) {
+        return Ok(true);
+    }
+    let Some(ts) = bound_tabular(original)? else { return Ok(true) };
+    let before = read_tabular_columns(original, old.len())?;
+    let after = read_tabular_columns(site, new.len())?;
+    let same_list = old.iter().map(|c| c.id).eq(new.iter().map(|c| c.id));
+    for (i, nc) in new.iter().enumerate() {
+        let got = &after[i];
+        let prior = if same_list { Some(i) } else { old.iter().position(|oc| oc.id == nc.id) };
+        let ok = match prior {
+            Some(j) if old[j].field_name == nc.field_name => {
+                let b = &before[j];
+                let key = |c: &crate::ts_table::ColumnRead| {
+                    (c.data.clone(), c.check_data.clone(), c.picture_data.clone(), c.ordinal, c.pattern.clone(), c.slots, c.editor_guid.clone(), c.editor_pattern.clone())
+                };
+                key(got) == key(b) && (same_list || got.record == b.record)
+            }
+            Some(_) => {
+                let field = nc.field_name.as_deref().unwrap_or("");
+                let Ok(target) = crate::ts_table::field_data(&ts, field) else { return Ok(false) };
+                let crate::ts_table::ColumnData::Field { ordinal, pattern, .. } = &target else { return Ok(false) };
+                let text = crate::ts_table::pattern_text(pattern).map_err(|why| site.layout("verification-failed", "Columns", why))?;
+                let editable = got.editor_guid != "00000000-0000-0000-0000-000000000000";
+                got.data == crate::ts_table::data_step(&target)
+                    && got.ordinal == *ordinal as i64
+                    && got.pattern == text
+                    && got.check_data == "{-1}"
+                    && (!editable || got.editor_pattern.as_deref() == Some(text.as_str()))
+            }
+            None => got.record == String::from_utf8_lossy(&new_column_record(site, &ts, nc)?),
+        };
+        if !ok {
+            return Ok(false);
+        }
+    }
+    Ok(true)
 }
 
 /// `checked` / `picture_id` of the items (`info[1][26][2][6]`, items from child 2) wherever the model sets them.
@@ -8343,9 +8690,22 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                         "the table's columns do not match the baseline XML: a read-only column has no editor, so making it editable (<ReadOnly>false</ReadOnly> on a <Column>) is not supported; other column edits are (if you did not edit the columns, re-extract the form)".to_string(),
                     ));
                 }
+                let tabular = if columns_need_section(&old.columns, &new.columns) { bound_tabular(site)? } else { None };
+                if !old.columns.iter().map(|c| c.id).eq(new.columns.iter().map(|c| c.id)) {
+                    let Some(ts) = &tabular else {
+                        return Err(site.invalid(
+                            "unsupported-table",
+                            "Columns",
+                            "adding, removing or reordering columns is supported only for a table bound to a tabular section".into(),
+                        ));
+                    };
+                    out.push(column_list_piece(site, ts, prop)?);
+                    continue;
+                }
                 if cols.len() != new.columns.len() {
                     return Err(site.layout("unexpected-shape", "Columns", "column count mismatch".into()));
                 }
+                let records = if tabular.is_some() { Some(column_list(site, cols.len())?) } else { None };
                 for (i, (wrapper, cp)) in cols.into_iter().enumerate() {
                     let (oc, nc) = (&old.columns[i], &new.columns[i]);
                     if oc.name != nc.name {
@@ -8354,7 +8714,12 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                             .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column name atom missing".into()))?;
                         out.push(piece(span, quote(&nc.name), &[prop]));
                     }
-                    if oc.field_name != nc.field_name && stream_cols.get(i).is_none_or(|s| s.field_name.as_deref() != Some("0")) {
+                    if let (Some(ts), Some(list)) = (&tabular, records) {
+                        if oc.field_name != nc.field_name {
+                            let rec = list.child(1 + i).ok_or_else(|| site.layout("unexpected-shape", "Columns", "column record missing".into()))?;
+                            out.extend(rebind_pieces(site, ts, rec, cp, &nc.name, nc.field_name.as_deref(), prop)?);
+                        }
+                    } else if oc.field_name != nc.field_name && stream_cols.get(i).is_none_or(|s| s.field_name.as_deref() != Some("0")) {
                         let (_, span) = wrapper
                             .atom(2)
                             .ok_or_else(|| site.layout("unexpected-shape", "Columns", "column field name atom missing".into()))?;
@@ -8877,7 +9242,7 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                 let stream_cols = cur.clone();
                 mask_field_slots(&stream_cols, &mut plain);
                 mask_field_slots(&stream_cols, &mut cur);
-                cur == plain && column_ext_matches(site, &new.columns)?
+                cur == plain && column_ext_matches(site, &new.columns)? && tabular_columns_match(site, original)?
             }
             Property::AutoFill => Some(info_int_slot(site, &[1], 3, p)?.0 != 0) == new.auto_fill,
             Property::Buttons => {

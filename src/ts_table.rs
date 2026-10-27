@@ -25,6 +25,8 @@ use crate::oof::COLUMN_GUID;
 
 /// Row source of a table bound to a tabular section (`info[3]`).
 pub const ROW_SOURCE: &str = "{51d1e122-c0f3-496f-901e-806df8206ba9,{2,1,{0,1}}}";
+/// Guid that starts the row source of a table bound to a tabular section.
+pub const ROW_SOURCE_GUID: &str = "51d1e122-c0f3-496f-901e-806df8206ba9";
 
 #[cfg(test)]
 const INPUT_FIELD_GUID: &str = "381ed624-9217-4e63-85db-c4c3cb87daae";
@@ -249,6 +251,101 @@ pub fn decode_blob(b64: &str) -> Option<String> {
     String::from_utf8(inflated[8..].to_vec()).ok().map(|s| s.trim_start_matches('\u{feff}').to_string())
 }
 
+/// An editor blob with the inner text replaced: the header stays, the u64 LE length of the new inner text is
+/// computed again and the text is deflated. `edit` gets the inner text (BOM included) and returns the new one.
+pub fn rewrite_blob(raw: &[u8], edit: impl FnOnce(&[u8]) -> Result<Vec<u8>, String>) -> Result<Vec<u8>, String> {
+    use std::io::Read;
+    if raw.len() <= 18 {
+        return Err("the editor blob is too short".to_string());
+    }
+    let mut inflated = Vec::new();
+    flate2::read::DeflateDecoder::new(&raw[18..]).read_to_end(&mut inflated).map_err(|e| format!("the editor blob is not deflate data: {e}"))?;
+    if inflated.len() <= 8 {
+        return Err("the editor blob has no text".to_string());
+    }
+    let inner = edit(&inflated[8..])?;
+    let mut payload = (inner.len() as u64).to_le_bytes().to_vec();
+    payload.extend_from_slice(&inner);
+    let mut enc = flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
+    enc.write_all(&payload).map_err(|e| e.to_string())?;
+    let deflated = enc.finish().map_err(|e| e.to_string())?;
+    let mut full = raw[..18].to_vec();
+    full.extend_from_slice(&deflated);
+    Ok(full)
+}
+
+/// The editor blob (base64) of a column with the value pattern of its own set to `pattern` (the text of a
+/// `{"Pattern",...}` record); everything else of the blob, the events included, stays.
+pub fn rebind_blob(b64: &str, pattern: &str) -> Result<String, String> {
+    let raw = base64::engine::general_purpose::STANDARD.decode(b64).map_err(|e| format!("the editor blob is not base64: {e}"))?;
+    let tree = parse(pattern)?;
+    let mut text = String::new();
+    format_1c(&tree, &mut text);
+    let patched = rewrite_blob(&raw, |inner| {
+        let src = crate::brace::parse_spanned(inner).map_err(|e| format!("the editor text cannot be read: {e}"))?;
+        let at = match src.spans.children.get(1) {
+            Some(crate::brace::SpanItem::Node(n)) if src.root.node(1).and_then(|p| p.atom(0)).is_some_and(|a| a.value == "Pattern") => n.span,
+            _ => return Err("the editor text has no pattern in its slot 1".to_string()),
+        };
+        src.apply(&[crate::brace::Replacement { range: at, bytes: text.into_bytes() }]).map_err(|e| e.to_string())
+    })?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(patched))
+}
+
+/// The pattern inside an editor blob as text (`None`: the blob is not readable).
+pub fn blob_pattern(b64: &str) -> Option<String> {
+    let text = decode_blob(b64)?;
+    let tree = parse_metadata(text.as_bytes()).ok()?;
+    Some(text_of(tree.node(1)?))
+}
+
+/// The class of the editor of a column: what must stay the same when the column is rebound, because the blob keeps
+/// the parameters of its editor (`Primitive` for strings, numbers and dates, or the kind of a reference).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorClass {
+    Primitive,
+    Ref(&'static str),
+}
+
+const REF_KINDS: [(RefKind, &str); 5] = [
+    (RefKind::Catalog, "CatalogRef"),
+    (RefKind::Document, "DocumentRef"),
+    (RefKind::Enum, "EnumRef"),
+    (RefKind::ChartOfAccounts, "ChartOfAccountsRef"),
+    (RefKind::ChartOfCharacteristicTypes, "ChartOfCharacteristicTypesRef"),
+];
+
+/// The class of the editor in `b64` (`None`: the parameters are not ones this tool builds).
+pub fn blob_class(b64: &str) -> Option<EditorClass> {
+    let text: String = decode_blob(b64)?.chars().filter(|c| !c.is_whitespace()).collect();
+    if text.contains(&format!("{{1,{{{}", PRIMITIVE_PARAMETERS.split(',').next()?)) {
+        return Some(EditorClass::Primitive);
+    }
+    REF_KINDS.iter().find(|(k, _)| text.contains(&format!("{{1,{{{}", k.parameters().split(',').next().unwrap_or("")))).map(|(_, n)| EditorClass::Ref(n))
+}
+
+/// The class of the editor a column with this data needs.
+pub fn data_class(data: &ColumnData) -> Option<EditorClass> {
+    let ColumnData::Field { pattern, ref_kind, .. } = data else { return None };
+    match classify(pattern, ref_kind.as_deref()).ok()? {
+        Primitive::Ref { kind } => REF_KINDS.iter().find(|(k, _)| *k == kind).map(|(_, n)| EditorClass::Ref(n)),
+        _ => Some(EditorClass::Primitive),
+    }
+}
+
+/// Text of the pattern `P[35]` as the stream holds it.
+pub fn pattern_text(pattern: &str) -> Result<String, String> {
+    Ok(text_of(&parse(pattern)?))
+}
+
+/// Text of the data step `X[2]` of a column.
+pub fn data_step(data: &ColumnData) -> String {
+    match data {
+        ColumnData::RowNumber => "{-2}".to_string(),
+        ColumnData::Field { uuid, .. } => format!("{{0,{uuid}}}"),
+    }
+}
+
 fn bare(v: impl ToString) -> Item {
     Item::Atom(Atom::new(AtomKind::Bare, v.to_string()))
 }
@@ -366,6 +463,68 @@ pub struct ColumnRequest {
     pub unsupported: Vec<(u32, String)>,
 }
 
+/// The column name of `path` = `Root.Section.Column` of a column of the table bound to the section `ts` of the main
+/// attribute `root` (id `attr_id`). The error names the path and the reason.
+pub fn column_field<'p>(root: &str, attr_id: i64, ts: &TabularSchema, path: &'p str, attribute_id: Option<&str>) -> Result<&'p str, String> {
+    if attribute_id.map(str::trim) != Some(attr_id.to_string().as_str()) {
+        return Err(format!("DataPath '{path}': attributeId must be {attr_id} (the main attribute)"));
+    }
+    let parts: Vec<&str> = path.split('.').collect();
+    let [path_root, section, field] = parts.as_slice() else {
+        return Err(format!("DataPath '{path}' must be {root}.{}.<column>", ts.name));
+    };
+    if *path_root != root {
+        return Err(format!("DataPath '{path}': the path starts with '{path_root}', the table's path with '{root}'"));
+    }
+    if *section != ts.name {
+        return Err(format!(
+            "DataPath '{path}': the column belongs to the tabular section '{section}', the table is bound to '{}'",
+            ts.name
+        ));
+    }
+    Ok(field)
+}
+
+/// What the column `field` of the section `ts` (or [`ROW_NUMBER`]) is bound to; the error is the reason why it
+/// cannot be built (not found, ambiguous, type not known or without an editor template).
+pub fn field_data(ts: &TabularSchema, field: &str) -> Result<ColumnData, String> {
+    if field == ROW_NUMBER {
+        return Ok(ColumnData::RowNumber);
+    }
+    let Some(ordinal) = ts.column_ordinal(field) else {
+        let known: Vec<&str> = ts.columns.iter().map(|(n, _)| n.as_str()).collect();
+        let why = if known.iter().filter(|n| **n == field).count() > 1 { "occurs twice" } else { "does not exist" };
+        return Err(format!(
+            "the column '{field}' {why} in the tabular section '{}' (columns: {}, {ROW_NUMBER})",
+            ts.name,
+            known.join(", ")
+        ));
+    };
+    let Some(pattern) = ts.column_pattern(ordinal) else {
+        return Err(format!(
+            "the value type of the column '{field}' is not known (a composite type or a reference type that the configuration does not resolve)"
+        ));
+    };
+    let ref_kind = ts.column_ref_kind(ordinal);
+    check_pattern(pattern, ref_kind)?;
+    Ok(ColumnData::Field { uuid: ts.columns[ordinal].1.to_ascii_lowercase(), ordinal, pattern: pattern.to_string(), ref_kind: ref_kind.map(str::to_string) })
+}
+
+/// What a column bound to `field` (the last segment of `path`) is built on, given the request: `read_only` and the
+/// `editor` it names. The error is the reason (without the position).
+pub fn new_column_data(ts: &TabularSchema, path: &str, field: &str, read_only: bool, editor: Option<&str>) -> Result<ColumnData, String> {
+    if field == ROW_NUMBER {
+        if editor.is_some() || !read_only {
+            return Err(format!("{ROW_NUMBER} is read-only and has no editor (use <ReadOnly>true</ReadOnly>, without <Editor>)"));
+        }
+        return Ok(ColumnData::RowNumber);
+    }
+    if read_only && editor.is_some() {
+        return Err("a read-only column has no editor: remove <Editor> or use <ReadOnly>false</ReadOnly>".to_string());
+    }
+    field_data(ts, field).map_err(|why| format!("DataPath '{path}': {why}"))
+}
+
 /// The column records of an added table bound to the tabular section `ts` of the main attribute `root` (whose id
 /// is `attr_id`). The errors are the refusals, each with its line.
 pub fn plan_columns(root: &str, attr_id: i64, ts: &TabularSchema, requests: &[ColumnRequest]) -> Result<Vec<ColumnSpec>, Vec<String>> {
@@ -394,63 +553,18 @@ pub fn plan_columns(root: &str, attr_id: i64, ts: &TabularSchema, requests: &[Co
             problems.push(format!("{at}: <DataPath> is required: {root}.{}.<column of the section> or {root}.{}.{ROW_NUMBER}", ts.name, ts.name));
             continue;
         };
-        if r.attribute_id.as_deref().map(str::trim) != Some(attr_id.to_string().as_str()) {
-            problems.push(format!("{at}: DataPath '{path}': attributeId must be {attr_id} (the main attribute)"));
-            continue;
-        }
-        let parts: Vec<&str> = path.split('.').collect();
-        let [path_root, section, field] = parts.as_slice() else {
-            problems.push(format!("{at}: DataPath '{path}' must be {root}.{}.<column>", ts.name));
-            continue;
+        let field = match column_field(root, attr_id, ts, path, r.attribute_id.as_deref()) {
+            Ok(field) => field,
+            Err(why) => {
+                problems.push(format!("{at}: {why}"));
+                continue;
+            }
         };
-        if *path_root != root {
-            problems.push(format!("{at}: DataPath '{path}': the path starts with '{path_root}', the table's path with '{root}'"));
-            continue;
-        }
-        if *section != ts.name {
-            problems.push(format!(
-                "{at}: DataPath '{path}': the column belongs to the tabular section '{section}', the table is bound to '{}'",
-                ts.name
-            ));
-            continue;
-        }
-        let data = if *field == ROW_NUMBER {
-            if r.editor.is_some() || !r.read_only {
-                problems.push(format!("{at}: {ROW_NUMBER} is read-only and has no editor (use <ReadOnly>true</ReadOnly>, without <Editor>)"));
+        let data = match new_column_data(ts, path, field, r.read_only, r.editor.as_deref()) {
+            Ok(data) => data,
+            Err(why) => {
+                problems.push(format!("{at}: {why}"));
                 continue;
-            }
-            ColumnData::RowNumber
-        } else {
-            if r.read_only && r.editor.is_some() {
-                problems.push(format!("{at}: a read-only column has no editor: remove <Editor> or use <ReadOnly>false</ReadOnly>"));
-                continue;
-            }
-            let Some(ordinal) = ts.column_ordinal(field) else {
-                let known: Vec<&str> = ts.columns.iter().map(|(n, _)| n.as_str()).collect();
-                let why = if known.iter().filter(|n| **n == *field).count() > 1 { "occurs twice" } else { "does not exist" };
-                problems.push(format!(
-                    "{at}: DataPath '{path}': the column '{field}' {why} in the tabular section '{}' (columns: {}, {ROW_NUMBER})",
-                    ts.name,
-                    known.join(", ")
-                ));
-                continue;
-            };
-            let Some(pattern) = ts.column_pattern(ordinal) else {
-                problems.push(format!(
-                    "{at}: DataPath '{path}': the value type of the column '{field}' is not known (a composite type or a reference type that the configuration does not resolve)"
-                ));
-                continue;
-            };
-            let ref_kind = ts.column_ref_kind(ordinal);
-            if let Err(why) = check_pattern(pattern, ref_kind) {
-                problems.push(format!("{at}: DataPath '{path}': {why}"));
-                continue;
-            }
-            ColumnData::Field {
-                uuid: ts.columns[ordinal].1.to_ascii_lowercase(),
-                ordinal,
-                pattern: pattern.to_string(),
-                ref_kind: ref_kind.map(str::to_string),
             }
         };
         if problems.len() > before {
@@ -482,6 +596,15 @@ pub struct ColumnRead {
     /// Text of the data step `X[2]` (`{0,<uuid>}`, `{-2}`, `{-1}`).
     pub data: String,
     pub slots: usize,
+    /// Text of the check-box data step `X[3]` and of the picture data step `X[4]`.
+    pub check_data: String,
+    pub picture_data: String,
+    /// Text of the value pattern `P[35]`.
+    pub pattern: String,
+    /// Editor guid `P[38]`.
+    pub editor_guid: String,
+    /// Pattern inside the editor blob (`None`: no blob or it is not readable).
+    pub editor_pattern: Option<String>,
     /// The whole column record as text.
     pub record: String,
 }
@@ -492,23 +615,33 @@ fn text_of(n: &Node) -> String {
     String::from_utf8_lossy(&out).into_owned()
 }
 
+/// What the stream says about the column record `col` (`{c2cf1953-...,{1,X,0,0}}`); `None` when it does not have the layout.
+pub fn read_column(col: &Node) -> Option<ColumnRead> {
+    let x = col.node(1)?.node(1)?;
+    let props = x.node(1)?;
+    let editor_pattern = props.node(39).and_then(|b| b.atom(0)).filter(|a| a.kind == AtomKind::Base64).and_then(|a| blob_pattern(&a.value));
+    Some(ColumnRead {
+        name: props.atom(30)?.value.clone(),
+        id: props.atom(5)?.value.parse().ok()?,
+        ordinal: props.atom(6)?.value.parse().ok()?,
+        data: text_of(x.node(2)?),
+        slots: props.len(),
+        check_data: text_of(x.node(3)?),
+        picture_data: text_of(x.node(4)?),
+        pattern: text_of(props.node(35)?),
+        editor_guid: props.atom(38).or_else(|| props.node(38).and_then(|n| n.atom(1)))?.value.clone(),
+        editor_pattern,
+        record: text_of(col),
+    })
+}
+
 /// `(value type, row source, columns)` of a table record; `None` when the record does not have the layout.
 pub fn read_table(info: &Node) -> Option<(String, String, Vec<ColumnRead>)> {
     let list = info.node(2)?.node(1)?.node(23)?;
     let count: usize = list.atom(0)?.value.parse().ok()?;
     let mut columns = Vec::new();
     for i in 1..=count {
-        let col = list.node(i)?;
-        let x = col.node(1)?.node(1)?;
-        let props = x.node(1)?;
-        columns.push(ColumnRead {
-            name: props.atom(30)?.value.clone(),
-            id: props.atom(5)?.value.parse().ok()?,
-            ordinal: props.atom(6)?.value.parse().ok()?,
-            data: text_of(x.node(2)?),
-            slots: props.len(),
-            record: text_of(col),
-        });
+        columns.push(read_column(list.node(i)?)?);
     }
     if list.len() != count + 1 {
         return None;
@@ -582,6 +715,53 @@ mod tests {
         assert!(text.ends_with("{1,0},0}"), "{text}");
         // the text is the one of the real blob (the compressed bytes may differ with the deflate implementation)
         assert_eq!(decode_blob(REAL_BLOB).expect("the real blob has a valid header and length prefix"), text);
+    }
+
+    #[test]
+    fn a_rewritten_blob_carries_the_length_of_its_new_text() {
+        let raw = base64::engine::general_purpose::STANDARD.decode(REAL_BLOB).unwrap();
+        // a longer and a shorter text: the u64 length prefix follows (a stale prefix makes the blob invalid)
+        for edit in [|t: &[u8]| Ok([t, b"\r\n".as_slice()].concat()), |t: &[u8]| Ok(t[..t.len() - 2].to_vec())] {
+            let out = rewrite_blob(&raw, edit).unwrap();
+            let text = decode_blob(&base64::engine::general_purpose::STANDARD.encode(&out)).expect("the length prefix is the length of the text");
+            assert_ne!(text, decode_blob(REAL_BLOB).unwrap());
+            assert_eq!(out[..18], raw[..18]);
+        }
+        assert!(rewrite_blob(&raw[..10], |t| Ok(t.to_vec())).is_err());
+    }
+
+    #[test]
+    fn the_pattern_of_a_real_blob_is_replaced_and_its_class_is_known() {
+        let text = decode_blob(REAL_BLOB).unwrap();
+        assert_eq!(blob_pattern(REAL_BLOB).as_deref(), Some(r#"{"Pattern",{"N",10,3,1}}"#));
+        assert_eq!(blob_class(REAL_BLOB), Some(EditorClass::Primitive));
+        let new = r#"{"Pattern",{"S",50,1}}"#;
+        let rebound = rebind_blob(REAL_BLOB, new).unwrap();
+        let now = decode_blob(&rebound).expect("the length prefix is the length of the new text");
+        assert_eq!(blob_pattern(&rebound).as_deref(), Some(new));
+        assert_eq!(blob_class(&rebound), Some(EditorClass::Primitive));
+        let flat = |t: &str| t.replace(['\r', '\n'], "");
+        assert_eq!(flat(&text).replacen(r#"{"Pattern",{"N",10,3,1}}"#, new, 1), flat(&now));
+        // the references keep the class of their kind
+        for (kind, type_id, real) in REAL_REF_BLOBS {
+            let name = REF_KINDS.iter().find(|(k, _)| *k == kind).map(|(_, n)| *n).unwrap();
+            assert_eq!(blob_class(real), Some(EditorClass::Ref(name)), "{kind:?}");
+            let pattern = format!(r##"{{"Pattern",{{"#",{type_id}}}}}"##);
+            assert_eq!(blob_pattern(real).as_deref(), Some(pattern.as_str()));
+        }
+        assert!(rebind_blob("AAAA", new).is_err());
+    }
+
+    #[test]
+    fn the_class_of_a_target_column_follows_its_type() {
+        let field = |pattern: &str, kind: Option<&str>| ColumnData::Field { uuid: "u".into(), ordinal: 0, pattern: pattern.into(), ref_kind: kind.map(str::to_string) };
+        assert_eq!(data_class(&field(r#"{"Pattern",{"S",10,1}}"#, None)), Some(EditorClass::Primitive));
+        assert_eq!(data_class(&field(r#"{"Pattern",{"D","D"}}"#, None)), Some(EditorClass::Primitive));
+        let one = r##"{"Pattern",{"#",44a01d39-c2b6-4751-85e6-06fdc2f23043}}"##;
+        assert_eq!(data_class(&field(one, Some("EnumRef"))), Some(EditorClass::Ref("EnumRef")));
+        assert_eq!(data_class(&field(one, None)), None);
+        assert_eq!(data_class(&ColumnData::RowNumber), None);
+        assert_eq!(data_step(&ColumnData::RowNumber), "{-2}");
     }
 
     #[test]

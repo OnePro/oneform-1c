@@ -3142,6 +3142,47 @@ mod object_binding {
 
 // ---------------------------------------------------------------- tables bound to tabular sections of the object
 
+/// The editor blob (base64) of the first column of the table `ТабличноеПоле1` (id 6) of a stream.
+fn first_column_blob(bytes: &[u8]) -> String {
+    let reparsed = parse_spanned(bytes).unwrap();
+    let index = ControlIndex::build(&reparsed).unwrap();
+    let info = index.get(6).unwrap().control.node.node(2).unwrap();
+    let props = info.node(2).unwrap().node(1).unwrap().node(23).unwrap().node(1).unwrap().node(1).unwrap().node(1).unwrap().node(1).unwrap();
+    props.node(39).unwrap().atom(0).unwrap().value.clone()
+}
+
+#[test]
+fn an_edited_column_event_keeps_a_valid_editor_blob() {
+    // the u64 length prefix of the blob is the length of the new inner text
+    let original = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+    assert!(oneform::ts_table::decode_blob(&first_column_blob(&original)).is_some(), "the platform blob has a valid length prefix");
+    let edited = replace_once(
+        &baseline("DonorForm"),
+        "<StartChoice id=\"2\">ТабличноеПоле1Колонка1НачалоВыбора</StartChoice>",
+        "<StartChoice id=\"2\">ОченьДлинныйНовыйОбработчикНачалаВыбораКолонкиТаблицы</StartChoice>",
+    );
+    let s = stream("DonorForm");
+    let pf = patch_form(&s, baseline("DonorForm").as_bytes(), edited.as_bytes()).unwrap();
+    assert_only_authorized_changes(s.source(), &pf);
+    let text = oneform::ts_table::decode_blob(&first_column_blob(&pf.bytes)).expect("the length prefix of the patched blob is wrong");
+    assert!(text.contains("ОченьДлинныйНовыйОбработчикНачалаВыбораКолонкиТаблицы"), "{text}");
+}
+
+#[test]
+fn the_pattern_of_an_editor_blob_is_replaced_and_everything_else_stays() {
+    let original = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+    let blob = first_column_blob(&original);
+    let pattern = "{\"Pattern\",{\"N\",15,2,0}}";
+    let rebound = oneform::ts_table::rebind_blob(&blob, pattern).unwrap();
+    assert_eq!(oneform::ts_table::blob_pattern(&rebound).as_deref(), Some(pattern));
+    let (was, now) = (oneform::ts_table::decode_blob(&blob).unwrap(), oneform::ts_table::decode_blob(&rebound).expect("valid length prefix"));
+    let old_pattern = oneform::ts_table::blob_pattern(&blob).unwrap();
+    let flat = |t: &str| t.replace(['\r', '\n'], "");
+    // the events and the parameters are in the text still: only the pattern differs
+    assert!(flat(&was).contains("ТабличноеПоле1Колонка1НачалоВыбора") && flat(&now).contains("ТабличноеПоле1Колонка1НачалоВыбора"));
+    assert_eq!(flat(&was).replacen(&old_pattern, pattern, 1), flat(&now));
+}
+
 mod tabular_binding {
     use super::*;
     use oneform::object_schema::{with_object_schema, ObjectSchema};
@@ -3515,5 +3556,296 @@ mod tabular_binding {
         let field = "<InputField name=\"Поле\" id=\"901\"><DataPath attributeId=\"1\">ОбработкаОбъект.Товары</DataPath><Left>520</Left><Top>500</Top><Width>120</Width><Height>20</Height><ZOrder>55</ZOrder><TabOrder>55</TabOrder></InputField>\n        ";
         let text = refusal(&with_table(field));
         assert!(text.contains("only a Table can be bound"), "{text}");
+    }
+    // ------------------------------------------------------------------ columns of an existing table
+
+    /// The stream with the table `Товары` (id 37) added and its `Form.xml` as `extract` shows it: the starting point
+    /// of the edits of an existing table.
+    struct Existing {
+        first: PatchedForm,
+        xml: String,
+        id: i64,
+    }
+
+    fn existing() -> Existing {
+        let first = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&good_columns()))));
+        let id = first.allocated[0].1;
+        let xml = decoded_xml(&first.bytes);
+        Existing { first, xml, id }
+    }
+
+    impl Existing {
+        fn try_patch(&self, edited: &str) -> Result<PatchedForm, ExtractionError> {
+            let s = parse_spanned(&self.first.bytes).unwrap();
+            with_object_schema(Some(schema()), || patch_form(&s, self.xml.as_bytes(), edited.as_bytes()))
+        }
+
+        /// Patches the stream; only the authorized ranges change and the pack verification of the result passes.
+        fn patch(&self, edited: &str) -> PatchedForm {
+            let pf = self.try_patch(edited).unwrap_or_else(|e| panic!("{e} {:?}", e.params));
+            assert_only_authorized_changes(&self.first.bytes, &pf);
+            self.verify_pack(edited, &pf);
+            pf
+        }
+
+        fn refusal(&self, edited: &str) -> String {
+            let e = self.try_patch(edited).expect_err("must be refused");
+            assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+            format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+        }
+
+        /// The staged-result check of `oneform pack`: the stream holds exactly the authorized changes and the
+        /// `Form.xml` decoded from it holds the requested edit.
+        fn verify_pack(&self, edited: &str, pf: &PatchedForm) {
+            let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+            let tree = |xml: &str| -> oneform::transaction::Tree {
+                [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), self.first.bytes.clone())].into_iter().collect()
+            };
+            let (current, existing) = (tree(&self.xml), tree(edited));
+            let lp = with_object_schema(Some(schema()), || oneform::pack::plan_layout_patch(&layout, &existing, &current)).unwrap().expect("a layout edit");
+            assert_eq!(lp.patched.bytes, pf.bytes);
+            let mut staged = tree(&decoded_xml(&pf.bytes));
+            staged.insert("FormStream.bin".to_string(), pf.bytes.clone());
+            lp.verify_staged(&staged).unwrap_or_else(|e| panic!("{e} {:?}", e.params));
+        }
+
+        fn columns(&self, pf: &PatchedForm) -> Vec<oneform::ts_table::ColumnRead> {
+            read_table(&table_info(&pf.bytes, self.id)).unwrap().2
+        }
+    }
+
+    /// The `DataPath` of the column `column` set to `field` of the section `Товары`.
+    fn rebound(xml: &str, column: &str, path: &str) -> String {
+        let start = xml.find(&format!("<Column name=\"{column}\"")).expect("the column");
+        let from = start + xml[start..].find("<DataPath attributeId=\"1\">").unwrap() + "<DataPath attributeId=\"1\">".len();
+        let to = from + xml[from..].find("</DataPath>").unwrap();
+        format!("{}{path}{}", &xml[..from], &xml[to..])
+    }
+
+    /// The text of the `<Column>` element named `column` (the whole lines).
+    fn column_block(xml: &str, column: &str) -> (usize, usize) {
+        let at = xml.find(&format!("<Column name=\"{column}\"")).expect("the column");
+        let start = xml[..at].rfind('\n').map_or(0, |i| i + 1);
+        let end = at + xml[at..].find("</Column>").unwrap() + "</Column>".len();
+        let end = end + xml[end..].find('\n').map_or(0, |i| i + 1);
+        (start, end)
+    }
+
+    fn without_column(xml: &str, column: &str) -> String {
+        let (start, end) = column_block(xml, column);
+        format!("{}{}", &xml[..start], &xml[end..])
+    }
+
+    fn with_column_after(xml: &str, column: Option<&str>, block: &str) -> String {
+        let at = match column {
+            Some(c) => column_block(xml, c).1,
+            None => {
+                let table = xml.find("<Table name=\"Товары\"").expect("the table");
+                table + xml[table..].find("<Columns>").unwrap() + "<Columns>".len() + 1
+            }
+        };
+        format!("{}{block}{}", &xml[..at], &xml[at..])
+    }
+
+    fn new_column(name: &str, id: i64, field: &str, extra: &str) -> String {
+        col(name, id, &format!("ОбработкаОбъект.Товары.{field}"), extra)
+    }
+
+    fn step_props(c: &oneform::ts_table::ColumnRead) -> (String, i64, String, Option<String>) {
+        (c.data.clone(), c.ordinal, c.pattern.clone(), c.editor_pattern.clone())
+    }
+
+    #[test]
+    fn a_column_is_rebound_to_a_column_of_the_same_kind() {
+        let e = existing();
+        let before = e.columns(&e.first);
+        // Наименование (String 20) -> Комментарий (String 50)
+        let edited = rebound(&e.xml, "Наименование", "ОбработкаОбъект.Товары.Комментарий");
+        let pf = e.patch(&edited);
+        // data step, ordinal, pattern and the pattern inside the editor: nothing else
+        assert_eq!(pf.replacements.len(), 4);
+        let after = e.columns(&pf);
+        assert_eq!(after.len(), 4);
+        let (d, s50) = (format!("{{0,{NOTE}}}"), "{\"Pattern\",{\"S\",50,1}}".to_string());
+        assert_eq!(step_props(&after[1]), (d, 2, s50.clone(), Some(s50)));
+        for i in [0, 2, 3] {
+            assert_eq!(after[i].record, before[i].record, "column {i} is untouched");
+        }
+        assert_eq!((after[1].id, after[1].name.as_str(), after[1].slots), (1, "Наименование", 46));
+        // the editor blob is a valid one: the length prefix is the length of the new text
+        let info = table_info(&pf.bytes, e.id);
+        let blob = info.node(2).unwrap().node(1).unwrap().node(23).unwrap().node(2).unwrap().node(1).unwrap().node(1).unwrap().node(1).unwrap().node(39).unwrap().atom(0).unwrap().value.clone();
+        assert!(oneform::ts_table::decode_blob(&blob).is_some(), "the length prefix of the editor blob is wrong");
+        // `extract` shows the new DataPath
+        let xml = decoded_xml(&pf.bytes);
+        let at = xml.find("<Column name=\"Наименование\"").unwrap();
+        assert!(xml[at..at + 200].contains("<DataPath attributeId=\"1\">ОбработкаОбъект.Товары.Комментарий</DataPath>"), "{}", &xml[at..at + 200]);
+        // the stale <ValueType> of the stub is tolerated: the column is rebound and the stub follows its field
+        assert!(xml[at..].contains("length=\"50\""));
+    }
+
+    #[test]
+    fn a_column_is_rebound_to_a_column_of_another_primitive_type() {
+        let e = existing();
+        let before = e.columns(&e.first);
+        let mut edited = rebound(&e.xml, "Наименование", "ОбработкаОбъект.Товары.Количество");
+        // the user may update the value type of the stub as well
+        edited = edited.replacen("<ValueType kind=\"String\" composite=\"false\" length=\"20\"/>", "<ValueType kind=\"Number\" composite=\"false\" digits=\"15\" fractionDigits=\"2\"/>", 1);
+        let pf = e.patch(&edited);
+        let after = e.columns(&pf);
+        let (d, n) = (format!("{{0,{QTY}}}"), "{\"Pattern\",{\"N\",15,2,0}}".to_string());
+        assert_eq!(step_props(&after[1]), (d.clone(), 1, n.clone(), Some(n.clone())));
+        assert_eq!(after[0].record, before[0].record);
+        // a read-only column has no editor: three pieces
+        let edited = rebound(&e.xml, "Комментарий", "ОбработкаОбъект.Товары.Количество");
+        let pf = e.patch(&edited);
+        assert_eq!(pf.replacements.len(), 3);
+        let after = e.columns(&pf);
+        assert_eq!((after[3].data.clone(), after[3].ordinal, after[3].pattern.clone(), after[3].slots, after[3].editor_pattern.clone()), (d, 1, n, 45, None));
+    }
+
+    #[test]
+    fn a_column_is_added_in_the_middle_removed_and_both() {
+        let e = existing();
+        let before = e.columns(&e.first);
+        // add: an editable reference column after Наименование, a free id
+        let block = new_column("Ссылка", 9, "Ссылка", "");
+        let edited = with_column_after(&e.xml, Some("Наименование"), &block);
+        let pf = e.patch(&edited);
+        assert_eq!(pf.replacements.len(), 1, "the list is one replacement");
+        let after = e.columns(&pf);
+        assert_eq!(after.iter().map(|c| (c.name.as_str(), c.id)).collect::<Vec<_>>(), [("НомерСтроки", 0), ("Наименование", 1), ("Ссылка", 9), ("Количество", 2), ("Комментарий", 7)]);
+        for (got, was) in [(0, 0), (1, 1), (3, 2), (4, 3)] {
+            assert_eq!(after[got].record, before[was].record, "column {got} keeps its bytes");
+        }
+        assert_eq!((after[2].slots, after[2].ordinal, after[2].data.clone()), (46, 5, format!("{{0,{ITEM}}}")));
+        assert_eq!(after[2].pattern, format!("{{\"Pattern\",{{\"#\",{ITEM_TYPE}}}}}"));
+        let xml = decoded_xml(&pf.bytes);
+        assert!(xml.contains("<Column name=\"Ссылка\" id=\"9\">"), "{xml}");
+        assert!(xml.find("name=\"Ссылка\"").unwrap() < xml.find("name=\"Количество\"").unwrap());
+
+        // add at the start and as a read-only НомерСтроки-less field; the XML may carry a <ValueType>
+        let block = new_column("Первая", 3, "Количество", "<ReadOnly>true</ReadOnly><ValueType kind=\"Number\" composite=\"false\" digits=\"15\" fractionDigits=\"2\"/>");
+        let pf = e.patch(&with_column_after(&e.xml, None, &block));
+        let after = e.columns(&pf);
+        assert_eq!((after[0].name.as_str(), after[0].id, after[0].slots), ("Первая", 3, 45));
+        assert_eq!(after[1].record, before[0].record);
+
+        // remove: the others keep their bytes and ids
+        let pf = e.patch(&without_column(&e.xml, "Количество"));
+        let after = e.columns(&pf);
+        assert_eq!(after.iter().map(|c| (c.name.as_str(), c.id)).collect::<Vec<_>>(), [("НомерСтроки", 0), ("Наименование", 1), ("Комментарий", 7)]);
+        assert_eq!(after.iter().map(|c| c.record.clone()).collect::<Vec<_>>(), [0, 1, 3].iter().map(|i| before[*i].record.clone()).collect::<Vec<_>>());
+        let xml = decoded_xml(&pf.bytes);
+        assert!(!xml.contains("name=\"Количество\""));
+
+        // remove the first and the last, add one: all in one list
+        let edited = without_column(&without_column(&e.xml, "НомерСтроки"), "Комментарий");
+        let edited = with_column_after(&edited, Some("Количество"), &new_column("Свободная", 2, "Комментарий", ""));
+        let pf = e.try_patch(&edited);
+        // id 2 is the column Количество: this is a changed column and not a new one
+        assert!(pf.is_err());
+        let edited = without_column(&without_column(&e.xml, "НомерСтроки"), "Комментарий");
+        let edited = with_column_after(&edited, Some("Количество"), &new_column("Свободная", 5, "Комментарий", ""));
+        let pf = e.patch(&edited);
+        let after = e.columns(&pf);
+        assert_eq!(after.iter().map(|c| (c.name.as_str(), c.id)).collect::<Vec<_>>(), [("Наименование", 1), ("Количество", 2), ("Свободная", 5)]);
+        assert_eq!(after[0].record, before[1].record);
+
+        // the order of the columns is the order of the XML
+        let moved = without_column(&e.xml, "Комментарий");
+        let kept = column_block(&e.xml, "Комментарий");
+        let moved = with_column_after(&moved, None, &e.xml[kept.0..kept.1]);
+        let pf = e.patch(&moved);
+        let after = e.columns(&pf);
+        assert_eq!(after.iter().map(|c| c.id).collect::<Vec<_>>(), [7, 0, 1, 2]);
+        assert_eq!(after[0].record, before[3].record);
+    }
+
+    #[test]
+    fn added_and_removed_columns_read_back_like_the_added_table_ones() {
+        let e = existing();
+        let fresh = e.patch(&with_column_after(&e.xml, Some("Количество"), &new_column("Вид", 4, "Вид", "<Editor>InputField</Editor>")));
+        let cols = e.columns(&fresh);
+        // the same record the table builder makes for an added table with this column
+        let columns = [good_columns(), new_column("Вид", 4, "Вид", "<Editor>InputField</Editor>")].concat();
+        let reference = patch_with(&with_table(&table("Товары", 900, "ОбработкаОбъект.Товары", Some(&columns))));
+        let (_, _, built) = read_table(&table_info(&reference.bytes, reference.allocated[0].1)).unwrap();
+        assert_eq!(cols[3].record, built[4].record);
+    }
+
+    #[test]
+    fn column_edits_that_cannot_be_written_are_refused_with_the_reason() {
+        let e = existing();
+        let goods = |f: &str| format!("ОбработкаОбъект.Товары.{f}");
+        let cases: Vec<(String, &str)> = vec![
+            // shape changes
+            (rebound(&e.xml, "Наименование", &goods("НомерСтроки")), "НомерСтроки"),
+            (rebound(&e.xml, "НомерСтроки", &goods("Наименование")), "НомерСтроки cannot be rebound"),
+            (rebound(&e.xml, "Наименование", &goods("Флаг")), "Boolean"),
+            // the editor of a reference differs from the editor of a string
+            (rebound(&e.xml, "Наименование", &goods("Ссылка")), "does not fit"),
+            // another section, unknown and not resolvable columns
+            (rebound(&e.xml, "Наименование", "ОбработкаОбъект.Контакты.Значение"), "belongs to the tabular section 'Контакты'"),
+            (rebound(&e.xml, "Наименование", &goods("Нет")), "does not exist"),
+            (rebound(&e.xml, "Наименование", &goods("Чужая")), "not known"),
+            (rebound(&e.xml, "Наименование", &goods("Свободный")), "unlimited"),
+            (rebound(&e.xml, "Наименование", "Другой.Товары.Комментарий"), "starts with 'Другой'"),
+            // a prefix that changes alone is not ignored
+            (rebound(&e.xml, "Количество", "ОбработкаОбъект.Контакты.Количество"), "belongs to the tabular section 'Контакты'"),
+            // new columns
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "Нет", "")), "does not exist"),
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "Флаг", "")), "Boolean"),
+            (with_column_after(&e.xml, None, &col("Н", 9, "ОбработкаОбъект.Контакты.Значение", "")), "belongs to the tabular section 'Контакты'"),
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "Комментарий", "<Events><OnChange id=\"2147483647\">Изм</OnChange></Events>")), "<Events>"),
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "Комментарий", "<FooterText><Item language=\"ru\">Итог</Item></FooterText>")), "<FooterText>"),
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "НомерСтроки", "")), "НомерСтроки is read-only"),
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "Комментарий", "<Editor>CheckBox</Editor>")), "CheckBox"),
+            (with_column_after(&e.xml, None, &new_column("Н", 9, "Комментарий", "<Foo/>")), "<Foo>"),
+            (with_column_after(&e.xml, None, &new_column("Н", -1, "Комментарий", "")), "negative"),
+            (with_column_after(&with_column_after(&e.xml, None, &new_column("Н", 9, "Комментарий", "")), None, &new_column("М", 9, "Комментарий", "")), "used by two columns"),
+            // rebinding and adding in one run
+            (
+                with_column_after(&rebound(&e.xml, "Наименование", &goods("Комментарий")), None, &new_column("Н", 9, "Комментарий", "")),
+                "edit columns in two steps",
+            ),
+            (with_column_after(&without_column(&e.xml, "Комментарий"), None, &new_column("Н", 9, "Комментарий", "")).replacen("name=\"Количество\" id=\"2\"", "name=\"Кол\" id=\"2\"", 1), "edit columns in two steps"),
+        ];
+        for (edited, why) in cases {
+            let text = e.refusal(&edited);
+            assert!(text.contains(why), "{why}: {text}");
+        }
+    }
+
+    #[test]
+    fn other_column_edits_of_a_section_table_need_no_object_metadata() {
+        let e = existing();
+        let (start, end) = column_block(&e.xml, "Количество");
+        let block = e.xml[start..end].replacen("<Item language=\"ru\">Количество</Item>", "<Item language=\"ru\">Кол-во</Item>", 1);
+        let edited = format!("{}{block}{}", &e.xml[..start], &e.xml[end..]);
+        let s = parse_spanned(&e.first.bytes).unwrap();
+        let pf = patch_form(&s, e.xml.as_bytes(), edited.as_bytes()).unwrap();
+        assert_only_authorized_changes(&e.first.bytes, &pf);
+        assert_eq!(pf.replacements.len(), 1);
+        // a rebinding does need them
+        let edited = rebound(&e.xml, "Наименование", "ОбработкаОбъект.Товары.Комментарий");
+        assert!(patch_form(&s, e.xml.as_bytes(), edited.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn columns_of_other_tables_cannot_be_added_or_removed() {
+        // the value-table table of the donor form: its columns are bound by name, not to a section
+        let base = baseline("DonorForm");
+        let s = stream("DonorForm");
+        let edited = base.replacen("</Columns>", "<Column name=\"Колонка3\" id=\"7\"><Header><Item language=\"ru\">К3</Item></Header><Width>90</Width></Column></Columns>", 1);
+        assert_ne!(edited, base);
+        let err = with_object_schema(Some(schema()), || plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply())).expect_err("must be refused");
+        assert_eq!(err.code, GENERATED_FILE_MODIFIED, "{err}");
+        // remove the first column of the value table
+        let start = base.find("<Column name=\"Колонка1\"").unwrap();
+        let end = start + base[start..].find("</Column>").unwrap() + "</Column>".len();
+        let edited = format!("{}{}", &base[..start], &base[end..]);
+        let err = with_object_schema(Some(schema()), || plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply())).expect_err("must be refused");
+        assert_eq!(err.code, GENERATED_FILE_MODIFIED, "{err}");
     }
 }

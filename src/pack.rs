@@ -191,6 +191,22 @@ impl LayoutPatch {
                 }
             }
         }
+        // The columns of a table bound to a tabular section that the edit adds or rebinds decode with the
+        // `<ValueType>` of their field, which the requested stub does not carry: those stubs are not compared
+        // (the stream is read back column by column when it is patched).
+        if let Ok(d) = diff_forms_mode(&self.baseline, &self.requested, true) {
+            for e in d.edits.iter().filter(|e| e.changed.contains(&crate::form_patch::Property::Columns)) {
+                let Some(skip) = crate::form_patch::changed_column_ids(&e.old.columns, &e.new.columns) else { continue };
+                if !expected.control(e.id).is_some_and(crate::form_patch::is_section_table) {
+                    continue;
+                }
+                for list in [&mut expected.controls, &mut decoded.controls] {
+                    if let Some(c) = list.iter_mut().find(|c| c.id == e.id) {
+                        c.rest = crate::form_patch::neutral_column_stubs(&c.rest, &c.values.columns, &skip);
+                    }
+                }
+            }
+        }
         // The edges of surviving controls that were attached to a removed control are re-anchored by the patch
         // (they keep their absolute position, the rectangle is still compared): they decode differently from the
         // baseline by design. Such an edge must not point to a removed control any more; its new value is not
