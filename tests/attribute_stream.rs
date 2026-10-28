@@ -109,3 +109,60 @@ fn the_check_rejects_the_streams_that_the_platform_refuses() {
     let issues = stream_attribute_issues(t.replacen("{26,", "{29,", 1).as_bytes());
     assert!(issues.iter().any(|m| m.contains("unknown stream version")), "{issues:?}");
 }
+
+// ---- controls added to forms of older stream versions (OpenSpec controls-in-older-stream-versions)
+
+fn with_controls(name: &str, attribute: bool, controls: &str) -> Result<Vec<u8>, oneform::errors::ExtractionError> {
+    let source = stream(name);
+    let s = parse_spanned(&source).unwrap();
+    let base = baseline(name);
+    let mut edited = base.clone();
+    if attribute {
+        edited = edited.replacen("  </Attributes>", NEW_ATTRIBUTE, 1);
+    }
+    let at = edited.rfind("  </ChildItems>").unwrap();
+    edited.insert_str(at, controls);
+    patch_form(&s, base.as_bytes(), edited.as_bytes()).map(|p| p.bytes)
+}
+
+const GEO: &str = "<Left>420</Left><Top>5</Top><Width>120</Width><Height>19</Height><ZOrder>90</ZOrder><TabOrder>90</TabOrder>";
+
+#[test]
+fn a_field_bound_to_a_new_string_attribute_repeats_the_pattern_of_the_attribute() {
+    // the field of a version 26 form crashed the platform when its own pattern was `{"S",100,0}` and the attribute's `{"S",100,1}`
+    let field = format!("    <InputField name=\"PoleX\" id=\"9001\"><DataPath attributeId=\"200\">Nov</DataPath>{GEO}</InputField>\n");
+    let t = text(&with_controls("AbcShapeForm", true, &field).unwrap());
+    assert!(t.contains("{9,{\"Pattern\",{\"S\",100,1}}"), "{t}");
+    assert!(!t.contains("{\"S\",100,0}"), "{t}");
+    assert!(t.contains("{{200},0,0,\"Nov\",{\"Pattern\",{\"S\",100,1}}}"));
+}
+
+#[test]
+fn the_verified_kinds_are_added_to_a_version_26_form() {
+    let label = format!("    <LabelDecoration name=\"NadpisX\" id=\"9002\"><Caption><Item language=\"ru\">T</Item></Caption>{GEO}</LabelDecoration>\n");
+    let check = format!("    <CheckBox name=\"FlagX\" id=\"9003\"><Caption><Item language=\"ru\">F</Item></Caption>{GEO}</CheckBox>\n");
+    let button = format!("    <Button name=\"KnopkaX\" id=\"9004\"><Caption><Item language=\"ru\">B</Item></Caption>{GEO}</Button>\n");
+    for xml in [label, check, button] {
+        assert!(with_controls("AbcShapeForm", false, &xml).is_ok(), "{xml}");
+    }
+}
+
+#[test]
+fn an_unverified_kind_is_refused_in_a_version_26_form() {
+    let table = format!("    <Table name=\"TablX\" id=\"9005\">{GEO}</Table>\n");
+    let e = with_controls("AbcShapeForm", false, &table).expect_err("refused");
+    assert_eq!(e.params["kind"].as_str(), Some("unsupported-stream-version"), "{e}");
+    assert!(e.to_string().contains("adding Table to forms of stream version 26 is not supported"), "{e}");
+    // a verified kind next to it does not help
+    let both = format!("    <LabelDecoration name=\"NadpisX\" id=\"9002\">{GEO}</LabelDecoration>\n{table}");
+    assert!(with_controls("AbcShapeForm", false, &both).is_err());
+}
+
+#[test]
+fn every_kind_is_still_added_to_a_version_27_form() {
+    let table = format!("    <Table name=\"TablX\" id=\"9005\">{GEO}</Table>\n");
+    let result = with_controls("MailGroupForm", false, &table);
+    if let Err(e) = result {
+        assert_ne!(e.params["kind"].as_str(), Some("unsupported-stream-version"), "{e}");
+    }
+}

@@ -5500,8 +5500,43 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     binding_defaults::apply(&mut edited, &baseline);
     apply_value_table_defaults(&mut edited, &baseline);
     let diff = diff_forms_mode(&baseline, &edited, true)?;
+    check_stream_version_additions(source, &diff, &edited)?;
     check_object_bindings(&diff, &baseline, &edited)?;
     Ok(FormPatchPlan { source, index, diff, edited })
+}
+
+/// Control kinds that were added to a form of the stream version in a live platform and showed the expected properties
+/// (see `docs/evidence/controls-in-older-stream-versions.md`). The donor prototypes come from version 27 forms; the
+/// records of older streams are shorter (the version 27 ones carry extra trailing elements), so every other kind is
+/// refused in them. Version 27 takes all kinds.
+const OLDER_VERSION_ADDABLE: [&str; 4] = ["LabelDecoration", "InputField", "CheckBox", "Button"];
+const OLDER_VERSIONS: [i64; 2] = [25, 26];
+
+fn check_stream_version_additions(source: &SpannedMetadata, diff: &FormDiff, edited: &FormXml) -> Result<()> {
+    let version = match source.root.children.first() {
+        Some(Item::Atom(a)) => a.value.trim().parse::<i64>().ok(),
+        _ => None,
+    };
+    let mut problems: Vec<Problem> = Vec::new();
+    for c in &diff.additions {
+        let ok = match version {
+            Some(27) => true,
+            Some(v) => OLDER_VERSIONS.contains(&v) && OLDER_VERSION_ADDABLE.contains(&c.type_name.as_str()),
+            None => false,
+        };
+        if !ok {
+            let v = version.map_or_else(|| "unknown".to_string(), |v| v.to_string());
+            problems.push(problem(
+                "unsupported-stream-version",
+                format!("line {}: {}: adding {} to forms of stream version {v} is not supported", c.line, c.describe(), c.type_name),
+            ));
+        }
+    }
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(fail(&edited.name, &edited.label, problems))
+    }
 }
 
 /// What a link of `root[2][3]` holds after the attribute id.

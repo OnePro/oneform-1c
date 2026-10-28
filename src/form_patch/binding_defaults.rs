@@ -53,7 +53,8 @@ fn form_attribute_type(a: &FormAttribute) -> Option<ValueTypeSpec> {
         digits: a.digits,
         length: a.length,
         non_negative: a.non_negative,
-        fixed: false,
+        // the pattern of the field repeats the one of the attribute, `{"S",length,1}` included
+        fixed: a.fixed,
         ref_guids: a.ref_guids.clone(),
         lossy: false,
     })
