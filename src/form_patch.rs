@@ -31,7 +31,7 @@ use std::sync::Arc;
 use serde_json::Value;
 
 mod cb_edit;
-pub use cb_edit::{module_declares, new_handlers};
+pub use cb_edit::{added_handlers, module_declares, new_handlers};
 
 use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
 use crate::errors::{ExtractionError, Result, FORM_EDIT_REJECTED, METADATA_LAYOUT_UNSUPPORTED};
@@ -2608,8 +2608,19 @@ impl FormXml {
         let lookup = |id: i64| map.iter().find(|(from, _)| *from == id).map(|(_, to)| *to).unwrap_or(id);
         for c in &mut out.controls {
             let new_id = lookup(c.id);
-            if map.iter().any(|(from, _)| *from == c.id) && c.type_name == "Panel" && c.values.show_tabs.is_none() {
+            let added = map.iter().any(|(from, _)| *from == c.id);
+            if added && c.type_name == "Panel" && c.values.show_tabs.is_none() {
                 c.values.show_tabs = Some(1); // the default of an added panel
+            }
+            if added {
+                // an edge of an added control may name the control itself (the bottom panel anchors to its own id) or a new
+                // sibling by the request id: the patched stream holds the allocated id
+                if let Some(a) = &mut c.values.anchors {
+                    let edges = [&mut a.top, &mut a.bottom, &mut a.left, &mut a.right];
+                    for e in edges.into_iter().chain(a.alt.iter_mut()).flatten() {
+                        e.target = lookup(e.target);
+                    }
+                }
             }
             c.id = new_id;
             c.rest.attrs.insert("id".into(), new_id.to_string());
@@ -7609,6 +7620,9 @@ pub fn verify_preserved(original: &[u8], patched: &[u8], replacements: &[Applied
     Ok(())
 }
 
+/// The buttons of command bars as the patched stream decodes them, by panel id.
+type ButtonLists = Vec<(i64, Vec<CommandBarButton>)>;
+
 /// A planned replacement before it is attributed to a control.
 struct Piece {
     range: Span,
@@ -11321,6 +11335,69 @@ impl FormPatchPlan<'_> {
         Ok(allocated)
     }
 
+    /// Applies `edits` (the authorized replacements) and fills the button table of every added `CommandBar` that
+    /// requests buttons: the panel is cloned empty from the donor, so its table is built on the patched stream with the
+    /// builder of the existing panels and spliced into the replacement that inserts the panel. Returns the stream
+    /// and the buttons the added panels decode to (their allocated ids), keyed by the allocated panel id.
+    fn fill_added_command_bars(
+        &self,
+        replacements: &mut [AppliedReplacement],
+        edits: Vec<Replacement>,
+        allocated: &[(i64, i64)],
+    ) -> Result<(Vec<u8>, ButtonLists)> {
+        let mut bytes = self.source.apply(&edits)?;
+        let mut lists = Vec::new();
+        for (c, (_, new_id)) in self.diff.additions.iter().zip(allocated) {
+            if c.type_name != "CommandBar" || c.values.buttons.is_empty() {
+                continue;
+            }
+            let spanned = parse_spanned(&bytes)?;
+            let index = ControlIndex::build(&spanned)?;
+            let entry = index.get(*new_id).ok_or_else(|| layout_err(format!("added command bar '{}' not found in the patched stream", c.name)))?;
+            let edit = ControlEdit {
+                id: *new_id,
+                name: c.name.clone(),
+                type_name: c.type_name.clone(),
+                old: ControlValues { buttons: Vec::new(), ..c.values.clone() },
+                new: c.values.clone(),
+                changed: vec![Property::Buttons],
+                form_class: crate::cb_standard::form_class(&self.edited.main_attribute),
+            };
+            let site = Site { source: &spanned, edit: &edit, entry };
+            let (piece, resolved) = cb_edit::patch_added(&site)?;
+            let mut delta = 0i64;
+            let mut spliced = false;
+            for r in replacements.iter_mut() {
+                let start = (r.range.start as i64 + delta) as usize;
+                let end = start + r.bytes.len();
+                delta += r.bytes.len() as i64 - (r.range.end - r.range.start) as i64;
+                if start <= piece.range.start && piece.range.end <= end {
+                    let (lo, hi) = (piece.range.start - start, piece.range.end - start);
+                    r.bytes.splice(lo..hi, piece.bytes.iter().copied());
+                    spliced = true;
+                    break;
+                }
+            }
+            if !spliced {
+                return Err(layout_err(format!("added command bar '{}': its button table lies outside the inserted record", c.name)));
+            }
+            let edits: Vec<Replacement> = replacements.iter().map(|r| Replacement { range: r.range, bytes: r.bytes.clone() }).collect();
+            bytes = self.source.apply(&edits)?;
+            let after = parse_spanned(&bytes)?;
+            let after_index = ControlIndex::build(&after)?;
+            let patched = after_index.get(*new_id).ok_or_else(|| layout_err("added command bar vanished"))?;
+            let patched_site = Site { source: &after, edit: &edit, entry: patched };
+            cb_edit::verify(&patched_site, &site, &resolved)?;
+            let want = buttons_without_extras(&resolved);
+            let got_ok = patched.info().is_some_and(|i| read_cb_buttons(i.node) == want) && cb_extras_match(&patched_site, &resolved)?;
+            if !got_ok {
+                return Err(patched_site.layout("verification-failed", "Buttons", "the patched stream does not hold the requested buttons".into()));
+            }
+            lists.push((*new_id, resolved));
+        }
+        Ok((bytes, lists))
+    }
+
     /// After structural patching: additions are present with the requested values, deletions are gone.
     fn verify_structural(&self, index: &ControlIndex, allocated: &[(i64, i64)]) -> Result<()> {
         // stored checks are recomputed by structural_pieces; keep the signature small by re-deriving
@@ -11476,7 +11553,7 @@ impl FormPatchPlan<'_> {
         let allocated = self.structural_pieces(&mut replacements)?;
         replacements.sort_by_key(|r| (r.range.start, r.range.end));
         let edits: Vec<Replacement> = replacements.iter().map(|r| Replacement { range: r.range, bytes: r.bytes.clone() }).collect();
-        let bytes = self.source.apply(&edits)?;
+        let (bytes, added_buttons) = self.fill_added_command_bars(&mut replacements, edits, &allocated)?;
         verify_preserved(self.source.source(), &bytes, &replacements)?;
         if let Some(at) = empty_list_item(&bytes) {
             return Err(ExtractionError::new(
@@ -11544,7 +11621,7 @@ impl FormPatchPlan<'_> {
             self.verify_form_props(&index)?;
         }
         let mut derived_pages = Vec::new();
-        let mut button_lists = Vec::new();
+        let mut button_lists = added_buttons;
         if self.diff.form_size_changed {
             let (Some(new_w), Some(new_h)) = self.diff.new_form_size else {
                 return Err(layout_err("form stream: new form size missing"));

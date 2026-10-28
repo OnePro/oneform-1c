@@ -228,3 +228,62 @@ pub fn container_warnings(diff: &FormDiff, edited_xml: &str) -> Vec<String> {
     }
     out
 }
+
+/// Children of the pages of an existing panel whose `ShowTabs` the edit switches (None <-> Top) that no longer fit the new
+/// page area: the platform recomputes the pages (`W-2 x H-20` with tabs, `W x H` without) and leaves the children as
+/// they are.
+pub fn tabs_warnings(diff: &FormDiff, edited: &FormXml) -> Vec<String> {
+    let mut out = Vec::new();
+    for e in &diff.edits {
+        if e.type_name != "Panel" || !e.changed.contains(&Property::ShowTabs) {
+            continue;
+        }
+        let (dw, dh) = match (e.old.show_tabs, e.new.show_tabs) {
+            (Some(0), Some(1)) => (-2, -20),
+            (Some(1), Some(0)) => (2, 20),
+            _ => continue,
+        };
+        let (dw, dh) = (dw + e.new.width - e.old.width, dh + e.new.height - e.old.height);
+        let Some(panel) = edited.control(e.id) else { continue };
+        let size = |p: &crate::form_patch::XmlElement, tag: &str| -> Option<i64> {
+            p.children.iter().find(|c| c.tag == tag)?.text.trim().parse().ok()
+        };
+        for items in panel.rest.children.iter().filter(|c| c.tag == "ChildItems") {
+            for page in items.children.iter().filter(|c| c.tag == "Page") {
+                let (Some(name), Some(pw), Some(ph)) = (page.attrs.get("name"), size(page, "Width"), size(page, "Height")) else { continue };
+                let (nw, nh) = (pw + dw, ph + dh);
+                let mut beyond = Vec::new();
+                for c in edited.controls.iter().filter(|c| c.parent == Some(e.id) && c.page.as_deref() == Some(name.as_str())) {
+                    let v = &c.values;
+                    if !v.visible {
+                        continue;
+                    }
+                    let (right, bottom) = (v.left + v.width, v.top + v.height);
+                    let (was_right, was_bottom) = (right > pw, bottom > ph);
+                    let mut why = Vec::new();
+                    if right > nw && !was_right {
+                        why.push(format!("right edge {right} > width {nw}"));
+                    }
+                    if bottom > nh && !was_bottom {
+                        why.push(format!("bottom edge {bottom} > height {nh}"));
+                    }
+                    if !why.is_empty() {
+                        beyond.push(format!("'{}' ({})", c.name, why.join(", ")));
+                    }
+                }
+                if beyond.is_empty() {
+                    continue;
+                }
+                let more = beyond.len().saturating_sub(MAX_LINES);
+                beyond.truncate(MAX_LINES);
+                let tail = if more > 0 { format!(", +{more} more") } else { String::new() };
+                out.push(format!(
+                    "panel '{}': ShowTabs changes the page '{name}' from {pw}x{ph} to {nw}x{nh}; controls beyond the new page area: {}{tail}; enlarge the panel by 2 x 20 px (the tab strip) or move and shrink these controls",
+                    e.name,
+                    beyond.join(", ")
+                ));
+            }
+        }
+    }
+    out
+}

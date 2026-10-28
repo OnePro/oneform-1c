@@ -140,6 +140,16 @@ fn handler_warnings(plan: &crate::form_patch::FormPatchPlan, existing: &Tree, xm
             }
         }
     }
+    for added in plan.diff.additions.iter().filter(|c| c.type_name == "CommandBar") {
+        for (button, proc) in crate::form_patch::added_handlers(&added.values.buttons) {
+            if !crate::form_patch::module_declares(&text, &proc) {
+                out.push(format!(
+                    "  warning {xml_path}: button '{button}' of '{}' calls the procedure '{proc}', which {module_path} does not declare",
+                    added.name
+                ));
+            }
+        }
+    }
     out
 }
 
@@ -156,6 +166,7 @@ fn layout_warnings(plan: &crate::form_patch::FormPatchPlan, existing: &Tree, xml
         out.extend(crate::layout_warnings::module_warnings(&plan.diff, &plan.edited, "FormModule.bsl", &text, true));
     }
     out.extend(crate::form_patch::unresolved_type_warnings(&plan.diff));
+    out.extend(crate::layout_warnings::tabs_warnings(&plan.diff, &plan.edited));
     if let Some(bytes) = existing.get(xml_path) {
         let text = String::from_utf8_lossy(bytes.strip_prefix(&UTF8_BOM[..]).unwrap_or(bytes));
         out.extend(crate::layout_warnings::container_warnings(&plan.diff, &text));

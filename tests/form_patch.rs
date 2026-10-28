@@ -6371,6 +6371,36 @@ mod panel_pages {
         }
     }
 
+    /// The warnings of a ShowTabs toggle of panel `id` (with the new size, when given): the request is planned, not packed.
+    fn tabs_warnings_of(id: i64, from: i64, to: i64, size: Option<(i64, i64)>) -> Vec<String> {
+        let name = "DonorForm";
+        let s = tweak_panel(name, id, |_, p, base| vec![set(p.atom(base + 1).unwrap().1, &from.to_string())]);
+        let base = decode_xml(name, s.source());
+        let mut edited = edit_ctl(&base, panel_name(id), &[(&show_tabs_tag(from), &show_tabs_tag(to))]);
+        if let Some((w, h)) = size {
+            edited = resized_panel(&edited, id, [None, None, Some(w), Some(h)]);
+        }
+        let plan = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).unwrap();
+        oneform::layout_warnings::tabs_warnings(&plan.diff, &plan.edited)
+    }
+
+    #[test]
+    fn show_tabs_on_warns_about_the_children_that_no_longer_fit_the_pages() {
+        // pages of 276x134: with tabs the area is 274x114 and the table (bottom edge 128) no longer fits
+        let w = tabs_warnings_of(PANEL1, 0, 1, None);
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].starts_with("panel 'Панель1': ShowTabs changes the page 'Страница2' from 276x134 to 274x114;"), "{w:?}");
+        assert!(w[0].contains("'ТабличноеПоле2' (bottom edge 128 > height 114)"), "{w:?}");
+        // 1 -> 0 enlarges the pages: nothing to warn about
+        assert_eq!(tabs_warnings_of(PANEL1, 1, 0, None), Vec::<String>::new());
+        // a smaller panel in the same pack: the area is 174x50 and the table (right edge 270, bottom 128) does not fit
+        let w = tabs_warnings_of(PANEL1, 0, 1, Some((178, 90)));
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].starts_with("panel 'Панель1': ShowTabs changes the page 'Страница2' from "), "{w:?}");
+        assert!(w[0].contains("'ТабличноеПоле2' (right edge 270 > width 174, bottom edge 128 > height 50)"), "{w:?}");
+        assert!(w[0].contains("enlarge the panel by 2 x 20 px (the tab strip) or move and shrink these controls"), "{w:?}");
+    }
+
     #[test]
     fn show_tabs_codes_other_than_none_and_top_are_refused_on_an_existing_panel() {
         // Панель1 holds code 2 (not 0/1): the page area of a side-tab code is unknown

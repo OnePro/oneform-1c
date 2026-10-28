@@ -1134,6 +1134,22 @@ pub(super) fn patch_structural(
     Ok(vec![piece(m.t.span.span, text, &[prop])])
 }
 
+/// The button table of an added panel (cloned empty from the donor), read on the stream that holds the clone: the
+/// piece that replaces the whole table and the requested buttons as the patched stream decodes them (new ids from the
+/// id counter of the panel).
+pub(super) fn patch_added(site: &Site) -> Result<(Piece, Vec<CommandBarButton>)> {
+    let m = model(site, Property::Buttons)?;
+    if !m.actions.is_empty() {
+        return Err(shape(site, "the cloned panel is not empty"));
+    }
+    let resolved = resolve(&[], &site.edit.new.buttons, m.t2 + 1);
+    let mut pieces = patch_structural(site, &[], &site.edit.new.buttons, Property::Buttons)?;
+    match (pieces.pop(), pieces.is_empty()) {
+        (Some(p), true) => Ok((p, resolved)),
+        _ => Err(shape(site, "the button table of a new panel is not one replacement")),
+    }
+}
+
 /// After patching: the table holds the invariants, the tails of the groups are sound, the id counter advanced by the
 /// ids and group codes that were allocated and the root group lists the requested buttons, in order. The whole tree
 /// is compared by the caller against what the reader decodes.
@@ -1215,6 +1231,18 @@ pub fn new_handlers(edit: &ControlEdit) -> Vec<(String, String)> {
     let mut out = Vec::new();
     if edit.changed.contains(&Property::Buttons) {
         walk(&edit.new.buttons, &old, &mut out);
+    }
+    out
+}
+
+/// Handler buttons of an added panel: `(button, procedure)`.
+pub fn added_handlers(btns: &[CommandBarButton]) -> Vec<(String, String)> {
+    let mut out = Vec::new();
+    for b in btns {
+        if b.kind == "Action" && !b.action.is_empty() && !b.action.starts_with("Standard:") {
+            out.push((b.name.clone(), b.action.clone()));
+        }
+        out.extend(added_handlers(&b.buttons));
     }
     out
 }
