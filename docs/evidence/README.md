@@ -25,6 +25,7 @@
 | Сплошная проверка свойств | [property-sweep](property-sweep.md) | частично: 9 наблюдаемых изменений из 40 мутаций, 1 566 строк кнопок панелей не разобраны |
 | `clone-form` | [clone-form](clone-form.md) | обработка и отчёт — да; справочник — нет дампа |
 | Добавление элемента в малые формы | [add-remove-elements-small-forms](add-remove-elements-small-forms.md) | надпись в 3 формах; удаление и 26 типов — нет |
+| Версия потока формы: `DESIGNER /ConvertFiles` и цикл выгрузка → сборка | [convert-files-experiment](convert-files-experiment.md) | `ConvertFiles` файлы не меняет (версия 25 / 26 прежняя); выгрузка в XML и сборка поднимают 25 / 26 → 27 с перестройкой потока; только платформа 8.3.27 |
 
 ## Как читать файлы
 
