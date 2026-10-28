@@ -21,6 +21,7 @@
 | Кнопки выбора у ссылочного поля | [input-field-selection-buttons](input-field-selection-buttons.md) | **не закрыто**, только состояние «до» (V5) |
 | Элементы в формах потока версий 25 и 26 | [controls-in-older-stream-versions](controls-in-older-stream-versions.md) | подтверждено для 4 видов; остальные виды — отказ `unsupported-stream-version` |
 | Находки пилота (этапы 1–3): новая командная панель, предупреждения, `clone-form .` | [pilot-findings](pilot-findings.md) | подтверждено в «Бух.»; ограничения в файле |
+| Командные панели: 14 кодов `Standard:N`, подменю 3 уровней (V4, V7) | [verification-debt-night](verification-debt-night.md) | подтверждено в «Бух.»; нажатие кнопок не проверено |
 | Сплошная проверка свойств | [property-sweep](property-sweep.md) | частично: 9 наблюдаемых изменений из 40 мутаций, 1 566 строк кнопок панелей не разобраны |
 | `clone-form` | [clone-form](clone-form.md) | обработка и отчёт — да; справочник — нет дампа |
 | Добавление элемента в малые формы | [add-remove-elements-small-forms](add-remove-elements-small-forms.md) | надпись в 3 формах; удаление и 26 типов — нет |
