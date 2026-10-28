@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="09645835-1c8d-4a8b-8bf9-c779d8398695" name="ФормаСписка" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Список контрагентов</Item>
+    <Item language="ro">Lista de Agenti economicii</Item>
+  </Caption>
+  <Width>686</Width>
+  <Height>300</Height>
+  <MainAttribute attributeId="0"/>
+  <FormExtension guid="53fb5449-841a-459c-9a83-576f05941e1f"/>
+  <Events>
+    <BeforeOpen id="70000">ПередОткрытием</BeforeOpen>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+  </Events>
+  <Attributes>
+    <Attribute id="0" name="СправочникСписок">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="3" name="СправочникДерево">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false" refGuid="9f579d61-ddf8-4652-9a44-61d7bd5520a5" title="CatalogList.Контрагенты"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <Table name="СправочникСписок" id="1">
+      <DataPath attributeId="0">СправочникСписок</DataPath>
+      <Left>180</Left>
+      <Top>33</Top>
+      <Width>500</Width>
+      <Height>259</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors top="Top" topOffset="33" bottom="Bottom" bottomOffset="-8" left="Left" leftTarget="7" leftOffset="6" right="Right" rightOffset="-6"/>
+      <Footer>false</Footer>
+      <ChoiceMode>true</ChoiceMode>
+      <Columns>
+        <Column name="Картинка" id="0">
+          <Width>39</Width>
+          <ValueType kind="String" composite="false" length="10"/>
+          <ReadOnly>true</ReadOnly>
+        </Column>
+        <Column name="Код" id="1">
+          <DataPath attributeId="0" steps="-2">СправочникСписок.Код</DataPath>
+          <Header>
+            <Item language="ru">Код</Item>
+            <Item language="ro">Cod</Item>
+          </Header>
+          <Width>35</Width>
+          <ValueType kind="String" composite="false" length="10"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Наименование" id="2">
+          <DataPath attributeId="0" steps="-3">СправочникСписок.Наименование</DataPath>
+          <Header>
+            <Item language="ru">Наименование</Item>
+            <Item language="ro">Denumirea</Item>
+          </Header>
+          <Width>175</Width>
+          <ValueType kind="String" composite="false" length="100"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ПолнНаименование" id="4">
+          <DataPath attributeId="0" steps="4c154854-50c5-4635-9c56-fb379b2c18fb">СправочникСписок.НаименованиеПолное</DataPath>
+          <Header>
+            <Item language="ru">Полное наименование</Item>
+            <Item language="ro">Denumirea completă</Item>
+          </Header>
+          <Width>188</Width>
+          <ValueType kind="String" composite="false" length="200"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ВидКонтрагента" id="3">
+          <DataPath attributeId="0" steps="6e094f35-b2b9-4866-b87e-eaaa3a16ce51">СправочникСписок.ВидКонтрагента</DataPath>
+          <Header>
+            <Item language="ru">Вид контрагента</Item>
+            <Item language="ro">Tipul contractantului</Item>
+          </Header>
+          <Width>100</Width>
+          <ValueType kind="Ref" composite="false" refGuid="aaf9d6f4-eae4-432b-bc9e-32b205c1ce9c"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ФискальныйКод" id="5">
+          <DataPath attributeId="0" steps="c6d49820-18bf-4fb8-8309-db7cbf616d38">СправочникСписок.ФискальныйКод</DataPath>
+          <Header>
+            <Item language="ru">Фискальный код</Item>
+            <Item language="ro">Codul fiscal</Item>
+          </Header>
+          <Width>97</Width>
+          <ValueType kind="String" composite="false" length="20"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="КодНДС" id="6">
+          <DataPath attributeId="0" steps="18efee41-5650-43f1-ade8-b653ae5b6930">СправочникСписок.КодНДС</DataPath>
+          <Header>
+            <Item language="ru">Код НДС</Item>
+            <Item language="ro">Codul TVA</Item>
+          </Header>
+          <Width>96</Width>
+          <ValueType kind="String" composite="false" length="20"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ЮридическийАдрес" id="7">
+          <DataPath attributeId="0" steps="493e8467-4b6a-4a9b-9641-2b7e095dcace">СправочникСписок.ЮридическийАдрес</DataPath>
+          <Header>
+            <Item language="ru">Юридический адрес</Item>
+            <Item language="ro">Adresa juridică:</Item>
+          </Header>
+          <Width>208</Width>
+          <ValueType kind="String" composite="false" length="100"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДокументФизЛица" id="18">
+          <DataPath attributeId="0" steps="068bffcf-e8d8-435f-b5b4-5ed558578d2e">СправочникСписок.ДокументФизЛица</DataPath>
+          <Header>
+            <Item language="ru">Документ физ. лица</Item>
+            <Item language="ro">Documentul persoanei fizice</Item>
+          </Header>
+          <Width>170</Width>
+          <ValueType kind="String" composite="false" length="100"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ОсновнойДоговор" id="8">
+          <DataPath attributeId="0" steps="00f18e99-2b71-4532-8d07-3851a15f1c39">СправочникСписок.ОсновнойДоговор</DataPath>
+          <Header>
+            <Item language="ru">Основной договор</Item>
+            <Item language="ro">Contract principal</Item>
+          </Header>
+          <Width>161</Width>
+          <ValueType kind="Ref" composite="false" refGuid="eb820265-22a2-449b-a7b7-9acfbb2d8234"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ОсновнойРасчетныйСчет" id="9">
+          <DataPath attributeId="0" steps="704bea96-7f69-4e93-b05c-91a018461bd4">СправочникСписок.ОсновнойРасчетныйСчет</DataPath>
+          <Header>
+            <Item language="ru">Основной расчетный счет</Item>
+            <Item language="ro">Cont de decontare principal</Item>
+          </Header>
+          <Width>159</Width>
+          <ValueType kind="Ref" composite="false" refGuid="50ae6b59-41e6-4fc8-aa70-e849b676b448"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Страна" id="10">
+          <DataPath attributeId="0" steps="ebdf7e12-dbcb-4064-b5c1-e732450486a5">СправочникСписок.Страна</DataPath>
+          <Header>
+            <Item language="ru">Страна</Item>
+            <Item language="ro">Ţara</Item>
+          </Header>
+          <Width>106</Width>
+          <ValueType kind="Ref" composite="false" refGuid="b035e9ea-3d9f-4bec-8fe8-74cdbe5bd885"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Город" id="11">
+          <DataPath attributeId="0" steps="2e70fde3-03b8-4307-a815-9bbdcda29d74">СправочникСписок.Город</DataPath>
+          <Header>
+            <Item language="ru">Город</Item>
+            <Item language="ro">Oraşul</Item>
+          </Header>
+          <Width>105</Width>
+          <ValueType kind="Ref" composite="false" refGuid="8eefbf51-3029-475b-a22b-5f71f4531594"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="Статус" id="12">
+          <DataPath attributeId="0" steps="366de07d-0ed6-4c7d-aa7c-425461a03bb6">СправочникСписок.Статус</DataPath>
+          <Header>
+            <Item language="ru">Статус</Item>
+            <Item language="ro">Statut</Item>
+          </Header>
+          <Width>99</Width>
+          <ValueType kind="Ref" composite="false" refGuid="0b83482c-b9cb-4dc3-b3a1-bbd06717d16e"/>
+          <Editor>InputField</Editor>
+        </Column>
+        <Column name="ДополнительныеСведения" id="17">
+          <DataPath attributeId="0" steps="9d8e0dc8-1900-455b-a5ac-a9ee559958a3">СправочникСписок.ДополнительныеСведения</DataPath>
+          <Header>
+            <Item language="ru">Дополнительные сведения</Item>
+            <Item language="ro">Informație suplementara</Item>
+          </Header>
+          <Width>305</Width>
+          <ValueType kind="String" composite="false"/>
+          <Editor>InputField</Editor>
+        </Column>
+      </Columns>
+    </Table>
+    <Table name="СправочникДерево" id="2">
+      <DataPath attributeId="3">СправочникДерево</DataPath>
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>166</Width>
+      <Height>259</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors top="Top" topOffset="33" bottom="Bottom" bottomOffset="-8" left="Left" leftOffset="8" right="Right" rightTarget="7" rightOffset="-6"/>
+      <Tooltip>
+        <Item language="ru">Электронная почта (Email)</Item>
+        <Item language="ro">Poștă electronică (Email)</Item>
+      </Tooltip>
+      <Footer>false</Footer>
+      <ReadOnly>true</ReadOnly>
+      <Header>false</Header>
+      <ChoiceMode>true</ChoiceMode>
+      <Columns>
+        <Column name="Наименование" id="0">
+          <DataPath attributeId="3" steps="-3">СправочникДерево.Наименование</DataPath>
+          <Header>
+            <Item language="ru">Наименование</Item>
+            <Item language="ro">Denumirea</Item>
+          </Header>
+          <Width>132</Width>
+          <ValueType kind="String" composite="false" length="100"/>
+          <Editor>InputField</Editor>
+        </Column>
+      </Columns>
+    </Table>
+    <CommandBar name="ДействияФормы" id="3">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>686</Width>
+      <Height>25</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors top="Top" bottom="Top" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>true</AutoFill>
+    </CommandBar>
+    <Splitter name="Разделитель" id="7">
+      <Left>174</Left>
+      <Top>33</Top>
+      <Width>6</Width>
+      <Height>259</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Bottom" bottomOffset="-8"/>
+      <Orientation>Vertical</Orientation>
+    </Splitter>
+  </ChildItems>
+</Form>

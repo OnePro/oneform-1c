@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="2594339f-657f-419a-b60f-5ab8fae3f29b" name="ФормаЭлемента" ordinaryFormVersion="2.1" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Варианты расчета налогов</Item>
+    <Item language="ro">Variante de calcul a impozitelor</Item>
+  </Caption>
+  <Width>456</Width>
+  <Height>174</Height>
+  <MainAttribute attributeId="1"/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <OnWrite id="80001">ПриЗаписи</OnWrite>
+  </Events>
+  <Attributes>
+    <Attribute id="1" name="СправочникОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <LabelDecoration name="НадписьКод" id="1">
+      <Caption>
+        <Item language="ru">Код:</Item>
+        <Item language="ro">Cod:</Item>
+      </Caption>
+      <Left>331</Left>
+      <Top>33</Top>
+      <Width>47</Width>
+      <Height>19</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors bottom="Top" bottomTarget="1" bottomOffset="19" left="Right" leftTarget="4" leftOffset="3" right="Left" rightTarget="1" rightOffset="47"/>
+      <Font bold="true" source="style"/>
+    </LabelDecoration>
+    <InputField name="Код" id="2">
+      <DataPath attributeId="1">СправочникОбъект.Код</DataPath>
+      <Left>378</Left>
+      <Top>33</Top>
+      <Width>70</Width>
+      <Height>19</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="19" left="Right" leftTarget="4" leftOffset="50" right="Left" rightTarget="2" rightOffset="70"/>
+      <ValueType kind="Number" composite="false" digits="5" fractionDigits="0"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="НадписьНаименование" id="3">
+      <Caption>
+        <Item language="ru">Наименование:</Item>
+        <Item language="ro">Denumirea:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>100</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Top" bottomTarget="3" bottomOffset="19" right="Left" rightTarget="3" rightOffset="100"/>
+      <Font bold="true" source="style"/>
+    </LabelDecoration>
+    <InputField name="Наименование" id="4">
+      <DataPath attributeId="1">СправочникОбъект.Наименование</DataPath>
+      <Left>108</Left>
+      <Top>33</Top>
+      <Width>220</Width>
+      <Height>19</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Top" bottomTarget="4" bottomOffset="19" right="Right" rightOffset="-128"/>
+      <ValueType kind="String" composite="false" length="50"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <ReadOnly>true</ReadOnly>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <InputField name="СтавкаНДС" id="7">
+      <DataPath attributeId="1">СправочникОбъект.СтавкаНДС</DataPath>
+      <Left>328</Left>
+      <Top>99</Top>
+      <Width>120</Width>
+      <Height>19</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>9</TabOrder>
+      <Anchors bottom="Top" bottomTarget="7" bottomOffset="19" right="Right" rightOffset="-8"/>
+      <Tooltip>
+        <Item language="ru">Ставка НДС</Item>
+        <Item language="ro">Cota TVA</Item>
+      </Tooltip>
+      <ValueType kind="Ref" composite="false" refGuid="811aba11-5d10-40ed-8b57-0e0e0cc56bb1" title="Справочник.СтавкиНДС"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>true</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+      <Events>
+        <OnChange id="2147483647">СтавкаНДСПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <CheckBox name="СуммаВключаетНДС" id="8">
+      <DataPath attributeId="1">СправочникОбъект.СуммаВключаетНДС</DataPath>
+      <Caption>
+        <Item language="ru">Сумма включает НДС</Item>
+        <Item language="ro">Suma înclude TVA</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>122</Top>
+      <Width>320</Width>
+      <Height>19</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>10</TabOrder>
+      <Anchors bottom="Top" bottomTarget="8" bottomOffset="19" right="Left" rightTarget="8" rightOffset="320"/>
+      <Tooltip>
+        <Item language="ru">Сумма включает НДС</Item>
+        <Item language="ro">Suma înclude TVA</Item>
+      </Tooltip>
+      <Events>
+        <OnChange id="2147483647">СуммаВключаетНДСПриИзменении</OnChange>
+      </Events>
+    </CheckBox>
+    <CommandBar name="ДействияФормы" id="9">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>456</Width>
+      <Height>25</Height>
+      <ZOrder>6</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="9" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>true</AutoFill>
+    </CommandBar>
+    <CommandBar name="ОсновныеДействияФормы" id="10">
+      <Left>0</Left>
+      <Top>149</Top>
+      <Width>456</Width>
+      <Height>25</Height>
+      <ZOrder>7</ZOrder>
+      <TabOrder>11</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="-25" bottom="Bottom" left="Left" right="Right"/>
+      <HorizontalAlign>Right</HorizontalAlign>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="ОсновныеДействияФормыОК" id="1" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:141">
+          <Caption>
+            <Item language="ru">OK</Item>
+            <Item language="ro">OK</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель" id="2" kind="Separator" checked="false" representation="Text"/>
+        <Button name="ОсновныеДействияФормыСохранить" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:140">
+          <Caption>
+            <Item language="ru">Записать</Item>
+            <Item language="ro">Salvează</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель1" id="4" kind="Separator" checked="false" representation="Text"/>
+        <Button name="ОсновныеДействияФормыЗакрыть" id="5" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:142">
+          <Caption>
+            <Item language="ru">Закрыть</Item>
+            <Item language="ro">Închide</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+    <RadioButton name="ПереключательСтавкаНДСизТЧ" id="11">
+      <DataPath attributeId="1">СправочникОбъект.ИспользоватьСтавкуНДС</DataPath>
+      <Caption>
+        <Item language="ru">Использовать ставку НДС из табличной части документа</Item>
+        <Item language="ro">Foloseşte c TVA din tabelul documentului</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>76</Top>
+      <Width>320</Width>
+      <Height>19</Height>
+      <ZOrder>8</ZOrder>
+      <TabOrder>7</TabOrder>
+      <Anchors bottom="Top" bottomTarget="11" bottomOffset="19" right="Left" rightTarget="11" rightOffset="320"/>
+      <FirstInGroup>true</FirstInGroup>
+      <SelectionValue>0</SelectionValue>
+      <Events>
+        <OnChange id="2147483647">ПереключательСтавкаНДСизТЧПриИзменении</OnChange>
+      </Events>
+    </RadioButton>
+    <RadioButton name="ПереключательФиксированнаяСтавкаНДС" id="12">
+      <Caption>
+        <Item language="ru">Использовать фиксированную ставку НДС:</Item>
+        <Item language="ro">Foloseşte cota TVA fixă:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>99</Top>
+      <Width>320</Width>
+      <Height>19</Height>
+      <ZOrder>9</ZOrder>
+      <TabOrder>8</TabOrder>
+      <Anchors bottom="Top" bottomTarget="12" bottomOffset="19" right="Left" rightTarget="12" rightOffset="320"/>
+      <SelectionValue>1</SelectionValue>
+    </RadioButton>
+    <UsualGroup name="Рамка" id="13">
+      <Caption>
+        <Item language="ru">Правила пересчета сумм в табличной части документов:</Item>
+        <Item language="ro">Regurile de recalculare sumei în tabelul documentelor:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>56</Top>
+      <Width>440</Width>
+      <Height>16</Height>
+      <ZOrder>10</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors bottom="Top" bottomTarget="13" bottomOffset="16" right="Right" rightOffset="-8"/>
+      <Font bold="true" source="bin"/>
+      <BorderStyle code="4">SingleLine</BorderStyle>
+    </UsualGroup>
+  </ChildItems>
+</Form>

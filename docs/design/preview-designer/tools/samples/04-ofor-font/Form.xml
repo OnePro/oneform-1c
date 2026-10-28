@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="6ca95a26-dbea-4a4a-8faa-d172d2045903" name="ФормаЭлемента" ordinaryFormVersion="2.1" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Оформление строки</Item>
+    <Item language="ro">Perfectarea strofei</Item>
+  </Caption>
+  <Width>400</Width>
+  <Height>209</Height>
+  <MainAttribute attributeId="0"/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+  </Events>
+  <Attributes>
+    <Attribute id="0" name="СправочникОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <LabelDecoration name="НадписьКод" id="1">
+      <Caption>
+        <Item language="ru">Код:</Item>
+        <Item language="ro">Cod:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>79</Width>
+      <Height>19</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Top" bottomTarget="1" bottomOffset="19" right="Left" rightTarget="1" rightOffset="79"/>
+    </LabelDecoration>
+    <InputField name="Код" id="2">
+      <DataPath attributeId="0">СправочникОбъект.Код</DataPath>
+      <Left>93</Left>
+      <Top>33</Top>
+      <Width>81</Width>
+      <Height>19</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="19" right="Left" rightTarget="2" rightOffset="81"/>
+      <ValueType kind="String" composite="false" length="9"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <ReadOnly>true</ReadOnly>
+      <SkipOnInput>true</SkipOnInput>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="НадписьНаименование" id="3">
+      <Caption>
+        <Item language="ru">Наименование:</Item>
+        <Item language="ro">Denumirea:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>58</Top>
+      <Width>79</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors bottom="Top" bottomTarget="3" bottomOffset="19" right="Left" rightTarget="3" rightOffset="79"/>
+    </LabelDecoration>
+    <InputField name="Наименование" id="4">
+      <DataPath attributeId="0">СправочникОбъект.Наименование</DataPath>
+      <Left>93</Left>
+      <Top>58</Top>
+      <Width>299</Width>
+      <Height>19</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="4" bottomOffset="19" right="Right" rightOffset="-8"/>
+      <ValueType kind="String" composite="false" length="25"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <CheckBox name="Жирный" id="5">
+      <DataPath attributeId="0">СправочникОбъект.Жирный</DataPath>
+      <Caption>
+        <Item language="ru">Жирный</Item>
+        <Item language="ro">Gros</Item>
+      </Caption>
+      <Left>93</Left>
+      <Top>135</Top>
+      <Width>142</Width>
+      <Height>15</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>10</TabOrder>
+      <Anchors bottom="Top" bottomTarget="5" bottomOffset="15" right="Left" rightTarget="5" rightOffset="142"/>
+      <Font bold="true" source="bin"/>
+      <Tooltip>
+        <Item language="ru">Жирный</Item>
+        <Item language="ro">Gros</Item>
+      </Tooltip>
+    </CheckBox>
+    <CheckBox name="Зачеркнутый" id="6">
+      <DataPath attributeId="0">СправочникОбъект.Зачеркнутый</DataPath>
+      <Caption>
+        <Item language="ru">Зачеркнутый</Item>
+        <Item language="ro">Tăiat</Item>
+      </Caption>
+      <Left>251</Left>
+      <Top>156</Top>
+      <Width>141</Width>
+      <Height>15</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>13</TabOrder>
+      <Anchors bottom="Top" bottomTarget="6" bottomOffset="15" right="Left" rightTarget="6" rightOffset="141"/>
+      <Font strikeout="true" source="bin"/>
+      <Tooltip>
+        <Item language="ru">Зачеркнутый</Item>
+        <Item language="ro">Tăiat</Item>
+      </Tooltip>
+    </CheckBox>
+    <CheckBox name="Наклонный" id="7">
+      <DataPath attributeId="0">СправочникОбъект.Наклонный</DataPath>
+      <Caption>
+        <Item language="ru">Наклонный</Item>
+        <Item language="ro">Inclinat</Item>
+      </Caption>
+      <Left>93</Left>
+      <Top>156</Top>
+      <Width>142</Width>
+      <Height>15</Height>
+      <ZOrder>6</ZOrder>
+      <TabOrder>12</TabOrder>
+      <Anchors bottom="Top" bottomTarget="7" bottomOffset="15" right="Left" rightTarget="7" rightOffset="142"/>
+      <Font italic="true" source="bin"/>
+      <Tooltip>
+        <Item language="ru">Наклонный</Item>
+        <Item language="ro">Inclinat</Item>
+      </Tooltip>
+    </CheckBox>
+    <CheckBox name="Подчеркнутый" id="8">
+      <DataPath attributeId="0">СправочникОбъект.Подчеркнутый</DataPath>
+      <Caption>
+        <Item language="ru">Подчеркнутый</Item>
+        <Item language="ro">SubRîndult</Item>
+      </Caption>
+      <Left>251</Left>
+      <Top>135</Top>
+      <Width>141</Width>
+      <Height>15</Height>
+      <ZOrder>7</ZOrder>
+      <TabOrder>11</TabOrder>
+      <Anchors bottom="Top" bottomTarget="8" bottomOffset="15" right="Left" rightTarget="8" rightOffset="141"/>
+      <Font underline="true" source="bin"/>
+      <Tooltip>
+        <Item language="ru">Подчеркнутый</Item>
+        <Item language="ro">SubRîndult</Item>
+      </Tooltip>
+    </CheckBox>
+    <LabelDecoration name="НадписьЦветТекста" id="9">
+      <Caption>
+        <Item language="ru">Цвет текста:</Item>
+        <Item language="ro">Culoarea textului:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>83</Top>
+      <Width>79</Width>
+      <Height>19</Height>
+      <ZOrder>8</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors bottom="Top" bottomTarget="9" bottomOffset="19" right="Left" rightTarget="9" rightOffset="79"/>
+    </LabelDecoration>
+    <LabelDecoration name="НадписьЦветФона" id="11">
+      <Caption>
+        <Item language="ru">Цвет фона:</Item>
+        <Item language="ro">Culoarea de fundal:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>108</Top>
+      <Width>79</Width>
+      <Height>19</Height>
+      <ZOrder>9</ZOrder>
+      <TabOrder>8</TabOrder>
+      <Anchors bottom="Top" bottomTarget="11" bottomOffset="19" right="Left" rightTarget="11" rightOffset="79"/>
+    </LabelDecoration>
+    <CommandBar name="ДействияФормы" id="13">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>400</Width>
+      <Height>25</Height>
+      <ZOrder>10</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="13" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>true</AutoFill>
+      <Buttons>
+        <Button name="Подменю" id="108" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="#">Подменю</Item>
+          </Caption>
+          <Buttons>
+            <Button name="Разделитель2" id="35" kind="Separator" checked="false"/>
+          </Buttons>
+        </Button>
+      </Buttons>
+    </CommandBar>
+    <CommandBar name="ОсновныеДействияФормы" id="14">
+      <Left>0</Left>
+      <Top>184</Top>
+      <Width>400</Width>
+      <Height>25</Height>
+      <ZOrder>12</ZOrder>
+      <TabOrder>14</TabOrder>
+      <Anchors top="Bottom" topTarget="14" topOffset="-25" bottom="Bottom" left="Left" right="Right"/>
+      <HorizontalAlign>Right</HorizontalAlign>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="ОсновныеДействияФормыОК" id="1" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:141">
+          <Caption>
+            <Item language="ru">OK</Item>
+            <Item language="ro">OK</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель" id="2" kind="Separator" checked="false" representation="Text"/>
+        <Button name="ОсновныеДействияФормыСохранить" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:140">
+          <Caption>
+            <Item language="ru">Записать</Item>
+            <Item language="ro">Salvează</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель1" id="4" kind="Separator" checked="false" representation="Text"/>
+        <Button name="ОсновныеДействияФормыЗакрыть" id="5" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:142">
+          <Caption>
+            <Item language="ru">Закрыть</Item>
+            <Item language="ro">Închide</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+    <PictureDecoration name="ЦветТекста" id="17">
+      <Left>93</Left>
+      <Top>84</Top>
+      <Width>81</Width>
+      <Height>18</Height>
+      <ZOrder>11</ZOrder>
+      <TabOrder>7</TabOrder>
+      <Anchors bottom="Top" bottomTarget="17" bottomOffset="18"/>
+      <Events>
+        <Click id="0">ЦветТекстаНажатие</Click>
+      </Events>
+    </PictureDecoration>
+    <PictureDecoration name="ЦветФона" id="18">
+      <Left>93</Left>
+      <Top>109</Top>
+      <Width>81</Width>
+      <Height>18</Height>
+      <ZOrder>13</ZOrder>
+      <TabOrder>9</TabOrder>
+      <Anchors bottom="Top" bottomTarget="18" bottomOffset="18"/>
+      <Events>
+        <Click id="0">ЦветФонаНажатие</Click>
+      </Events>
+    </PictureDecoration>
+  </ChildItems>
+</Form>

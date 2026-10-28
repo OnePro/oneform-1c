@@ -9,3 +9,4 @@ openspec/
 
 pi-session-*
 __pycache__/
+/feedback-inbox/

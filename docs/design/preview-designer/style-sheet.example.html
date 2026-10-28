@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Образец листа образцов — style-sheet.example.html</title>
+<!--
+  МИНИМАЛЬНЫЙ ПРИМЕР формата. Настоящий style-sheet.html устроен так же, но содержит ВСЕ классы, состояния
+  и варианты свойств из 02-property-catalog.md. Один файл, без сети, без внешних шрифтов и картинок.
+
+  Правила аннотаций:
+    <figure class="specimen" data-xml="ID[значение] ID[атрибут=значение]" data-state="normal">
+      ...образец...
+      <figcaption>Русская подпись: что показано и почему так.</figcaption>
+    </figure>
+  * data-xml — через пробел ID из каталога; в квадратных скобках — значение тега/атрибута, которое образец
+    иллюстрирует (InputField.Font[bold=true], Button.Caption[пусто], UsualGroup.BorderStyle[Frame]).
+    Если значения нет (свойство отсутствует в XML) — [нет].
+  * data-state — normal | hover | focus | disabled | readonly | selected | pressed | checked (если у элемента бывает).
+  * Образец собирается из тех же CSS-классов, что описаны в render-spec.md; свои стили — только в <style>.
+-->
+<style>
+  /* ===== theme (в настоящем файле это содержимое theme.css) ===== */
+  :root{
+    --form-bg:#FCFAEB; --cmdbar-bg:#F5F2DD; --border:#B3AC86; --sep:#CCC6AD;
+    --group-title:#9F6500; --field-bg:#FFFFFF; --btn-from:#FFFFFF; --btn-to:#ECE8D0;
+    --font:8pt Tahoma, Arial, sans-serif;
+  }
+  body{margin:16px;background:#e9e6dd;font:12px Tahoma,Arial,sans-serif;color:#222}
+  h1{font-size:16px;margin:0 0 12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .specimen{margin:0;background:#fff;border:1px solid #cfcab8;padding:8px}
+  .specimen figcaption{margin-top:6px;color:#555;font:11px Tahoma,Arial,sans-serif}
+  .specimen code.id{display:block;margin-bottom:4px;color:#7a5a00;font:11px Consolas,monospace}
+  .stage{position:relative;height:60px;background:var(--form-bg);font:var(--font);color:#000}
+  .stage.tall{height:90px}
+  /* ===== classes of the render-spec (пример) ===== */
+  .c{position:absolute;overflow:hidden;white-space:nowrap;font:var(--font)}
+  .t-InputField{background:var(--field-bg);border:1px solid var(--border);display:flex;align-items:stretch}
+  .t-InputField .val{flex:1;padding-left:2px;line-height:17px}
+  .t-InputField .tb{flex:none;width:15px;background:#F1EEDD;border-left:1px solid #D3CDAA;text-align:center;line-height:17px}
+  .t-Button{border:1px solid var(--border);background:linear-gradient(180deg,var(--btn-from),#F6F3E1 55%,var(--btn-to));
+            display:flex;align-items:center;justify-content:center}
+  .t-UsualGroup .gt{position:absolute;left:6px;top:0;padding:0 3px;background:var(--form-bg);font-weight:bold;color:var(--group-title);line-height:14px}
+  .t-UsualGroup.bs-Frame{border:1px solid var(--border);border-radius:3px;top:7px}
+  .t-LabelDecoration .cap.b{font-weight:bold}
+</style>
+</head>
+<body>
+<h1>Пример листа образцов (3 образца)</h1>
+<div class="grid">
+
+  <figure class="specimen" data-xml="InputField.Font[bold=true] InputField.TextColor[kind=rgb,value=#3366FF]" data-state="normal">
+    <code class="id">InputField.Font[bold=true] · InputField.TextColor[#3366FF]</code>
+    <div class="stage">
+      <div class="c t-InputField" style="left:8px;top:20px;width:200px;height:19px">
+        <span class="val" style="font-weight:bold;color:#3366FF">Образец</span><span class="tb">…</span>
+      </div>
+    </div>
+    <figcaption>Поле ввода с жирным синим текстом: шрифт и цвет применяются к значению; рамка и кнопка «…» не меняются.</figcaption>
+  </figure>
+
+  <figure class="specimen" data-xml="Button.Caption[Изменить...]" data-state="normal">
+    <code class="id">Button.Caption[Изменить...]</code>
+    <div class="stage">
+      <div class="c t-Button" style="left:8px;top:20px;width:80px;height:19px"><span class="cap">Изменить...</span></div>
+    </div>
+    <figcaption>Кнопка: рамка #B3AC86, вертикальный градиент от белого к #ECE8D0, подпись по центру.</figcaption>
+  </figure>
+
+  <figure class="specimen" data-xml="UsualGroup.BorderStyle[Frame] UsualGroup.Caption[Реквизиты] UsualGroup.Font[bold=true]" data-state="normal">
+    <code class="id">UsualGroup.BorderStyle[Frame] · UsualGroup.Caption[Реквизиты]</code>
+    <div class="stage tall">
+      <div class="c t-UsualGroup bs-Frame" style="left:8px;top:8px;width:220px;height:70px">
+        <span class="gt">Реквизиты</span>
+      </div>
+    </div>
+    <figcaption>Группа-рамка: тонкая рамка со скруглением 3 px, заголовок жирный коричневый на линии рамки.</figcaption>
+  </figure>
+
+</div>
+</body>
+</html>

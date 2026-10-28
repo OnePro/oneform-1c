@@ -1,0 +1,1979 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="a75c194e-9a46-481c-a0b9-5037a9498239" name="ФормаДокумента" ordinaryFormVersion="2.1" reconstructionComplete="false">
+  <Caption>
+    <Item language="ro">Foaie de parcurs</Item>
+  </Caption>
+  <Width>850</Width>
+  <Height>564</Height>
+  <MainAttribute attributeId="1"/>
+  <FormExtension guid="4b7f5926-3927-48c8-a955-c1b03658f9c4"/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <OnClose id="70003">ПриЗакрытии</OnClose>
+    <ChoiceProcessing id="70004">ОбработкаВыбора</ChoiceProcessing>
+    <NotificationProcessing id="70007">ОбработкаОповещения</NotificationProcessing>
+    <RefreshDisplay id="70009">ОбновлениеОтображения</RefreshDisplay>
+    <BeforeWrite id="80000">ПередЗаписью</BeforeWrite>
+    <OnWrite id="80001">ПриЗаписи</OnWrite>
+    <AfterWrite id="80002">ПослеЗаписи</AfterWrite>
+  </Events>
+  <Attributes>
+    <Attribute id="1" name="ДокументОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="56" name="Пробег">
+      <Main>true</Main>
+      <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <InputField name="Номер" id="2">
+      <DataPath attributeId="1">ДокументОбъект.Номер</DataPath>
+      <Left>123</Left>
+      <Top>33</Top>
+      <Width>110</Width>
+      <Height>19</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="19" right="Left" rightOffset="233" rightAlt="Right" rightAltOffset="-617"/>
+      <ValueType kind="String" composite="false" length="15"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <InputField name="Дата" id="4">
+      <DataPath attributeId="1">ДокументОбъект.Дата</DataPath>
+      <Left>253</Left>
+      <Top>33</Top>
+      <Width>120</Width>
+      <Height>19</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="4" bottomOffset="19" left="Right" leftTarget="41" right="Left" rightTarget="4" rightOffset="120"/>
+      <ValueType kind="DateTime" composite="false"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+      <Events>
+        <OnChange id="2147483647">ДатаПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <LabelDecoration name="НадписьОрганизация" id="5">
+      <Caption>
+        <Item language="ru">Организация:</Item>
+        <Item language="ro">Intrepriderea:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>56</Top>
+      <Width>115</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>7</TabOrder>
+      <Anchors bottom="Top" bottomTarget="5" bottomOffset="19" right="Left" rightTarget="5" rightOffset="115"/>
+      <Font bold="true" source="style"/>
+    </LabelDecoration>
+    <InputField name="Организация" id="6">
+      <DataPath attributeId="1">ДокументОбъект.Организация</DataPath>
+      <Left>123</Left>
+      <Top>56</Top>
+      <Width>250</Width>
+      <Height>19</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>8</TabOrder>
+      <Anchors bottom="Top" bottomTarget="6" bottomOffset="19" left="Left" leftTarget="5" leftOffset="115" right="Right" rightTarget="4"/>
+      <Tooltip>
+        <Item language="ru">Организация</Item>
+        <Item language="ro">Intrepriderea</Item>
+      </Tooltip>
+      <ValueType kind="Ref" composite="false" refGuid="79030398-ec3a-431a-9307-05711c5d8a60" title="Справочник.Организации"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>true</OpenButton>
+      <AutoMarkIncomplete>true</AutoMarkIncomplete>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <Events>
+        <OnChange id="2147483647">ОрганизацияПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <CommandBar name="ДействияФормы" id="39">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>850</Width>
+      <Height>25</Height>
+      <ZOrder>6</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="39" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>true</AutoFill>
+      <Buttons>
+        <Button name="Параметры" id="917" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыПараметры">
+          <Caption>
+            <Item language="ru">Параметры</Item>
+            <Item language="ro">Parametrii</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Параметры</Item>
+            <Item language="ro">Parametrii</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель5" id="921" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие7</Item>
+          </Caption>
+        </Button>
+        <Button name="Подменю" id="3234" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="#">Подменю</Item>
+          </Caption>
+          <Buttons>
+            <Button name="Разделитель5" id="1685" kind="Separator" checked="false">
+              <Caption>
+                <Item language="ru">Действие8</Item>
+              </Caption>
+            </Button>
+            <Button name="РедактироватьКодНомер" id="1684" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыРедактироватьКодНомер">
+              <Caption>
+                <Item language="ru">Редактировать номер</Item>
+                <Item language="ro">Redactarea numărului</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Включить возможность редактирования номера документа</Item>
+                <Item language="ro">Includerea posibilității de a edita numărul documentului</Item>
+              </Tooltip>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Подменю1" id="3244" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="#">Подменю1</Item>
+          </Caption>
+          <Buttons>
+            <Button name="СписаниеТМЦВНепредпринимательскихЦелях" id="3081" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыСписаниеТМЦВНепредпринимательскихЦелях">
+              <Caption>
+                <Item language="ru">Списание ТМЦ в непредпринимательских целях</Item>
+                <Item language="ro">Casarea BM în scopuri neintreprezătoare</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Списание ТМЦ в непредпринимательских целях</Item>
+                <Item language="ro">Casarea BM în scopuri neintreprezătoare</Item>
+              </Tooltip>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Подменю2" id="3246" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="#">Подменю2</Item>
+          </Caption>
+          <Buttons>
+            <Button name="ПоказанияСпидометра" id="2289" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыПоказанияСпидометра">
+              <Caption>
+                <Item language="ru">Показания спидометра</Item>
+                <Item language="ro">Indicaţii vitezometrului</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Показания спидометра</Item>
+                <Item language="ro">Indicaţii vitezometrului</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Разделитель" id="1425" kind="Separator" checked="false">
+              <Caption>
+                <Item language="ru">Действие1</Item>
+              </Caption>
+            </Button>
+            <Button name="СтруктураПодчиненности" id="1395" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыСтруктураПодчиненности">
+              <Caption>
+                <Item language="ru">Структура подчиненности</Item>
+                <Item language="ro">Structura de subordonare</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Структура подчиненности</Item>
+                <Item language="ro">Structura de subordonare</Item>
+              </Tooltip>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Разделитель9" id="2255" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие7</Item>
+          </Caption>
+        </Button>
+        <Button name="Заполнить" id="2238" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыЗаполнить">
+          <Caption>
+            <Item language="ru">Заполнить таблицы</Item>
+            <Item language="ro">Completează tabelurile</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Заполнить</Item>
+            <Item language="ro">Completează</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель8" id="2239" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие7</Item>
+          </Caption>
+        </Button>
+        <Button name="ДействиеРезультатПроведения" id="2474" kind="Action" checked="false" hasPicture="true" actionKind="Handler" action="ДействияФормыДействиеРезультатПроведения">
+          <Caption>
+            <Item language="ru">Результат проведения</Item>
+            <Item language="ro">Rezultatul intocmirii</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Результат проведения</Item>
+            <Item language="ro">Rezultatul intocmirii</Item>
+          </Tooltip>
+        </Button>
+      </Buttons>
+    </CommandBar>
+    <CommandBar name="ОсновныеДействияФормы" id="40">
+      <Left>0</Left>
+      <Top>539</Top>
+      <Width>850</Width>
+      <Height>25</Height>
+      <ZOrder>7</ZOrder>
+      <TabOrder>64</TabOrder>
+      <Anchors top="Bottom" topTarget="40" topOffset="-25" bottom="Bottom" left="Left" right="Right"/>
+      <HorizontalAlign>Right</HorizontalAlign>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="ДействиеПечать" id="8" kind="Action" checked="false" representation="PictureAndText" actionKind="Handler" action="ОсновныеДействияФормыДействиеПечать">
+          <Caption>
+            <Item language="ru">Печать по умолчанию</Item>
+            <Item language="ro">Imprimare prestabilită</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Печать печатной формы, установленной по умолчанию (без выбора)</Item>
+            <Item language="ro">Imprimare formei de imprimare, prestabilita (fără selecție)</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель4" id="19" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие1</Item>
+          </Caption>
+        </Button>
+        <Button name="МенюПечать" id="14" kind="Submenu" checked="false" actionKind="Submenu">
+          <Caption>
+            <Item language="ru">Печать</Item>
+            <Item language="ro">Imprimare</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Печать</Item>
+            <Item language="ro">Imprimare</Item>
+          </Tooltip>
+          <Buttons>
+            <Button name="ПутевойЛист" id="23" kind="Action" checked="false" actionKind="Handler" action="ОсновныеДействияФормыПутевойЛист">
+              <Caption>
+                <Item language="ru">Путевой лист</Item>
+                <Item language="ro">Foaie de parcurs</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Путевой лист</Item>
+                <Item language="ro">Foaie de parcurs</Item>
+              </Tooltip>
+            </Button>
+            <Button name="ПутевойЛистГрузовые" id="24" kind="Action" checked="false" actionKind="Handler" action="ОсновныеДействияФормыПутевойЛистГрузовые">
+              <Caption>
+                <Item language="ru">Путевой лист (грузовые автомобили)</Item>
+                <Item language="ro">Foaie de parcurs (camion)</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Путевой лист грузовые</Item>
+                <Item language="ro">Foaie de parcurs (camion)</Item>
+              </Tooltip>
+            </Button>
+            <Button name="ПутевойЛистАвтобусы" id="25" kind="Action" checked="false" actionKind="Handler" action="ОсновныеДействияФормыПутевойЛистАвтобусы">
+              <Caption>
+                <Item language="ru">Путевой лист (автобусы)</Item>
+                <Item language="ro">Foaie de parcurs (autobus)</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Путевой лист (автобусы)</Item>
+                <Item language="ro">Foaie de parcurs (autobus)</Item>
+              </Tooltip>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Разделитель3" id="18" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие1</Item>
+          </Caption>
+        </Button>
+        <Button name="ОсновныеДействияФормыОК" id="1" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:141">
+          <Caption>
+            <Item language="ru">OK</Item>
+            <Item language="ro">OK</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель2" id="7" kind="Separator" checked="false">
+          <Caption>
+            <Item language="ru">Действие1</Item>
+          </Caption>
+        </Button>
+        <Button name="Действие" id="6" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:24">
+          <Caption>
+            <Item language="ru">Провести</Item>
+            <Item language="ro">Înregistra</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель" id="2" kind="Separator" checked="false" representation="Text"/>
+        <Button name="ОсновныеДействияФормыСохранить" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:140">
+          <Caption>
+            <Item language="ru">Записать</Item>
+            <Item language="ro">Salvează</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель1" id="4" kind="Separator" checked="false" representation="Text"/>
+        <Button name="ОсновныеДействияФормыЗакрыть" id="5" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:142">
+          <Caption>
+            <Item language="ru">Закрыть</Item>
+            <Item language="ro">Închide</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+    <LabelDecoration name="НадписьДата" id="41">
+      <Caption>
+        <Item language="ru">от</Item>
+        <Item language="ro">de la</Item>
+      </Caption>
+      <Left>233</Left>
+      <Top>33</Top>
+      <Width>20</Width>
+      <Height>19</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors bottom="Top" bottomTarget="41" bottomOffset="19" left="Right" leftTarget="2" right="Left" rightTarget="41" rightOffset="20"/>
+      <Font bold="true" source="style"/>
+      <HorizontalAlign>Center</HorizontalAlign>
+    </LabelDecoration>
+    <LabelDecoration name="НадписьНомер" id="42">
+      <Caption>
+        <Item language="ru">Номер:</Item>
+        <Item language="ro">Număr:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>115</Width>
+      <Height>19</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Top" bottomTarget="42" bottomOffset="19" right="Left" rightTarget="42" rightOffset="115"/>
+      <Font bold="true" source="style"/>
+    </LabelDecoration>
+    <LabelDecoration name="НадписьАвтор" id="54">
+      <DataPath attributeId="1">ДокументОбъект.Автор</DataPath>
+      <Caption>
+        <Item language="ru">Шевчик Александр</Item>
+        <Item language="ro">Sevcik Alexandr</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>544</Top>
+      <Width>350</Width>
+      <Height>16</Height>
+      <ZOrder>8</ZOrder>
+      <TabOrder>65</TabOrder>
+      <Anchors top="Bottom" topTarget="191" topOffset="51" bottom="Top" bottomTarget="54" bottomOffset="16" right="Left" rightTarget="54" rightOffset="350"/>
+      <TextColor kind="style" value="#993300" name="ЦветАвтора" ref="addd5ba5-2652-411d-affb-a6f0a31fcbbc"/>
+      <BackColor kind="style" value="#F5F2DD" name="ЦветФонаАвтора" ref="08084979-466f-49c4-9078-f71b102ba7c4"/>
+      <Picture>true</Picture>
+      <Picture kind="1" refGuid="6ff3ddbd-56e3-4ddf-a5bf-048c1e2dfb2f"/>
+    </LabelDecoration>
+    <LabelDecoration name="НадписьКомментарий" id="56">
+      <Caption>
+        <Item language="ru">Комментарий:</Item>
+        <Item language="ro">Comentariu:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>512</Top>
+      <Width>115</Width>
+      <Height>19</Height>
+      <ZOrder>9</ZOrder>
+      <TabOrder>62</TabOrder>
+      <Anchors top="Bottom" topTarget="191" topOffset="19" bottom="Top" bottomTarget="56" bottomOffset="19" right="Left" rightTarget="56" rightOffset="115"/>
+    </LabelDecoration>
+    <InputField name="Комментарий" id="57">
+      <DataPath attributeId="1">ДокументОбъект.Комментарий</DataPath>
+      <Left>123</Left>
+      <Top>512</Top>
+      <Width>719</Width>
+      <Height>19</Height>
+      <ZOrder>10</ZOrder>
+      <TabOrder>63</TabOrder>
+      <Anchors top="Bottom" topTarget="191" topOffset="19" bottom="Top" bottomTarget="57" bottomOffset="19" left="Left" leftTarget="56" leftOffset="115" right="Right" rightOffset="-8"/>
+      <Tooltip>
+        <Item language="ru">Комментарий</Item>
+        <Item language="ro">Comentariu</Item>
+      </Tooltip>
+      <ValueType kind="String" composite="false"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="НадписьВсего" id="65">
+      <Caption>
+        <Item language="ru">Всего: 500 EURO</Item>
+        <Item language="ro">Total: 500 EURO</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>493</Top>
+      <Width>834</Width>
+      <Height>19</Height>
+      <ZOrder>11</ZOrder>
+      <TabOrder>61</TabOrder>
+      <Anchors top="Bottom" topTarget="191" bottom="Top" bottomTarget="65" bottomOffset="19" left="Left" leftOffset="8" right="Right" rightOffset="-8"/>
+      <Font bold="true" source="style"/>
+    </LabelDecoration>
+    <LabelDecoration name="НадписьПараметры" id="66">
+      <Caption>
+        <Item language="ru">Валюта: USD = 12.0000 MDL; Стандартный пересчет</Item>
+        <Item language="ro">Valuta: USD = 12.0000 MDL; Recalculare standardă</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>124</Top>
+      <Width>834</Width>
+      <Height>19</Height>
+      <ZOrder>12</ZOrder>
+      <TabOrder>59</TabOrder>
+      <Anchors bottom="Top" bottomTarget="66" bottomOffset="19" right="Right" rightOffset="-8"/>
+    </LabelDecoration>
+    <InputField name="ДокументОснование" id="90">
+      <DataPath attributeId="1">ДокументОбъект.ДокументОснование</DataPath>
+      <Left>377</Left>
+      <Top>33</Top>
+      <Width>465</Width>
+      <Height>19</Height>
+      <ZOrder>14</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors bottom="Top" bottomTarget="90" bottomOffset="19" left="Right" leftTarget="4" leftOffset="4" right="Right" rightOffset="-8"/>
+      <Tooltip>
+        <Item language="ru">Основание</Item>
+        <Item language="ro">Baza</Item>
+      </Tooltip>
+      <ValueType kind="String" composite="false" length="100"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>true</ClearButton>
+      <OpenButton>true</OpenButton>
+      <ReadOnly>true</ReadOnly>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+      <Events>
+        <OnChange id="2147483647">ДокументОснованиеПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <LabelDecoration name="НадписьАвтомобиль" id="111">
+      <Caption>
+        <Item language="ru">Автомобиль:</Item>
+        <Item language="ro">Automobilul:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>79</Top>
+      <Width>115</Width>
+      <Height>19</Height>
+      <ZOrder>13</ZOrder>
+      <TabOrder>9</TabOrder>
+      <Anchors bottom="Top" bottomTarget="111" bottomOffset="19" right="Left" rightTarget="111" rightOffset="115"/>
+    </LabelDecoration>
+    <InputField name="Автомобиль" id="112">
+      <DataPath attributeId="1">ДокументОбъект.Автомобиль</DataPath>
+      <Left>123</Left>
+      <Top>79</Top>
+      <Width>250</Width>
+      <Height>19</Height>
+      <ZOrder>15</ZOrder>
+      <TabOrder>10</TabOrder>
+      <Anchors bottom="Top" bottomTarget="112" bottomOffset="19" left="Left" leftTarget="6" right="Right" rightTarget="6"/>
+      <Tooltip>
+        <Item language="ru">Автомобиль</Item>
+        <Item language="ro">Automobilul</Item>
+      </Tooltip>
+      <ValueType kind="Ref" composite="false" refGuid="c6179ca2-4687-4476-858b-bfe3fc9f6197" title="Справочник.АвтомобилиОрганизации"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>true</OpenButton>
+      <AutoMarkIncomplete>true</AutoMarkIncomplete>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <Events>
+        <OnChange id="2147483647">АвтомобильПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <LabelDecoration name="НадписьНачалоПериода" id="122">
+      <Caption>
+        <Item language="ru">Время с:</Item>
+        <Item language="ro">Perioada de la:</Item>
+      </Caption>
+      <Left>377</Left>
+      <Top>79</Top>
+      <Width>54</Width>
+      <Height>19</Height>
+      <ZOrder>16</ZOrder>
+      <TabOrder>11</TabOrder>
+      <Anchors bottom="Top" bottomTarget="122" bottomOffset="19" left="Left" leftTarget="90" right="Left" rightTarget="122" rightOffset="54"/>
+    </LabelDecoration>
+    <InputField name="НачалоПериода" id="123">
+      <DataPath attributeId="1">ДокументОбъект.НачалоПериода</DataPath>
+      <Left>431</Left>
+      <Top>79</Top>
+      <Width>120</Width>
+      <Height>19</Height>
+      <ZOrder>17</ZOrder>
+      <TabOrder>12</TabOrder>
+      <Anchors bottom="Top" bottomTarget="123" bottomOffset="19" left="Left" leftTarget="122" leftOffset="54" right="Left" rightTarget="123" rightOffset="120"/>
+      <Tooltip>
+        <Item language="ru">Начало периода</Item>
+        <Item language="ro">Începutul perioadei</Item>
+      </Tooltip>
+      <ValueType kind="DateTime" composite="false"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+      <Events>
+        <OnChange id="2147483647">НачалоПериодаПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <LabelDecoration name="НадписьКонецПериода" id="124">
+      <Caption>
+        <Item language="ru">по:</Item>
+        <Item language="ro">până la:</Item>
+      </Caption>
+      <Left>551</Left>
+      <Top>79</Top>
+      <Width>19</Width>
+      <Height>19</Height>
+      <ZOrder>18</ZOrder>
+      <TabOrder>13</TabOrder>
+      <Anchors bottom="Top" bottomTarget="124" bottomOffset="19" left="Left" leftTarget="123" leftOffset="120" right="Left" rightTarget="124" rightOffset="19"/>
+      <HorizontalAlign>Center</HorizontalAlign>
+    </LabelDecoration>
+    <InputField name="КонецПериода" id="125">
+      <DataPath attributeId="1">ДокументОбъект.КонецПериода</DataPath>
+      <Left>570</Left>
+      <Top>79</Top>
+      <Width>120</Width>
+      <Height>19</Height>
+      <ZOrder>19</ZOrder>
+      <TabOrder>14</TabOrder>
+      <Anchors bottom="Top" bottomTarget="125" bottomOffset="19" left="Left" leftTarget="124" leftOffset="19" right="Left" rightTarget="125" rightOffset="120"/>
+      <Tooltip>
+        <Item language="ru">Конец периода</Item>
+        <Item language="ro">La sfârșitul perioadei de</Item>
+      </Tooltip>
+      <ValueType kind="DateTime" composite="false"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+      <Events>
+        <OnChange id="2147483647">КонецПериодаПриИзменении</OnChange>
+      </Events>
+    </InputField>
+    <Button name="КнопкаНастройкаПериода" id="126">
+      <Caption>
+        <Item language="ru">...</Item>
+        <Item language="ro">...</Item>
+      </Caption>
+      <Left>693</Left>
+      <Top>79</Top>
+      <Width>19</Width>
+      <Height>19</Height>
+      <ZOrder>20</ZOrder>
+      <TabOrder>15</TabOrder>
+      <Anchors bottom="Top" bottomTarget="126" bottomOffset="19" left="Left" leftTarget="125" leftOffset="123" right="Left" rightTarget="126" rightOffset="19"/>
+      <TransparentBack>true</TransparentBack>
+      <Tooltip>
+        <Item language="ru">Настройка периода 
+формирования отчета</Item>
+        <Item language="ro">Setarea perioadei de 
+formarea raportului</Item>
+      </Tooltip>
+      <SkipOnInput>true</SkipOnInput>
+      <Events>
+        <Click id="0">КнопкаНастройкаПериодаНажатие</Click>
+      </Events>
+    </Button>
+    <LabelDecoration name="НадписьВодитель" id="144">
+      <Caption>
+        <Item language="ru">Водитель:</Item>
+        <Item language="ro">Șoferul:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>102</Top>
+      <Width>115</Width>
+      <Height>19</Height>
+      <ZOrder>21</ZOrder>
+      <TabOrder>18</TabOrder>
+      <Anchors bottom="Top" bottomTarget="144" bottomOffset="19" right="Left" rightTarget="144" rightOffset="115"/>
+    </LabelDecoration>
+    <InputField name="Водитель" id="145">
+      <DataPath attributeId="1">ДокументОбъект.Водитель</DataPath>
+      <Left>123</Left>
+      <Top>102</Top>
+      <Width>250</Width>
+      <Height>19</Height>
+      <ZOrder>22</ZOrder>
+      <TabOrder>19</TabOrder>
+      <Anchors bottom="Top" bottomTarget="145" bottomOffset="19" right="Right" rightTarget="112"/>
+      <Tooltip>
+        <Item language="ru">Водитель</Item>
+        <Item language="ro">Șoferul</Item>
+      </Tooltip>
+      <ValueType kind="Ref" composite="false" refGuid="350829ab-7c27-4281-a28e-ac280ca726c7" title="Справочник.ФизическиеЛица"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>true</OpenButton>
+      <TextEdit>true</TextEdit>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="НадписьВсегоЧасов" id="152">
+      <Caption>
+        <Item language="ru">Всего часов:</Item>
+        <Item language="ro">Total ore:</Item>
+      </Caption>
+      <Left>718</Left>
+      <Top>79</Top>
+      <Width>68</Width>
+      <Height>19</Height>
+      <ZOrder>23</ZOrder>
+      <TabOrder>16</TabOrder>
+      <Anchors bottom="Top" bottomTarget="152" bottomOffset="19" left="Right" leftTarget="126" leftOffset="6" right="Left" rightTarget="152" rightOffset="68"/>
+    </LabelDecoration>
+    <InputField name="ВсегоЧасов" id="153">
+      <DataPath attributeId="1">ДокументОбъект.ВсегоЧасов</DataPath>
+      <Left>786</Left>
+      <Top>79</Top>
+      <Width>56</Width>
+      <Height>19</Height>
+      <ZOrder>24</ZOrder>
+      <TabOrder>17</TabOrder>
+      <Anchors bottom="Top" bottomTarget="153" bottomOffset="19" left="Right" leftTarget="152" right="Left" rightTarget="153" rightOffset="56"/>
+      <Tooltip>
+        <Item language="ru">Всего часов</Item>
+        <Item language="ro">Total ore</Item>
+      </Tooltip>
+      <ValueType kind="Number" composite="false" fractionDigits="0"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <CheckBox name="Аннулированная" id="188">
+      <DataPath attributeId="1">ДокументОбъект.Аннулированная</DataPath>
+      <Caption>
+        <Item language="ru">Аннулированная</Item>
+        <Item language="ro">Anulată</Item>
+      </Caption>
+      <Left>377</Left>
+      <Top>104</Top>
+      <Width>108</Width>
+      <Height>15</Height>
+      <ZOrder>25</ZOrder>
+      <TabOrder>66</TabOrder>
+      <Anchors bottom="Top" bottomTarget="188" bottomOffset="15" left="Left" leftTarget="90" right="Left" rightTarget="188" rightOffset="108"/>
+      <Tooltip>
+        <Item language="ru">Аннулированная</Item>
+        <Item language="ro">Anulată</Item>
+      </Tooltip>
+    </CheckBox>
+    <Panel name="ПанельЗакладок" id="191">
+      <Left>8</Left>
+      <Top>145</Top>
+      <Width>834</Width>
+      <Height>348</Height>
+      <ZOrder>26</ZOrder>
+      <TabOrder>86</TabOrder>
+      <Anchors bottom="Bottom" bottomOffset="-71" right="Right" rightOffset="-8"/>
+      <ShowTabs type="ShowTabs" member="Top" code="1"/>
+      <ChildItems>
+        <Page name="Основная">
+          <Title>
+            <Item language="ru">Основная</Item>
+            <Item language="ro">De baza</Item>
+          </Title>
+          <Left>1</Left>
+          <Top>19</Top>
+          <Width>832</Width>
+          <Height>328</Height>
+          <ChildItems>
+            <Panel name="ПанельТЧ" id="62">
+              <Left>6</Left>
+              <Top>147</Top>
+              <Width>820</Width>
+              <Height>175</Height>
+              <ZOrder>0</ZOrder>
+              <TabOrder>33</TabOrder>
+              <Anchors bottom="Bottom" bottomOffset="-6" right="Right" rightOffset="-6"/>
+              <ShowTabs type="ShowTabs" member="Top" code="1"/>
+              <ChildItems>
+                <Page name="Автошины">
+                  <Title>
+                    <Item language="ru">Автошины</Item>
+                    <Item language="ro">Anvelope</Item>
+                  </Title>
+                  <Left>1</Left>
+                  <Top>19</Top>
+                  <Width>818</Width>
+                  <Height>155</Height>
+                  <ChildItems>
+                    <Table name="Автошины" id="73">
+                      <DataPath attributeId="1">ДокументОбъект.Автошины</DataPath>
+                      <Left>6</Left>
+                      <Top>30</Top>
+                      <Width>806</Width>
+                      <Height>118</Height>
+                      <ZOrder>0</ZOrder>
+                      <TabOrder>2</TabOrder>
+                      <Anchors bottom="Bottom" bottomOffset="-7" right="Right" rightOffset="-6"/>
+                      <Tooltip>
+                        <Item language="ru">Пересчет</Item>
+                        <Item language="ro">Recalcul</Item>
+                      </Tooltip>
+                      <Footer>false</Footer>
+                      <Columns>
+                        <Column name="НомерСтроки" id="0">
+                          <DataPath attributeId="1">ДокументОбъект.Автошины.НомерСтроки</DataPath>
+                          <Header>
+                            <Item language="ru">N</Item>
+                            <Item language="ro">N</Item>
+                          </Header>
+                          <Width>28</Width>
+                          <ReadOnly>true</ReadOnly>
+                        </Column>
+                        <Column name="ТМЦ" id="1">
+                          <DataPath attributeId="1">ДокументОбъект.Автошины.ТМЦ</DataPath>
+                          <Header>
+                            <Item language="ru">Автошина</Item>
+                            <Item language="ro">Anvelopa</Item>
+                          </Header>
+                          <Width>200</Width>
+                          <ValueType kind="Ref" composite="false" refGuid="ea8e633f-0631-42f0-b5dc-65c18d3cde34"/>
+                          <Editor>InputField</Editor>
+                          <Events>
+                            <StartChoice id="2">АвтошиныТМЦНачалоВыбора</StartChoice>
+                            <OnChange id="2147483647">АвтошиныТМЦПриИзменении</OnChange>
+                          </Events>
+                        </Column>
+                        <Column name="НачПериода" id="3">
+                          <DataPath attributeId="1">ДокументОбъект.Автошины.НачПериода</DataPath>
+                          <Header>
+                            <Item language="ru">Нач. периода </Item>
+                            <Item language="ro">La începutul perioadei</Item>
+                          </Header>
+                          <Width>100</Width>
+                          <ValueType kind="Date" composite="false"/>
+                          <Editor>InputField</Editor>
+                        </Column>
+                        <Column name="КонПериода" id="4">
+                          <DataPath attributeId="1">ДокументОбъект.Автошины.КонПериода</DataPath>
+                          <Header>
+                            <Item language="ru">Кон. периода</Item>
+                            <Item language="ro">La sfîrşitul perioadei</Item>
+                          </Header>
+                          <Width>100</Width>
+                          <ValueType kind="Date" composite="false"/>
+                          <Editor>InputField</Editor>
+                        </Column>
+                        <Column name="Пробег" id="2">
+                          <DataPath attributeId="1">ДокументОбъект.Автошины.Пробег</DataPath>
+                          <Header>
+                            <Item language="ru">Пробег</Item>
+                            <Item language="ro">Distanţia</Item>
+                          </Header>
+                          <Width>100</Width>
+                          <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+                          <Editor>InputField</Editor>
+                        </Column>
+                      </Columns>
+                    </Table>
+                    <CommandBar name="ПанельАвтошины" id="75">
+                      <Left>6</Left>
+                      <Top>6</Top>
+                      <Width>806</Width>
+                      <Height>24</Height>
+                      <ZOrder>1</ZOrder>
+                      <TabOrder>1</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="75" bottomOffset="24" right="Right" rightOffset="-6"/>
+                      <ActionSource>73</ActionSource>
+                      <AutoFill>true</AutoFill>
+                      <Buttons>
+                        <Button name="Разделитель" id="10" kind="Separator" checked="false">
+                          <Caption>
+                            <Item language="ru">Действие9</Item>
+                          </Caption>
+                        </Button>
+                        <Button name="Действие9" id="12" kind="Action" checked="false" actionKind="Standard" action="Standard:97">
+                          <Caption>
+                            <Item language="ru">Настройка списка...</Item>
+                            <Item language="ro">Setarea listei...</Item>
+                          </Caption>
+                        </Button>
+                        <Button name="СохранитьВидимостьКолонок" id="114" kind="Action" checked="false" hasPicture="true" actionKind="Handler" action="ПанельАвтошиныСохранитьВидимостьКолонок">
+                          <Caption>
+                            <Item language="ru">Сохранить видимость колонок</Item>
+                            <Item language="ro">Salvarea vizibilitatea coloanelor</Item>
+                          </Caption>
+                          <Tooltip>
+                            <Item language="ru">Сохранить видимость колонок</Item>
+                            <Item language="ro">Salvarea vizibilitatea coloanelor</Item>
+                          </Tooltip>
+                        </Button>
+                        <Button name="Пересчет" id="14" kind="Action" checked="false" representation="Picture" hasPicture="true" actionKind="Handler" action="ПанельАвтошиныПересчет">
+                          <Caption>
+                            <Item language="ru">Пересчет</Item>
+                            <Item language="ro">Recalcul</Item>
+                          </Caption>
+                          <Tooltip>
+                            <Item language="ru">Пересчет</Item>
+                            <Item language="ro">Recalcul</Item>
+                          </Tooltip>
+                        </Button>
+                        <Button name="Разделитель1" id="767" kind="Separator" checked="false">
+                          <Caption>
+                            <Item language="ru">Действие10</Item>
+                          </Caption>
+                        </Button>
+                        <Button name="Заполнить" id="766" kind="Action" checked="false" actionKind="Handler" action="ПанельАвтошиныЗаполнить">
+                          <Caption>
+                            <Item language="ru">Заполнить</Item>
+                            <Item language="ro">Completează</Item>
+                          </Caption>
+                          <Tooltip>
+                            <Item language="ru">Заполнить</Item>
+                            <Item language="ro">Completează</Item>
+                          </Tooltip>
+                        </Button>
+                      </Buttons>
+                    </CommandBar>
+                  </ChildItems>
+                </Page>
+                <Page name="Аккумуляторы">
+                  <Title>
+                    <Item language="ru">Аккумуляторные батареи</Item>
+                    <Item language="ro">Acumulatoare</Item>
+                  </Title>
+                  <Left>1</Left>
+                  <Top>19</Top>
+                  <Width>818</Width>
+                  <Height>155</Height>
+                  <ChildItems>
+                    <Table name="Аккумуляторы" id="92">
+                      <DataPath attributeId="1">ДокументОбъект.Аккумуляторы</DataPath>
+                      <Left>6</Left>
+                      <Top>30</Top>
+                      <Width>805</Width>
+                      <Height>118</Height>
+                      <ZOrder>0</ZOrder>
+                      <TabOrder>2</TabOrder>
+                      <Anchors bottom="Bottom" bottomOffset="-7" right="Right" rightOffset="-7"/>
+                      <Footer>false</Footer>
+                      <Columns>
+                        <Column name="НомерСтроки" id="0">
+                          <DataPath attributeId="1">ДокументОбъект.Аккумуляторы.НомерСтроки</DataPath>
+                          <Header>
+                            <Item language="ru">N</Item>
+                            <Item language="ro">N</Item>
+                          </Header>
+                          <Width>28</Width>
+                          <ReadOnly>true</ReadOnly>
+                        </Column>
+                        <Column name="ТМЦ" id="1">
+                          <DataPath attributeId="1">ДокументОбъект.Аккумуляторы.ТМЦ</DataPath>
+                          <Header>
+                            <Item language="ru">Аккумулятор</Item>
+                            <Item language="ro">Acumulator</Item>
+                          </Header>
+                          <Width>200</Width>
+                          <ValueType kind="Ref" composite="false" refGuid="ea8e633f-0631-42f0-b5dc-65c18d3cde34"/>
+                          <Editor>InputField</Editor>
+                          <Events>
+                            <StartChoice id="2">АккумуляторыТМЦНачалоВыбора</StartChoice>
+                            <OnChange id="2147483647">АккумуляторыТМЦПриИзменении</OnChange>
+                          </Events>
+                        </Column>
+                        <Column name="НачПериода" id="2">
+                          <DataPath attributeId="1">ДокументОбъект.Аккумуляторы.НачПериода</DataPath>
+                          <Header>
+                            <Item language="ru">Нач. периода</Item>
+                            <Item language="ro">La începutul perioadei</Item>
+                          </Header>
+                          <Width>100</Width>
+                          <ValueType kind="Date" composite="false"/>
+                          <Editor>InputField</Editor>
+                        </Column>
+                        <Column name="КонПериода" id="3">
+                          <DataPath attributeId="1">ДокументОбъект.Аккумуляторы.КонПериода</DataPath>
+                          <Header>
+                            <Item language="ru">Кон. периода</Item>
+                            <Item language="ro">La sfîrşitul perioadei</Item>
+                          </Header>
+                          <Width>100</Width>
+                          <ValueType kind="Date" composite="false"/>
+                          <Editor>InputField</Editor>
+                        </Column>
+                        <Column name="Период" id="4">
+                          <DataPath attributeId="1">ДокументОбъект.Аккумуляторы.Период</DataPath>
+                          <Header>
+                            <Item language="ru">Период (дней)</Item>
+                            <Item language="ro">Perioada (zile)</Item>
+                          </Header>
+                          <Width>100</Width>
+                          <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+                          <Editor>InputField</Editor>
+                        </Column>
+                      </Columns>
+                    </Table>
+                    <CommandBar name="ПанельАккумуляторы" id="93">
+                      <Left>6</Left>
+                      <Top>6</Top>
+                      <Width>805</Width>
+                      <Height>24</Height>
+                      <ZOrder>1</ZOrder>
+                      <TabOrder>1</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="93" bottomOffset="24" right="Right" rightOffset="-7"/>
+                      <ActionSource>92</ActionSource>
+                      <AutoFill>true</AutoFill>
+                      <Buttons>
+                        <Button name="Разделитель" id="11" kind="Separator" checked="false">
+                          <Caption>
+                            <Item language="ru">Действие9</Item>
+                          </Caption>
+                        </Button>
+                        <Button name="Действие9" id="158" kind="Action" checked="false" actionKind="Standard" action="Standard:97">
+                          <Caption>
+                            <Item language="ru">Настройка списка...</Item>
+                            <Item language="ro">Setarea listei...</Item>
+                          </Caption>
+                        </Button>
+                        <Button name="СохранитьВидимостьКолонок" id="616" kind="Action" checked="false" hasPicture="true" actionKind="Handler" action="ПанельАккумуляторыСохранитьВидимостьКолонок">
+                          <Caption>
+                            <Item language="ru">Сохранить видимость колонок</Item>
+                            <Item language="ro">Salvarea vizibilitatea coloanelor</Item>
+                          </Caption>
+                          <Tooltip>
+                            <Item language="ru">Сохранить видимость колонок</Item>
+                            <Item language="ro">Salvarea vizibilitatea coloanelor</Item>
+                          </Tooltip>
+                        </Button>
+                        <Button name="Пересчет" id="416" kind="Action" checked="false" hasPicture="true" actionKind="Handler" action="ПанельАккумуляторыПересчет">
+                          <Caption>
+                            <Item language="ru">Пересчет</Item>
+                            <Item language="ro">Recalcul</Item>
+                          </Caption>
+                          <Tooltip>
+                            <Item language="ru">Пересчет</Item>
+                            <Item language="ro">Recalcul</Item>
+                          </Tooltip>
+                        </Button>
+                        <Button name="Разделитель1" id="1305" kind="Separator" checked="false">
+                          <Caption>
+                            <Item language="ru">Действие10</Item>
+                          </Caption>
+                        </Button>
+                        <Button name="Заполнить" id="1304" kind="Action" checked="false" actionKind="Handler" action="ПанельАккумуляторыЗаполнить">
+                          <Caption>
+                            <Item language="ru">Заполнить</Item>
+                            <Item language="ro">Completează</Item>
+                          </Caption>
+                          <Tooltip>
+                            <Item language="ru">Заполнить</Item>
+                            <Item language="ro">Completează</Item>
+                          </Tooltip>
+                        </Button>
+                      </Buttons>
+                    </CommandBar>
+                  </ChildItems>
+                </Page>
+                <Page name="ДанныеПутевогоЛиста">
+                  <Title>
+                    <Item language="ru">Данные путевого листа</Item>
+                    <Item language="ro">Datele foii de parcurs</Item>
+                  </Title>
+                  <Left>1</Left>
+                  <Top>19</Top>
+                  <Width>818</Width>
+                  <Height>155</Height>
+                  <ChildItems>
+                    <UsualGroup name="РамкаЗаданиеВодителю" id="164">
+                      <Caption>
+                        <Item language="ru">Задание водителю</Item>
+                        <Item language="ro">Sarcina șoferului</Item>
+                      </Caption>
+                      <Left>6</Left>
+                      <Top>6</Top>
+                      <Width>436</Width>
+                      <Height>16</Height>
+                      <ZOrder>0</ZOrder>
+                      <TabOrder>1</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="164" bottomOffset="16" right="Right" rightOffset="-376"/>
+                      <Font bold="true" source="bin"/>
+                      <BorderStyle code="4">SingleLine</BorderStyle>
+                    </UsualGroup>
+                    <LabelDecoration name="НадписьАдресПодачи" id="167">
+                      <Caption>
+                        <Item language="ru">Адрес подачи:</Item>
+                        <Item language="ro">Loc de prezentare:</Item>
+                      </Caption>
+                      <Left>6</Left>
+                      <Top>49</Top>
+                      <Width>115</Width>
+                      <Height>19</Height>
+                      <ZOrder>1</ZOrder>
+                      <TabOrder>8</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="167" bottomOffset="19" right="Left" rightTarget="167" rightOffset="115"/>
+                    </LabelDecoration>
+                    <InputField name="АдресПодачи" id="168">
+                      <DataPath attributeId="1">ДокументОбъект.АдресПодачи</DataPath>
+                      <Left>121</Left>
+                      <Top>49</Top>
+                      <Width>321</Width>
+                      <Height>19</Height>
+                      <ZOrder>2</ZOrder>
+                      <TabOrder>9</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="168" bottomOffset="19" right="Right" rightOffset="-376"/>
+                      <Tooltip>
+                        <Item language="ru">Адрес подачи</Item>
+                        <Item language="ro">Адрес подачи</Item>
+                      </Tooltip>
+                      <ValueType kind="String" composite="false"/>
+                      <ChoiceButton>false</ChoiceButton>
+                      <ClearButton>false</ClearButton>
+                      <OpenButton>false</OpenButton>
+                      <TextEdit>true</TextEdit>
+                      <DropListButton>false</DropListButton>
+                      <SpinButton>false</SpinButton>
+                      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+                    </InputField>
+                    <LabelDecoration name="НадписьОпозданияПростои" id="171">
+                      <Caption>
+                        <Item language="ru">Опоздания, простои в пути, заезды в гараж и прочие отметки:</Item>
+                        <Item language="ro">Întârzieri, întreruperi în drum, curse în garaj și alte mențiuni:</Item>
+                      </Caption>
+                      <Left>6</Left>
+                      <Top>72</Top>
+                      <Width>115</Width>
+                      <Height>45</Height>
+                      <ZOrder>3</ZOrder>
+                      <TabOrder>12</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="171" bottomOffset="45" right="Left" rightTarget="171" rightOffset="115"/>
+                    </LabelDecoration>
+                    <InputField name="ОпозданияПростои" id="172">
+                      <DataPath attributeId="1">ДокументОбъект.ОпозданияПростои</DataPath>
+                      <Left>121</Left>
+                      <Top>72</Top>
+                      <Width>321</Width>
+                      <Height>77</Height>
+                      <ZOrder>4</ZOrder>
+                      <TabOrder>13</TabOrder>
+                      <Anchors bottom="Bottom" bottomOffset="-6" right="Right" rightOffset="-376"/>
+                      <Tooltip>
+                        <Item language="ru">Опоздания, простои в пути, заезды в гараж и прочие отметки:</Item>
+                        <Item language="ro">Întârzieri, întreruperi în drum, curse în garaj și alte mențiuni:</Item>
+                      </Tooltip>
+                      <ValueType kind="String" composite="false"/>
+                      <VerticalScrollBar>Auto</VerticalScrollBar>
+                      <ChoiceButton>false</ChoiceButton>
+                      <ClearButton>false</ClearButton>
+                      <OpenButton>false</OpenButton>
+                      <TextEdit>true</TextEdit>
+                      <MultiLine>true</MultiLine>
+                      <DropListButton>false</DropListButton>
+                      <SpinButton>false</SpinButton>
+                      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+                    </InputField>
+                    <LabelDecoration name="НадписьВРаспоряжение" id="173">
+                      <Caption>
+                        <Item language="ru">В распоряжение:</Item>
+                        <Item language="ro">Beneficiar:</Item>
+                      </Caption>
+                      <Left>6</Left>
+                      <Top>26</Top>
+                      <Width>115</Width>
+                      <Height>19</Height>
+                      <ZOrder>5</ZOrder>
+                      <TabOrder>3</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="173" bottomOffset="19" right="Left" rightTarget="173" rightOffset="115"/>
+                    </LabelDecoration>
+                    <InputField name="ВРаспоряжение" id="174">
+                      <DataPath attributeId="1">ДокументОбъект.ВРаспоряжение</DataPath>
+                      <Left>121</Left>
+                      <Top>26</Top>
+                      <Width>321</Width>
+                      <Height>19</Height>
+                      <ZOrder>6</ZOrder>
+                      <TabOrder>4</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="174" bottomOffset="19" right="Right" rightOffset="-376"/>
+                      <Tooltip>
+                        <Item language="ru">В распоряжение</Item>
+                        <Item language="ro">В распоряжение</Item>
+                      </Tooltip>
+                      <ValueType kind="String" composite="false"/>
+                      <ChoiceButton>true</ChoiceButton>
+                      <ClearButton>false</ClearButton>
+                      <OpenButton>false</OpenButton>
+                      <TextEdit>true</TextEdit>
+                      <DropListButton>false</DropListButton>
+                      <SpinButton>false</SpinButton>
+                      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+                      <Events>
+                        <StartChoice id="2">ВРаспоряжениеНачалоВыбора</StartChoice>
+                      </Events>
+                    </InputField>
+                    <UsualGroup name="РамкаРасчетЗаработнойПлаты" id="175">
+                      <Caption>
+                        <Item language="ru">Расчет заработной платы:</Item>
+                        <Item language="ro">Calculul salariului:</Item>
+                      </Caption>
+                      <Left>447</Left>
+                      <Top>6</Top>
+                      <Width>365</Width>
+                      <Height>16</Height>
+                      <ZOrder>7</ZOrder>
+                      <TabOrder>2</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="175" bottomOffset="16" left="Right" leftOffset="-371" right="Right" rightOffset="-6"/>
+                      <Font bold="true" source="bin"/>
+                      <BorderStyle code="4">SingleLine</BorderStyle>
+                    </UsualGroup>
+                    <LabelDecoration name="НадписьСуммаЗаКилометраж" id="178">
+                      <Caption>
+                        <Item language="ru">Сумма за км-траж:</Item>
+                        <Item language="ro">Suma pentru parcurs:</Item>
+                      </Caption>
+                      <Left>447</Left>
+                      <Top>26</Top>
+                      <Width>115</Width>
+                      <Height>19</Height>
+                      <ZOrder>8</ZOrder>
+                      <TabOrder>5</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="178" bottomOffset="19" left="Right" leftOffset="-371" right="Right" rightOffset="-256"/>
+                    </LabelDecoration>
+                    <InputField name="СуммаЗаКилометраж" id="179">
+                      <DataPath attributeId="1">ДокументОбъект.СуммаЗаКилометраж</DataPath>
+                      <Left>562</Left>
+                      <Top>26</Top>
+                      <Width>100</Width>
+                      <Height>19</Height>
+                      <ZOrder>9</ZOrder>
+                      <TabOrder>6</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="179" bottomOffset="19" left="Right" leftOffset="-256" right="Right" rightOffset="-156"/>
+                      <Tooltip>
+                        <Item language="ru">Сумма за километраж</Item>
+                        <Item language="ro">Suma pentru parcurs</Item>
+                      </Tooltip>
+                      <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+                      <ChoiceButton>true</ChoiceButton>
+                      <ClearButton>false</ClearButton>
+                      <OpenButton>false</OpenButton>
+                      <TextEdit>true</TextEdit>
+                      <AutoCellHeight>false</AutoCellHeight>
+                      <DropListButton>false</DropListButton>
+                      <SpinButton>false</SpinButton>
+                      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+                    </InputField>
+                    <LabelDecoration name="НадписьСуммаЗаЧасы" id="180">
+                      <Caption>
+                        <Item language="ru">Сумма за часы:</Item>
+                        <Item language="ro">Suma pentru ore:</Item>
+                      </Caption>
+                      <Left>447</Left>
+                      <Top>49</Top>
+                      <Width>115</Width>
+                      <Height>19</Height>
+                      <ZOrder>10</ZOrder>
+                      <TabOrder>10</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="180" bottomOffset="19" left="Right" leftOffset="-371" right="Right" rightOffset="-256"/>
+                    </LabelDecoration>
+                    <InputField name="СуммаЗаЧасы" id="181">
+                      <DataPath attributeId="1">ДокументОбъект.СуммаЗаЧасы</DataPath>
+                      <Left>562</Left>
+                      <Top>49</Top>
+                      <Width>100</Width>
+                      <Height>19</Height>
+                      <ZOrder>11</ZOrder>
+                      <TabOrder>11</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="181" bottomOffset="19" left="Right" leftOffset="-256" right="Right" rightOffset="-156"/>
+                      <Tooltip>
+                        <Item language="ru">Сумма за часы</Item>
+                        <Item language="ro">Suma pentru ore</Item>
+                      </Tooltip>
+                      <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+                      <ChoiceButton>true</ChoiceButton>
+                      <ClearButton>false</ClearButton>
+                      <OpenButton>false</OpenButton>
+                      <TextEdit>true</TextEdit>
+                      <AutoCellHeight>false</AutoCellHeight>
+                      <DropListButton>false</DropListButton>
+                      <SpinButton>false</SpinButton>
+                      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+                    </InputField>
+                    <LabelDecoration name="НадписьВсегоСуммаЗаработнойПлаты" id="182">
+                      <Left>664</Left>
+                      <Top>26</Top>
+                      <Width>148</Width>
+                      <Height>19</Height>
+                      <ZOrder>12</ZOrder>
+                      <TabOrder>7</TabOrder>
+                      <Anchors bottom="Top" bottomTarget="182" bottomOffset="19" left="Right" leftOffset="-154" right="Right" rightOffset="-6"/>
+                      <TextColor kind="rgb" value="#800080"/>
+                    </LabelDecoration>
+                  </ChildItems>
+                </Page>
+              </ChildItems>
+            </Panel>
+            <LabelDecoration name="НадписьПоказанияСпидометраНачальные" id="128">
+              <Caption>
+                <Item language="ru">Начальные:</Item>
+                <Item language="ro">Inițiale:</Item>
+              </Caption>
+              <Left>6</Left>
+              <Top>26</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>1</ZOrder>
+              <TabOrder>3</TabOrder>
+              <Anchors bottom="Top" bottomTarget="128" bottomOffset="19" right="Left" rightTarget="128" rightOffset="136"/>
+            </LabelDecoration>
+            <InputField name="ПоказанияСпидометраНачальные" id="129">
+              <DataPath attributeId="1">ДокументОбъект.ПоказанияСпидометраНачальные</DataPath>
+              <Left>143</Left>
+              <Top>26</Top>
+              <Width>100</Width>
+              <Height>19</Height>
+              <ZOrder>2</ZOrder>
+              <TabOrder>4</TabOrder>
+              <Anchors bottom="Top" bottomTarget="129" bottomOffset="19" right="Left" rightTarget="129" rightOffset="100"/>
+              <Tooltip>
+                <Item language="ru">Показания спидометра начальные</Item>
+                <Item language="ro">Indicaţii vitezometrului initiale</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">ПоказанияСпидометраНачальныеПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <LabelDecoration name="НадписьПоказанияСпидометраТекущие" id="130">
+              <Caption>
+                <Item language="ru">Текущие:</Item>
+                <Item language="ro">Curente:</Item>
+              </Caption>
+              <Left>6</Left>
+              <Top>49</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>3</ZOrder>
+              <TabOrder>9</TabOrder>
+              <Anchors bottom="Top" bottomTarget="130" bottomOffset="19" right="Left" rightTarget="130" rightOffset="136"/>
+            </LabelDecoration>
+            <InputField name="ПоказанияСпидометраТекущие" id="131">
+              <DataPath attributeId="1">ДокументОбъект.ПоказанияСпидометраТекущие</DataPath>
+              <Left>143</Left>
+              <Top>49</Top>
+              <Width>100</Width>
+              <Height>19</Height>
+              <ZOrder>4</ZOrder>
+              <TabOrder>10</TabOrder>
+              <Anchors bottom="Top" bottomTarget="131" bottomOffset="19" right="Left" rightTarget="131" rightOffset="100"/>
+              <Tooltip>
+                <Item language="ru">Показания спидометра текущие</Item>
+                <Item language="ro">Indicaţii vitezometrului curente</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">ПоказанияСпидометраТекущиеПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <LabelDecoration name="НадписьПробег" id="132">
+              <Caption>
+                <Item language="ru">Пробег общий:</Item>
+                <Item language="ro">Distanţia:</Item>
+              </Caption>
+              <Left>6</Left>
+              <Top>72</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>5</ZOrder>
+              <TabOrder>15</TabOrder>
+              <Anchors bottom="Top" bottomTarget="132" bottomOffset="19" right="Left" rightTarget="132" rightOffset="136"/>
+            </LabelDecoration>
+            <InputField name="Пробег" id="133">
+              <DataPath attributeId="56">Пробег</DataPath>
+              <Left>143</Left>
+              <Top>72</Top>
+              <Width>100</Width>
+              <Height>19</Height>
+              <ZOrder>6</ZOrder>
+              <TabOrder>16</TabOrder>
+              <Anchors bottom="Top" bottomTarget="133" bottomOffset="19" right="Left" rightTarget="133" rightOffset="100"/>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <ReadOnly>true</ReadOnly>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">ПробегПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <UsualGroup name="РамкаПоказанияСпидометра" id="138">
+              <Caption>
+                <Item language="ru">Показания одометра:</Item>
+                <Item language="ro">Indicaţii odometrul:</Item>
+              </Caption>
+              <Left>6</Left>
+              <Top>6</Top>
+              <Width>359</Width>
+              <Height>16</Height>
+              <ZOrder>7</ZOrder>
+              <TabOrder>1</TabOrder>
+              <Anchors bottom="Top" bottomTarget="138" bottomOffset="16" right="Left" rightOffset="365" rightAlt="Right" rightAltOffset="-467"/>
+              <Font bold="true" source="bin"/>
+              <BorderStyle code="4">SingleLine</BorderStyle>
+            </UsualGroup>
+            <LabelDecoration name="НадписьНормаРасхода" id="134">
+              <Caption>
+                <Item language="ru">Норма:</Item>
+                <Item language="ro">Norma:</Item>
+              </Caption>
+              <Left>369</Left>
+              <Top>26</Top>
+              <Width>42</Width>
+              <Height>19</Height>
+              <ZOrder>8</ZOrder>
+              <TabOrder>5</TabOrder>
+              <Anchors bottom="Top" bottomTarget="134" bottomOffset="19" left="Left" leftTarget="139" right="Left" rightTarget="139" rightOffset="42"/>
+            </LabelDecoration>
+            <InputField name="НормаРасхода" id="135">
+              <DataPath attributeId="1">ДокументОбъект.НормаРасхода</DataPath>
+              <Left>412</Left>
+              <Top>26</Top>
+              <Width>187</Width>
+              <Height>19</Height>
+              <ZOrder>9</ZOrder>
+              <TabOrder>6</TabOrder>
+              <Anchors bottom="Top" bottomTarget="135" bottomOffset="19" left="Left" leftTarget="139" leftOffset="43" right="Left" rightTarget="139" rightOffset="230"/>
+              <Tooltip>
+                <Item language="ru">Норма расхода</Item>
+                <Item language="ro">Rata de consum</Item>
+              </Tooltip>
+              <ValueType kind="Ref" composite="false" refGuid="fcaa38da-f1ec-402c-b755-9115a6350027" title="Справочник.ВидыНормРасходаТоплива"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>true</OpenButton>
+              <TextEdit>true</TextEdit>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">НормаРасходаПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <LabelDecoration name="НадписьРасходПоНорме" id="136">
+              <Caption>
+                <Item language="ru">Расход по норме (на 100 км):</Item>
+                <Item language="ro">Consum normativ (la 100 Km):</Item>
+              </Caption>
+              <Left>369</Left>
+              <Top>49</Top>
+              <Width>150</Width>
+              <Height>19</Height>
+              <ZOrder>10</ZOrder>
+              <TabOrder>11</TabOrder>
+              <Anchors bottom="Top" bottomTarget="136" bottomOffset="19" left="Left" leftTarget="139" right="Left" rightTarget="139" rightOffset="150"/>
+            </LabelDecoration>
+            <InputField name="РасходПоНорме" id="137">
+              <DataPath attributeId="1">ДокументОбъект.РасходПоНорме</DataPath>
+              <Left>519</Left>
+              <Top>49</Top>
+              <Width>80</Width>
+              <Height>19</Height>
+              <ZOrder>11</ZOrder>
+              <TabOrder>12</TabOrder>
+              <Anchors bottom="Top" bottomTarget="137" bottomOffset="19" left="Left" leftTarget="139" leftOffset="150" right="Left" rightTarget="139" rightOffset="230"/>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">РасходПоНормеПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <UsualGroup name="РамкаРасходТоплива" id="139">
+              <Caption>
+                <Item language="ru">Расход топлива:</Item>
+                <Item language="ro">Consum combustibil</Item>
+              </Caption>
+              <Left>369</Left>
+              <Top>6</Top>
+              <Width>457</Width>
+              <Height>16</Height>
+              <ZOrder>12</ZOrder>
+              <TabOrder>2</TabOrder>
+              <Anchors bottom="Top" bottomTarget="139" bottomOffset="16" left="Right" leftTarget="138" leftOffset="4" right="Right" rightOffset="-6"/>
+              <Font bold="true" source="bin"/>
+              <BorderStyle code="4">SingleLine</BorderStyle>
+            </UsualGroup>
+            <LabelDecoration name="НадписьНормативныйРасход" id="142">
+              <Caption>
+                <Item language="ru">Нормативный расход:</Item>
+                <Item language="ro">Normativ consum</Item>
+              </Caption>
+              <Left>369</Left>
+              <Top>72</Top>
+              <Width>150</Width>
+              <Height>19</Height>
+              <ZOrder>13</ZOrder>
+              <TabOrder>17</TabOrder>
+              <Anchors bottom="Top" bottomTarget="142" bottomOffset="19" left="Left" leftTarget="139" right="Left" rightTarget="139" rightOffset="150"/>
+            </LabelDecoration>
+            <InputField name="НормативныйРасход" id="143">
+              <DataPath attributeId="1">ДокументОбъект.НормативныйРасход</DataPath>
+              <Left>519</Left>
+              <Top>72</Top>
+              <Width>80</Width>
+              <Height>19</Height>
+              <ZOrder>14</ZOrder>
+              <TabOrder>18</TabOrder>
+              <Anchors bottom="Top" bottomTarget="143" bottomOffset="19" left="Left" leftTarget="139" leftOffset="150" right="Left" rightTarget="139" rightOffset="230"/>
+              <Tooltip>
+                <Item language="ru">Фактический расход</Item>
+                <Item language="ro">Consumul real</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>false</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьВыданоПоЗаправочномуЛисту" id="154">
+              <Caption>
+                <Item language="ru">Выдано по заправ. листу:</Item>
+                <Item language="ro">Eliberat in baza foii de alim.:</Item>
+              </Caption>
+              <Left>611</Left>
+              <Top>72</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>15</ZOrder>
+              <TabOrder>19</TabOrder>
+              <Anchors bottom="Top" bottomTarget="154" bottomOffset="19" left="Left" leftTarget="139" leftOffset="242" right="Left" rightTarget="139" rightOffset="378"/>
+            </LabelDecoration>
+            <InputField name="ВыданоПоЗаправочномуЛисту" id="155">
+              <DataPath attributeId="1">ДокументОбъект.ВыданоПоЗаправочномуЛисту</DataPath>
+              <Left>748</Left>
+              <Top>72</Top>
+              <Width>78</Width>
+              <Height>19</Height>
+              <ZOrder>16</ZOrder>
+              <TabOrder>20</TabOrder>
+              <Anchors bottom="Top" bottomTarget="155" bottomOffset="19" left="Left" leftTarget="139" leftOffset="379" right="Left" rightTarget="139" rightOffset="457"/>
+              <Tooltip>
+                <Item language="ru">Выдано по заправочному листу</Item>
+                <Item language="ro">Eliberat in baza foii de alimentare</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьОстатокПриВыезде" id="156">
+              <Caption>
+                <Item language="ru">Остаток при выезде:</Item>
+                <Item language="ro">Soldul de plecare:</Item>
+              </Caption>
+              <Left>611</Left>
+              <Top>95</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>17</ZOrder>
+              <TabOrder>25</TabOrder>
+              <Anchors bottom="Top" bottomTarget="156" bottomOffset="19" left="Left" leftTarget="139" leftOffset="242" right="Left" rightTarget="139" rightOffset="378"/>
+            </LabelDecoration>
+            <InputField name="ОстатокПриВыезде" id="157">
+              <DataPath attributeId="1">ДокументОбъект.ОстатокПриВыезде</DataPath>
+              <Left>748</Left>
+              <Top>95</Top>
+              <Width>78</Width>
+              <Height>19</Height>
+              <ZOrder>18</ZOrder>
+              <TabOrder>26</TabOrder>
+              <Anchors bottom="Top" bottomTarget="157" bottomOffset="19" left="Left" leftTarget="139" leftOffset="379" right="Left" rightTarget="139" rightOffset="457"/>
+              <Tooltip>
+                <Item language="ru">Остаток при выезде</Item>
+                <Item language="ro">Soldul de plecare</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьОстатокПриВозвращении" id="158">
+              <Caption>
+                <Item language="ru">Остаток при возвращении:</Item>
+                <Item language="ro">Soldul la întoarcerea:</Item>
+              </Caption>
+              <Left>611</Left>
+              <Top>118</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>19</ZOrder>
+              <TabOrder>31</TabOrder>
+              <Anchors bottom="Top" bottomTarget="158" bottomOffset="19" left="Left" leftTarget="139" leftOffset="242" right="Left" rightTarget="139" rightOffset="378"/>
+            </LabelDecoration>
+            <InputField name="ОстатокПриВозвращении" id="159">
+              <DataPath attributeId="1">ДокументОбъект.ОстатокПриВозвращении</DataPath>
+              <Left>748</Left>
+              <Top>118</Top>
+              <Width>78</Width>
+              <Height>19</Height>
+              <ZOrder>20</ZOrder>
+              <TabOrder>32</TabOrder>
+              <Anchors bottom="Top" bottomTarget="159" bottomOffset="19" left="Left" leftTarget="139" leftOffset="379" right="Left" rightTarget="139" rightOffset="457"/>
+              <Tooltip>
+                <Item language="ru">Остаток при возвращении</Item>
+                <Item language="ro">Soldul la întoarcerea</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьГорючее" id="160">
+              <Caption>
+                <Item language="ru">Горючее:</Item>
+                <Item language="ro">Combustibil:</Item>
+              </Caption>
+              <Left>611</Left>
+              <Top>26</Top>
+              <Width>93</Width>
+              <Height>19</Height>
+              <ZOrder>21</ZOrder>
+              <TabOrder>7</TabOrder>
+              <Anchors bottom="Top" bottomTarget="160" bottomOffset="19" left="Left" leftTarget="139" leftOffset="242" right="Left" rightTarget="139" rightOffset="335"/>
+            </LabelDecoration>
+            <InputField name="Горючее" id="161">
+              <DataPath attributeId="1">ДокументОбъект.Горючее</DataPath>
+              <Left>704</Left>
+              <Top>26</Top>
+              <Width>122</Width>
+              <Height>19</Height>
+              <ZOrder>22</ZOrder>
+              <TabOrder>8</TabOrder>
+              <Anchors bottom="Top" bottomTarget="161" bottomOffset="19" left="Left" leftTarget="139" leftOffset="335" right="Left" rightTarget="139" rightOffset="457"/>
+              <Tooltip>
+                <Item language="ru">Горючее</Item>
+                <Item language="ro">Горючее</Item>
+              </Tooltip>
+              <ValueType kind="Ref" composite="false" refGuid="fc1ce0ce-cb90-43e4-a16f-6021b8e8b4ad" title="Справочник.Номенклатура"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>true</OpenButton>
+              <TextEdit>true</TextEdit>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <StartChoice id="2">ГорючееНачалоВыбора</StartChoice>
+              </Events>
+            </InputField>
+            <LabelDecoration name="НадписьНомерЗаправочногоЛиста" id="162">
+              <Caption>
+                <Item language="ru">№ заправ. листа:</Item>
+                <Item language="ro">Nr foii de alim.:</Item>
+              </Caption>
+              <Left>611</Left>
+              <Top>49</Top>
+              <Width>93</Width>
+              <Height>19</Height>
+              <ZOrder>23</ZOrder>
+              <TabOrder>13</TabOrder>
+              <Anchors bottom="Top" bottomTarget="162" bottomOffset="19" left="Left" leftTarget="139" leftOffset="242" right="Left" rightTarget="139" rightOffset="335"/>
+            </LabelDecoration>
+            <InputField name="НомерЗаправочногоЛиста" id="163">
+              <DataPath attributeId="1">ДокументОбъект.НомерЗаправочногоЛиста</DataPath>
+              <Left>704</Left>
+              <Top>49</Top>
+              <Width>122</Width>
+              <Height>19</Height>
+              <ZOrder>24</ZOrder>
+              <TabOrder>14</TabOrder>
+              <Anchors bottom="Top" bottomTarget="163" bottomOffset="19" left="Left" leftTarget="139" leftOffset="335" right="Left" rightTarget="139" rightOffset="457"/>
+              <Tooltip>
+                <Item language="ru">Номер заправочного листа</Item>
+                <Item language="ro">Numărul plăcii de realimentare</Item>
+              </Tooltip>
+              <ValueType kind="String" composite="false" length="25"/>
+              <ChoiceButton>false</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьФактическийРасход" id="185">
+              <Caption>
+                <Item language="ru">Фактический расход:</Item>
+                <Item language="ro">Consumul real:</Item>
+              </Caption>
+              <Left>369</Left>
+              <Top>95</Top>
+              <Width>150</Width>
+              <Height>19</Height>
+              <ZOrder>25</ZOrder>
+              <TabOrder>23</TabOrder>
+              <Anchors bottom="Top" bottomTarget="185" bottomOffset="19" left="Left" leftTarget="139" right="Left" rightTarget="139" rightOffset="150"/>
+            </LabelDecoration>
+            <InputField name="ФактическийРасход" id="186">
+              <DataPath attributeId="1">ДокументОбъект.ФактическийРасход</DataPath>
+              <Left>519</Left>
+              <Top>95</Top>
+              <Width>80</Width>
+              <Height>19</Height>
+              <ZOrder>26</ZOrder>
+              <TabOrder>24</TabOrder>
+              <Anchors bottom="Top" bottomTarget="186" bottomOffset="19" left="Left" leftTarget="139" leftOffset="150" right="Left" rightTarget="139" rightOffset="230"/>
+              <Tooltip>
+                <Item language="ru">Фактический расход</Item>
+                <Item language="ro">Consumul real</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>false</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьПробегВПредпринемательскихЦелях" id="198">
+              <Caption>
+                <Item language="ru">Пробег в предпр. целях:</Item>
+                <Item language="ro">Parcurs in scopuri de intr.:</Item>
+              </Caption>
+              <Left>6</Left>
+              <Top>95</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>27</ZOrder>
+              <TabOrder>21</TabOrder>
+              <Anchors bottom="Top" bottomTarget="198" bottomOffset="19" right="Left" rightTarget="198" rightOffset="136"/>
+              <Tooltip>
+                <Item language="ru">Пробег в предпринемательских целях</Item>
+              </Tooltip>
+            </LabelDecoration>
+            <InputField name="ПробегВПредпринемательскихЦелях" id="199">
+              <DataPath attributeId="1">ДокументОбъект.ПробегВПредпринемательскихЦелях</DataPath>
+              <Left>143</Left>
+              <Top>95</Top>
+              <Width>100</Width>
+              <Height>19</Height>
+              <ZOrder>28</ZOrder>
+              <TabOrder>22</TabOrder>
+              <Anchors bottom="Top" bottomTarget="199" bottomOffset="19" right="Left" rightTarget="199" rightOffset="100"/>
+              <Tooltip>
+                <Item language="ru">Пробег общий</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">ПробегВПредпринемательскихЦеляхПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <LabelDecoration name="НадписьРасходТопливаВНепредпринимательскихЦелях" id="200">
+              <Caption>
+                <Item language="ru">в том числе расход топлива в непредпр. целях:</Item>
+                <Item language="ro">inclusiv consumul de combustibil în scopuri neintreprenzătoare:</Item>
+              </Caption>
+              <Left>369</Left>
+              <Top>118</Top>
+              <Width>150</Width>
+              <Height>28</Height>
+              <ZOrder>29</ZOrder>
+              <TabOrder>29</TabOrder>
+              <Anchors bottom="Top" bottomTarget="200" bottomOffset="28" left="Left" leftTarget="139" right="Left" rightTarget="139" rightOffset="150"/>
+              <VerticalAlign>Top</VerticalAlign>
+            </LabelDecoration>
+            <InputField name="РасходТопливаВНепредпринимательскихЦелях" id="201">
+              <DataPath attributeId="1">ДокументОбъект.РасходТопливаВНепредпринимательскихЦелях</DataPath>
+              <Left>519</Left>
+              <Top>118</Top>
+              <Width>80</Width>
+              <Height>19</Height>
+              <ZOrder>30</ZOrder>
+              <TabOrder>30</TabOrder>
+              <Anchors bottom="Top" bottomTarget="201" bottomOffset="19" left="Left" leftTarget="139" leftOffset="150" right="Left" rightTarget="139" rightOffset="230"/>
+              <Tooltip>
+                <Item language="ru">в том числе расход топлива в непредпринимательских целях</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>false</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+            <LabelDecoration name="НадписьПробегВНепредпринимательскихЦелях" id="202">
+              <Caption>
+                <Item language="ru">Пробег в непредпр. целях:</Item>
+                <Item language="ro">Parcurs in scopuri neintr.:</Item>
+              </Caption>
+              <Left>6</Left>
+              <Top>118</Top>
+              <Width>136</Width>
+              <Height>19</Height>
+              <ZOrder>31</ZOrder>
+              <TabOrder>27</TabOrder>
+              <Anchors bottom="Top" bottomTarget="202" bottomOffset="19" right="Left" rightTarget="202" rightOffset="136"/>
+            </LabelDecoration>
+            <InputField name="ПробегВНепредпринимательскихЦелях" id="203">
+              <DataPath attributeId="1">ДокументОбъект.ПробегВНепредпринимательскихЦелях</DataPath>
+              <Left>143</Left>
+              <Top>118</Top>
+              <Width>100</Width>
+              <Height>19</Height>
+              <ZOrder>32</ZOrder>
+              <TabOrder>28</TabOrder>
+              <Anchors bottom="Top" bottomTarget="203" bottomOffset="19" right="Left" rightTarget="203" rightOffset="100"/>
+              <Tooltip>
+                <Item language="ru">Пробег в непредпринимательских целях</Item>
+              </Tooltip>
+              <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>false</ClearButton>
+              <OpenButton>false</OpenButton>
+              <ReadOnly>true</ReadOnly>
+              <TextEdit>true</TextEdit>
+              <AutoCellHeight>false</AutoCellHeight>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+            </InputField>
+          </ChildItems>
+        </Page>
+        <Page name="ОборотнаяСторона">
+          <Title>
+            <Item language="ru">Оборотная сторона</Item>
+            <Item language="ro">Verso</Item>
+          </Title>
+          <Left>1</Left>
+          <Top>19</Top>
+          <Width>832</Width>
+          <Height>328</Height>
+          <ChildItems>
+            <Table name="ДанныеПутевогоЛиста" id="183">
+              <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста</DataPath>
+              <Left>6</Left>
+              <Top>30</Top>
+              <Width>820</Width>
+              <Height>269</Height>
+              <ZOrder>0</ZOrder>
+              <TabOrder>2</TabOrder>
+              <Anchors bottom="Bottom" bottomOffset="-29" right="Right" rightOffset="-6"/>
+              <Footer>true</Footer>
+              <Columns>
+                <Column name="НомерСтроки" id="0">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.НомерСтроки</DataPath>
+                  <Header>
+                    <Item language="ru">N</Item>
+                    <Item language="ro">N</Item>
+                  </Header>
+                  <Width>28</Width>
+                  <ReadOnly>true</ReadOnly>
+                </Column>
+                <Column name="КодЗаказчика" id="1">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.КодЗаказчика</DataPath>
+                  <Header>
+                    <Item language="ru">Код заказчика</Item>
+                    <Item language="ro">Codul clientului</Item>
+                  </Header>
+                  <Width>100</Width>
+                  <ValueType kind="String" composite="false" length="15"/>
+                  <Editor>InputField</Editor>
+                  <Events>
+                    <StartChoice id="2">ДанныеПутевогоЛистаКодЗаказчикаНачалоВыбора</StartChoice>
+                  </Events>
+                </Column>
+                <Column name="МестоОтправления" id="2">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.МестоОтправления</DataPath>
+                  <Header>
+                    <Item language="ru">Место отправления</Item>
+                    <Item language="ro">Locul de plecare</Item>
+                  </Header>
+                  <Width>240</Width>
+                  <ValueType kind="String" composite="false" length="250"/>
+                  <Editor>InputField</Editor>
+                  <Events>
+                    <StartChoice id="2">ДанныеПутевогоЛистаМестоОтправленияНачалоВыбора</StartChoice>
+                  </Events>
+                </Column>
+                <Column name="МестоНазначения" id="3">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.МестоНазначения</DataPath>
+                  <Header>
+                    <Item language="ru">Место назначения</Item>
+                    <Item language="ro">Locul de destinație</Item>
+                  </Header>
+                  <Width>240</Width>
+                  <ValueType kind="String" composite="false" length="250"/>
+                  <Editor>InputField</Editor>
+                  <Events>
+                    <StartChoice id="2">ДанныеПутевогоЛистаМестоНазначенияНачалоВыбора</StartChoice>
+                  </Events>
+                </Column>
+                <Column name="ВремяВыезда" id="9">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.ВремяВыезда</DataPath>
+                  <Header>
+                    <Item language="ru">Время выезда</Item>
+                    <Item language="ro">Ora plecării</Item>
+                  </Header>
+                  <Width>120</Width>
+                  <ValueType kind="Time" composite="false"/>
+                  <Editor>InputField</Editor>
+                </Column>
+                <Column name="ВремяВозвращения" id="10">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.ВремяВозвращения</DataPath>
+                  <Header>
+                    <Item language="ru">Время возвращения</Item>
+                    <Item language="ro">Ora sosirei</Item>
+                  </Header>
+                  <Width>120</Width>
+                  <ValueType kind="Time" composite="false"/>
+                  <ReadOnly>true</ReadOnly>
+                  <Editor>InputField</Editor>
+                </Column>
+                <Column name="Пройдено" id="8">
+                  <DataPath attributeId="1">ДокументОбъект.ДанныеПутевогоЛиста.Пройдено</DataPath>
+                  <Header>
+                    <Item language="ru">Пройдено, км</Item>
+                    <Item language="ro">Parcurs, km</Item>
+                  </Header>
+                  <Width>79</Width>
+                  <ValueType kind="Number" composite="false" digits="15" fractionDigits="2"/>
+                  <Editor>InputField</Editor>
+                </Column>
+              </Columns>
+            </Table>
+            <CommandBar name="ПанельДанныеПутевогоЛиста" id="184">
+              <Left>6</Left>
+              <Top>6</Top>
+              <Width>820</Width>
+              <Height>24</Height>
+              <ZOrder>1</ZOrder>
+              <TabOrder>1</TabOrder>
+              <Anchors bottom="Top" bottomTarget="184" bottomOffset="24" right="Right" rightOffset="-6"/>
+              <ActionSource>183</ActionSource>
+              <AutoFill>true</AutoFill>
+              <Buttons>
+                <Button name="Разделитель" id="11" kind="Separator" checked="false">
+                  <Caption>
+                    <Item language="ru">Действие9</Item>
+                  </Caption>
+                </Button>
+                <Button name="Действие9" id="158" kind="Action" checked="false" actionKind="Standard" action="Standard:97">
+                  <Caption>
+                    <Item language="ru">Настройка списка...</Item>
+                    <Item language="ro">Setarea listei...</Item>
+                  </Caption>
+                </Button>
+                <Button name="СохранитьВидимостьКолонок" id="616" kind="Action" checked="false" hasPicture="true" actionKind="Handler" action="ПанельДанныеПутевогоЛистаСохранитьВидимостьКолонок">
+                  <Caption>
+                    <Item language="ru">Панель данные путевого листа сохранить видимость колонок</Item>
+                    <Item language="ro">Panoul de datele foii de parcurs pentru a menține aspectul de coloane</Item>
+                  </Caption>
+                  <Tooltip>
+                    <Item language="ru">Панель данные путевого листа сохранить видимость колонок</Item>
+                    <Item language="ro">Panoul de datele foii de parcurs pentru a menține aspectul de coloane</Item>
+                  </Tooltip>
+                </Button>
+              </Buttons>
+            </CommandBar>
+          </ChildItems>
+        </Page>
+      </ChildItems>
+    </Panel>
+  </ChildItems>
+</Form>

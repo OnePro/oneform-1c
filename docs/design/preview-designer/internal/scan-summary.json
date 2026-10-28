@@ -1,0 +1,1958 @@
+{
+ "classes": {
+  "Button": {
+   "elements": 1958,
+   "files": 702,
+   "rows": 18
+  },
+  "CalendarField": {
+   "elements": 9,
+   "files": 8,
+   "rows": 16
+  },
+  "CheckBox": {
+   "elements": 1946,
+   "files": 638,
+   "rows": 16
+  },
+  "ChoiceField": {
+   "elements": 1073,
+   "files": 412,
+   "rows": 21
+  },
+  "CommandBar": {
+   "elements": 5756,
+   "files": 2918,
+   "rows": 14
+  },
+  "CommandBarButton": {
+   "elements": 38868,
+   "files": 2642,
+   "rows": 11
+  },
+  "Form": {
+   "elements": 2983,
+   "files": 2983,
+   "rows": 5
+  },
+  "GraphicalSchemaField": {
+   "elements": 8,
+   "files": 8,
+   "rows": 7
+  },
+  "HTMLDocumentField": {
+   "elements": 50,
+   "files": 46,
+   "rows": 3
+  },
+  "InputField": {
+   "elements": 9497,
+   "files": 1419,
+   "rows": 33
+  },
+  "LabelDecoration": {
+   "elements": 13450,
+   "files": 1706,
+   "rows": 19
+  },
+  "ListBox": {
+   "elements": 45,
+   "files": 37,
+   "rows": 10
+  },
+  "Panel": {
+   "elements": 1464,
+   "files": 850,
+   "rows": 15
+  },
+  "PanelPage": {
+   "elements": 3660,
+   "files": 850,
+   "rows": 4
+  },
+  "PictureDecoration": {
+   "elements": 724,
+   "files": 241,
+   "rows": 15
+  },
+  "ProgressBar": {
+   "elements": 15,
+   "files": 14,
+   "rows": 13
+  },
+  "RadioButton": {
+   "elements": 552,
+   "files": 130,
+   "rows": 16
+  },
+  "Splitter": {
+   "elements": 456,
+   "files": 304,
+   "rows": 7
+  },
+  "SpreadsheetDocumentField": {
+   "elements": 696,
+   "files": 506,
+   "rows": 10
+  },
+  "Table": {
+   "elements": 3327,
+   "files": 1884,
+   "rows": 34
+  },
+  "TableColumn": {
+   "elements": 27127,
+   "files": 1874,
+   "rows": 26
+  },
+  "TextDocumentField": {
+   "elements": 40,
+   "files": 27,
+   "rows": 8
+  },
+  "TrackBar": {
+   "elements": 8,
+   "files": 8,
+   "rows": 16
+  },
+  "UsualGroup": {
+   "elements": 1377,
+   "files": 533,
+   "rows": 10
+  }
+ },
+ "corpus": {
+  "broken": 0,
+  "duplicates_skipped": 7,
+  "files": 2983,
+  "managed_skipped": 29,
+  "roots": {
+   "tests": {
+    "files": 10,
+    "timeout": false
+   },
+   "Бух.": {
+    "files": 1491,
+    "timeout": false
+   },
+   "УТ": {
+    "files": 1464,
+    "timeout": false
+   },
+   "УТ 10.3": {
+    "files": 18,
+    "timeout": false
+   }
+  },
+  "seconds": 34.1
+ },
+ "need_reference": 313,
+ "rows": {
+  "Border.type": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 476,
+   "status": "P"
+  },
+  "Button.BorderColor": {
+   "example": "target/corpus/ut2/DataProcessors/ПанельФункций/src/Forms/Анкетирование/Form.xml",
+   "files_nondefault": 25,
+   "status": "I"
+  },
+  "Button.ButtonBackColor": {
+   "example": "target/corpus/ut2/DataProcessors/ПанельФункций/src/Forms/Анкетирование/Form.xml",
+   "files_nondefault": 27,
+   "status": "I"
+  },
+  "Button.ButtonTextColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "Button.Caption": {
+   "example": "target/a1-live/cfgx/DataProcessors/ГрупповаяПечатьДокументов/src/Forms/Форма/Form.xml",
+   "files_nondefault": 586,
+   "status": "D"
+  },
+  "Button.DefaultButton": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Button.Enabled": {
+   "example": "target/corpus/ut2/DataProcessors/ПошаговоеЗакрытиеСмены/src/Forms/Форма/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "Button.Font": {
+   "example": "target/a1-live/cfgx/DataProcessors/ГрупповаяПечатьДокументов/src/Forms/Форма/Form.xml",
+   "files_nondefault": 18,
+   "status": "I"
+  },
+  "Button.HorizontalAlign": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Button.MenuMode": {
+   "example": "target/a1-live/cfgx/Catalogs/ПравилаОбменаКлиентБанк/src/Forms/ФормаПроизвольногоВыражения/Form.xml",
+   "files_nondefault": 24,
+   "status": "I"
+  },
+  "Button.MultiLine": {
+   "example": "target/corpus/ut2/CommonForms/ФормаВыбораЧековККМ/src/Forms/ФормаВыбораЧековККМ/Form.xml",
+   "files_nondefault": 6,
+   "status": "I"
+  },
+  "Button.Picture": {
+   "example": "target/a1-live/cfgx/CommonForms/МониторНастроекОбменаДанными/src/Forms/МониторНастроекОбменаДанными/Form.xml",
+   "files_nondefault": 45,
+   "status": "I"
+  },
+  "Button.PictureLocation": {
+   "example": "target/a1-live/cfgx/DataProcessors/ВыпискаБанка/src/Forms/ФормаВыписки/Form.xml",
+   "files_nondefault": 8,
+   "status": "I"
+  },
+  "Button.PictureSize": {
+   "example": "target/corpus/ut2/CommonForms/ФормаВыбораЧековККМ/src/Forms/ФормаВыбораЧековККМ/Form.xml",
+   "files_nondefault": 7,
+   "status": "I"
+  },
+  "Button.Shortcut": {
+   "example": "target/corpus/ut2/DataProcessors/ПодборНоменклатуры/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "Button.Tooltip": {
+   "example": "target/a1-live/cfgx/Documents/РегламентированныйОтчет/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 428,
+   "status": "I"
+  },
+  "Button.TransparentBack": {
+   "example": "target/a1-live/cfgx/Catalogs/Валюты/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 489,
+   "status": "I"
+  },
+  "Button.VerticalAlign": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Button.Visible": {
+   "example": "target/corpus/ut2/DataProcessors/ПошаговоеЗакрытиеСмены/src/Forms/Форма/Form.xml",
+   "files_nondefault": 8,
+   "status": "D"
+  },
+  "CalendarField.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.ButtonBackColor": {
+   "example": "target/corpus/ut2/DataProcessors/СводныйОтчетПоВзаиморасчетам/src/Forms/ВыборПериода/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "CalendarField.CalendarNavigation": {
+   "example": "target/corpus/ut2/DataProcessors/СводныйОтчетПоВзаиморасчетам/src/Forms/ВыборПериода/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "CalendarField.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.FieldBackColor": {
+   "example": "target/corpus/ut2/DataProcessors/СводныйОтчетПоВзаиморасчетам/src/Forms/ВыборПериода/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "CalendarField.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.Font": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.HolidayColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.SelectionBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.SelectionMode": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.SelectionTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.ShowCurrentDate": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.Tooltip": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CalendarField.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "CheckBox.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.Caption": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 638,
+   "status": "D"
+  },
+  "CheckBox.Enabled": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаНастройкиСтруктурыОтчета/src/Forms/ФормаНастройкиСтруктурыОтчета/Form.xml",
+   "files_nondefault": 20,
+   "status": "I"
+  },
+  "CheckBox.FieldBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.Font": {
+   "example": "target/a1-live/cfgx/Catalogs/ОформленияСтрокПисем/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 43,
+   "status": "P"
+  },
+  "CheckBox.HorizontalAlign": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.TextColor": {
+   "example": "target/corpus/ut2/Documents/ВозвратТоваровОтПокупателя/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "CheckBox.ThreeState": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.TitleLocation": {
+   "example": "target/a1-live/cfgx/Catalogs/ФильтрыДляЭлектронныхПисем/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 27,
+   "status": "I"
+  },
+  "CheckBox.Tooltip": {
+   "example": "target/a1-live/cfgx/Documents/ИнвентаризационнаяОпись/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 390,
+   "status": "I"
+  },
+  "CheckBox.TransparentBack": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПоискДанных/src/Forms/Форма/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "CheckBox.VerticalAlign": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CheckBox.Visible": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаНастройкиСтруктурыОтчета/src/Forms/ФормаНастройкиСтруктурыОтчета/Form.xml",
+   "files_nondefault": 27,
+   "status": "D"
+  },
+  "ChoiceField.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.ButtonBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.ButtonTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.ChoiceButton": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.ChoiceButtonPicture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.ChoiceList": {
+   "example": "target/a1-live/cfgx/DataProcessors/ГрупповаяОбработкаСправочниковИДокументов/src/Forms/Форма/Form.xml",
+   "files_nondefault": 230,
+   "status": "S"
+  },
+  "ChoiceField.ChoiceListHeight": {
+   "example": "target/corpus/ut2/Documents/ПлатежноеПоручениеИсходящее/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 15,
+   "status": "I"
+  },
+  "ChoiceField.ChoiceListWidth": {
+   "example": "target/corpus/ut2/Documents/ЗакрытиеВнутреннихЗаказов/src/Forms/ФормаОтбораЗаказов/Form.xml",
+   "files_nondefault": 20,
+   "status": "I"
+  },
+  "ChoiceField.ClearButton": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.Enabled": {
+   "example": "target/a1-live/cfgx/Reports/РегREV1/src/Forms/ФормаОтчета2009Кв1/Form.xml",
+   "files_nondefault": 4,
+   "status": "I"
+  },
+  "ChoiceField.FieldBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.Font": {
+   "example": "target/corpus/ut2/Catalogs/Номенклатура/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "ChoiceField.OpenButton": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.Picture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.ReadOnly": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.SpinButton": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.Tooltip": {
+   "example": "target/a1-live/cfgx/Reports/РегCONSTS/src/Forms/ФормаОтчета2016Кв1/Form.xml",
+   "files_nondefault": 201,
+   "status": "I"
+  },
+  "ChoiceField.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ChoiceField.Visible": {
+   "example": "target/a1-live/cfgx/Reports/РегMunca2/src/Forms/ФормаОтчета2013Кв3/Form.xml",
+   "files_nondefault": 9,
+   "status": "D"
+  },
+  "Color.kind": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбновлениеКонфигурации/src/Forms/ОбновлениеКонфигурации/Form.xml",
+   "files_nondefault": 440,
+   "status": "P"
+  },
+  "Color.ref": {
+   "example": "target/corpus/ut2/Catalogs/Банки/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 275,
+   "status": "I"
+  },
+  "Color.value": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбновлениеКонфигурации/src/Forms/ОбновлениеКонфигурации/Form.xml",
+   "files_nondefault": 311,
+   "status": "P"
+  },
+  "CommandBar.AutoFill": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 2019,
+   "status": "D"
+  },
+  "CommandBar.BackColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "CommandBar.BorderColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "CommandBar.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CommandBar.ButtonBackColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "CommandBar.ButtonTextColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "CommandBar.Enabled": {
+   "example": "target/a1-live/cfgx/Catalogs/ХранилищеШаблонов/src/Forms/ФормаРедактированияШаблонаФискальногоЧека/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "CommandBar.Font": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "CommandBar.HorizontalAlign": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1429,
+   "status": "D"
+  },
+  "CommandBar.Orientation": {
+   "example": "target/a1-live/cfgx/Catalogs/БазыТаможенныхВыплат/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "CommandBar.Secondary": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CommandBar.Tooltip": {
+   "example": "target/corpus/ut2/DataProcessors/ПечатьЦенниковИЭтикетокПРОФ/src/Forms/Основная/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "CommandBar.TransparentBack": {
+   "example": "target/a1-live/cfgx/Catalogs/ВнешниеОбработки/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 41,
+   "status": "I"
+  },
+  "CommandBar.Visible": {
+   "example": "target/a1-live/cfgx/Catalogs/ХранилищеШаблонов/src/Forms/ФормаРедактированияШаблонаФискальногоЧека/Form.xml",
+   "files_nondefault": 61,
+   "status": "D"
+  },
+  "CommandBarButton.ButtonOrder": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CommandBarButton.Caption": {
+   "example": "target/a1-live/cfgx/Catalogs/ДолгосрочныеАктивы/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 2640,
+   "status": "D"
+  },
+  "CommandBarButton.DefaultButton": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "P"
+  },
+  "CommandBarButton.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CommandBarButton.Picture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "P"
+  },
+  "CommandBarButton.Shortcut": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "CommandBarButton.Tooltip": {
+   "example": "target/a1-live/cfgx/DataProcessors/КонструкторПользовательскихПолей/src/Forms/ФормаИнтервалы/Form.xml",
+   "files_nondefault": 2284,
+   "status": "P"
+  },
+  "CommandBarButton.action": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2639,
+   "status": "P"
+  },
+  "CommandBarButton.checked": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 158,
+   "status": "D"
+  },
+  "CommandBarButton.kind": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2544,
+   "status": "D"
+  },
+  "CommandBarButton.representation": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2168,
+   "status": "D"
+  },
+  "Font.bold": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 712,
+   "status": "P"
+  },
+  "Font.face": {
+   "example": "target/a1-live/cfgx/CommonForms/МониторНастроекОбменаДанными/src/Forms/МониторНастроекОбменаДанными/Form.xml",
+   "files_nondefault": 26,
+   "status": "I"
+  },
+  "Font.italic": {
+   "example": "target/a1-live/cfgx/Catalogs/ОформленияСтрокПисем/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "Font.source": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 712,
+   "status": "I"
+  },
+  "Font.strikeout": {
+   "example": "target/a1-live/cfgx/Catalogs/ОформленияСтрокПисем/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "Font.underline": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "Form.Caption": {
+   "example": "target/a1-live/cfgx/Catalogs/НастройкаСтрокОтчетов/src/Forms/ФормаВыбораСтрокиОтчета/Form.xml",
+   "files_nondefault": 2866,
+   "status": "P"
+  },
+  "Form.CaptionPicture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Form.Height": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 2983,
+   "status": "D"
+  },
+  "Form.ShowTabs": {
+   "example": "target/corpus/ut2/DataProcessors/ЗагрузкаРезультатовАнкетирования/src/Forms/Форма/Form.xml",
+   "files_nondefault": 16,
+   "status": "P"
+  },
+  "Form.Width": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 2983,
+   "status": "D"
+  },
+  "GraphicalSchemaField.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "GraphicalSchemaField.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "GraphicalSchemaField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "GraphicalSchemaField.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "GraphicalSchemaField.ReadOnly": {
+   "example": "target/corpus/ut2/Catalogs/НастройкиБизнесПроцессов/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "GraphicalSchemaField.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "GraphicalSchemaField.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "HTMLDocumentField.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "HTMLDocumentField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "HTMLDocumentField.Visible": {
+   "example": "target/a1-live/cfgx/DataProcessors/УниверсальныйОбменДаннымиXML/src/Forms/ФормаРедактораТекстовогоДокумента/Form.xml",
+   "files_nondefault": 3,
+   "status": "D"
+  },
+  "InputField.AutoMarkIncomplete": {
+   "example": "target/a1-live/cfgx/Catalogs/Валюты/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 674,
+   "status": "D"
+  },
+  "InputField.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.BorderColor": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 11,
+   "status": "I"
+  },
+  "InputField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.ButtonBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.ButtonTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.ChoiceButton": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1419,
+   "status": "P"
+  },
+  "InputField.ChoiceButtonPicture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.ChoiceListMode": {
+   "example": "target/a1-live/cfgx/DataProcessors/ИнвентаризационнаяОпись/src/Forms/Настройка/Form.xml",
+   "files_nondefault": 33,
+   "status": "I"
+  },
+  "InputField.ClearButton": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 735,
+   "status": "P"
+  },
+  "InputField.DropListButton": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.Enabled": {
+   "example": "target/a1-live/cfgx/Catalogs/ДолжностиОрганизаций/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 44,
+   "status": "I"
+  },
+  "InputField.FieldBackColor": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 12,
+   "status": "I"
+  },
+  "InputField.FieldTextColor": {
+   "example": "target/corpus/ut2/DataProcessors/ЗаполнениеДиапазонаСерийныхНомеров/src/Forms/Форма/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "InputField.Font": {
+   "example": "target/a1-live/cfgx/CommonForms/ПоказателиВыделенныхЯчеек/src/Forms/ПоказателиВыделенныхЯчеек/Form.xml",
+   "files_nondefault": 18,
+   "status": "I"
+  },
+  "InputField.Format": {
+   "example": "target/a1-live/cfgx/DataProcessors/КорректировкаБольничных/src/Forms/Форма/Form.xml",
+   "files_nondefault": 233,
+   "status": "I"
+  },
+  "InputField.HorizontalAlign": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.HorizontalScrollBar": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.MarkNegatives": {
+   "example": "target/a1-live/cfgx/CommonForms/ПоказателиВыделенныхЯчеек/src/Forms/ПоказателиВыделенныхЯчеек/Form.xml",
+   "files_nondefault": 4,
+   "status": "I"
+  },
+  "InputField.Mask": {
+   "example": "target/corpus/ut2/DataProcessors/РедактированиеКонтактнойИнформации/src/Forms/ФормаЗаписиАдреса/Form.xml",
+   "files_nondefault": 10,
+   "status": "I"
+  },
+  "InputField.MultiLine": {
+   "example": "target/a1-live/cfgx/Catalogs/ВидыНалогов/src/Forms/ФормаВидаРасчета/Form.xml",
+   "files_nondefault": 77,
+   "status": "I"
+  },
+  "InputField.OpenButton": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 648,
+   "status": "P"
+  },
+  "InputField.PasswordMode": {
+   "example": "target/a1-live/cfgx/Catalogs/НастройкиОбменаДанными/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 33,
+   "status": "I"
+  },
+  "InputField.Picture": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 11,
+   "status": "I"
+  },
+  "InputField.ReadOnly": {
+   "example": "target/a1-live/cfgx/Catalogs/ВариантыРасчетаНалогов/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 362,
+   "status": "I"
+  },
+  "InputField.SpinButton": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.TextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.Tooltip": {
+   "example": "target/a1-live/cfgx/Catalogs/ДоговораФизическихЛиц/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1118,
+   "status": "I"
+  },
+  "InputField.TransparentBack": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 11,
+   "status": "I"
+  },
+  "InputField.ValueType": {
+   "example": "target/a1-live/cfgx/Catalogs/АккумуляторныеБатареиИАвтошины/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1419,
+   "status": "P"
+  },
+  "InputField.VerticalAlign": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПочтовыйКлиент/src/Forms/Форма/Form.xml",
+   "files_nondefault": 7,
+   "status": "I"
+  },
+  "InputField.VerticalScrollBar": {
+   "example": "target/a1-live/cfgx/Catalogs/ВидыНалогов/src/Forms/ФормаВидаРасчета/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "InputField.Visible": {
+   "example": "target/a1-live/cfgx/DataProcessors/ГрупповоеПерепроведениеДокументов/src/Forms/Форма/Form.xml",
+   "files_nondefault": 25,
+   "status": "D"
+  },
+  "LabelDecoration.BackColor": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПанельФункций/src/Forms/Форма/Form.xml",
+   "files_nondefault": 145,
+   "status": "P"
+  },
+  "LabelDecoration.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "LabelDecoration.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "LabelDecoration.Caption": {
+   "example": "target/a1-live/cfgx/Catalogs/ДоговораФизическихЛиц/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1641,
+   "status": "D"
+  },
+  "LabelDecoration.Enabled": {
+   "example": "target/a1-live/cfgx/Catalogs/ДолжностиОрганизаций/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 13,
+   "status": "I"
+  },
+  "LabelDecoration.Font": {
+   "example": "target/a1-live/cfgx/Catalogs/ВариантыПересчета/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 275,
+   "status": "P"
+  },
+  "LabelDecoration.Format": {
+   "example": "target/corpus/ut2/Reports/ОтчетСписокКроссТаблица/src/Forms/ФормаНастройка/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "LabelDecoration.HorizontalAlign": {
+   "example": "target/a1-live/cfgx/Catalogs/Валюты/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 841,
+   "status": "D"
+  },
+  "LabelDecoration.Hyperlink": {
+   "example": "target/a1-live/cfgx/Catalogs/ДолгосрочныеАктивы/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 148,
+   "status": "D"
+  },
+  "LabelDecoration.LabelPictureLocation": {
+   "example": "target/a1-live/cfgx/Catalogs/ШаблоныСодержаний/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 33,
+   "status": "I"
+  },
+  "LabelDecoration.MarkNegatives": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "LabelDecoration.Picture": {
+   "example": "target/a1-live/cfgx/Catalogs/РегламентированныеОтчеты/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 158,
+   "status": "P"
+  },
+  "LabelDecoration.PictureSize": {
+   "example": "target/a1-live/cfgx/Catalogs/ХранилищеШаблонов/src/Forms/ФормаРедактированияШаблонаФискальногоЧека/Form.xml",
+   "files_nondefault": 40,
+   "status": "I"
+  },
+  "LabelDecoration.ScrollingText": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "LabelDecoration.TextColor": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбновлениеКонфигурации/src/Forms/ОбновлениеКонфигурации/Form.xml",
+   "files_nondefault": 396,
+   "status": "P"
+  },
+  "LabelDecoration.Tooltip": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбщиеОбъектыРегламентированнойОтчетности/src/Forms/УправлениеОтчетностью/Form.xml",
+   "files_nondefault": 150,
+   "status": "I"
+  },
+  "LabelDecoration.TransparentBack": {
+   "example": "target/a1-live/cfgx/Catalogs/ВнешниеОбработки/src/Forms/ФормаЭлементаОнлайнПоддержки/Form.xml",
+   "files_nondefault": 55,
+   "status": "I"
+  },
+  "LabelDecoration.VerticalAlign": {
+   "example": "target/a1-live/cfgx/Catalogs/РасчетныеСчета/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 32,
+   "status": "I"
+  },
+  "LabelDecoration.Visible": {
+   "example": "target/a1-live/cfgx/CommonForms/ХодВыполненияОбработкиДанных/src/Forms/ХодВыполненияОбработкиДанных/Form.xml",
+   "files_nondefault": 115,
+   "status": "D"
+  },
+  "ListBox.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.FieldBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.ReadOnly": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.ShowCheckBox": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаНастройкаПоСубконто/src/Forms/ФормаНастройкаПоСубконто/Form.xml",
+   "files_nondefault": 20,
+   "status": "I"
+  },
+  "ListBox.ShowPicture": {
+   "example": "target/a1-live/cfgx/DataProcessors/УниверсальныйЖурналДокументов/src/Forms/ФормаНастройки/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "ListBox.Tooltip": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ListBox.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "Panel.BackColor": {
+   "example": "target/corpus/ut2/DataProcessors/ПанельФункций/src/Forms/Анкетирование/Form.xml",
+   "files_nondefault": 36,
+   "status": "I"
+  },
+  "Panel.BorderColor": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 24,
+   "status": "I"
+  },
+  "Panel.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Panel.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Panel.Font": {
+   "example": "target/a1-live/cfgx/CommonForms/НастройкаПараметровОбращенияВОтделТехническойПоддержки/src/Forms/НастройкаПараметровОбращенияВОтделТехническойПоддержки/Form.xml",
+   "files_nondefault": 4,
+   "status": "I"
+  },
+  "Panel.PanelPictureLocation": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Panel.Picture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Panel.PictureSize": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Panel.ScrollPageMode": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 11,
+   "status": "I"
+  },
+  "Panel.SeparateByPage": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПодборНоменклатурыНоменклатура/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Panel.ShowTabs": {
+   "example": "target/a1-live/cfgx/Catalogs/АккумуляторныеБатареиИАвтошины/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 850,
+   "status": "P"
+  },
+  "Panel.TextColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "Panel.Tooltip": {
+   "example": "target/corpus/ut2/Documents/УстановкаСкидокНоменклатуры/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "Panel.TransparentBack": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПомощникПереходаНаНовыеСтандарты/src/Forms/Форма/Form.xml",
+   "files_nondefault": 15,
+   "status": "I"
+  },
+  "Panel.Visible": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 1,
+   "status": "D"
+  },
+  "PanelPage.Enabled": {
+   "example": "target/a1-live/cfgx/DataProcessors/УниверсальныйОбменДаннымиXML/src/Forms/ФормаРедактораТекстовогоДокумента/Form.xml",
+   "files_nondefault": 4,
+   "status": "I"
+  },
+  "PanelPage.Title": {
+   "example": "target/a1-live/cfgx/Catalogs/АккумуляторныеБатареиИАвтошины/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 850,
+   "status": "D"
+  },
+  "PanelPage.TitlePicture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PanelPage.Visible": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 43,
+   "status": "D"
+  },
+  "Picture.kind": {
+   "example": "target/corpus/ut2/DataProcessors/ПанельФункций/src/Forms/Анкетирование/Form.xml",
+   "files_nondefault": 263,
+   "status": "P"
+  },
+  "Picture.refGuid": {
+   "example": "target/corpus/ut2/DataProcessors/ПанельФункций/src/Forms/Анкетирование/Form.xml",
+   "files_nondefault": 263,
+   "status": "I"
+  },
+  "PictureDecoration.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.Font": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.Hyperlink": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "PictureDecoration.NonselectedPictureText": {
+   "example": "target/corpus/ut2/ChartsOfCharacteristicTypes/ВопросыДляАнкетирования/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "PictureDecoration.Picture": {
+   "example": "target/a1-live/cfgx/Reports/РегINDTS/src/Forms/ФормаОтчета2010Кв1/Form.xml",
+   "files_nondefault": 55,
+   "status": "P"
+  },
+  "PictureDecoration.PictureSize": {
+   "example": "target/a1-live/cfgx/Catalogs/Организации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 21,
+   "status": "I"
+  },
+  "PictureDecoration.TextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.Tooltip": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "PictureDecoration.UseContextMenu": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаСпискаНастроекОбмена/src/Forms/ФормаСпискаНастроекОбмена/Form.xml",
+   "files_nondefault": 31,
+   "status": "I"
+  },
+  "PictureDecoration.Visible": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаНастройкиСтруктурыОтчета/src/Forms/ФормаНастройкиСтруктурыОтчета/Form.xml",
+   "files_nondefault": 140,
+   "status": "D"
+  },
+  "PictureDecoration.Zoomable": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаСпискаНастроекОбмена/src/Forms/ФормаСпискаНастроекОбмена/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.Font": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.MaxValue": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.MinValue": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.Orientation": {
+   "example": "target/corpus/ut2/DataProcessors/РазбитьНакладнуюНаНесколько/src/Forms/Форма/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.ShowPercent": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаИндикацииПроцессаПолученияОтправкиПисемЭлектроннойПочты/src/Forms/ФормаИндикацииПроцессаПолученияОтправкиПисемЭлектроннойПочты/Form.xml",
+   "files_nondefault": 6,
+   "status": "I"
+  },
+  "ProgressBar.ShowStyle": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПереносДанныхИзИнформационныхБаз1СПредприятия77/src/Forms/Форма/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "ProgressBar.Step": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.Tooltip": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "ProgressBar.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "RadioButton.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.Caption": {
+   "example": "target/corpus/ut2/DataProcessors/ПереходСТорговляИСклад77/src/Forms/Форма/Form.xml",
+   "files_nondefault": 130,
+   "status": "D"
+  },
+  "RadioButton.Enabled": {
+   "example": "target/corpus/ut2/DataProcessors/EFactura1CPRO/src/Forms/Форма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "RadioButton.FieldBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.Font": {
+   "example": "target/corpus/ut2/DataProcessors/ПомощникНастройкиОбменаДаннымиСРозничнойТорговлей/src/Forms/Форма/Form.xml",
+   "files_nondefault": 4,
+   "status": "P"
+  },
+  "RadioButton.HorizontalAlign": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.SelectionValue": {
+   "example": "target/a1-live/cfgx/Catalogs/ВариантыРасчетаНалогов/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 114,
+   "status": "I"
+  },
+  "RadioButton.TextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.TitleLocation": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.Tooltip": {
+   "example": "target/a1-live/cfgx/Reports/ДиаграммаПланСчетовОсновной/src/Forms/ФормаНастройка/Form.xml",
+   "files_nondefault": 32,
+   "status": "I"
+  },
+  "RadioButton.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.VerticalAlign": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПомощникНастройкиОбменаДанными/src/Forms/Форма/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "RadioButton.Visible": {
+   "example": "target/corpus/ut2/DataProcessors/EFactura/src/Forms/Форма/Form.xml",
+   "files_nondefault": 1,
+   "status": "D"
+  },
+  "Shortcut.key": {
+   "example": "target/corpus/ut2/Documents/АвансовыйОтчет/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 48,
+   "status": "I"
+  },
+  "Shortcut.mods": {
+   "example": "target/corpus/ut2/Documents/АвансовыйОтчет/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 48,
+   "status": "I"
+  },
+  "Splitter.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Splitter.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Splitter.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Splitter.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Splitter.Orientation": {
+   "example": "target/a1-live/cfgx/Catalogs/Контрагенты/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "Splitter.Tooltip": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Splitter.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "SpreadsheetDocumentField.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.FixedBackground": {
+   "example": "target/a1-live/cfgx/Catalogs/ХранилищеШаблонов/src/Forms/ФормаРедактированияШаблонаЭтикетокИЦенников/Form.xml",
+   "files_nondefault": 109,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.HorizontalScrollBar": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.ReadOnly": {
+   "example": "target/a1-live/cfgx/Reports/КарточкаСубконтоПланСчетовОсновной/src/Forms/Форма/Form.xml",
+   "files_nondefault": 28,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.ShowGrid": {
+   "example": "target/a1-live/cfgx/Catalogs/КлассификаторЗагрязняющихВеществВУпаковках/src/Forms/ФормаСозданияИзМакета/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.ShowGroups": {
+   "example": "target/a1-live/cfgx/Catalogs/КлассификаторЗагрязняющихВеществ/src/Forms/ФормаСозданияИзМакета/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.ShowHeaders": {
+   "example": "target/a1-live/cfgx/Catalogs/ХранилищеШаблонов/src/Forms/ФормаРедактированияШаблонаФискальногоЧека/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.VerticalScrollBar": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "SpreadsheetDocumentField.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "Table.AlternationRowBackColor": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПанельФункций/src/Forms/Форма/Form.xml",
+   "files_nondefault": 8,
+   "status": "I"
+  },
+  "Table.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.BorderColor": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПанельФункций/src/Forms/Форма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "Table.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.Enabled": {
+   "example": "target/a1-live/cfgx/DataProcessors/ГрупповоеПерепроведениеДокументов/src/Forms/Форма/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "Table.FieldBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.FixedLeft": {
+   "example": "target/a1-live/cfgx/Documents/ВыплатаЗП/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 6,
+   "status": "I"
+  },
+  "Table.FixedRight": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.Font": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "Table.Footer": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 42,
+   "status": "D"
+  },
+  "Table.FooterBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.FooterFont": {
+   "example": "target/corpus/ut2/DataProcessors/КлиентБанк/src/Forms/Форма/Form.xml",
+   "files_nondefault": 2,
+   "status": "I"
+  },
+  "Table.FooterHeight": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПоискДанных/src/Forms/ФормаВыбораМетаданных/Form.xml",
+   "files_nondefault": 15,
+   "status": "I"
+  },
+  "Table.FooterTextColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "Table.HeaderBackColor": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 11,
+   "status": "I"
+  },
+  "Table.HeaderFont": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "Table.HeaderHeight": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПоискДанных/src/Forms/ФормаВыбораМетаданных/Form.xml",
+   "files_nondefault": 30,
+   "status": "I"
+  },
+  "Table.HeaderTextColor": {
+   "example": "target/corpus/ut2/DataProcessors/РабочееМестоМенеджера/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "Table.HorizontalLines": {
+   "example": "target/a1-live/cfgx/Catalogs/ГруппыПисемЭлектроннойПочты/src/Forms/ФормаВыбора/Form.xml",
+   "files_nondefault": 215,
+   "status": "I"
+  },
+  "Table.HorizontalScrollBar": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.InitialTreeView": {
+   "example": "target/a1-live/cfgx/Catalogs/ГруппыПользователей/src/Forms/ФормаВыбора/Form.xml",
+   "files_nondefault": 167,
+   "status": "I"
+  },
+  "Table.ReadOnly": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 222,
+   "status": "I"
+  },
+  "Table.RowSelectionMode": {
+   "example": "target/a1-live/cfgx/Catalogs/КлассификаторЕНАОФ/src/Forms/ФормаСписка/Form.xml",
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.SelectionBackColor": {
+   "example": "target/a1-live/cfgx/DataProcessors/ПанельФункций/src/Forms/Форма/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "Table.SelectionMode": {
+   "example": "target/a1-live/cfgx/Catalogs/ВложенияЭлектронныхПисем/src/Forms/ФормаСпискаФайловИИзображений/Form.xml",
+   "files_nondefault": 135,
+   "status": "I"
+  },
+  "Table.SelectionTextColor": {
+   "example": "target/corpus/ut2/DataProcessors/AGRNMD2X710/src/Forms/Форма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "Table.TextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.Tooltip": {
+   "example": "target/a1-live/cfgx/Documents/АктПереработкиПолученныхТМЦ/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 221,
+   "status": "I"
+  },
+  "Table.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.UseAlternationRowColor": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаНастройкиСтруктурыОтчета/src/Forms/ФормаНастройкиСтруктурыОтчета/Form.xml",
+   "files_nondefault": 27,
+   "status": "I"
+  },
+  "Table.VerticalLines": {
+   "example": "target/a1-live/cfgx/Catalogs/ГруппыПисемЭлектроннойПочты/src/Forms/ФормаВыбора/Form.xml",
+   "files_nondefault": 181,
+   "status": "I"
+  },
+  "Table.VerticalScrollBar": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "Table.Visible": {
+   "example": "target/corpus/ut2/Catalogs/Номенклатура/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 2,
+   "status": "D"
+  },
+  "TableColumn.CheckBoxThreeState": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.Editor": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 302,
+   "status": "S"
+  },
+  "TableColumn.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.FieldBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.FieldTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.FooterBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.FooterFont": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.FooterText": {
+   "example": "target/corpus/ut2/Documents/ПеремещениеТоваров/src/Forms/ФормаДокумента/Form.xml",
+   "files_nondefault": 3,
+   "status": "S"
+  },
+  "TableColumn.FooterTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.Header": {
+   "example": "target/a1-live/cfgx/Catalogs/ЗарплатныеПроекты/src/Forms/ФормаВыбора/Form.xml",
+   "files_nondefault": 1870,
+   "status": "D"
+  },
+  "TableColumn.HeaderBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.HeaderFont": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.HeaderHorizontalAlign": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.HeaderPicture": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.HeaderTextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.HorizontalAlignInColumn": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.Hyperlink": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.MarkNegatives": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.ReadOnly": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 1673,
+   "status": "D"
+  },
+  "TableColumn.RowsPictures": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.ShowHierarchy": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.TextFont": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TableColumn.Tooltip": {
+   "example": "target/corpus/ut2/DataProcessors/КлиентБанк/src/Forms/Форма/Form.xml",
+   "files_nondefault": 260,
+   "status": "P"
+  },
+  "TableColumn.ValueType": {
+   "example": "target/a1-live/cfgx/Catalogs/ВидыОбъектов/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 1870,
+   "status": "S"
+  },
+  "TableColumn.Visible": {
+   "example": "target/a1-live/cfgx/Catalogs/ВложенияЭлектронныхПисем/src/Forms/СписокАгента/Form.xml",
+   "files_nondefault": 375,
+   "status": "D"
+  },
+  "TableColumn.Width": {
+   "example": "target/a1-live/cfgx/AccountingRegisters/ПланСчетовОсновной/src/Forms/ПроводкиДокумента/Form.xml",
+   "files_nondefault": 1874,
+   "status": "D"
+  },
+  "TextDocumentField.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TextDocumentField.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TextDocumentField.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TextDocumentField.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TextDocumentField.Font": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TextDocumentField.ReadOnly": {
+   "example": "target/a1-live/cfgx/CommonForms/ФормаИндикацииПроцессаПолученияОтправкиПисемЭлектроннойПочты/src/Forms/ФормаИндикацииПроцессаПолученияОтправкиПисемЭлектроннойПочты/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "TextDocumentField.TextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TextDocumentField.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "TrackBar.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.BorderColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.BorderStyle": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.ButtonBackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.LargeStep": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбщиеОбъектыРегламентированнойОтчетности/src/Forms/УправлениеОтчетностью/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "TrackBar.MarkingAppearance": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.MarkingStep": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбщиеОбъектыРегламентированнойОтчетности/src/Forms/УправлениеОтчетностью/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "TrackBar.MaxValue": {
+   "example": "target/a1-live/cfgx/DataProcessors/ОбщиеОбъектыРегламентированнойОтчетности/src/Forms/УправлениеОтчетностью/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "TrackBar.MinValue": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.Orientation": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.Step": {
+   "example": "target/corpus/ut2/DataProcessors/ПоискИЗаменаДублирующихсяЭлементов/src/Forms/Форма/Form.xml",
+   "files_nondefault": 1,
+   "status": "I"
+  },
+  "TrackBar.TextColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.Tooltip": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.TransparentBack": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "TrackBar.Visible": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "D"
+  },
+  "UsualGroup.BackColor": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "UsualGroup.BorderColor": {
+   "example": "target/a1-live/cfgx/Reports/АнализСубконто/src/Forms/ФормаОтчета/Form.xml",
+   "files_nondefault": 10,
+   "status": "I"
+  },
+  "UsualGroup.BorderStyle": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 476,
+   "status": "D"
+  },
+  "UsualGroup.Caption": {
+   "example": "target/a1-live/cfgx/Reports/РегCONSTS/src/Forms/ОсновнаяФорма/Form.xml",
+   "files_nondefault": 506,
+   "status": "D"
+  },
+  "UsualGroup.Enabled": {
+   "example": null,
+   "files_nondefault": 0,
+   "status": "I"
+  },
+  "UsualGroup.Font": {
+   "example": "target/a1-live/cfgx/Catalogs/АвтомобилиОрганизации/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 527,
+   "status": "P"
+  },
+  "UsualGroup.TextColor": {
+   "example": "target/corpus/ut2/DataProcessors/ПереходСТорговляИСклад77/src/Forms/Форма/Form.xml",
+   "files_nondefault": 4,
+   "status": "I"
+  },
+  "UsualGroup.Tooltip": {
+   "example": "target/corpus/ut2/DataProcessors/СтартовыйПомощник/src/Forms/Форма/Form.xml",
+   "files_nondefault": 5,
+   "status": "I"
+  },
+  "UsualGroup.TransparentBack": {
+   "example": "target/corpus/ut2/Catalogs/ДоговорыКонтрагентов/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 3,
+   "status": "I"
+  },
+  "UsualGroup.Visible": {
+   "example": "target/corpus/ut2/Catalogs/ДоговорыКонтрагентов/src/Forms/ФормаЭлемента/Form.xml",
+   "files_nondefault": 4,
+   "status": "D"
+  }
+ },
+ "rows_total": 364
+}
