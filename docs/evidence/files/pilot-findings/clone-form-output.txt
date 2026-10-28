@@ -1,0 +1,5 @@
+.: CLONED, form ФормаКопия created from Форма
+  ОбменДаннымиXML/Forms/ФормаКопия.xml
+  ОбменДаннымиXML/Forms/ФормаКопия/Ext/Form.bin
+  ОбменДаннымиXML.xml (ChildObjects: +ФормаКопия)
+  next: oneform extract <config dir>, edit src/Forms/ФормаКопия/Form.xml, oneform pack

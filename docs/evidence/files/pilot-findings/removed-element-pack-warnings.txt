@@ -1,0 +1,6 @@
+.: PACKED, 1 file(s), 1 form, reference partial (1 warning)
+  pack Forms/ФормаОтчета/Form.xml
+  edit Forms/ФормаОтчета/Form.xml: remove InputField 'Подразделение' (id 60)
+  warning Forms/ФормаОтчета/Form.xml: removed control 'Подразделение' is still referenced at FormModule.bsl:49: ЭлементыФормы.Подразделение.Доступность = НастройкиФормы.ДоступностьПодразделения;
+  warning Forms/ФормаОтчета/Form.xml: removed control 'Подразделение' is still referenced at FormModule.bsl:104: ЭлементыФормы.Подразделение.Доступность = Истина;
+  warning Forms/ФормаОтчета/Form.xml: procedure ПодразделениеПриИзменении belongs to removed control 'Подразделение' (FormModule.bsl:464): remove it, it is an orphan
