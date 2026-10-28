@@ -15,12 +15,17 @@ form class is told by the name of the main attribute and by the `FormExtension` 
                                                             all fields removed)
   external      the external data processor РабочееМестоМенеджера.epf (made by the platform; real ОбработкаОбъект form
                 with the plain `FormExtension` c5251418 as in the forms of an external processor), form ФормаВыбораПоиска:
-                the panel ОсновныеДействияФормы with the standard «Закрыть» only. Used for `processor` and `report`.
+                the panel ОсновныеДействияФормы with the standard «Закрыть» only. Used for `processor`.
 
 Cleaning goes through the oneform patcher itself (extract, edit Form.xml, pack): all controls except the kept panels
 are removed together with their events, the form events are removed, the module is empty, the caption is neutral.
-Not removable by the patcher and therefore left: form attributes other than the main one (the `external` template
-keeps the unused value table attribute ТаблицаНоменклатуры).
+The form attributes other than the main one (the unused value table ТаблицаНоменклатуры of the source processor) go
+through the patcher as well.
+
+  report        the report form made by the Configurator, tests/fixtures/configurator-report.erf (`erf-dump` of it, passed as
+                --report-dump): ФормаОтчета with ОтчетОбъект (id 3), the extension 343b4e00, `Результат`, `ДействияФормы`,
+                `Отбор`; the user's ПолеВвода1 / Надпись1 / Кнопка1, the attribute ПолеВвода1 and the handler are removed.
+                The caption is `Отчет  %ИмяОбъекта%`, `new-form` puts the object name there.
 
 The main attribute of an ordinary form holds the TypeId of the owner's generated type (CatalogObject / CatalogList /
 DocumentObject / ExternalDataProcessorObject ...) as `{"Pattern",{"#",<TypeId>}}`. The script checks that the source
@@ -47,7 +52,11 @@ PLACEHOLDER = {
     "catalog-list": "7f5a1c00-0000-4000-8000-000000000002",
     "document": "7f5a1c00-0000-4000-8000-000000000003",
     "external": "7f5a1c00-0000-4000-8000-000000000004",
+    "report": "7f5a1c00-0000-4000-8000-000000000005",
 }
+# the caption of the report template: `new-form` puts `Отчет  <object name>` there (two spaces, as the Configurator does)
+REPORT_CAPTION = "Отчет  %ИмяОбъекта%"
+REPORT_KEEP = ["Результат", "ДействияФормы", "Отбор"]
 SPECS = {
     "catalog-item": dict(corpus="ut2", family="Catalogs", root="Catalog", obj="Производители", form="ФормаЭлемента",
                          keep=["ДействияФормы", "ОсновныеДействияФормы"], caption="Форма элемента", type_name="CatalogObject"),
@@ -110,6 +119,18 @@ def clean_form_xml(text, keep, caption, drop_buttons=()):
     return re.sub(r'(<Caption>\s*<Item language="ru">)[^<]*(</Item>)', rf"\g<1>{caption}\g<2>", text, count=1)
 
 
+def drop_other_attributes(text):
+    """Remove the form attributes other than the main one (nothing is bound to them after `clean_form_xml`)."""
+    main = re.search(r'<MainAttribute attributeId="(\d+)"', text).group(1)
+    lines = text.split("\n")
+    first, last = lines.index("  <Attributes>"), lines.index("  </Attributes>")
+    kill = set()
+    for a, b, tag, _name in blocks(lines[first + 1:last], 4):
+        if tag == "Attribute" and f'id="{main}"' not in lines[first + 1 + a]:
+            kill.update(range(first + 1 + a, first + 2 + b))
+    return "\n".join(line for i, line in enumerate(lines) if i not in kill)
+
+
 def object_xml(root, name):
     return ('<?xml version="1.0" encoding="UTF-8"?>\n<MetaDataObject xmlns="http://v8.1c.ru/8.3/MDClasses" '
             f'xmlns:v8="http://v8.1c.ru/8.1/data/core"><{root} uuid="a63b4d77-d77e-5295-913d-cba0fe9ee943"><Properties>'
@@ -166,7 +187,7 @@ def mine_external(tool, corpus, work, epf):
     form_dir = ws / "src" / "Forms" / "ФормаВыбораПоиска"
     xml = clean_form_xml((form_dir / "Form.xml").read_text("utf-8"), ["ОсновныеДействияФормы"], "Форма",
                          drop_buttons=["ОсновныеДействияФормыВыполнить", "Разделитель"])
-    (form_dir / "Form.xml").write_text(xml, encoding="utf-8", newline="")
+    (form_dir / "Form.xml").write_text(drop_other_attributes(xml), encoding="utf-8", newline="")
     (form_dir / "FormModule.bsl").write_text("", encoding="utf-8")
     tool.run("pack", ws)
     stream = (form_dir / "Reference" / "FormStream.bin").read_bytes()
@@ -186,6 +207,29 @@ def mine_external(tool, corpus, work, epf):
     return (od / "Forms" / spec["form"] / "Ext" / "Form.bin").read_bytes(), ext_stream, ext_type, set()
 
 
+def mine_report(tool, work, dump):
+    """The report form of the Configurator (`erf-dump` of tests/fixtures/configurator-report.erf): the user's controls,
+    the user's attribute and the handler are removed by the oneform patcher; the stream keeps `ОтчетОбъект`, the
+    extension 343b4e00, `Результат`, `ДействияФормы` and `Отбор`. The container is the dump's own, repacked by `pack`."""
+    ws = work / "report"
+    shutil.copytree(dump, ws, ignore=shutil.ignore_patterns("src", ".oneform", ".extract-work"))
+    od = next(p for p in ws.iterdir() if p.is_dir())
+    form = next((od / "Forms").glob("*.xml")).stem
+    tool.run("extract", ws)
+    fd = od / "src" / "Forms" / form
+    text = (fd / "Form.xml").read_text("utf-8")
+    # attributes other than the main one (`ПолеВвода1` of the sample) go with their controls
+    xml = drop_other_attributes(clean_form_xml(text, REPORT_KEEP, REPORT_CAPTION))
+    (fd / "Form.xml").write_text(xml, encoding="utf-8", newline="")
+    (fd / "FormModule.bsl").write_text("", encoding="utf-8")
+    tool.run("pack", ws)
+    round_trip(tool, ws)
+    stream = (fd / "Reference" / "FormStream.bin").read_bytes()
+    type_id = re.search(r'"ОтчетОбъект",\s*\{"Pattern",\s*\{"#",\s*(' + GUID_RE + ")", stream.decode("utf-8-sig")).group(1)
+    object_xml_text = (ws / f"{od.name}.xml").read_text("utf-8-sig")
+    return (od / "Forms" / form / "Ext" / "Form.bin").read_bytes(), stream, type_id, set(GUID.findall(object_xml_text))
+
+
 def corpus_guid_counts(corpus, limit=1500):
     """GUID -> number of distinct objects (of the corpora) whose form streams contain it (a sample of the forms)."""
     seen = collections.defaultdict(set)
@@ -202,6 +246,8 @@ def main():
     ap.add_argument("--oneform", default=str(ROOT / "target" / "debug" / "oneform"))
     ap.add_argument("--corpus", default=str(ROOT / "target" / "corpus"))
     ap.add_argument("--epf", default=str(ROOT / "target" / "tp" / "РабочееМестоМенеджера.epf"))
+    ap.add_argument("--report-dump", default=None,
+                    help="erf-dump of tests/fixtures/configurator-report.erf (the report template is mined only with it)")
     ap.add_argument("--out", default=str(ROOT / "src" / "templates" / "new_form"))
     ap.add_argument("--work", default=None)
     args = ap.parse_args()
@@ -213,6 +259,8 @@ def main():
     counts = corpus_guid_counts(corpus)
     results = {kind: mine_config_form(tool, corpus, work, kind, spec) for kind, spec in SPECS.items()}
     results["external"] = mine_external(tool, corpus, work, Path(args.epf))
+    if args.report_dump:
+        results["report"] = mine_report(tool, work, Path(args.report_dump))
     for kind, (bin_, stream, type_id, owner_guids) in results.items():
         text = stream.decode("utf-8-sig")
         if text.count(type_id) < 1 or bin_.count(type_id.encode()) != text.count(type_id):

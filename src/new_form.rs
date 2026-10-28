@@ -18,7 +18,8 @@ use uuid::Uuid;
 use crate::cli_epf::clean_path;
 use crate::clone_form::{object_xml_path, read_text, register_in_object, valid_name, xml_escape};
 use crate::errors::ExtractionError;
-use crate::formbin::{extract_config_object, ConfigObject, ConfigRunOpts, FORM_BIN_NAME};
+use crate::container::{parse_container, Limits};
+use crate::formbin::{extract_config_object, rebuild_bin, ConfigObject, ConfigRunOpts, FORM_BIN_NAME};
 
 type Result<T> = std::result::Result<T, ExtractionError>;
 
@@ -32,6 +33,7 @@ const CATALOG_ITEM: &[u8] = include_bytes!("templates/new_form/catalog-item.form
 const CATALOG_LIST: &[u8] = include_bytes!("templates/new_form/catalog-list.form.bin");
 const DOCUMENT: &[u8] = include_bytes!("templates/new_form/document.form.bin");
 const EXTERNAL: &[u8] = include_bytes!("templates/new_form/external.form.bin");
+const REPORT: &[u8] = include_bytes!("templates/new_form/report.form.bin");
 const FORM_META: &str = include_str!("templates/new_form/form_meta.xml");
 
 /// The GUID the templates carry instead of the `TypeId` of their owner (see `scripts/mine_blank_forms.py`).
@@ -39,6 +41,10 @@ const PLACEHOLDER_CATALOG_ITEM: &str = "7f5a1c00-0000-4000-8000-000000000001";
 const PLACEHOLDER_CATALOG_LIST: &str = "7f5a1c00-0000-4000-8000-000000000002";
 const PLACEHOLDER_DOCUMENT: &str = "7f5a1c00-0000-4000-8000-000000000003";
 const PLACEHOLDER_EXTERNAL: &str = "7f5a1c00-0000-4000-8000-000000000004";
+const PLACEHOLDER_REPORT: &str = "7f5a1c00-0000-4000-8000-000000000005";
+
+/// The caption of the report template: `Отчет  <object name>` is written in its place (see `form_bin`).
+const REPORT_CAPTION_MARKER: &str = "Отчет  %ИмяОбъекта%";
 
 pub const KINDS: [&str; 5] = ["processor", "report", "catalog-item", "catalog-list", "document"];
 
@@ -103,7 +109,8 @@ impl Kind {
             Kind::CatalogItem => (CATALOG_ITEM, PLACEHOLDER_CATALOG_ITEM),
             Kind::CatalogList => (CATALOG_LIST, PLACEHOLDER_CATALOG_LIST),
             Kind::Document => (DOCUMENT, PLACEHOLDER_DOCUMENT),
-            Kind::Processor | Kind::Report => (EXTERNAL, PLACEHOLDER_EXTERNAL),
+            Kind::Processor => (EXTERNAL, PLACEHOLDER_EXTERNAL),
+            Kind::Report => (REPORT, PLACEHOLDER_REPORT),
         }
     }
 
@@ -190,7 +197,7 @@ fn form_metadata(object_xml: &str, name: &str, synonym: &str, uuid: &Uuid, exter
 }
 
 /// The `Form.bin` of the new form: the template with the owner's `TypeId` put in.
-fn form_bin(kind: Kind, type_id: &str) -> Result<Vec<u8>> {
+fn form_bin(kind: Kind, type_id: &str, object_name: &str) -> Result<Vec<u8>> {
     let (template, placeholder) = kind.template();
     let (from, to) = (placeholder.as_bytes(), type_id.as_bytes());
     if from.len() != to.len() {
@@ -211,7 +218,28 @@ fn form_bin(kind: Kind, type_id: &str) -> Result<Vec<u8>> {
     if found == 0 {
         return Err(err("the form template has no place for the owner's TypeId (broken build)"));
     }
+    if kind == Kind::Report {
+        out = report_caption(&out, object_name)?;
+    }
     Ok(out)
+}
+
+/// The caption of a report form is `Отчет  <name of the object>`; the stream is text, so the entry `form` of the
+/// container is rewritten with the name put in place of the marker (the container is rebuilt with the new size).
+fn report_caption(bin: &[u8], object_name: &str) -> Result<Vec<u8>> {
+    let limits = Limits::default();
+    let container = parse_container(bin, &limits, 0, None).map_err(|e| err(e.message))?;
+    let form = container.get("form").ok_or_else(|| err("the report template has no form entry (broken build)"))?;
+    let (marker, caption) = (REPORT_CAPTION_MARKER.as_bytes(), format!("Отчет  {object_name}"));
+    let at = form
+        .raw
+        .windows(marker.len())
+        .position(|w| w == marker)
+        .ok_or_else(|| err("the report template has no place for the caption (broken build)"))?;
+    let mut stream = form.raw[..at].to_vec();
+    stream.extend_from_slice(caption.as_bytes());
+    stream.extend_from_slice(&form.raw[at + marker.len()..]);
+    rebuild_bin(bin, &[("form", stream)], &limits).map_err(|e| err(e.message))
 }
 
 /// Undo of a failed run: the new files and directories are removed, the object's file is restored.
@@ -316,7 +344,7 @@ pub fn new_form_with(
     let object_uuid: String = object_text.find(" uuid=\"").map(|p| object_text[p + 7..].chars().take(36).collect()).unwrap_or_default();
     let uuid = Uuid::new_v5(&Uuid::NAMESPACE_URL, format!("oneform:new-form:{object_uuid}:{name}").as_bytes());
     let meta = form_metadata(&object_text, name, synonym.unwrap_or(name), &uuid, kind.external());
-    let bin = form_bin(kind, &type_id)?;
+    let bin = form_bin(kind, &type_id, &obj_name)?;
 
     // the new files first, the object's list last
     let mut undo = Rollback {
@@ -416,12 +444,17 @@ mod tests {
     fn templates_take_the_owner_type_id() {
         for kind in [Kind::CatalogItem, Kind::CatalogList, Kind::Document, Kind::Processor, Kind::Report] {
             let id = "11111111-2222-4333-8444-555555555555";
-            let bin = form_bin(kind, id).unwrap();
+            let bin = form_bin(kind, id, "Т").unwrap();
             let (template, placeholder) = kind.template();
-            assert_eq!(bin.len(), template.len());
+            if kind != Kind::Report {
+                assert_eq!(bin.len(), template.len());
+            } else {
+                // the caption `Отчет  <name>` replaces its marker in the stream
+                assert!(bin.windows("Отчет  Т".len()).any(|w| w == "Отчет  Т".as_bytes()) && !bin.windows(REPORT_CAPTION_MARKER.len()).any(|w| w == REPORT_CAPTION_MARKER.as_bytes()));
+            }
             assert!(!bin.windows(36).any(|w| w == placeholder.as_bytes()));
             assert!(bin.windows(36).any(|w| w == id.as_bytes()));
         }
-        assert!(form_bin(Kind::Document, "short").is_err());
+        assert!(form_bin(Kind::Document, "short", "Т").is_err());
     }
 }

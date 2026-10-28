@@ -27,7 +27,7 @@ const CASES: [Case; 5] = [
     Case { kind: "catalog-list", family: "Catalogs", root: "Catalog", main: "СправочникСписок", default_property: "DefaultListForm", type_name: "CatalogList", type_n: 2 },
     Case { kind: "document", family: "Documents", root: "Document", main: "ДокументОбъект", default_property: "DefaultObjectForm", type_name: "DocumentObject", type_n: 1 },
     Case { kind: "processor", family: "", root: "ExternalDataProcessor", main: "ОбработкаОбъект", default_property: "DefaultForm", type_name: "ExternalDataProcessorObject", type_n: 1 },
-    Case { kind: "report", family: "", root: "ExternalReport", main: "ОбработкаОбъект", default_property: "DefaultForm", type_name: "ExternalReportObject", type_n: 1 },
+    Case { kind: "report", family: "", root: "ExternalReport", main: "ОтчетОбъект", default_property: "DefaultForm", type_name: "ExternalReportObject", type_n: 1 },
 ];
 
 fn type_id(n: u8) -> String {
@@ -202,7 +202,9 @@ fn the_new_form_takes_bound_fields_tables_and_buttons() {
         );
         let mut edited = xml.replace("  </ChildItems>", &format!("{added}  </ChildItems>"));
         if c.kind != "catalog-list" {
-            let at = edited.find("<Button name=\"ОсновныеДействияФормыЗакрыть\"").expect("the panel has «Закрыть»");
+            // the panel «Закрыть» of the forms of objects; the command bar of a report form has no such panel
+            let anchor = if c.kind == "report" { "<Button name=\"Действие5\" id=\"31\"" } else { "<Button name=\"ОсновныеДействияФормыЗакрыть\"" };
+            let at = edited.find(anchor).expect("the panel has a button to put the new one before");
             edited.insert_str(at, "<Button name=\"Обновить\" kind=\"Action\" action=\"Standard:90\"><Caption><Item language=\"ru\">Обновить</Item></Caption></Button>\n        ");
         }
         fs::write(&form, edited).unwrap();
@@ -317,6 +319,63 @@ fn the_new_form_takes_form_attributes_and_a_value_table_with_columns() {
         let dry = run(&["pack", root.to_str().unwrap(), "--dry-run", "--no-progress"]);
         assert!(text(&dry).contains("NO CHANGES"), "{}: {}", c.kind, text(&dry));
     }
+}
+
+#[test]
+fn the_report_form_is_the_form_of_the_configurator_without_user_controls() {
+    let report = CASES.iter().find(|c| c.kind == "report").unwrap();
+    let (_tmp, root, object) = workspace(report);
+    assert!(new_form(&object, "report", "ФормаОтчета", &["--default"]).status.success());
+    let xml = fs::read_to_string(object.join("src/Forms/ФормаОтчета/Form.xml")).unwrap();
+    // size and caption as in the Configurator form (two spaces after «Отчет»)
+    assert!(xml.contains("<Item language=\"ru\">Отчет  Тест</Item>") && xml.contains("<Width>520</Width>") && xml.contains("<Height>300</Height>"), "{xml}");
+    // main attribute id 3 `ОтчетОбъект` and the report extension, no other attribute
+    assert!(xml.contains("<MainAttribute attributeId=\"3\"/>") && xml.contains("<FormExtension guid=\"343b4e00-29f0-11d6-a3c7-0050bae0a776\"/>"), "{xml}");
+    assert_eq!(xml.matches("<Attribute id=").count(), 1, "{xml}");
+    assert!(xml.contains("<Attribute id=\"3\" name=\"ОтчетОбъект\">"), "{xml}");
+    // the controls of the Configurator form: result, command bar, settings table (60 columns bound to the settings composer)
+    for control in ["<SpreadsheetDocumentField name=\"Результат\" id=\"1\">", "<CommandBar name=\"ДействияФормы\" id=\"2\">", "<Table name=\"Отбор\" id=\"7\">"] {
+        assert!(xml.contains(control), "{control} is missing:
+{xml}");
+    }
+    assert!(xml.contains("steps=\"b9754f01-29e9-11d6-a3c7-0050bae0a776 0 1\">ОтчетОбъект.[b9754f01-29e9-11d6-a3c7-0050bae0a776].[0].[1]</DataPath>"), "{xml}");
+    assert_eq!(xml.matches("<Column name=").count(), 60);
+    // nothing of the user's controls of the sample is left
+    for gone in ["ПолеВвода1", "Надпись1", "Кнопка1", "<Events>", "ОсновныеДействияФормы", "ТаблицаНоменклатуры"] {
+        assert!(!xml.contains(gone), "{gone} is left:
+{xml}");
+    }
+    let module = fs::read(object.join("src/Forms/ФормаОтчета/FormModule.bsl")).unwrap();
+    assert!(module.iter().all(|b| b.is_ascii_whitespace() || [0xEF, 0xBB, 0xBF].contains(b)), "the module is empty");
+    // the object keeps its own metadata: the form is the default one
+    assert!(fs::read_to_string(object_file(&object)).unwrap().contains("<DefaultForm>ExternalReport.Тест.Form.ФормаОтчета</DefaultForm>"));
+    let dry = run(&["pack", root.to_str().unwrap(), "--dry-run", "--no-progress"]);
+    assert!(text(&dry).contains("NO CHANGES"), "{}", text(&dry));
+    let check = run(&["check", root.to_str().unwrap(), "--no-progress"]);
+    assert!(check.status.success(), "{}", text(&check));
+}
+
+#[test]
+fn the_report_caption_follows_the_object_name() {
+    let report = CASES.iter().find(|c| c.kind == "report").unwrap();
+    let (_tmp, _root, object) = workspace(report);
+    assert!(new_form(&object, "report", "Ф", &[]).status.success());
+    let xml = fs::read_to_string(object.join("src/Forms/Ф/Form.xml")).unwrap();
+    // the name is put into the stream (which is longer than the marker of the template): the stream still reads back
+    assert!(xml.contains("Отчет  Тест</Item>") && !xml.contains("%ИмяОбъекта%"), "{xml}");
+}
+
+#[test]
+fn the_processor_form_has_the_main_attribute_only() {
+    let processor = CASES.iter().find(|c| c.kind == "processor").unwrap();
+    let (_tmp, _root, object) = workspace(processor);
+    assert!(new_form(&object, "processor", "Ф", &[]).status.success());
+    let xml = fs::read_to_string(object.join("src/Forms/Ф/Form.xml")).unwrap();
+    assert!(xml.contains("<MainAttribute attributeId=\"0\"/>") && xml.contains("name=\"ОбработкаОбъект\""), "{xml}");
+    assert_eq!(xml.matches("<Attribute id=").count(), 1, "the unused value table of the old template is gone:
+{xml}");
+    assert!(!xml.contains("ТаблицаНоменклатуры") && !xml.contains("ValueTable"), "{xml}");
+    assert!(xml.contains("Standard:142"), "the panel with «Закрыть» stays");
 }
 
 /// Everything under `dir` with the content, for "nothing changed" checks.

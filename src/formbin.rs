@@ -751,7 +751,7 @@ pub struct ConfigPackPlan {
 }
 
 /// Replace/append container entries; every other entry keeps its stored bytes and header.
-fn rebuild_bin(raw: &[u8], edits: &[(&str, Vec<u8>)], limits: &Limits) -> Result<Vec<u8>> {
+pub(crate) fn rebuild_bin(raw: &[u8], edits: &[(&str, Vec<u8>)], limits: &Limits) -> Result<Vec<u8>> {
     let container = parse_container(raw, limits, 0, None)?;
     let mut entries: Vec<EntryOut<'_>> = container
         .entries

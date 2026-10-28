@@ -1,5 +1,13 @@
 # `new-form --kind report` against a form made by the Configurator
 
+> **Resolved 28.10.2026** (OpenSpec change `report-form-template`). `new-form --kind report` now builds the form from
+> `src/templates/new_form/report.form.bin`, mined from this Configurator form by `scripts/mine_blank_forms.py --report-dump`
+> (the user's `ПолеВвода1`, `Надпись1`, `Кнопка1`, the attribute `ПолеВвода1` and the handler removed through the oneform patcher;
+> the stream is what `pack` writes: the enumeration tables are updated by the patcher). The table below is the state **before** the change.
+> Open in 1C and compared with the Configurator form: dumps equal (2 203 lines, 0 differences besides the user controls) —
+> `docs/evidence/report-form-template.md`. The processor template lost `ТаблицаНоменклатуры` as well. A report without a schema:
+> the form opens, the template is the same, no refusal (the settings table is meaningful only with a schema).
+
 Compared: `ФормаОтчета` of `ВнешнийОтчет1.erf` (Configurator, ordinary form, report with a data composition schema;
 stream `target/tr/xml/.../ФормаОтчета/Ext/Form.bin`, 75 506 bytes) and `ФормаШаблона` made by
 `oneform new-form ВнешнийОтчет1 --kind report --name ФормаШаблона` on a copy of the same dump (stream 2 216 bytes,

@@ -13,7 +13,8 @@
 | Связи без потерь | [lossless-datapath-steps](lossless-datapath-steps.md) | подтверждено: дамп до и после совпадает побайтно; состав правки не записан |
 | Колонки-флажки | [boolean-check-box-columns](boolean-check-box-columns.md) | подтверждено (отличие только в ширине) |
 | Кнопки командной панели | [edit-command-bar-buttons](edit-command-bar-buttons.md) | подтверждено наличие, текст и действие; нажатие не проверялось |
-| `new-form` | [add-new-form-command](add-new-form-command.md) | формы открываются; отчёт — по шаблону обработки (V3) |
+| `new-form` | [add-new-form-command](add-new-form-command.md) | формы открываются; отчёт — см. следующую строку |
+| Шаблон отчёта `new-form --kind report` | [report-form-template](report-form-template.md) | подтверждено в «Бух.»: форма открывается, `ОтчетОбъект`, вызов модуля объекта; дамп равен форме Конфигуратора |
 | Панель со страницами | [add-panel-with-pages](add-panel-with-pages.md) | **только этап A**; этап B в 1С **не проверялся** (V1) |
 | Страницы и `ShowTabs` существующей панели настоящего отчёта | [functional-report](functional-report.md) | подтверждено платформой (сборка `.erf` + выгрузка) для переименования, добавления, удаления, перестановки и `ShowTabs` 0 ↔ 1; в живой 1С открыты итоговая форма и перестановка/`ShowTabs` 0 → 1 (V1, V2) |
 | Реквизиты формы и таблица значений | [add-form-attributes-and-value-tables](add-form-attributes-and-value-tables.md) | таблица значений — да; простые реквизиты формы — **нет артефакта** (V6) |
