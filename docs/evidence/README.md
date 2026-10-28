@@ -26,6 +26,7 @@
 | `clone-form` | [clone-form](clone-form.md) | обработка и отчёт — да; справочник — нет дампа |
 | Добавление элемента в малые формы | [add-remove-elements-small-forms](add-remove-elements-small-forms.md) | надпись в 3 формах; удаление и 26 типов — нет |
 | Версия потока формы: `DESIGNER /ConvertFiles` и цикл выгрузка → сборка | [convert-files-experiment](convert-files-experiment.md) | `ConvertFiles` файлы не меняет (версия 25 / 26 прежняя); выгрузка в XML и сборка поднимают 25 / 26 → 27 с перестройкой потока; только платформа 8.3.27 |
+| История `pack` (`.oneform/history`) и `history restore` | [pack-history](pack-history.md) | подтверждено в «Бух.»: правка → загрузка → откат → загрузка, база возвращена (`diff -r` пусто); `.epf` и сохранение в Конфигураторе — нет |
 
 ## Как читать файлы
 

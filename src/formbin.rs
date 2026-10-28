@@ -748,6 +748,8 @@ pub struct ConfigPackPlan {
     /// Staging of the (new) `Form.bin` files = the new src tree.
     pub result: ExtractionResult,
     pub existing: Tree,
+    /// Staging of the unmodified `Form.bin` files (the projection before the edit); empty unless `PACK_PACKED`.
+    pub baseline: Tree,
 }
 
 /// Replace/append container entries; every other entry keeps its stored bytes and header.
@@ -900,6 +902,7 @@ pub fn stage_config_pack(
             new_sources: Sources::new(),
             result: current,
             existing: existing.clone(),
+            baseline: Tree::new(),
         });
     }
 
@@ -921,7 +924,15 @@ pub fn stage_config_pack(
     }
     packed.sort();
     let edit_notes = layouts.iter().flat_map(|lp| lp.summary()).collect();
-    Ok(ConfigPackPlan { status: PACK_PACKED, packed_paths: packed, edit_notes, new_sources, result: new, existing: existing.clone() })
+    Ok(ConfigPackPlan {
+        status: PACK_PACKED,
+        packed_paths: packed,
+        edit_notes,
+        new_sources,
+        result: new,
+        existing: existing.clone(),
+        baseline: current.files,
+    })
 }
 
 /// Write edited `FormModule.bsl` / `FormStream.bin` back into `Ext/Form.bin` and refresh `src/`.
@@ -958,6 +969,11 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
         ));
     }
     verify(root, obj, &snaps)?;
+    let (hist_ids, hist_lines) = if plan_.status == PACK_PACKED {
+        crate::history::record_config(&object_dir(root, obj), obj, &plan_, &sources_of(&snaps))
+    } else {
+        (Vec::new(), Vec::new())
+    };
     let first = &obj.forms[0];
     let mut written: Vec<&String> = Vec::new();
     let published = (|| -> Result<crate::transaction::PublishResult> {
@@ -976,6 +992,9 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
     let publ = match published {
         Ok(p) => p,
         Err(e) => {
+            for id in &hist_ids {
+                crate::history::discard(&object_dir(root, obj), id);
+            }
             for name in written {
                 if let Err(re) = atomic_write(&bin_path(root, obj, name), &snaps[name].data) {
                     return Err(ExtractionError::new(IO_ERROR, "src publication failed and Form.bin could not be restored")
@@ -994,6 +1013,7 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
         if opts.backup {
             notes.push("  backup Form.bin.bak".to_string());
         }
+        notes.extend(hist_lines);
         return Ok(outcome(&obj.rel, "PACKED", text, notes));
     }
     Ok(outcome(&obj.rel, "UPDATED", summary, notes))

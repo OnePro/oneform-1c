@@ -215,6 +215,8 @@ fn run_case(c: &Case) -> Result<(), String> {
     let out = Command::new(env!("CARGO_BIN_EXE_oneform"))
         .args(&argv)
         .current_dir(&root)
+        // the history snapshot has a time-stamped id and its own tests (tests/history.rs): the corpus runs without it
+        .env("ONEFORM_HISTORY_KEEP", "0")
         .output()
         .map_err(|e| format!("cannot run binary: {e}"))?;
 

@@ -12,7 +12,7 @@ use crate::config::{load_json_bytes, validate_codec, validate_override_key, vali
 use crate::discovery::{discover_all, find_epfs, resolve_selectors, CONFIG_NAME};
 use crate::errors::{ExtractionError, Result, CONFIG_INVALID, IO_ERROR};
 use crate::manifest::{tools_record, MANIFEST_PATH};
-use crate::pack::{publish_pack, stage_pack, PACK_UNCHANGED};
+use crate::pack::{publish_pack, stage_pack, PACK_PACKED, PACK_UNCHANGED};
 use crate::props;
 use crate::stage::{stage_processor, StageOpts, STATUS_PARTIAL};
 use crate::transaction::{
@@ -343,7 +343,20 @@ fn pack_one(
         out.lines = notes;
         return Ok(out);
     }
-    let pub_res = publish_pack(root, proc_rel, &plan_, epf_path, snap, args.backup, args.keep_work)?;
+    let (hist_id, hist_lines) = if plan_.status == PACK_PACKED {
+        crate::history::record_epf(epf_path, &plan_, snap)
+    } else {
+        (None, Vec::new())
+    };
+    let pub_res = match publish_pack(root, proc_rel, &plan_, epf_path, snap, args.backup, args.keep_work) {
+        Ok(r) => r,
+        Err(e) => {
+            if let (Some(id), Some(dir)) = (&hist_id, epf_path.parent()) {
+                crate::history::discard(dir, id);
+            }
+            return Err(e);
+        }
+    };
     if let Some(ref rd) = pub_res.run_dir {
         notes.push(format!("work kept: {}", rd.display()));
     }
@@ -354,6 +367,7 @@ fn pack_one(
         if args.backup {
             notes.push(format!("  backup {epf_name}.bak"));
         }
+        notes.extend(hist_lines);
         out.lines = notes;
         return Ok(out);
     }

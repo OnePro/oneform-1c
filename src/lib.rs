@@ -18,6 +18,7 @@ pub mod explore;
 pub mod form_basic;
 pub mod form_patch;
 pub mod formbin;
+pub mod history;
 pub mod layout_warnings;
 pub mod lint;
 pub mod manifest;

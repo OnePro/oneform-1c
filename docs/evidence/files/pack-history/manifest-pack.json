@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "20261028-095256-ФормаЭлемента",
+  "time": "2026-10-28 09:52:56",
+  "unixTime": 1793181176,
+  "reason": "pack",
+  "form": "ФормаЭлемента",
+  "kind": "config-form",
+  "binary": "Forms/ФормаЭлемента/Ext/Form.bin",
+  "projection": "Forms/ФормаЭлемента",
+  "beforeBinary": "Form.bin",
+  "beforeSha256": "8eddf768608d57ae470e413b698a73986b894ff2fa7b8e8d6870ec31325b6f8c",
+  "afterSha256": "29b5a0d9685a9111b9fc03db4ecbda20e74db9387caf572c2d3739fbc9d012d4",
+  "summary": [
+    "pack Forms/ФормаЭлемента/Form.xml",
+    "edit Forms/ФормаЭлемента/Form.xml: form caption"
+  ],
+  "warnings": [],
+  "oneformVersion": "0.1.0"
+}

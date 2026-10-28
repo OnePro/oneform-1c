@@ -1,0 +1,3 @@
+.: RESTORED snapshot 20261028-095256-ФормаЭлемента (ФормаЭлемента), Forms/ФормаЭлемента/Ext/Form.bin 29b5a0d9685a -> 8eddf768608d
+  history 20261028-095438-ФормаЭлемента (the state before the restore)
+  src/ refreshed (UPDATED)

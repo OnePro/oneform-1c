@@ -31,14 +31,14 @@ use crate::formbin::{
     read_module_text, walk_dirs, ConfigObject, ConfigRunOpts, OBJECT_CLASS_TITLES,
 };
 use crate::manifest::MANIFEST_PATH;
-use crate::pack::{publish_pack, stage_pack, PACK_UNCHANGED};
+use crate::pack::{publish_pack, stage_pack, PACK_PACKED, PACK_UNCHANGED};
 use crate::preview::{
     build_workspace_preview, is_ordinary_form_xml, render_form_preview_html, WorkspaceItem, WORKSPACE_DIR,
 };
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
 
-pub const COMMANDS: [&str; 8] = ["extract", "pack", "preview", "check", "clone-form", "new-form", "lint", "validate"];
+pub const COMMANDS: [&str; 9] = ["extract", "pack", "preview", "check", "clone-form", "new-form", "lint", "validate", "history"];
 pub const DEFAULT_WORKERS: usize = 3;
 const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", WORKSPACE_DIR, "src"];
 /// `json.dumps` of the Reference (default separators).
@@ -58,6 +58,10 @@ processor|report|catalog-item|catalog-list|document --name NAME [--synonym TEXT]
 lint [PATH] [--json] [--strict] checks the layout of every extracted Form.xml (outside the form, overlap, stretching, bottom panel,
 tab order, deviations from the usual values of the form kind) and writes nothing; exit 1 when an error is found, 3 with --strict
 when there are warnings.
+Every pack that changes a form first saves the previous state in <object directory>/.oneform/history/<time>-<form>/ (before/, after/,
+manifest.json; the last 20 per object, env ONEFORM_HISTORY_KEEP, 0 = off) and prints `history <id>`. history [PATH] [--json] lists
+the snapshots; history restore [PATH] <id> [--dry-run] [--replace-generated] puts the saved Form.bin / .epf back (the current state is
+saved as a new snapshot first) and refreshes src/ with extract; it refuses when src/ holds unpacked edits unless --replace-generated.
 validate [PATH] [--json] decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
 (format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection, unreadable); it reads the
 Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is in scope, 1 when any is not.
@@ -312,12 +316,23 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
         if let Some(parent) = src.parent() {
             fs::create_dir_all(parent)?;
         }
-        publish_pack(root, &t.proc_rel, &plan_, &epf_path, &snap, opts.backup, false)?;
+        let (hist_id, hist_lines) = if plan_.status == PACK_PACKED {
+            crate::history::record_epf(&epf_path, &plan_, &snap)
+        } else {
+            (None, Vec::new())
+        };
+        if let Err(e) = publish_pack(root, &t.proc_rel, &plan_, &epf_path, &snap, opts.backup, false) {
+            if let (Some(id), Some(dir)) = (&hist_id, epf_path.parent()) {
+                crate::history::discard(dir, id);
+            }
+            return Err(e);
+        }
         if !packed.is_empty() {
             let mut lines = packed.clone();
             if opts.backup {
                 lines.push(format!("  backup {}.bak", file_name(&epf_path)));
             }
+            lines.extend(hist_lines);
             return Ok(outcome(name, "PACKED", format!("{} file(s), {summary}", plan_.packed_paths.len()), lines));
         }
         return Ok(outcome(name, "UPDATED", summary, Vec::new()));
@@ -800,6 +815,8 @@ pub fn collect_items(root: &Path, targets: &[Target]) -> Vec<WorkspaceItem> {
 pub struct Cli {
     pub first: Option<String>,
     pub second: Option<String>,
+    /// Further positionals (only `history restore [PATH] <id>` takes them).
+    pub extra: Vec<String>,
     pub workers: i64,
     pub dry_run: bool,
     pub backup: bool,
@@ -821,11 +838,12 @@ pub struct Cli {
 fn build_command() -> Command {
     Command::new("oneform")
         .version(env!("CARGO_PKG_VERSION"))
-        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|clone-form|new-form] [PATH]")
+        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|clone-form|new-form|history] [PATH]")
         .about("Extract, pack, check and preview 1C ordinary forms of EPF files and configuration dumps.")
         .after_help(EPILOG)
-        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form]").help("command (default: extract; clone-form and new-form take the object directory as PATH)"))
+        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form|history]").help("command (default: extract; clone-form and new-form take the object directory as PATH; history: list snapshots, or `history restore [PATH] <id>`)"))
         .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .)"))
+        .arg(Arg::new("extra").value_name("ID").num_args(0..).help("history restore [PATH] <id>: the snapshot id"))
         .arg(
             Arg::new("workers")
                 .short('j')
@@ -835,7 +853,7 @@ fn build_command() -> Command {
                 .default_value("3")
                 .help("parallel workers (default: 3)"),
         )
-        .arg(Arg::new("dry_run").long("dry-run").action(ArgAction::SetTrue).help("print the plan; write nothing"))
+        .arg(Arg::new("dry_run").long("dry-run").action(ArgAction::SetTrue).help("print the plan; write nothing (history restore: show what would be restored)"))
         .arg(
             Arg::new("backup")
                 .long("backup")
@@ -848,7 +866,7 @@ fn build_command() -> Command {
             Arg::new("replace_generated")
                 .long("replace-generated")
                 .action(ArgAction::SetTrue)
-                .help("extract: replace manually modified files that the old manifest owns"),
+                .help("extract, history restore: replace manually modified files that the old manifest owns"),
         )
         .arg(Arg::new("oof_path").long("oof-path").value_name("PATH").help("optional external 'oof' binary (default: EPF_OOF_PATH)"))
         .arg(
@@ -863,7 +881,7 @@ fn build_command() -> Command {
         .arg(Arg::new("name").long("name").value_name("NAME").help("clone-form, new-form: name of the new form"))
         .arg(Arg::new("synonym").long("synonym").value_name("TEXT").help("clone-form, new-form: synonym (title) of the new form; default: the name"))
         .arg(Arg::new("kind").long("kind").value_name("KIND").help("new-form: processor, report, catalog-item, catalog-list or document"))
-        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate: print the findings as a JSON array"))
+        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate, history: print the findings / snapshots as a JSON array"))
         .arg(Arg::new("strict").long("strict").action(ArgAction::SetTrue).help("lint: exit 3 when there are warnings"))
         .arg(Arg::new("default").long("default").action(ArgAction::SetTrue).help("new-form: make the new form the default form of the object"))
         .arg(
@@ -892,6 +910,7 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
     Ok(Cli {
         first: m.get_one::<String>("first").cloned(),
         second: m.get_one::<String>("second").cloned(),
+        extra: m.get_many::<String>("extra").map(|v| v.cloned().collect()).unwrap_or_default(),
         workers: m.get_one::<i64>("workers").copied().unwrap_or(DEFAULT_WORKERS as i64),
         dry_run: m.get_flag("dry_run"),
         backup: m.get_flag("backup"),
@@ -1042,11 +1061,14 @@ pub fn main(argv: &[String]) -> i32 {
     if args.default_form || args.kind.is_some() {
         return fail("--kind and --default are only valid for new-form");
     }
+    if command != "history" && !args.extra.is_empty() {
+        return fail(&format!("unexpected argument '{}'", args.extra[0]));
+    }
     if args.strict && command != "lint" {
         return fail("--strict is only valid for lint");
     }
-    if args.json && !matches!(command.as_str(), "lint" | "validate") {
-        return fail("--json is only valid for lint and validate");
+    if args.json && !matches!(command.as_str(), "lint" | "validate" | "history") {
+        return fail("--json is only valid for lint, validate and history");
     }
     if args.workers < 1 {
         return fail("--workers must be at least 1");
@@ -1056,6 +1078,11 @@ pub fn main(argv: &[String]) -> i32 {
     }
     if args.replace_generated && matches!(command.as_str(), "pack" | "check" | "preview" | "lint" | "validate") {
         return fail("--replace-generated is only valid for extract");
+    }
+    if command == "history" {
+        let mut positionals: Vec<String> = args.second.iter().cloned().collect();
+        positionals.extend(args.extra.iter().cloned());
+        return crate::history::run_cli(&positionals, args.json, args.dry_run, args.replace_generated);
     }
     if Path::new(&path).is_dir() {
         note_erf_files(&clean_path(Path::new(&path)));
@@ -1184,7 +1211,7 @@ mod tests {
         assert_eq!(resolve_command(Some("dir"), None), Ok(("extract".into(), "dir".into())));
         assert_eq!(
             resolve_command(Some("bogus"), Some(".")),
-            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate".to_string())
+            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history".to_string())
         );
         assert_eq!(py_repr("it's"), "\"it's\"");
     }

@@ -424,11 +424,12 @@ fn assert_label_packed(target: Target, with_bsl: bool, backup: bool) {
     // the user's XML (and BSL) edits are still in src, byte for byte
     assert_eq!(no_carriers(&after[&xml_path]), no_carriers(&edited[&xml_path]), "{target:?}: Form.xml changed");
     assert_eq!(after[&bsl_path], edited[&bsl_path], "{target:?}: FormModule.bsl changed");
-    // only the container, regenerated previews and (on request) the backup changed outside src
+    // only the container, regenerated previews, the history snapshot (`.oneform/history`) and (on request) the backup
+    // changed outside src
     let backup_path = format!("{target_path}.bak");
     let changed: Vec<&String> = after
         .keys()
-        .filter(|k| !is_src(k) && before.get(*k) != after.get(*k))
+        .filter(|k| !is_src(k) && !k.contains(".oneform/history/") && before.get(*k) != after.get(*k))
         .collect();
     assert!(
         changed.iter().all(|k| **k == target_path || (backup && **k == backup_path)),

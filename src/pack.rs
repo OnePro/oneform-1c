@@ -341,6 +341,8 @@ pub struct PackPlan {
     /// Extraction of `new_epf` (the new src tree).
     pub result: ExtractionResult,
     pub existing: Tree,
+    /// Extraction of the unmodified EPF (the projection before the edit); empty unless `PACK_PACKED`.
+    pub baseline: Tree,
 }
 
 fn encode_with_codec(text: &str, codec: &str, path: &str) -> Result<Vec<u8>> {
@@ -608,6 +610,7 @@ pub fn stage_pack(
             new_epf: epf_bytes.to_vec(),
             result: current,
             existing: existing_src.clone(),
+            baseline: Tree::new(),
         });
     }
 
@@ -655,6 +658,7 @@ pub fn stage_pack(
         new_epf,
         result: new,
         existing: existing_src.clone(),
+        baseline: current.files,
     })
 }
 

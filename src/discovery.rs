@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use crate::errors::{ExtractionError, Result, CONFIG_INVALID, IO_ERROR};
 use crate::naming::is_alias;
 
-pub const SKIP_DIRS: [&str; 4] = [".git", ".venv", ".extract-work", "src"];
+pub const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", ".oneform", "src"];
 pub const CONFIG_NAME: &str = "extraction.json";
 
 fn bad(message: &str) -> ExtractionError {

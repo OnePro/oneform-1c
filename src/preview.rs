@@ -382,7 +382,9 @@ fn check_workspace_owner(out: &Path) -> Result<()> {
         .map(|v| v.as_object().is_some_and(|o| o.get("generator").and_then(Value::as_str) == Some(GENERATOR)))
         .unwrap_or(false);
     if !ok {
-        let busy = !out.is_dir() || fs::read_dir(out).map(|mut r| r.next().is_some()).unwrap_or(true);
+        // `history/` (the snapshots of `pack`) is not the viewer's: it is kept and does not make the directory foreign
+        let busy = !out.is_dir()
+            || fs::read_dir(out).map(|r| r.filter_map(|e| e.ok()).any(|e| e.file_name() != "history")).unwrap_or(true);
         if busy {
             return Err(ExtractionError::new(
                 OUTPUT_NOT_OWNED,
@@ -677,7 +679,18 @@ pub fn build_workspace_preview(target_root: &Path, items: &[WorkspaceItem]) -> R
             fs::write(&p, data).map_err(|e| io_err(e, &p))?;
         }
         if out.exists() {
-            fs::remove_dir_all(&out).map_err(|e| io_err(e, &out))?;
+            let history = out.join("history");
+            if history.is_dir() {
+                fs::rename(&history, tmp.join("history")).map_err(|e| io_err(e, &history))?;
+            }
+            if let Err(e) = fs::remove_dir_all(&out) {
+                // the snapshots must survive a failed viewer rebuild: put them back before `tmp` is cleaned up
+                if tmp.join("history").is_dir() {
+                    let _ = fs::create_dir_all(&out);
+                    let _ = fs::rename(tmp.join("history"), out.join("history"));
+                }
+                return Err(io_err(e, &out));
+            }
         }
         fs::rename(&tmp, &out).map_err(|e| io_err(e, &out))
     })();

@@ -1,0 +1,2 @@
+.: 1 snapshot(s)
+  20261028-095256-ФормаЭлемента  2026-10-28 09:52:56  pack  edit Forms/ФормаЭлемента/Form.xml: form caption

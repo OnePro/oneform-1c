@@ -1,0 +1,1 @@
+BASE RESTORED: dump-before == dump-after (diff -r empty)

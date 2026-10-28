@@ -1,0 +1,9 @@
+﻿Catalogs/Контрагенты.xml
+Catalogs/Контрагенты/Forms/ФормаСписка.xml
+Catalogs/Контрагенты/Forms/ФормаСписка/Ext/Form.bin
+Catalogs/Контрагенты/Forms/ФормаЭлемента.xml
+Catalogs/Контрагенты/Forms/ФормаЭлемента/Ext/Form.bin
+Catalogs/Контрагенты/Forms/ФормаСпискаКопия.xml
+Catalogs/Контрагенты/Forms/ФормаСпискаКопия/Ext/Form.bin
+Catalogs/Контрагенты/Forms/ФормаСпискаКопия2.xml
+Catalogs/Контрагенты/Forms/ФормаСпискаКопия2/Ext/Form.bin
