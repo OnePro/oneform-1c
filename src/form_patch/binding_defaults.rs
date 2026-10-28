@@ -106,3 +106,21 @@ pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) {
         }
     }
 }
+
+/// Added fields bound to an attribute of the object whose own `<ValueType>` was not stated and could not be taken from
+/// the schema (no object schema, or no single known type): they keep the donor's `ValueList` type. `diff` is the diff
+/// of the plan, whose additions are the fields after [`apply`].
+pub fn unresolved_type_warnings(diff: &super::FormDiff) -> Vec<String> {
+    let mut out = Vec::new();
+    for c in &diff.additions {
+        let Some((_, path)) = &c.values.data_path else { continue };
+        if c.type_name != "InputField" || c.explicit_value_type || c.values.value_type.is_some() || path.split('.').count() != 2 {
+            continue;
+        }
+        out.push(format!(
+            "field '{}' is bound to '{path}' but its value type could not be resolved; it keeps the template type (ValueList) — give <ValueType kind=... refGuid=...> explicitly or run from a directory next to the configuration export",
+            c.name
+        ));
+    }
+    out
+}

@@ -97,7 +97,8 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
         .with("kind", "ambiguous-layout-edit")
         .with("paths", Value::Array(vec![Value::from(xml_path), Value::from(stream_path)])));
     }
-    let warnings = handler_warnings(&plan, existing, xml_path);
+    let mut warnings = handler_warnings(&plan, existing, xml_path);
+    warnings.extend(layout_warnings(&plan, existing, xml_path));
     let (requested, diff) = (plan.edited.clone(), plan.diff.clone());
     let mut patched = plan.apply().map_err(|e| e.with("path", xml_path))?;
     PATCH_HOOK.with(|h| {
@@ -142,7 +143,36 @@ fn handler_warnings(plan: &crate::form_patch::FormPatchPlan, existing: &Tree, xm
     out
 }
 
+/// Advisory findings of the edit: references to removed or renamed controls in `FormModule.bsl`, added fields that keep
+/// the donor value type, added or moved controls beyond their container.
+fn layout_warnings(plan: &crate::form_patch::FormPatchPlan, existing: &Tree, xml_path: &str) -> Vec<String> {
+    let module_path = match xml_path.rsplit_once('/') {
+        Some((dir, _)) => format!("{dir}/FormModule.bsl"),
+        None => "FormModule.bsl".to_string(),
+    };
+    let mut out = Vec::new();
+    if let Some(bytes) = existing.get(&module_path) {
+        let text = String::from_utf8_lossy(bytes.strip_prefix(&UTF8_BOM[..]).unwrap_or(bytes));
+        out.extend(crate::layout_warnings::module_warnings(&plan.diff, &plan.edited, "FormModule.bsl", &text, true));
+    }
+    out.extend(crate::form_patch::unresolved_type_warnings(&plan.diff));
+    if let Some(bytes) = existing.get(xml_path) {
+        let text = String::from_utf8_lossy(bytes.strip_prefix(&UTF8_BOM[..]).unwrap_or(bytes));
+        out.extend(crate::layout_warnings::container_warnings(&plan.diff, &text));
+    }
+    out.into_iter().map(|w| format!("  warning {xml_path}: {w}")).collect()
+}
+
 impl LayoutPatch {
+    /// Warn about the references to removed or renamed controls in a module of the object (`label` names it); the
+    /// handlers of a removed control are looked for in the form module only.
+    pub fn add_module_warnings(&mut self, label: &str, module: &[u8]) {
+        let text = String::from_utf8_lossy(module.strip_prefix(&UTF8_BOM[..]).unwrap_or(module));
+        for w in crate::layout_warnings::module_warnings(&self.diff, &self.requested, label, &text, false) {
+            self.warnings.push(format!("  warning {}: {w}", self.xml_path));
+        }
+    }
+
     /// What the edit does, one line per control and one for each form-level change.
     pub fn summary(&self) -> Vec<String> {
         let mut out = Vec::new();
@@ -532,7 +562,10 @@ pub fn stage_pack(
         let bin_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");
         let planned =
             with_object_schema(Some(schema.clone()), || plan_layout_patch(&rec["layout"], existing_src, &current.files))?;
-        if let Some(lp) = planned {
+        if let Some(mut lp) = planned {
+            if let Some(module) = existing_src.get(om_path) {
+                lp.add_module_warnings("ObjectModule.bsl", module);
+            }
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), lp.patched.bytes.clone());
             expected.insert(bin_path.to_string(), lp.patched.bytes.clone());
             packed.insert(lp.xml_path.clone());

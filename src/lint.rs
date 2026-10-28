@@ -119,6 +119,8 @@ struct Anchors {
     /// side of the target an edge is bound to: 0 Left, 1 Right, 2 Top, 3 Bottom, 4 None
     side: [Option<u8>; 4],
     target: [Option<String>; 4],
+    /// `<edge>Offset` in pixels
+    offset: [Option<f64>; 4],
 }
 
 struct Ctl {
@@ -197,10 +199,11 @@ fn side_code(v: &str) -> u8 {
 fn parse_anchors(n: roxmltree::Node) -> Option<Anchors> {
     let a = child(n, "Anchors")?;
     let names = ["left", "right", "top", "bottom"];
-    let mut out = Anchors { side: [None; 4], target: [None, None, None, None] };
+    let mut out = Anchors { side: [None; 4], target: [None, None, None, None], offset: [None; 4] };
     for (i, nm) in names.iter().enumerate() {
         out.side[i] = a.attribute(*nm).map(side_code);
         out.target[i] = a.attribute(format!("{nm}Target").as_str()).map(str::to_string);
+        out.offset[i] = a.attribute(format!("{nm}Offset").as_str()).and_then(|v| v.trim().parse().ok());
     }
     Some(out)
 }
@@ -470,6 +473,31 @@ fn r_outside(f: &Form, out: &mut Vec<Finding>) {
                 let fix = overflow_fix("Top", "Height", t, h, ch);
                 f.report("outside-container", None, Some(i), format!("bottom edge {} is beyond the height {} of {place}", num(t + h), num(ch)), fix, out);
             }
+        }
+    }
+}
+
+/// An edge bound to the same-axis near side of the form or panel (no target) keeps a fixed distance from it: the offset
+/// must equal the coordinate of the edge (`top="Top" topOffset="K"` means Top = K; `bottom="Top"` means Top + Height,
+/// `left="Left"` Left, `right="Left"` Left + Width). In the measured forms 99.8 % of such edges agree.
+fn r_anchor_mismatch(f: &Form, out: &mut Vec<Finding>) {
+    for (i, c) in f.ctls.iter().enumerate() {
+        let (Some(a), Some([l, t, w, h])) = (&c.anchors, c.bounds()) else { continue };
+        // (edge, the side it must be bound to, expected offset, the coordinate to move and its value for the offset, the edge name)
+        let edges = [
+            (0, 0u8, l, ("Left", a.offset[0]), "left"),
+            (1, 0, l + w, ("Left", a.offset[1].map(|o| o - w)), "right"),
+            (2, 2, t, ("Top", a.offset[2]), "top"),
+            (3, 2, t + h, ("Top", a.offset[3].map(|o| o - h)), "bottom"),
+        ];
+        for (edge, side, expected, (coord, moved), nm) in edges {
+            let (Some(s), Some(off)) = (a.side[edge], a.offset[edge]) else { continue };
+            if s != side || a.target[edge].is_some() || (off - expected).abs() < 0.5 {
+                continue;
+            }
+            let message = format!("{nm}Offset {} does not match the position of the control (the {nm} edge is at {}): the anchor pulls the edge to {}", num(off), num(expected), num(off));
+            let fix = format!("set {nm}Offset to {} (or move the control to {coord} {})", num(expected), num(moved.unwrap_or(off)));
+            f.report("anchor-mismatch", None, Some(i), message, fix, out);
         }
     }
 }
@@ -850,11 +878,12 @@ fn r_form_size(f: &Form, out: &mut Vec<Finding>) {
 /// Every finding id with its base severity and the measured rule that grades it. A measured warning is demoted to
 /// `info` (with its share) when the table says fewer than `SHARE_MIN` % of the forms of the kind follow it, or the
 /// corpora disagree; the info rules are reported only for kinds whose usual value is that clear.
-static RULES: [Rule; 26] = [
+static RULES: [Rule; 27] = [
     Rule { id: "invalid-xml", severity: Severity::Error, table: None },
     Rule { id: "outside-container", severity: Severity::Error, table: None },
     Rule { id: "duplicate-name", severity: Severity::Error, table: None },
     Rule { id: "duplicate-id", severity: Severity::Error, table: None },
+    Rule { id: "anchor-mismatch", severity: Severity::Warning, table: None },
     Rule { id: "overlap", severity: Severity::Warning, table: None },
     Rule { id: "covers-bottom-bar", severity: Severity::Warning, table: None },
     Rule { id: "field-no-stretch", severity: Severity::Warning, table: Some("anchors.input_stretch_when_at_right_margin") },
@@ -880,9 +909,10 @@ static RULES: [Rule; 26] = [
 ];
 
 /// The checks; each one reports findings of the rules above.
-static CHECKS: [fn(&Form, &mut Vec<Finding>); 14] = [
+static CHECKS: [fn(&Form, &mut Vec<Finding>); 15] = [
     r_outside,
     r_duplicates,
+    r_anchor_mismatch,
     r_overlap,
     r_no_stretch_right,
     r_no_stretch_bottom,

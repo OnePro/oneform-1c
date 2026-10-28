@@ -106,7 +106,7 @@ oneform lint <каталог> --strict    # код 3, если есть warning 
 | Уровень | Правила |
 |---|---|
 | `error` | `outside-container` (элемент за краем формы или страницы, отрицательные координаты), `duplicate-name`, `duplicate-id` — исправь |
-| `warning` | `overlap` (пересечение > 2 px), `covers-bottom-bar`, `bottom-bar-position`/`-width`/`-anchor` (нижняя панель не на `Top = Height − 25`, не во всю ширину, не привязана к низу/правому краю), `top-bar-position`/`-width`, `field-no-stretch`, `table-no-stretch`, `table-no-stretch-bottom`, `label-row` (надпись выше/ниже поля больше чем на 6 px) |
+| `warning` | `overlap` (пересечение > 2 px), `covers-bottom-bar`, `bottom-bar-position`/`-width`/`-anchor` (нижняя панель не на `Top = Height − 25`, не во всю ширину, не привязана к низу/правому краю), `top-bar-position`/`-width`, `field-no-stretch`, `table-no-stretch`, `table-no-stretch-bottom`, `label-row` (надпись выше/ниже поля больше чем на 6 px), `anchor-mismatch` (край привязан к своей стороне без цели: `top="Top" topOffset=K`, а `Top` ≠ K; так же `left`, а для `bottom="Top"` / `right="Left"` смещение равно `Top + Height` / `Left + Width`; в `fix` — верное смещение или координата; в выгрузках совпадает в 99,8 % случаев) |
 | `info` | `margin-*`, `*-bar-height`, `field-height`, `label-height`, `form-width`/`form-height`: отличие от обычного значения вида формы (`share=NN %`, `kind=…`); `tab-order` — обход против чтения |
 
 Правило из таблицы замеров считается `warning`, только если ему следуют ≥ 85 % форм вида и УТ с Бух. не расходятся; иначе то же замечание приходит как `info` с долей.

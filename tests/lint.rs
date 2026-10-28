@@ -199,6 +199,35 @@ fn overlapping_fields_are_a_warning_and_strict_exits_3() {
 }
 
 #[test]
+fn anchor_offset_that_does_not_match_the_position_is_a_warning_with_the_fix() {
+    let mut c = clean_item();
+    // moved to Top 60, but the anchor still holds the top edge at 33; the left edge agrees
+    c.push(field(5, "Сдвинутое", [92, 60, 200, 19]).anchors("top=\"Top\" topOffset=\"33\" left=\"Left\" leftOffset=\"92\""));
+    // bottom=Top holds the bottom edge at Top + Height = 109; right=Left at Left + Width = 292 (agrees)
+    c.push(field(6, "Нижнее", [92, 90, 200, 19]).anchors("bottom=\"Top\" bottomOffset=\"100\" right=\"Left\" rightOffset=\"292\""));
+    let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &form_xml(400, 200, &c));
+    let f = findings(&root, &[]);
+    let hits: Vec<&Value> = f.iter().filter(|x| x["rule"] == "anchor-mismatch").collect();
+    assert_eq!(hits.len(), 2, "{f:?}");
+    assert!(hits.iter().all(|x| x["severity"] == "warning"));
+    let top = hits.iter().find(|x| x["control"] == "Сдвинутое").unwrap();
+    assert!(top["fix"].as_str().unwrap().contains("set topOffset to 60"), "{top}");
+    let bottom = hits.iter().find(|x| x["control"] == "Нижнее").unwrap();
+    assert!(bottom["fix"].as_str().unwrap().contains("set bottomOffset to 109"), "{bottom}");
+    assert!(bottom["fix"].as_str().unwrap().contains("Top 81"), "{bottom}");
+}
+
+#[test]
+fn anchors_that_match_or_have_a_target_are_not_anchor_mismatches() {
+    let mut c = clean_item();
+    c.push(field(5, "Верное", [92, 60, 200, 19]).anchors("top=\"Top\" topOffset=\"60\" left=\"Left\" leftOffset=\"92\""));
+    c.push(field(6, "СЦелью", [92, 90, 200, 19]).anchors("top=\"Top\" topTarget=\"4\" topOffset=\"5\""));
+    let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &form_xml(400, 200, &c));
+    let f = findings(&root, &[]);
+    assert!(!rules(&f).iter().any(|r| r.ends_with("anchor-mismatch")), "{f:?}");
+}
+
+#[test]
 fn touching_and_stacked_controls_do_not_overlap() {
     let mut c = clean_item();
     // flush neighbours, and an alternative laid exactly over a field

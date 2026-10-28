@@ -46,6 +46,7 @@ pub use anchors::{anchor_graph_stale_entries, anchor_graph_violations};
 mod ext_read;
 pub use ext_read::enrich_ext_properties;
 mod binding_defaults;
+pub use binding_defaults::unresolved_type_warnings;
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
 /// Tag of the placeholder that stands for a nested control inside a [`FormXml::shell`].

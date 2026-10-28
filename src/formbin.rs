@@ -872,7 +872,14 @@ pub fn stage_config_pack(
         let planned = with_object_schema(schema.clone(), || {
             with_type_lookup(Arc::clone(&type_lookup), || plan_layout_patch(&rec["layout"], existing, &current.files))
         })?;
-        if let Some(lp) = planned {
+        if let Some(mut lp) = planned {
+            if !obj.common {
+                if let Some(path) = find_object_module(&object_dir(root, obj)) {
+                    if let Ok(raw) = fs::read(&path) {
+                        lp.add_module_warnings(&name_of(&path), &read_module_text(&raw, "ObjectModule"));
+                    }
+                }
+            }
             edits.entry(name.as_str()).or_default().push(("form", lp.patched.bytes.clone()));
             expected.insert(stream_path.to_string(), lp.patched.bytes.clone());
             packed.push(lp.xml_path.clone());
