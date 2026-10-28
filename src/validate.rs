@@ -393,7 +393,7 @@ pub fn percent(part: usize, total: usize) -> f64 {
     }
 }
 
-fn verdict_line(v: &Verdict) -> String {
+pub(crate) fn verdict_line(v: &Verdict) -> String {
     if v.in_scope() {
         return match v.reasons.first() {
             None => format!("{}/{}: IN_SCOPE", v.object, v.form),
@@ -405,7 +405,7 @@ fn verdict_line(v: &Verdict) -> String {
     format!("{}/{}: OUT_OF_SCOPE {codes} \u{2014} {hints}", v.object, v.form)
 }
 
-fn verdict_json(v: &Verdict) -> Value {
+pub(crate) fn verdict_json(v: &Verdict) -> Value {
     json!({
         "object": v.object,
         "form": v.form,

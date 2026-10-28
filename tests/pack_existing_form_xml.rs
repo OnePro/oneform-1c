@@ -62,7 +62,8 @@ fn snapshot(root: &Path) -> Tree {
                 .unwrap()
                 .to_string_lossy()
                 .replace(std::path::MAIN_SEPARATOR, "/");
-            if rel == ".extract-work" || rel == ".oneform" {
+            // the diagnostics log of a refusal is not a change of the project (tests/diagnostics.rs covers it)
+            if rel == ".extract-work" || rel == ".oneform" || rel.ends_with(".oneform/diagnostics.jsonl") {
                 continue;
             }
             if p.is_dir() {

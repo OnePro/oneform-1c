@@ -1018,6 +1018,28 @@ fn finding_line(label: &str, f: &Finding) -> String {
     format!("{label}: {} {} line {}: {}: {}{fix}", f.severity.as_str(), f.rule, f.line, f.control, f.message)
 }
 
+fn finding_json(r: &FormReport, f: &Finding) -> Value {
+    json!({
+        "form": r.label,
+        "file": r.file,
+        "kind": r.kind,
+        "severity": f.severity.as_str(),
+        "rule": f.rule,
+        "line": f.line,
+        "control": f.control,
+        "message": f.message,
+        "fix": f.fix,
+        "share": f.share,
+    })
+}
+
+/// The findings of every extracted `Form.xml` under `root` as in `lint --json` (nothing is printed or written).
+pub fn findings_json(root: &Path) -> Vec<Value> {
+    let mut rels: Vec<String> = discover_xml_targets(root).into_iter().map(|t| t.rel).collect();
+    rels.sort();
+    rels.iter().filter_map(|r| lint_file(root, r)).flat_map(|r| r.findings.iter().map(|f| finding_json(&r, f)).collect::<Vec<_>>()).collect()
+}
+
 /// `oneform lint [PATH] [--json] [--strict]`: the exit code is 1 when an error is found, 3 with `--strict` when
 /// there are warnings, otherwise 0.
 pub fn run_cli(root: &Path, json_output: bool, strict: bool) -> i32 {
@@ -1042,25 +1064,7 @@ pub fn run_cli(root: &Path, json_output: bool, strict: bool) -> i32 {
         EXIT_OK
     };
     if json_output {
-        let items: Vec<Value> = reports
-            .iter()
-            .flat_map(|r| {
-                r.findings.iter().map(move |f| {
-                    json!({
-                        "form": r.label,
-                        "file": r.file,
-                        "kind": r.kind,
-                        "severity": f.severity.as_str(),
-                        "rule": f.rule,
-                        "line": f.line,
-                        "control": f.control,
-                        "message": f.message,
-                        "fix": f.fix,
-                        "share": f.share,
-                    })
-                })
-            })
-            .collect();
+        let items: Vec<Value> = reports.iter().flat_map(|r| r.findings.iter().map(move |f| finding_json(r, f))).collect();
         println!("{}", serde_json::to_string_pretty(&Value::Array(items)).unwrap_or_default());
         return code;
     }

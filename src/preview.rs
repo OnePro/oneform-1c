@@ -24,6 +24,8 @@ pub const FORM_PREVIEW_NAME: &str = "FormPreview.html";
 const VERSIONS: [&str; 2] = ["2.1", "2.2"];
 
 pub const WORKSPACE_DIR: &str = ".oneform";
+/// Entries of `.oneform` that belong to other features (history, diagnostics log, feedback reports): the viewer keeps them.
+const KEPT_ENTRIES: [&str; 3] = ["history", "feedback", "diagnostics.jsonl"];
 pub const WORKSPACE_SCHEMA_VERSION: i64 = 1;
 const GENERATOR: &str = "oneform";
 const UNKNOWN_CLASS: &str = "Other";
@@ -382,9 +384,10 @@ fn check_workspace_owner(out: &Path) -> Result<()> {
         .map(|v| v.as_object().is_some_and(|o| o.get("generator").and_then(Value::as_str) == Some(GENERATOR)))
         .unwrap_or(false);
     if !ok {
-        // `history/` (the snapshots of `pack`) is not the viewer's: it is kept and does not make the directory foreign
+        // the snapshots of `pack`, the diagnostics log and the feedback reports are not the viewer's: they are kept and do
+        // not make the directory foreign
         let busy = !out.is_dir()
-            || fs::read_dir(out).map(|r| r.filter_map(|e| e.ok()).any(|e| e.file_name() != "history")).unwrap_or(true);
+            || fs::read_dir(out).map(|r| r.filter_map(|e| e.ok()).any(|e| !KEPT_ENTRIES.iter().any(|k| e.file_name() == *k))).unwrap_or(true);
         if busy {
             return Err(ExtractionError::new(
                 OUTPUT_NOT_OWNED,
@@ -679,15 +682,19 @@ pub fn build_workspace_preview(target_root: &Path, items: &[WorkspaceItem]) -> R
             fs::write(&p, data).map_err(|e| io_err(e, &p))?;
         }
         if out.exists() {
-            let history = out.join("history");
-            if history.is_dir() {
-                fs::rename(&history, tmp.join("history")).map_err(|e| io_err(e, &history))?;
+            let mut kept: Vec<&str> = Vec::new();
+            for name in KEPT_ENTRIES {
+                let from = out.join(name);
+                if from.exists() {
+                    fs::rename(&from, tmp.join(name)).map_err(|e| io_err(e, &from))?;
+                    kept.push(name);
+                }
             }
             if let Err(e) = fs::remove_dir_all(&out) {
-                // the snapshots must survive a failed viewer rebuild: put them back before `tmp` is cleaned up
-                if tmp.join("history").is_dir() {
-                    let _ = fs::create_dir_all(&out);
-                    let _ = fs::rename(tmp.join("history"), out.join("history"));
+                // the snapshots, log and reports must survive a failed viewer rebuild: put them back before `tmp` is cleaned up
+                let _ = fs::create_dir_all(&out);
+                for name in kept {
+                    let _ = fs::rename(tmp.join(name), out.join(name));
                 }
                 return Err(io_err(e, &out));
             }

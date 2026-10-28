@@ -110,17 +110,17 @@ fn local_offset_secs(_unix: i64) -> i64 {
 }
 
 /// Seconds since the epoch of the local wall clock (UTC where the local zone is not available).
-fn local_secs() -> i64 {
+pub(crate) fn local_secs() -> i64 {
     let unix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
     unix + local_offset_secs(unix)
 }
 
-fn stamp(secs: i64) -> String {
+pub(crate) fn stamp(secs: i64) -> String {
     let (y, m, d, h, mi, s) = civil(secs);
     format!("{y:04}{m:02}{d:02}-{h:02}{mi:02}{s:02}")
 }
 
-fn time_text(secs: i64) -> String {
+pub(crate) fn time_text(secs: i64) -> String {
     let (y, m, d, h, mi, s) = civil(secs);
     format!("{y:04}-{m:02}-{d:02} {h:02}:{mi:02}:{s:02}")
 }
@@ -408,7 +408,7 @@ fn summary_text(m: &Value) -> String {
     text
 }
 
-fn rel_of(root: &Path, dir: &Path) -> String {
+pub(crate) fn rel_of(root: &Path, dir: &Path) -> String {
     let rel = dir
         .strip_prefix(root)
         .map(|r| r.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/"))
@@ -421,7 +421,7 @@ fn rel_of(root: &Path, dir: &Path) -> String {
 }
 
 /// Every directory below (and including) `root` that has `.oneform/history`, with its snapshots.
-fn find_histories(root: &Path) -> Vec<(PathBuf, Vec<Item>)> {
+pub(crate) fn find_histories(root: &Path) -> Vec<(PathBuf, Vec<Item>)> {
     let mut found = Vec::new();
     let skip = |d: &str| SKIP_DIRS.contains(&d);
     walk_dirs(root, &skip, &mut |dir, _| {
@@ -431,6 +431,102 @@ fn find_histories(root: &Path) -> Vec<(PathBuf, Vec<Item>)> {
         }
     });
     found
+}
+
+/// The newest snapshot under `root` (by id, which starts with the time) and the object directory that holds it.
+pub(crate) fn latest_under(root: &Path) -> Option<(PathBuf, Item)> {
+    find_histories(root)
+        .into_iter()
+        .flat_map(|(dir, items)| items.into_iter().map(move |i| (dir.clone(), i)))
+        .max_by(|a, b| a.1.id.cmp(&b.1.id))
+}
+
+/// The snapshot `id` (exact or a unique prefix) under `root`, or the newest one without an id.
+pub(crate) fn resolve_snapshot(root: &Path, id: Option<&str>) -> Result<(PathBuf, Item), String> {
+    let all: Vec<(PathBuf, Item)> = find_histories(root)
+        .into_iter()
+        .flat_map(|(dir, items)| items.into_iter().map(move |i| (dir.clone(), i)))
+        .collect();
+    let Some(id) = id else {
+        return all.into_iter().max_by(|a, b| a.1.id.cmp(&b.1.id)).ok_or_else(|| {
+            format!("no history under {} (pack writes .oneform/history next to the object)", root.display())
+        });
+    };
+    let exact: Vec<&(PathBuf, Item)> = all.iter().filter(|(_, i)| i.id == id).collect();
+    let hits: Vec<&(PathBuf, Item)> =
+        if exact.is_empty() { all.iter().filter(|(_, i)| i.id.starts_with(id)).collect() } else { exact };
+    match hits.as_slice() {
+        [one] => Ok((one.0.clone(), one.1.clone())),
+        [] => {
+            let ids: Vec<&str> = all.iter().map(|(_, i)| i.id.as_str()).collect();
+            let known = if ids.is_empty() { "no snapshots under this path".to_string() } else { format!("available: {}", ids.join(", ")) };
+            Err(format!("no history snapshot '{id}' under {}; {known}", root.display()))
+        }
+        many => {
+            let dirs: Vec<String> = many.iter().map(|(d, i)| format!("{} ({})", i.id, rel_of(root, d))).collect();
+            Err(format!("snapshot id '{id}' is ambiguous: {}; point PATH at the object directory", dirs.join(", ")))
+        }
+    }
+}
+
+fn is_text_name(name: &str) -> bool {
+    let l = name.to_lowercase();
+    l.ends_with(".xml") || l.ends_with(".bsl")
+}
+
+fn read_text(path: &Path) -> Option<String> {
+    fs::read(path).ok().map(|b| String::from_utf8_lossy(&b).trim_start_matches('\u{feff}').to_string())
+}
+
+/// Unified diff of the text files (`Form.xml`, `FormModule.bsl`, ...) of a snapshot: `before/` against `after/`.
+pub(crate) fn snapshot_diff(item: &Item) -> Vec<String> {
+    let names = |sub: &str| -> BTreeSet<String> {
+        fs::read_dir(item.path.join(sub))
+            .map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| is_text_name(n)).collect())
+            .unwrap_or_default()
+    };
+    let mut all: Vec<String> = names("before").union(&names("after")).cloned().collect();
+    let rank = |n: &str| match n {
+        "Form.xml" => 0,
+        "FormModule.bsl" => 1,
+        _ => 2,
+    };
+    all.sort_by(|a, b| (rank(a), a).cmp(&(rank(b), b)));
+    let mut out = Vec::new();
+    for name in all {
+        let old = read_text(&item.path.join("before").join(&name));
+        let new = read_text(&item.path.join("after").join(&name));
+        out.extend(crate::textdiff::file_diff(&name, old.as_deref(), new.as_deref()));
+    }
+    out
+}
+
+fn diff_cmd(path: &Path, id: Option<&str>) -> i32 {
+    let root = clean_path(path);
+    if !root.is_dir() {
+        return usage(&format!("{} is not a directory", root.display()));
+    }
+    let (dir, item) = match resolve_snapshot(&root, id) {
+        Ok(v) => v,
+        Err(m) => return failure(&m),
+    };
+    let m = &item.manifest;
+    println!(
+        "snapshot {} ({}, {}, {}): {}",
+        item.id,
+        m["form"].as_str().unwrap_or(""),
+        rel_of(&root, &dir),
+        m["time"].as_str().unwrap_or(""),
+        m["reason"].as_str().unwrap_or("")
+    );
+    let lines = snapshot_diff(&item);
+    if lines.is_empty() {
+        println!("no differences in Form.xml / FormModule.bsl (the projection files before and after are the same)");
+    }
+    for l in lines {
+        println!("{l}");
+    }
+    EXIT_OK
 }
 
 fn usage(message: &str) -> i32 {
@@ -445,6 +541,18 @@ fn failure(message: &str) -> i32 {
 
 /// `oneform history [PATH]` and `oneform history restore [PATH] <id>`; `args` are the positionals after `history`.
 pub fn run_cli(args: &[String], json: bool, dry_run: bool, replace_generated: bool) -> i32 {
+    if args.first().map(String::as_str) == Some("diff") {
+        if json || dry_run || replace_generated {
+            return usage("oneform history diff takes no --json, --dry-run or --replace-generated");
+        }
+        return match &args[1..] {
+            [] => diff_cmd(Path::new("."), None),
+            [one] if Path::new(one).is_dir() => diff_cmd(Path::new(one), None),
+            [one] => diff_cmd(Path::new("."), Some(one)),
+            [path, id] => diff_cmd(Path::new(path), Some(id)),
+            _ => usage("usage: oneform history diff [PATH] [id]"),
+        };
+    }
     if args.first().map(String::as_str) == Some("restore") {
         if json {
             return usage("--json is only valid for oneform history (the list)");
@@ -456,7 +564,7 @@ pub fn run_cli(args: &[String], json: bool, dry_run: bool, replace_generated: bo
         };
     }
     if args.len() > 1 {
-        return usage("usage: oneform history [PATH] [--json] | oneform history restore [PATH] <id>");
+        return usage("usage: oneform history [PATH] [--json] | oneform history diff [PATH] [id] | oneform history restore [PATH] <id>");
     }
     if dry_run || replace_generated {
         return usage("--dry-run and --replace-generated are only valid for oneform history restore");
@@ -544,7 +652,11 @@ fn restore(path: &Path, id: &str, dry_run: bool, replace_generated: bool) -> i32
             }
             EXIT_OK
         }
-        Err(m) => failure(&m),
+        Err(m) => {
+            let record = crate::diagnostics::from_error("history restore", dry_run, EXIT_FAILED, None, None, &m);
+            crate::diagnostics::append(&obj_dir, &record);
+            failure(&m)
+        }
     }
 }
 

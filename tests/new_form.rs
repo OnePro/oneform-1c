@@ -378,14 +378,15 @@ fn the_processor_form_has_the_main_attribute_only() {
     assert!(xml.contains("Standard:142"), "the panel with «Закрыть» stays");
 }
 
-/// Everything under `dir` with the content, for "nothing changed" checks.
+/// Everything under `dir` with the content, for "nothing changed" checks (the diagnostics log of a refusal is not a change
+/// of the project: tests/diagnostics.rs covers it).
 fn snapshot(dir: &Path) -> Vec<(PathBuf, Vec<u8>)> {
     let mut out = Vec::new();
     for e in fs::read_dir(dir).unwrap() {
         let p = e.unwrap().path();
         if p.is_dir() {
             out.extend(snapshot(&p));
-        } else {
+        } else if p.file_name().is_some_and(|n| n != "diagnostics.jsonl") {
             out.push((p.clone(), fs::read(&p).unwrap()));
         }
     }

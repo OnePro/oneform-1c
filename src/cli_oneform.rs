@@ -38,7 +38,8 @@ use crate::preview::{
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
 
-pub const COMMANDS: [&str; 9] = ["extract", "pack", "preview", "check", "clone-form", "new-form", "lint", "validate", "history"];
+pub const COMMANDS: [&str; 11] =
+    ["extract", "pack", "preview", "check", "clone-form", "new-form", "lint", "validate", "history", "diagnose", "feedback"];
 pub const DEFAULT_WORKERS: usize = 3;
 const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", WORKSPACE_DIR, "src"];
 /// `json.dumps` of the Reference (default separators).
@@ -62,6 +63,14 @@ Every pack that changes a form first saves the previous state in <object directo
 manifest.json; the last 20 per object, env ONEFORM_HISTORY_KEEP, 0 = off) and prints `history <id>`. history [PATH] [--json] lists
 the snapshots; history restore [PATH] <id> [--dry-run] [--replace-generated] puts the saved Form.bin / .epf back (the current state is
 saved as a new snapshot first) and refreshes src/ with extract; it refuses when src/ holds unpacked edits unless --replace-generated.
+history diff [PATH] [id] prints a unified diff of before/ and after/ (Form.xml, FormModule.bsl) of the latest or the given snapshot.
+extract, pack, clone-form, new-form and history restore that end with a refusal, a failure or warnings append one line (metadata only, no file
+contents; the last 500, env ONEFORM_DIAG_CAP) to <project dir>/.oneform/diagnostics.jsonl; --dry-run records refusals too.
+diagnose [PATH] [--json] (read-only) shows the last 10 of them, the last snapshot, the validate verdicts, the section of docs/agent-guide.md for each
+refusal code and the commands for 'the form did not open in 1C'. feedback add [PATH] [--history ID] [--note TEXT] [--1c-error TEXT] [--kind bug|wish]
+[--no-files] [--include-binaries] writes <project dir>/.oneform/feedback/<time>-<kind>/ (report.md, report.json, the text files of the snapshot;
+modules may hold tokens or passwords: read the report before you share it; binaries only with --include-binaries) and mirrors it to
+$ONEFORM_FEEDBACK_DIR/<project dir name>/<id> when that is set; feedback list [PATH] [--json]; feedback show [PATH] <id> [--json].
 validate [PATH] [--json] decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
 (format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection, unreadable); it reads the
 Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is in scope, 1 when any is not.
@@ -833,17 +842,22 @@ pub struct Cli {
     pub default_form: bool,
     pub json: bool,
     pub strict: bool,
+    pub history_id: Option<String>,
+    pub note: Option<String>,
+    pub onec_error: Option<String>,
+    pub no_files: bool,
+    pub include_binaries: bool,
 }
 
 fn build_command() -> Command {
     Command::new("oneform")
         .version(env!("CARGO_PKG_VERSION"))
-        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|clone-form|new-form|history] [PATH]")
+        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|clone-form|new-form|history|diagnose|feedback] [PATH]")
         .about("Extract, pack, check and preview 1C ordinary forms of EPF files and configuration dumps.")
         .after_help(EPILOG)
-        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form|history]").help("command (default: extract; clone-form and new-form take the object directory as PATH; history: list snapshots, or `history restore [PATH] <id>`)"))
+        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form|history|diagnose|feedback]").help("command (default: extract; clone-form and new-form take the object directory as PATH; history: list snapshots, `history diff [PATH] [id]` or `history restore [PATH] <id>`; diagnose: summary of refusals and the last snapshot; feedback: `feedback add [PATH]`, `feedback list`, `feedback show <id>`)"))
         .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .)"))
-        .arg(Arg::new("extra").value_name("ID").num_args(0..).help("history restore [PATH] <id>: the snapshot id"))
+        .arg(Arg::new("extra").value_name("ID").num_args(0..).help("history diff [PATH] [id], history restore [PATH] <id>, feedback show <id>: the snapshot / report id"))
         .arg(
             Arg::new("workers")
                 .short('j')
@@ -880,8 +894,13 @@ fn build_command() -> Command {
         .arg(Arg::new("from").long("from").value_name("FORM").help("clone-form: the existing form of the object to copy"))
         .arg(Arg::new("name").long("name").value_name("NAME").help("clone-form, new-form: name of the new form"))
         .arg(Arg::new("synonym").long("synonym").value_name("TEXT").help("clone-form, new-form: synonym (title) of the new form; default: the name"))
-        .arg(Arg::new("kind").long("kind").value_name("KIND").help("new-form: processor, report, catalog-item, catalog-list or document"))
-        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate, history: print the findings / snapshots as a JSON array"))
+        .arg(Arg::new("kind").long("kind").value_name("KIND").help("new-form: processor, report, catalog-item, catalog-list or document; feedback add: bug (default) or wish"))
+        .arg(Arg::new("history_id").long("history").value_name("ID").help("feedback add: the history snapshot to report (default: the latest one)"))
+        .arg(Arg::new("note").long("note").value_name("TEXT").help("feedback add: what you tried / what is wrong"))
+        .arg(Arg::new("onec_error").long("1c-error").value_name("TEXT").help("feedback add: the exact error text 1C showed"))
+        .arg(Arg::new("no_files").long("no-files").action(ArgAction::SetTrue).help("feedback add: do not copy the snapshot files (Form.xml, FormModule.bsl) into the report"))
+        .arg(Arg::new("include_binaries").long("include-binaries").action(ArgAction::SetTrue).help("feedback add: also copy the saved Form.bin / .epf (they may hold tokens or passwords)"))
+        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate, history, diagnose: print the findings / snapshots / the summary as JSON"))
         .arg(Arg::new("strict").long("strict").action(ArgAction::SetTrue).help("lint: exit 3 when there are warnings"))
         .arg(Arg::new("default").long("default").action(ArgAction::SetTrue).help("new-form: make the new form the default form of the object"))
         .arg(
@@ -927,6 +946,11 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
         default_form: m.get_flag("default"),
         json: m.get_flag("json"),
         strict: m.get_flag("strict"),
+        history_id: m.get_one::<String>("history_id").cloned(),
+        note: m.get_one::<String>("note").cloned(),
+        onec_error: m.get_one::<String>("onec_error").cloned(),
+        no_files: m.get_flag("no_files"),
+        include_binaries: m.get_flag("include_binaries"),
     })
 }
 
@@ -1003,6 +1027,29 @@ fn exit_code(outcomes: &[Outcome], command: &str) -> i32 {
     EXIT_OK
 }
 
+/// Diagnostics line of a refused `clone-form` / `new-form` (the object directory is the project directory).
+fn log_error(command: &str, path: &str, dry_run: bool, e: &ExtractionError) {
+    let dir = clean_path(Path::new(path));
+    // a directory that is not a project (missing, empty) gets no `.oneform`
+    if !fs::read_dir(&dir).is_ok_and(|rd| rd.flatten().any(|e| e.file_name() != WORKSPACE_DIR)) {
+        return;
+    }
+    let kind = e.params.get("kind").and_then(Value::as_str);
+    let record = crate::diagnostics::from_error(command, dry_run, EXIT_FAILED, Some(e.code), kind, &e.message);
+    crate::diagnostics::append(&dir, &record);
+}
+
+/// Diagnostics lines of `extract` / `pack` targets that ended with a failure or warnings (a clean target writes nothing).
+fn log_outcomes(root: &Path, targets: &[Target], outcomes: &[Outcome], command: &str, dry_run: bool) {
+    for o in outcomes {
+        let Some(t) = targets.iter().find(|t| t.display() == o.path) else { continue };
+        let code = exit_code(std::slice::from_ref(o), command);
+        if let Some(r) = crate::diagnostics::from_outcome(command, dry_run, code, o) {
+            crate::diagnostics::append(&path_of(root, &t.rel), &r);
+        }
+    }
+}
+
 fn fail(message: &str) -> i32 {
     eprintln!("oneform: error: {message}");
     EXIT_USAGE
@@ -1017,6 +1064,11 @@ pub fn main(argv: &[String]) -> i32 {
         Ok(v) => v,
         Err(m) => return fail(&m),
     };
+    crate::diagnostics::set_argv(argv);
+    let feedback_only = args.history_id.is_some() || args.note.is_some() || args.onec_error.is_some() || args.no_files || args.include_binaries;
+    if feedback_only && command != "feedback" {
+        return fail("--history, --note, --1c-error, --no-files and --include-binaries are only valid for feedback add");
+    }
     if command == "clone-form" {
         let (Some(from), Some(name)) = (args.from.as_deref(), args.name.as_deref()) else {
             return fail("clone-form needs --from <existing form> and --name <new form>");
@@ -1032,6 +1084,7 @@ pub fn main(argv: &[String]) -> i32 {
             }
             Err(e) => {
                 eprintln!("oneform: error: {}", e.message);
+                log_error("clone-form", &path, false, &e);
                 EXIT_FAILED
             }
         };
@@ -1054,21 +1107,22 @@ pub fn main(argv: &[String]) -> i32 {
             }
             Err(e) => {
                 eprintln!("oneform: error: {}", e.message);
+                log_error("new-form", &path, false, &e);
                 EXIT_FAILED
             }
         };
     }
-    if args.default_form || args.kind.is_some() {
-        return fail("--kind and --default are only valid for new-form");
+    if args.default_form || (args.kind.is_some() && command != "feedback") {
+        return fail("--kind and --default are only valid for new-form (--kind also for feedback add)");
     }
-    if command != "history" && !args.extra.is_empty() {
+    if !matches!(command.as_str(), "history" | "feedback") && !args.extra.is_empty() {
         return fail(&format!("unexpected argument '{}'", args.extra[0]));
     }
     if args.strict && command != "lint" {
         return fail("--strict is only valid for lint");
     }
-    if args.json && !matches!(command.as_str(), "lint" | "validate" | "history") {
-        return fail("--json is only valid for lint, validate and history");
+    if args.json && !matches!(command.as_str(), "lint" | "validate" | "history" | "diagnose" | "feedback") {
+        return fail("--json is only valid for lint, validate, history, diagnose and feedback list/show");
     }
     if args.workers < 1 {
         return fail("--workers must be at least 1");
@@ -1078,6 +1132,31 @@ pub fn main(argv: &[String]) -> i32 {
     }
     if args.replace_generated && matches!(command.as_str(), "pack" | "check" | "preview" | "lint" | "validate") {
         return fail("--replace-generated is only valid for extract");
+    }
+    if command == "diagnose" {
+        if args.dry_run || args.replace_generated {
+            return fail("diagnose is read-only: --dry-run and --replace-generated are not valid");
+        }
+        if !args.extra.is_empty() {
+            return fail(&format!("unexpected argument '{}'; usage: oneform diagnose [PATH] [--json]", args.extra[0]));
+        }
+        return crate::diagnostics::run_cli(&path, args.json);
+    }
+    if command == "feedback" {
+        if args.dry_run || args.replace_generated {
+            return fail("feedback does not take --dry-run or --replace-generated");
+        }
+        let mut positionals: Vec<String> = args.second.iter().cloned().collect();
+        positionals.extend(args.extra.iter().cloned());
+        let opts = crate::feedback::AddOptions {
+            history_id: args.history_id.clone(),
+            note: args.note.clone(),
+            onec_error: args.onec_error.clone(),
+            kind: args.kind.clone(),
+            no_files: args.no_files,
+            include_binaries: args.include_binaries,
+        };
+        return crate::feedback::run_cli(&positionals, &opts, args.json);
     }
     if command == "history" {
         let mut positionals: Vec<String> = args.second.iter().cloned().collect();
@@ -1154,6 +1233,9 @@ pub fn main(argv: &[String]) -> i32 {
         print_outcome(o, args.dry_run);
     }
     let mut code = exit_code(&outcomes, &command);
+    if matches!(command.as_str(), "extract" | "pack") {
+        log_outcomes(&root, &targets, &outcomes, &command, args.dry_run);
+    }
 
     if command != "check" && !args.dry_run {
         let items = collect_items(&root, &targets);
@@ -1211,7 +1293,7 @@ mod tests {
         assert_eq!(resolve_command(Some("dir"), None), Ok(("extract".into(), "dir".into())));
         assert_eq!(
             resolve_command(Some("bogus"), Some(".")),
-            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history".to_string())
+            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history, diagnose, feedback".to_string())
         );
         assert_eq!(py_repr("it's"), "\"it's\"");
     }

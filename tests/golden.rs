@@ -240,6 +240,8 @@ fn run_case(c: &Case) -> Result<(), String> {
     }
 
     let mut actual = read_tree(Path::new(&root));
+    // the diagnostics log of a refused command has a time stamp and its own tests (tests/diagnostics.rs)
+    actual.retain(|p, _| !p.ends_with(".oneform/diagnostics.jsonl"));
     if c.ignores("durationSeconds") {
         mask_durations(&mut actual);
     }
