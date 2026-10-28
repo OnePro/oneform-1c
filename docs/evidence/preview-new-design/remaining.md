@@ -1,0 +1,16 @@
+# Remaining visible differences preview ↔ 1C (after stage 2)
+
+Triptychs: `pairs/NN-*.png` = before | after | 1C (runtime view). Preview-only forms: `extra/NN-*.png` = before | after (runtime) | after (designer).
+
+| Pair | Remaining difference 1 | 2 | 3 |
+|---|---|---|---|
+| 01 kontr-list | Tables have no data rows in runtime (1C: rows with folder/item icons, blue current row, sort mark in «Наименование»); the designer view shows one sample row | Tree table has no «+»/folder node (its Form.xml has no `InitialTreeView`/`ShowHierarchy`) and no vertical scroll bars (1C draws them because the data does not fit) | Window title bar/frame of 1C is outside the form (`chrome=0`); command-bar buttons are slightly wider spaced than in 1C |
+| 02 org-item | Panel tab strip: 1C shows 4 tabs and arrows with different tab widths (text width estimate, font hinting) | Field values («Организация не является плательщиком НДС», «0000000002», calendar date text) are runtime data and are not drawn | Logo/seal frames are empty in both, but 1C text «Печать организации:» is right-aligned in its box (HorizontalAlign of a label inside the group is not mapped for this label) |
+| 04 nalogi-radio | The first radio is drawn selected only in the designer view (runtime 1C shows it selected — apply-notes, open question) | Field data («НДС сверху…», «3») missing in runtime | Selected-text highlight of the focused field in 1C |
+| 05 ofor-font | «Цвет текста»/«Цвет фона» swatch fields: 1C draws empty sunken boxes, preview draws input frames of the same size but with slightly different border colour | Bold/italic/underline check captions match; remaining: checkbox glyph antialiasing | `Код` value text («0000000002») not drawn |
+| 06 putlist | Header of the tabular part: 1C has a flatter grey header with a sort mark, preview keeps the beige gradient of the sheet | Sum/number fields show `0,00` in 1C (data), preview empty in runtime | Window title with the document number and the `*` modified mark; tab strip is 2 px lower in 1C |
+| 09 rep-provodki | Result area (SpreadsheetDocumentField): preview draws the grid (ShowGrid absent = true per spec), 1C shows a white area with the report text | Right panel «Показатели»/«Отбор» lists: 1C has check boxes/rows with data | Report heading text («Отчет по проводкам…») is data and not drawn |
+| 15 dp-xml | Two tables: 1C header is greyer and the first table has a dark selected header (focus); preview uses the sheet gradient | Command bar of the table: 1C shows «»» overflow and a row of disabled grey icons, preview truncates `Ув` | The `T`-button of the choice fields and the `Не использовать` value are data/choice details |
+| 16 dp-start | The left navigation image (rose/yellow gradient) is a picture from the configuration, preview draws the empty frame/placeholder | 1C text starts at the left of the area (big text with 16 px indent), preview wraps differently | Spreadsheet-like area on the left has a grid in preview (1C: the navigation list) |
+
+Preview-only forms (`extra/`): 03 valyuty-list, 07 postup, 08 vygr-track, 10 rep-akt, 11 rep-chart, 12 dp-search, 13 dp-group, 14 dp-calendar, 17 dp-upravl — no 1C reference; checked for broken layout only.
