@@ -1,0 +1,328 @@
+/* =====================================================================================
+   theme.css — тема «Классика 1С 8.x (обычные формы)» для превью FormPreview.
+   Подключается ПОСЛЕ tools/assets/form_theme.css (rebuild_preview.py --theme-extra) и
+   перекрывает его правила. Имена существующих переменных сохранены; новые добавлены.
+   Все цвета сняты попиксельно со снимков gallery/*-1c.png (см. render-spec.md §0.2).
+   Классы-модификаторы, помеченные «(JS)», ставит form_render.js по свойствам Form.xml —
+   правила их выставления описаны в render-spec.md.
+   ===================================================================================== */
+
+/* ---------- 0. Переменные темы (§0.2 render-spec.md) ---------- */
+#canvas,.canvas{
+  --form-bg:#FCFAEB;      /* фон формы, страниц панели, активной закладки */
+  --cmdbar-bg:#F5F2DD;    /* командная панель, нижняя полоса кнопок */
+  --border:#B3AC86;       /* рамка полей, таблиц, кнопок, страницы, картинки, линия группы */
+  --field-border:#B3AC86; /* то же для «прочих» полей (раньше переменная не была определена) */
+  --sep:#CCC6AD;          /* рамка неактивной закладки, разделители командной панели, низ шапки таблицы */
+  --tab-bg:#EBE6CC;       /* неактивная закладка */
+  --tab-accent:#FADFA3;   /* оранжевая полоска 2 px сверху активной закладки */
+  --head-from:#FAFAF0;    /* шапка/подвал таблицы: верх градиента */
+  --head-to:#F2EBCC;      /* шапка/подвал таблицы: низ градиента */
+  --head-sep:#BFB999;     /* вертикальный разделитель колонок в шапке */
+  --row-line:#CBD2D6;     /* горизонтальная линия между строками таблицы */
+  --col-line:#E3E0D0;     /* вертикальная линия между ячейками (VerticalLines=true) */
+  --sel-bg:#536AC2;       /* текущая (выделенная) строка таблицы, выделение в календаре/списке */
+  --sel-text:#FFFFFF;   /* текст выделенной строки/даты */
+  --sel-line:#B5CBE5;     /* нижняя светлая линия выделенной строки */
+  --group-title:#9F6500;  /* заголовок группы */
+  --scroll-bg:#FAF9F3;    /* жёлоб полосы прокрутки */
+  --scroll-border:#BDB79B;/* линия, отделяющая полосу прокрутки */
+  --scroll-arrow:#A8A38E; /* треугольники на кнопках прокрутки */
+  --tb-from:#FAF8F2;      /* кнопка внутри поля («…», календарь, «×», лупа): верх градиента */
+  --tb-to:#EAE6CD;        /* … низ градиента */
+  --tb-sep:#D3CDAA;       /* левая граница кнопки внутри поля */
+  --tb-ink:#664C00;       /* точки «…», крестик «×» */
+  --btn-from:#FFFFFF;     /* кнопка: верх градиента */
+  --btn-mid:#F6F3E1;      /* кнопка: середина */
+  --btn-to:#EAE5CD;       /* кнопка: низ */
+  --check-border:#99926B; /* рамка флажка и переключателя */
+  --check-ink:#2B2B2B;    /* галочка, точка переключателя */
+  --text:#000000;       /* текст формы */
+  --text-dis:#A39E87;     /* текст недоступного элемента (допущение, см. questions.md) */
+  --link:#0054E3;         /* гиперссылка (допущение) */
+  --mark:#FF0000;         /* отметка незаполненного (точки 1 px через 1 px) */
+  --neg:#FF0000;          /* отрицательное число при MarkNegatives */
+  --holiday:#C00000;      /* выходные в календаре */
+  --ph-bg:#F3F0DE;        /* заглушка картинки, которую нельзя показать */
+  --ph-ink:#B3AC86;     /* линии заглушки картинки */
+  --font:8pt Tahoma,Arial,sans-serif; /* шрифт формы (≈ 11 px) */
+  --r-field:2px;          /* скругление поля ввода */
+  --r-btn:3px;            /* скругление кнопки */
+  --r-tab:4px;            /* скругление верхних углов закладки */
+  --r-check:2px;          /* скругление флажка */
+  --tb-w:15px;            /* ширина кнопки внутри поля (без рамки поля) */
+  --sb:16px;              /* толщина полосы прокрутки */
+  --head-h:20px;          /* высота шапки таблицы */
+  --row-h:19px;           /* шаг строки таблицы (18 px + линия) */
+  color:var(--text);
+}
+
+/* ---------- 0a. Заголовок окна (вне холста; при chrome=0 скрыт) ---------- */
+.form-title{height:22px;line-height:22px;padding:0 6px;font:bold 8pt Tahoma,Arial,sans-serif;color:#000;background:linear-gradient(180deg,#F7F6F0,#E7E4D8);border-bottom:1px solid #B2B2B2;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.form-title .pic16{display:inline-flex;width:16px;height:16px}
+
+/* ---------- 1. Общие модификаторы (§0.6, §0.7, §1) ---------- */
+#canvas .c,.canvas .c{font:var(--font)}
+.c .cap{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Font.* (JS: классы на .cap/.val/.colh) */
+.b{font-weight:bold}
+.f-i{font-style:italic}
+.f-u{text-decoration:underline}
+.f-s{text-decoration:line-through}
+.f-u.f-s{text-decoration:underline line-through}
+/* недоступный элемент (Enabled=false) (JS: класс .dis на корне .c) */
+.c.dis,.c.dis .cap,.c.dis .val{color:var(--text-dis)!important}
+.c.dis svg{opacity:.45;filter:grayscale(1)}
+/* скрытый элемент в режиме «показывать скрытые» — без изменений */
+#canvas .c.hid,.canvas .c.hid{opacity:.35;outline:1px dashed #888}
+/* выравнивание текста (HorizontalAlign / VerticalAlign) (JS) */
+.ha-Left{justify-content:flex-start!important;text-align:left}
+.ha-Center{justify-content:center!important;text-align:center}
+.ha-Right{justify-content:flex-end!important;text-align:right}
+.ha-Justify{justify-content:flex-start!important;text-align:justify}
+.va-Top{align-items:flex-start!important}
+.va-Center{align-items:center!important}
+.va-Bottom{align-items:flex-end!important}
+/* рамка по Border.type (JS: класс на корне .c). Цвет — inline border-color из BorderColor, иначе --border */
+.bd-None{border-style:none!important}
+.bd-SingleLine,.bd-Frame,.bd-Single3D,.bd-Rounded,.bd-Embossed,.bd-Indented{border-width:1px!important;border-style:solid!important}
+.bd-SingleLine,.bd-Frame,.bd-Single3D,.bd-Rounded,.bd-Embossed,.bd-Indented,.bd-Double,.bd-Overline,.bd-Underline{border-color:var(--border)}
+.bd-Single3D{box-shadow:inset 1px 1px 0 #fff}
+.bd-Double{border-width:3px!important;border-style:double!important}
+.bd-Rounded{border-radius:4px!important}
+.bd-Overline{border-style:none!important;border-top-style:solid!important;border-top-width:1px!important}
+.bd-Underline{border-style:none!important;border-bottom-style:solid!important;border-bottom-width:1px!important}
+.bd-Embossed{box-shadow:inset -1px -1px 0 #fff,inset 1px 1px 0 #D9D3B6}
+.bd-Indented{box-shadow:inset 1px 1px 0 #D9D3B6,inset -1px -1px 0 #fff}
+/* прозрачный фон (TransparentBack=true) */
+.tr-bg{background:transparent!important}
+/* картинка-заглушка 16×16 (Picture.refGuid задан, пикселей нет) */
+.pic16{display:inline-flex;flex:none;width:16px;height:16px;align-items:center;justify-content:center}
+
+/* ---------- 2. Надпись — LabelDecoration ---------- */
+.t-LabelDecoration{display:flex;align-items:center;gap:3px}
+.t-LabelDecoration .cap{padding:0 1px}
+.t-LabelDecoration.va-Top{padding-top:2px}
+.t-LabelDecoration.link .cap{color:var(--link);text-decoration:underline}
+.t-LabelDecoration .ic,.t-LabelDecoration .pic16{width:16px;height:16px;margin:0}
+.t-LabelDecoration.pl-Right{flex-direction:row-reverse;justify-content:flex-end}
+.t-LabelDecoration.pl-Top{flex-direction:column;justify-content:center}
+.t-LabelDecoration.pl-Bottom{flex-direction:column-reverse;justify-content:center}
+.t-LabelDecoration.pl-Center .cap{position:absolute;left:0;right:0;text-align:center}
+.t-LabelDecoration.ml .cap{white-space:normal;overflow:hidden}
+.t-LabelDecoration .cap.neg{color:var(--neg)}
+
+/* ---------- 3. Поле ввода — InputField (и общее для ChoiceField) ---------- */
+.t-InputField,.t-ChoiceField{background:#FFFFFF;border:1px solid var(--border);border-radius:var(--r-field);display:flex;align-items:stretch}
+.t-InputField .val,.t-ChoiceField .val{flex:1;min-width:0;position:relative;overflow:hidden;padding:0 2px;display:flex;align-items:center;white-space:pre;color:var(--text)}
+.val.num{justify-content:flex-end;padding-right:3px}
+.val.ph{color:#8C8775;font-style:normal}
+.val.ml{align-items:flex-start;padding-top:1px;white-space:pre-wrap}
+.val.pw{letter-spacing:1px}
+.val .mark{position:absolute;left:2px;right:2px;bottom:1px;height:1px;border:0;
+  background:repeating-linear-gradient(90deg,var(--mark) 0 1px,transparent 1px 2px)}
+/* кнопки внутри поля: «…», календарь, калькулятор, «T», «×», лупа, ▾, ▲▼ */
+.tb{flex:none;width:var(--tb-w);background:linear-gradient(180deg,var(--tb-from),var(--tb-to));border:0;border-left:1px solid var(--tb-sep);display:flex;align-items:center;justify-content:center;color:var(--tb-ink);font-size:9px;line-height:1;overflow:hidden}
+.tb{font-weight:bold;font-size:11px;letter-spacing:-.5px} /* «...» текстом, пока JS не перейдёт на icon-choice */
+.tb.bold{font:bold 11px Tahoma,Arial,sans-serif;color:#3D3D3D}
+.tb:last-child{border-top-right-radius:1px;border-bottom-right-radius:1px}
+.tb.spin{flex-direction:column;justify-content:stretch}
+.tb.spin i{flex:1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:6px}
+.tb.spin i+i{border-top:1px solid var(--tb-sep)}
+.tb.colored{background:var(--tb-bg,#F1EEDD)}
+/* только просмотр: белая полоса 2 px внутри рамки, середина цвета формы, кнопки бледнее */
+.t-InputField.ro,.t-ChoiceField.ro{background:var(--form-bg);box-shadow:inset 0 0 0 2px #FFFFFF}
+.t-InputField.ro .tb,.t-ChoiceField.ro .tb{opacity:.55}
+/* недоступно: как «только просмотр», текст и значки бледные */
+.t-InputField.dis,.t-ChoiceField.dis{background:var(--form-bg);box-shadow:none}
+.t-InputField.dis .tb,.t-ChoiceField.dis .tb{opacity:.45}
+/* картинка в поле (Picture) — слева от текста */
+.t-InputField .pic16,.t-ChoiceField .pic16{margin:0 0 0 1px;align-self:center}
+/* многострочное поле с полосой прокрутки (MultiLine + VerticalScrollBar) */
+.t-InputField .vsb{flex:none;width:var(--sb);background:var(--scroll-bg);border-left:1px solid var(--scroll-border);display:flex;flex-direction:column;justify-content:space-between}
+
+/* ---------- 4. Кнопка — Button ---------- */
+.t-Button{background:linear-gradient(180deg,var(--btn-from) 0,var(--btn-mid) 45%,var(--btn-to) 100%);border:1px solid var(--border);border-radius:var(--r-btn);
+  display:flex;align-items:center;justify-content:center;gap:3px;padding:0 3px;box-shadow:inset 0 -1px 0 rgba(255,255,255,.55)}
+.t-Button .cap{white-space:nowrap}
+.t-Button.ml .cap{white-space:normal;text-align:center;line-height:11px}
+.t-Button.def{border-color:#8F8866;box-shadow:inset 0 0 0 1px #E0D9B9}
+.t-Button.def .cap{font-weight:bold}
+.t-Button.pl-Right{flex-direction:row-reverse}
+.t-Button .mn{flex:none;margin-left:1px;border-left:1px solid var(--tb-sep);padding-left:2px;font-size:7px;align-self:stretch;display:flex;align-items:center}
+.t-Button.dis{background:linear-gradient(180deg,#FCFBF6,#F2EFE2)}
+.t-Button.tr-bg{border-color:transparent!important;box-shadow:none}
+.t-Button.colored{background:var(--btn-bg)!important}
+
+/* ---------- 5. Флажок и переключатель — CheckBox / RadioButton ---------- */
+.t-CheckBox,.t-RadioButton{display:flex;align-items:center;gap:3px}
+.t-CheckBox.tl-Left,.t-RadioButton.tl-Left{flex-direction:row-reverse;justify-content:flex-end}
+.box,.rad{position:relative;width:13px;height:13px;border:1px solid var(--check-border);background:linear-gradient(135deg,#F4F2E8 0,#FFFFFF 70%);display:inline-block;flex:none}
+.box{border-radius:var(--r-check)}
+.rad{border-radius:50%}
+.box.on::after{content:"";position:absolute;left:3px;top:0;width:3px;height:7px;border:solid var(--check-ink);border-width:0 2px 2px 0;transform:rotate(40deg)}
+.box.mix::after{content:"";position:absolute;left:2px;top:2px;right:2px;bottom:2px;background:#8A8466}
+.rad.on::after{content:"";position:absolute;left:3px;top:3px;width:5px;height:5px;border-radius:50%;background:var(--check-ink)}
+.c.dis .box,.c.dis .rad{border-color:#C9C4AB;background:#F7F5EC}
+.c.dis .box.on::after{border-color:#B9B49E}
+.c.dis .rad.on::after{background:#B9B49E}
+
+/* ---------- 6. Группа — UsualGroup ---------- */
+#canvas .t-UsualGroup,.canvas .t-UsualGroup{overflow:visible}
+.t-UsualGroup .gt{position:absolute;color:var(--group-title);font-weight:bold;background:var(--form-bg);padding:0 2px;line-height:14px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.t-UsualGroup.bs-Frame .gf{position:absolute;left:0;right:0;top:7px;bottom:0;border:1px solid var(--border);border-radius:3px}
+.t-UsualGroup.bs-Frame .gt{left:6px;top:0}
+.t-UsualGroup.bs-SingleLine .gt{left:0;top:0;background:transparent;padding:0}
+.t-UsualGroup.bs-SingleLine .gf{position:absolute;left:0;right:0;bottom:0;border-bottom:1px solid var(--border)}
+.t-UsualGroup.bs-None .gt{left:0;top:0;background:transparent;padding:0}
+
+/* ---------- 7. Панель и страницы — Panel / PanelPage ---------- */
+#canvas .t-Panel,.canvas .t-Panel{overflow:visible}
+#canvas .t-Page,.canvas .t-Page{display:none;background:var(--form-bg);border:1px solid var(--border);overflow:hidden}
+#canvas .t-Page.on,.canvas .t-Page.on{display:block}
+.t-Panel.no-tabs>.t-Page{border:none!important}
+.ptabs{position:absolute;left:0;top:0;right:0;display:flex;gap:2px;padding:0 2px;align-items:flex-end;overflow:hidden;user-select:none;z-index:2}
+.ptab{background:var(--tab-bg);border:1px solid var(--sep);border-bottom:none;border-radius:var(--r-tab) var(--r-tab) 0 0;
+  padding:0 8px;flex:0 1 auto;min-width:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
+  line-height:17px;height:18px;margin-bottom:0;font:var(--font)}
+.ptabs .ptab{flex:none!important;max-width:none!important} /* полные подписи; лишние закладки уходят под .pscroll */
+.ptab.on{background:var(--form-bg);border-color:var(--border);box-shadow:inset 0 2px 0 var(--tab-accent);position:relative;top:1px;height:19px;padding-top:1px;z-index:3}
+.ptab.dis{color:var(--text-dis)}
+.ptab.hid{opacity:.55;font-style:italic}
+.ptab .pic16{display:inline-flex;vertical-align:-3px;margin-right:3px}
+/* стрелки прокрутки закладок (JS: .pscroll, когда закладки не помещаются) */
+.ptabs .pscroll{position:absolute;right:0;bottom:1px;display:flex;gap:0;background:var(--form-bg);padding-left:2px;z-index:4}
+.ptabs .pscroll i{width:9px;height:14px;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:7px;color:#3D3D3D}
+.ptabs .pscroll i.off{color:#BDB79B}
+/* закладки снизу и слева */
+.ptabs.btabs{top:auto;bottom:0;align-items:flex-start}
+.ptabs.btabs .ptab{border-top:none;border-bottom:1px solid var(--sep);border-radius:0 0 var(--r-tab) var(--r-tab)}
+.ptabs.btabs .ptab.on{top:-1px;box-shadow:inset 0 -2px 0 var(--tab-accent);border-color:var(--border)}
+.ptabs.vtabs{right:auto;bottom:0;flex-direction:column;align-items:stretch;padding:2px 0}
+.ptabs.vtabs .ptab{border:1px solid var(--sep);border-right:none;border-radius:var(--r-tab) 0 0 var(--r-tab);height:18px;width:100%;padding:0 4px}
+.ptabs.vtabs .ptab.on{top:0;left:1px;height:18px;padding-top:0;box-shadow:inset 2px 0 0 var(--tab-accent);border-color:var(--border)}
+.ptabs.multi{flex-wrap:wrap-reverse;align-content:flex-start}
+
+/* ---------- 8. Табличное поле — Table / TableColumn ---------- */
+.t-Table{background:#FFFFFF;border:1px solid var(--border)}
+.t-Table .th,.t-Table .tr,.t-Table .tf{position:absolute;left:0;right:0;display:flex;overflow:hidden}
+.t-Table .th{top:0;height:var(--head-h);background:linear-gradient(180deg,var(--head-from) 0%,var(--head-to) 100%);border-bottom:1px solid var(--sep)}
+.t-Table .colh{flex:0 0 auto;height:100%;padding:0 4px;display:flex;align-items:center;gap:3px;border-right:1px solid var(--head-sep);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-Table .th.mh .colh{white-space:normal;line-height:11px;justify-content:center;text-align:center} /* HeaderHeight > 1 */
+.t-Table .colh .srt{margin-left:auto;font-size:7px;color:#8C8670}
+.t-Table .tr{top:var(--head-h);height:var(--row-h);border-bottom:1px solid var(--row-line)}
+.t-Table .cell{flex:0 0 auto;height:100%;display:flex;align-items:center;gap:3px;padding-left:3px;overflow:hidden;white-space:nowrap}
+.t-Table .cell.ro{border-right:0}
+.t-Table.vl .cell{border-right:1px solid var(--col-line)}
+.t-Table.no-hl .tr{border-bottom-color:transparent}
+.t-Table .tr.sel{background:var(--sel-bg);color:var(--sel-text);border-bottom-color:var(--sel-line)}
+.t-Table .tr.alt{background:var(--alt-bg,#F7F6EE)}
+.t-Table .cell.num{justify-content:flex-end;padding-right:3px}
+.t-Table .cell.ctr{justify-content:center;padding-left:0}
+.t-Table .cell .lnk{color:var(--link);text-decoration:underline}
+.t-Table .cell .tree{width:9px;height:9px;border:1px solid #A9A9A9;background:#fff;font:7px/7px Tahoma,Arial,sans-serif;text-align:center;flex:none;color:#333}
+.t-Table .abl{display:inline-block;border:1px solid #6B7B8B;background:#fff;font:bold 7px/8px Tahoma,Arial,sans-serif;padding:0 1px;color:#1D4B7A}
+.t-Table .tf{height:var(--head-h);background:linear-gradient(180deg,var(--head-from) 0%,var(--head-to) 100%);border-top:1px solid var(--sep)}
+.t-Table .tf .fd{flex:0 0 auto;height:100%;border-right:1px solid var(--head-sep);display:flex;align-items:center;padding:0 3px;overflow:hidden}
+.t-Table .fixed{position:relative;z-index:1;box-shadow:1px 0 0 var(--head-sep)}
+/* полосы прокрутки (горизонтальная .sb, вертикальная .vsb) */
+.t-Table .sb{position:absolute;left:0;right:0;bottom:0;height:var(--sb);background:var(--scroll-bg);border-top:1px solid var(--scroll-border);display:flex;align-items:stretch;font-size:7px}
+.t-Table .sb .sbb,.t-Table .vsb .sbb{flex:none;width:var(--sb);display:flex;align-items:center;justify-content:center;background:var(--cmdbar-bg);border:0;color:var(--scroll-arrow)}
+.t-Table .sb .sbt{position:relative;margin:2px 1px}
+.t-Table .sb .sbt i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,#FFFFFF,#ECE8D3);border:1px solid var(--scroll-border);border-radius:2px}
+.t-Table .vsb{position:absolute;top:0;right:0;bottom:0;width:var(--sb);background:var(--scroll-bg);border-left:1px solid var(--scroll-border);display:flex;flex-direction:column;justify-content:space-between;font-size:7px}
+.t-Table .vsb .sbb{height:var(--sb)}
+
+/* ---------- 9. Командная панель — CommandBar / CommandBarButton ---------- */
+.t-CommandBar{background:var(--cmdbar-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1px;padding:0 2px;overflow:hidden}
+.t-CommandBar.bottom{border-bottom:none;border-top:1px solid var(--border)}
+.t-CommandBar.right{justify-content:flex-end}
+.t-CommandBar.center{justify-content:center}
+.t-CommandBar.tall{flex-wrap:wrap;align-content:flex-start;padding:2px 4px;gap:2px 4px;background:var(--form-bg);border:none}
+.t-CommandBar.vert{flex-direction:column;align-items:stretch;padding:2px 1px;border-bottom:none;border-right:1px solid var(--border)}
+.t-CommandBar.vert .csep{width:auto;height:1px;margin:2px 1px}
+.t-CommandBar.tr-bg{border-color:transparent}
+.cbtn{display:inline-flex;align-items:center;gap:3px;height:21px;padding:0 4px;border:1px solid transparent;border-radius:2px;white-space:nowrap;flex:none;color:var(--text)}
+.cbtn .ic{width:16px;height:16px}
+.cbtn.ok{font-weight:bold}
+.cbtn.on{background:linear-gradient(180deg,#F3EFD9,#FDFBF0);border:1px solid var(--border)}
+.cbtn.dis{color:var(--text-dis)}
+.cbtn.dis .ic svg{opacity:.4;filter:grayscale(1)}
+.cbtn .ar{font-size:7px;margin-left:1px}
+.cbtn.hov{background:linear-gradient(180deg,#FFFDF2,#F6EFC9);border-color:#D9C88A}
+.csep{flex:none;width:1px;height:16px;margin:0 2px;background:var(--sep)}
+/* нижняя полоса формы: «OK | Записать | Закрыть» — разделители между текстовыми кнопками */
+.t-CommandBar.bottom.right .cbtn+.cbtn{border-left:1px solid transparent;box-shadow:-2px 0 0 -1px var(--sep)}
+
+/* ---------- 10. Картинка — PictureDecoration ---------- */
+.t-PictureDecoration{display:flex;align-items:center}
+.t-PictureDecoration.pic-box{border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;padding:0}
+.t-PictureDecoration.pic-box .pic-ph{display:none}
+.t-PictureDecoration.pic-has{background:var(--ph-bg)}
+.t-PictureDecoration.pic-has::after{content:"";width:16px;height:16px;flex:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect x='1.5' y='2.5' width='13' height='11' fill='%23fff' stroke='%23B3AC86'/%3E%3Cpath d='M3 12l3.5-4 2.5 3 2-2 2 3z' fill='%23C9C2A0'/%3E%3Ccircle cx='11' cy='5.5' r='1.3' fill='%23E8C34A'/%3E%3C/svg%3E") no-repeat center}
+.t-PictureDecoration .nptxt{color:#8C8775;padding:2px;white-space:normal;text-align:center}
+.t-PictureDecoration.link .cap{color:var(--link);text-decoration:underline}
+
+/* ---------- 11. Поле выбора — ChoiceField ---------- */
+.t-ChoiceField .tb.dd{font-size:7px}
+
+/* ---------- 12. Документы и прочие поля ---------- */
+.t-SpreadsheetDocumentField,.t-TextDocumentField,.t-HTMLDocumentField,.t-GraphicalSchemaField,.t-ListBox,
+.t-Chart,.t-PivotChart,.t-GanttChart,.t-Dendrogram,.t-GeographicalSchemaField,.t-PDFDocumentField,.t-ActiveXControl,.t-UnknownControl{background:#fff;border:1px solid var(--border);color:#8C8775}
+.t-SpreadsheetDocumentField.grid{background-color:#fff;
+  background-image:linear-gradient(#E3E0D3 1px,transparent 1px),linear-gradient(90deg,#E3E0D3 1px,transparent 1px);background-size:64px 17px;background-position:20px 16px}
+.t-SpreadsheetDocumentField .shd-h{position:absolute;left:0;right:var(--sb);top:0;height:16px;background:linear-gradient(180deg,var(--head-from),var(--head-to));border-bottom:1px solid var(--sep)}
+.t-SpreadsheetDocumentField .shd-v{position:absolute;left:0;top:0;bottom:var(--sb);width:20px;background:linear-gradient(90deg,var(--head-from),var(--head-to));border-right:1px solid var(--sep)}
+.t-SpreadsheetDocumentField .shd-g{position:absolute;left:0;top:0;right:var(--sb);height:9px;border-bottom:1px solid var(--sep);background:var(--form-bg)}
+.sdoc-v{position:absolute;top:0;right:0;bottom:var(--sb);width:var(--sb);background:var(--scroll-bg);border-left:1px solid var(--scroll-border);display:flex;flex-direction:column;justify-content:space-between;font-size:7px}
+.sdoc-h{position:absolute;left:0;right:var(--sb);bottom:0;height:var(--sb);background:var(--scroll-bg);border-top:1px solid var(--scroll-border);display:flex;align-items:stretch;justify-content:space-between;font-size:7px}
+.sdoc-v .sbb,.sdoc-h .sbb{flex:none;width:var(--sb);height:var(--sb);display:flex;align-items:center;justify-content:center;background:var(--cmdbar-bg);border:0;color:var(--scroll-arrow)}
+.sdoc-c{position:absolute;right:0;bottom:0;width:var(--sb);height:var(--sb);background:var(--cmdbar-bg)}
+.t-TextDocumentField .txt-ph{position:absolute;left:3px;top:2px;color:#8C8775}
+.t-HTMLDocumentField .html-ph{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;color:#B3AC86}
+.t-GraphicalSchemaField.gs-grid{background-image:radial-gradient(#D7D2BC 1px,transparent 1px);background-size:10px 10px}
+.t-ListBox{color:var(--text)}
+.t-ListBox .lb-row{position:absolute;left:0;right:0;height:17px;display:flex;align-items:center;gap:3px;padding-left:3px;white-space:nowrap}
+.t-ListBox .lb-row.sel{background:var(--sel-bg);color:var(--sel-text)}
+
+/* ---------- 13. Календарь — CalendarField ---------- */
+.t-CalendarField{border:1px solid var(--border);background:#fff;display:flex;flex-direction:column;font-size:10px;padding:1px;user-select:none;color:var(--text)}
+.cal-hd{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--head-from),var(--head-to));padding:1px 3px;border-bottom:1px solid var(--sep);font:var(--font)}
+.cal-hd .nav{color:#5A5A5A;font-size:8px}
+.t-CalendarField.nonav .cal-hd .nav{visibility:hidden}
+.cal-wk,.cal-gr{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;line-height:14px;padding:0 2px}
+.cal-wk{border-bottom:1px solid var(--sep);font-size:9px}
+.cal-wk .wk,.cal-gr .wk{color:var(--holiday)}
+.cal-gr .mut{color:#BDB8A6}
+.cal-gr .cur{background:var(--sel-bg);color:var(--sel-text);font-weight:bold}
+.cal-gr .rng{background:#C9D3F0}
+.cal-ft{margin-top:auto;border-top:1px solid var(--sep);text-align:center;font-size:10px;line-height:15px;background:var(--form-bg)}
+.t-CalendarField.nocur .cal-ft{display:none}
+
+/* ---------- 14. Индикатор — ProgressBar ---------- */
+.t-ProgressBar{border:1px solid var(--border);background:#fff;padding:1px;position:relative}
+.prg-fill{width:38%;height:100%;background:linear-gradient(180deg,#B9D88E 0%,#67A631 55%,#8CC152 100%);border:0}
+.t-ProgressBar.ps-Broken .prg-fill{background:repeating-linear-gradient(90deg,#67A631 0 8px,transparent 8px 10px)}
+.t-ProgressBar.ps-BrokenTilt .prg-fill{background:repeating-linear-gradient(115deg,#67A631 0 8px,transparent 8px 11px)}
+.t-ProgressBar.vert .prg-fill{width:100%;height:38%;position:absolute;left:1px;right:1px;bottom:1px;width:auto}
+.t-ProgressBar .prg-pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:var(--font);color:var(--text)}
+
+/* ---------- 15. Полоса регулирования — TrackBar ---------- */
+.t-TrackBar{background:var(--form-bg);border:none;display:flex;flex-direction:column;justify-content:center;padding:2px 6px;position:relative}
+.trk-ticks{display:flex;justify-content:space-between;align-items:flex-end;height:6px}
+.trk-ticks i{width:1px;height:4px;background:#8C8670}
+.trk-ticks.top{align-items:flex-start;order:-1}
+.trk-line{position:relative;height:4px;background:#fff;border:1px solid var(--border);margin:4px 0}
+.trk-thumb{position:absolute;left:2px;top:-6px;width:9px;height:14px;background:linear-gradient(180deg,var(--btn-from),var(--btn-to));border:1px solid var(--check-border);border-radius:1px 1px 4px 4px}
+.t-TrackBar.vert{flex-direction:row;padding:6px 2px}
+.t-TrackBar.vert .trk-line{width:4px;height:auto;margin:0 4px}
+.t-TrackBar.vert .trk-ticks{flex-direction:column;width:6px;height:auto}
+.t-TrackBar.vert .trk-ticks i{width:4px;height:1px}
+.t-TrackBar.vert .trk-thumb{left:-6px;top:2px;width:14px;height:9px;border-radius:1px 4px 4px 1px}
+
+/* ---------- 16. Разделитель — Splitter ---------- */
+.t-Splitter{background:transparent;border:none}
+.t-Splitter::after{content:"";position:absolute;left:50%;top:50%;width:2px;height:14px;margin:-7px 0 0 -1px;border-left:1px dotted #C9C2A0;border-right:1px dotted #C9C2A0}
+.t-Splitter.hor::after{width:14px;height:2px;margin:-1px 0 0 -7px;border:0;border-top:1px dotted #C9C2A0;border-bottom:1px dotted #C9C2A0}
+.t-Splitter.colored{background:var(--spl-bg)}

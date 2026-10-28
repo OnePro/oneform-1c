@@ -12,120 +12,338 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .pane.on{display:block}
 .zoomer{position:relative;display:block}
 .formwrap{display:block;border:1px solid #666;background:#FCFAEB;box-shadow:2px 2px 6px rgba(0,0,0,.3);transform-origin:0 0}
-.form-title{height:22px;line-height:22px;padding:0 8px;font-weight:bold;background:linear-gradient(#F7E8A4,#E6C75A);border-bottom:1px solid #b09a3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .err{padding:8px;color:#777}
+.form-title{height:22px;line-height:22px;padding:0 6px;font:bold 8pt Tahoma,Arial,sans-serif;color:#000;background:linear-gradient(180deg,#F7F6F0,#E7E4D8);border-bottom:1px solid #B2B2B2;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---- canvas ---- */
-#canvas{--form-bg:#FCFAEB;--cmdbar-bg:#F5F2DD;--border:#B3AC86;--sep:#CCC6AD;--tab-bg:#EBE6CC;--head-from:#FAF9EE;--head-to:#F2EBCC;--group-title:#9F6500;--scroll-bg:#FAF9F3;--font:8pt Tahoma,Arial,sans-serif;
- position:relative;background:var(--form-bg);overflow:hidden;font:var(--font);color:#000}
+/* ---------- 0. Переменные темы (§0.2 render-spec.md) ---------- */
+#canvas{
+  --form-bg:#FCFAEB;      /* фон формы, страниц панели, активной закладки */
+  --cmdbar-bg:#F5F2DD;    /* командная панель, нижняя полоса кнопок */
+  --border:#B3AC86;       /* рамка полей, таблиц, кнопок, страницы, картинки, линия группы */
+  --field-border:#B3AC86; /* то же для «прочих» полей (раньше переменная не была определена) */
+  --sep:#CCC6AD;          /* рамка неактивной закладки, разделители командной панели, низ шапки таблицы */
+  --tab-bg:#EBE6CC;       /* неактивная закладка */
+  --tab-accent:#FADFA3;   /* оранжевая полоска 2 px сверху активной закладки */
+  --head-from:#FAFAF0;    /* шапка/подвал таблицы: верх градиента */
+  --head-to:#F2EBCC;      /* шапка/подвал таблицы: низ градиента */
+  --head-sep:#BFB999;     /* вертикальный разделитель колонок в шапке */
+  --row-line:#CBD2D6;     /* горизонтальная линия между строками таблицы */
+  --col-line:#E3E0D0;     /* вертикальная линия между ячейками (VerticalLines=true) */
+  --sel-bg:#536AC2;       /* текущая (выделенная) строка таблицы, выделение в календаре/списке */
+  --sel-text:#FFFFFF;   /* текст выделенной строки/даты */
+  --sel-line:#B5CBE5;     /* нижняя светлая линия выделенной строки */
+  --group-title:#9F6500;  /* заголовок группы */
+  --scroll-bg:#FAF9F3;    /* жёлоб полосы прокрутки */
+  --scroll-border:#BDB79B;/* линия, отделяющая полосу прокрутки */
+  --scroll-arrow:#A8A38E; /* треугольники на кнопках прокрутки */
+  --tb-from:#FAF8F2;      /* кнопка внутри поля («…», календарь, «×», лупа): верх градиента */
+  --tb-to:#EAE6CD;        /* … низ градиента */
+  --tb-sep:#D3CDAA;       /* левая граница кнопки внутри поля */
+  --tb-ink:#664C00;       /* точки «…», крестик «×» */
+  --btn-from:#FFFFFF;     /* кнопка: верх градиента */
+  --btn-mid:#F6F3E1;      /* кнопка: середина */
+  --btn-to:#EAE5CD;       /* кнопка: низ */
+  --check-border:#99926B; /* рамка флажка и переключателя */
+  --check-ink:#2B2B2B;    /* галочка, точка переключателя */
+  --text:#000000;       /* текст формы */
+  --text-dis:#A39E87;     /* текст недоступного элемента (допущение, см. questions.md) */
+  --link:#0054E3;         /* гиперссылка (допущение) */
+  --mark:#FF0000;         /* отметка незаполненного (точки 1 px через 1 px) */
+  --neg:#FF0000;          /* отрицательное число при MarkNegatives */
+  --holiday:#C00000;      /* выходные в календаре */
+  --ph-bg:#F3F0DE;        /* заглушка картинки, которую нельзя показать */
+  --ph-ink:#B3AC86;     /* линии заглушки картинки */
+  --font:8pt Tahoma,Arial,sans-serif; /* шрифт формы (≈ 11 px) */
+  --r-field:2px;          /* скругление поля ввода */
+  --r-btn:3px;            /* скругление кнопки */
+  --r-tab:4px;            /* скругление верхних углов закладки */
+  --r-check:2px;          /* скругление флажка */
+  --tb-w:15px;            /* ширина кнопки внутри поля (без рамки поля) */
+  --sb:16px;              /* толщина полосы прокрутки */
+  --head-h:20px;          /* высота шапки таблицы */
+  --row-h:19px;           /* шаг строки таблицы (18 px + линия) */
+  position:relative;background:var(--form-bg);overflow:hidden;font:var(--font);color:var(--text);
+}
 #canvas.theme-xp{--form-bg:#F5F3EE;--cmdbar-bg:#ECE9D8;--border:#7f9db9;--sep:#aca899;--tab-bg:#ECE8D8;--head-from:#F4F2EA;--head-to:#E9E6DC;--group-title:#000;--scroll-bg:#F5F3EE;--font:9pt Tahoma,Arial,sans-serif}
-#canvas .c{position:absolute;overflow:hidden;white-space:nowrap;font:var(--font)}
-#canvas .c.hid{opacity:.35;outline:1px dashed #888}
-#canvas svg{display:block;flex:none}
-.ic{display:inline-flex;flex:none;width:16px;height:16px;align-items:center;justify-content:center}
 
-/* ---- LabelDecoration / PictureDecoration ---- */
-.t-LabelDecoration,.t-PictureDecoration{display:flex;align-items:center}
-.t-LabelDecoration.al-Center{justify-content:center;text-align:center}
-.t-LabelDecoration.al-Right{justify-content:flex-end;text-align:right}
-.t-LabelDecoration.link .cap{color:#0054E3;text-decoration:underline}
-.t-LabelDecoration .ic{width:14px;height:14px;margin-right:3px}
-.cap{overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- 1. Общие модификаторы (§0.6, §0.7, §1) ---------- */
+#canvas .c{font:var(--font)}
+.c .cap{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* Font.* (JS: классы на .cap/.val/.colh) */
 .b{font-weight:bold}
+.f-i{font-style:italic}
+.f-u{text-decoration:underline}
+.f-s{text-decoration:line-through}
+.f-u.f-s{text-decoration:underline line-through}
+/* недоступный элемент (Enabled=false) (JS: класс .dis на корне .c) */
+.c.dis,.c.dis .cap,.c.dis .val{color:var(--text-dis)!important}
+.c.dis svg{opacity:.45;filter:grayscale(1)}
+/* скрытый элемент в режиме «показывать скрытые» — без изменений */
+#canvas .c.hid{opacity:.35;outline:1px dashed #888}
+/* выравнивание текста (HorizontalAlign / VerticalAlign) (JS) */
+.ha-Left{justify-content:flex-start!important;text-align:left}
+.ha-Center{justify-content:center!important;text-align:center}
+.ha-Right{justify-content:flex-end!important;text-align:right}
+.ha-Justify{justify-content:flex-start!important;text-align:justify}
+.va-Top{align-items:flex-start!important}
+.va-Center{align-items:center!important}
+.va-Bottom{align-items:flex-end!important}
+/* рамка по Border.type (JS: класс на корне .c). Цвет — inline border-color из BorderColor, иначе --border */
+.bd-None{border-style:none!important}
+.bd-SingleLine,.bd-Frame,.bd-Single3D,.bd-Rounded,.bd-Embossed,.bd-Indented{border-width:1px!important;border-style:solid!important}
+.bd-SingleLine,.bd-Frame,.bd-Single3D,.bd-Rounded,.bd-Embossed,.bd-Indented,.bd-Double,.bd-Overline,.bd-Underline{border-color:var(--border)}
+.bd-Single3D{box-shadow:inset 1px 1px 0 #fff}
+.bd-Double{border-width:3px!important;border-style:double!important}
+.bd-Rounded{border-radius:4px!important}
+.bd-Overline{border-style:none!important;border-top-style:solid!important;border-top-width:1px!important}
+.bd-Underline{border-style:none!important;border-bottom-style:solid!important;border-bottom-width:1px!important}
+.bd-Embossed{box-shadow:inset -1px -1px 0 #fff,inset 1px 1px 0 #D9D3B6}
+.bd-Indented{box-shadow:inset 1px 1px 0 #D9D3B6,inset -1px -1px 0 #fff}
+/* прозрачный фон (TransparentBack=true) */
+.tr-bg{background:transparent!important}
+/* картинка-заглушка 16×16 (Picture.refGuid задан, пикселей нет) */
+.pic16{display:inline-flex;flex:none;width:16px;height:16px;align-items:center;justify-content:center}
 
-/* ---- InputField / ChoiceField ---- */
-.t-InputField,.t-ChoiceField{background:#FFFFFF;border:1px solid var(--border);border-radius:0;display:flex;align-items:stretch}
-.t-InputField .val,.t-ChoiceField .val{flex:1;min-width:0;position:relative;overflow:hidden;padding-left:2px;display:flex;align-items:center;white-space:pre}
+/* ---------- 2. Надпись — LabelDecoration ---------- */
+.t-LabelDecoration{display:flex;align-items:center;gap:3px}
+.t-LabelDecoration .cap{padding:0 1px}
+.t-LabelDecoration.va-Top{padding-top:2px}
+.t-LabelDecoration.link .cap{color:var(--link);text-decoration:underline}
+.t-LabelDecoration .ic,.t-LabelDecoration .pic16{width:16px;height:16px;margin:0}
+.t-LabelDecoration.pl-Right{flex-direction:row-reverse;justify-content:flex-end}
+.t-LabelDecoration.pl-Top{flex-direction:column;justify-content:center}
+.t-LabelDecoration.pl-Bottom{flex-direction:column-reverse;justify-content:center}
+.t-LabelDecoration.pl-Center .cap{position:absolute;left:0;right:0;text-align:center}
+.t-LabelDecoration.ml .cap{white-space:normal;overflow:hidden}
+.t-LabelDecoration .cap.neg{color:var(--neg)}
+
+/* ---------- 3. Поле ввода — InputField (и общее для ChoiceField) ---------- */
+.t-InputField,.t-ChoiceField{background:#FFFFFF;border:1px solid var(--border);border-radius:var(--r-field);display:flex;align-items:stretch}
+.t-InputField .val,.t-ChoiceField .val{flex:1;min-width:0;position:relative;overflow:hidden;padding:0 2px;display:flex;align-items:center;white-space:pre;color:var(--text)}
 .val.num{justify-content:flex-end;padding-right:3px}
-.val.ph{color:#888;font-style:italic}
-.val .mark{position:absolute;left:2px;right:2px;bottom:2px;border-bottom:1px dotted #CC0000}
-.tb{flex:none;width:15px;background:var(--cmdbar-bg);border-left:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;line-height:1}
-.tb.bold{font-weight:bold;font-size:11px}
+.val.ml{align-items:flex-start;padding-top:1px;white-space:pre-wrap}
+.val.pw{letter-spacing:1px}
+.val .mark{position:absolute;left:2px;right:2px;bottom:1px;height:1px;border:0;
+  background:repeating-linear-gradient(90deg,var(--mark) 0 1px,transparent 1px 2px)}
+/* кнопки внутри поля: «…», календарь, калькулятор, «T», «×», лупа, ▾, ▲▼ */
+.tb{flex:none;width:var(--tb-w);background:linear-gradient(180deg,var(--tb-from),var(--tb-to));border:0;border-left:1px solid var(--tb-sep);display:flex;align-items:center;justify-content:center;color:var(--tb-ink);font-size:9px;line-height:1;overflow:hidden}
+.tb:last-child{border-top-right-radius:1px;border-bottom-right-radius:1px}
+.tb.spin{flex-direction:column;justify-content:stretch}
+.tb.spin i{flex:1;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:6px}
+.tb.spin i+i{border-top:1px solid var(--tb-sep)}
+.tb.colored{background:var(--tb-bg,#F1EEDD)}
+/* только просмотр: белая полоса 2 px внутри рамки, середина цвета формы, кнопки бледнее */
+.t-InputField.ro,.t-ChoiceField.ro{background:var(--form-bg);box-shadow:inset 0 0 0 2px #FFFFFF}
+.t-InputField.ro .tb,.t-ChoiceField.ro .tb{opacity:.55}
+/* недоступно: как «только просмотр», текст и значки бледные */
+.t-InputField.dis,.t-ChoiceField.dis{background:var(--form-bg);box-shadow:none}
+.t-InputField.dis .tb,.t-ChoiceField.dis .tb{opacity:.45}
+/* картинка в поле (Picture) — слева от текста */
+.t-InputField .pic16,.t-ChoiceField .pic16{margin:0 0 0 1px;align-self:center}
+/* многострочное поле с полосой прокрутки (MultiLine + VerticalScrollBar) */
+.t-InputField .vsb{flex:none;width:var(--sb);background:var(--scroll-bg);border-left:1px solid var(--scroll-border);display:flex;flex-direction:column;justify-content:space-between}
 
-/* ---- CheckBox / RadioButton ---- */
-.t-CheckBox,.t-RadioButton{display:flex;align-items:center;gap:4px}
-.box,.rad{width:13px;height:13px;border:1px solid var(--border);background:#fff;display:inline-block;flex:none}
+/* ---------- 4. Кнопка — Button ---------- */
+.t-Button{background:linear-gradient(180deg,var(--btn-from) 0,var(--btn-mid) 45%,var(--btn-to) 100%);border:1px solid var(--border);border-radius:var(--r-btn);
+  display:flex;align-items:center;justify-content:center;gap:3px;padding:0;box-shadow:inset 0 -1px 0 rgba(255,255,255,.55)}
+.t-Button .cap{white-space:nowrap;padding:0 3px} /* padding on the caption, not on the box: a narrow button must keep its width */
+.t-Button.ml .cap{white-space:normal;text-align:center;line-height:11px}
+.t-Button.def{border-color:#8F8866;box-shadow:inset 0 0 0 1px #E0D9B9}
+.t-Button.def .cap{font-weight:bold}
+.t-Button.pl-Right{flex-direction:row-reverse}
+.t-Button .mn{flex:none;margin-left:1px;border-left:1px solid var(--tb-sep);padding-left:2px;font-size:7px;align-self:stretch;display:flex;align-items:center}
+.t-Button.dis{background:linear-gradient(180deg,#FCFBF6,#F2EFE2)}
+.t-Button.colored{background:var(--btn-bg)!important}
+
+/* ---------- 5. Флажок и переключатель — CheckBox / RadioButton ---------- */
+.t-CheckBox,.t-RadioButton{display:flex;align-items:center;gap:3px}
+.t-CheckBox.tl-Left,.t-RadioButton.tl-Left{flex-direction:row-reverse;justify-content:flex-end}
+.box,.rad{position:relative;width:13px;height:13px;border:1px solid var(--check-border);background:linear-gradient(135deg,#F4F2E8 0,#FFFFFF 70%);display:inline-block;flex:none}
+.box{border-radius:var(--r-check)}
 .rad{border-radius:50%}
+.box.on::after{content:"";position:absolute;left:3px;top:0;width:3px;height:7px;border:solid var(--check-ink);border-width:0 2px 2px 0;transform:rotate(40deg)}
+.box.mix::after{content:"";position:absolute;left:2px;top:2px;right:2px;bottom:2px;background:#8A8466}
+.rad.on::after{content:"";position:absolute;left:3px;top:3px;width:5px;height:5px;border-radius:50%;background:var(--check-ink)}
+.c.dis .box,.c.dis .rad{border-color:#C9C4AB;background:#F7F5EC}
+.c.dis .box.on::after{border-color:#B9B49E}
+.c.dis .rad.on::after{background:#B9B49E}
 
-/* ---- Button ---- */
-.t-Button{background:var(--cmdbar-bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
-
-/* ---- UsualGroup ---- */
+/* ---------- 6. Группа — UsualGroup ---------- */
 #canvas .t-UsualGroup{overflow:visible}
-.t-UsualGroup .gt{position:absolute;color:var(--group-title);font-weight:bold;background:var(--form-bg);padding:0 2px;line-height:14px}
+.t-UsualGroup .gt{position:absolute;color:var(--group-title);font-weight:bold;background:var(--form-bg);padding:0 2px;line-height:14px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .t-UsualGroup.bs-Frame .gf{position:absolute;left:0;right:0;top:7px;bottom:0;border:1px solid var(--border);border-radius:3px}
 .t-UsualGroup.bs-Frame .gt{left:6px;top:0}
 .t-UsualGroup.bs-SingleLine .gt{left:0;top:0;background:transparent;padding:0}
-.t-UsualGroup.bs-SingleLine .gf{position:absolute;left:0;right:0;bottom:1px;border-bottom:1px solid var(--border)}
+.t-UsualGroup.bs-SingleLine .gf{position:absolute;left:0;right:0;bottom:0;border-bottom:1px solid var(--border)}
+.t-UsualGroup.bs-None .gt{left:0;top:0;background:transparent;padding:0}
 
-/* ---- Panel / Page ---- */
+/* ---------- 7. Панель и страницы — Panel / PanelPage ---------- */
 #canvas .t-Panel{overflow:visible}
-#canvas .t-Page{display:none;background:var(--form-bg);border:1px solid var(--sep);overflow:hidden}
+#canvas .t-Page{display:none;background:var(--form-bg);border:1px solid var(--border);overflow:hidden}
 #canvas .t-Page.on{display:block}
-.ptabs{position:absolute;left:0;top:0;right:0;display:flex;gap:2px;padding:0 2px;align-items:flex-end;overflow:hidden;user-select:none}
-.ptabs.vtabs{right:auto;bottom:0;flex-direction:column;align-items:flex-start;padding:2px 0}
-.ptab{background:var(--tab-bg);border:1px solid var(--sep);border-bottom:none;border-radius:4px 4px 0 0;padding:0 7px;flex:0 1 auto;min-width:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;line-height:17px;height:18px}
-.ptabs.vtabs .ptab{border:1px solid var(--sep);border-right:none;border-radius:4px 0 0 4px;white-space:nowrap;height:18px;width:100%;padding:0 3px}
-.ptab.on{background:var(--form-bg);position:relative;top:1px;padding-bottom:1px;z-index:2;height:19px}
-.ptabs.vtabs .ptab.on{top:0;left:1px;padding-bottom:0;height:18px}
+.t-Panel.no-tabs>.t-Page{border-color:transparent!important} /* the 1 px border stays (invisible): children are positioned from the padding box, so the layout must not move */
+#canvas .t-Page.bd-None{border-width:1px!important;border-style:solid!important;border-color:transparent!important}
+#canvas .t-Page.bd-Double,#canvas .t-Page.bd-Overline,#canvas .t-Page.bd-Underline{border-width:1px!important;border-style:solid!important}
+.ptabs{position:absolute;left:0;top:0;right:0;display:flex;gap:2px;padding:0 2px;align-items:flex-end;overflow:hidden;user-select:none;z-index:2}
+.ptab{background:var(--tab-bg);border:1px solid var(--sep);border-bottom:none;border-radius:var(--r-tab) var(--r-tab) 0 0;
+  padding:0 8px;flex:0 1 auto;min-width:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;
+  line-height:17px;height:18px;margin-bottom:0;font:var(--font)}
+.ptabs .ptab{flex:none!important;max-width:none!important} /* полные подписи; лишние закладки уходят под .pscroll */
+.ptab.on{background:var(--form-bg);border-color:var(--border);box-shadow:inset 0 2px 0 var(--tab-accent);position:relative;top:1px;height:19px;padding-top:1px;z-index:3}
+.ptab.dis{color:var(--text-dis)}
 .ptab.hid{opacity:.55;font-style:italic}
+.ptab .pic16{display:inline-flex;vertical-align:-3px;margin-right:3px}
+/* стрелки прокрутки закладок (JS: .pscroll, когда закладки не помещаются) */
+.ptabs .pscroll{position:absolute;right:0;bottom:1px;display:flex;gap:0;background:var(--form-bg);padding-left:2px;z-index:4}
+.ptabs .pscroll i{width:9px;height:14px;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:7px;color:#3D3D3D}
+.ptabs .pscroll i.off{color:#BDB79B}
+/* закладки снизу и слева */
+.ptabs.btabs{top:auto;bottom:0;align-items:flex-start}
+.ptabs.btabs .ptab{border-top:none;border-bottom:1px solid var(--sep);border-radius:0 0 var(--r-tab) var(--r-tab)}
+.ptabs.btabs .ptab.on{top:-1px;box-shadow:inset 0 -2px 0 var(--tab-accent);border-color:var(--border)}
+.ptabs.vtabs{right:auto;bottom:0;flex-direction:column;align-items:stretch;padding:2px 0}
+.ptabs.vtabs .ptab{border:1px solid var(--sep);border-right:none;border-radius:var(--r-tab) 0 0 var(--r-tab);height:18px;width:100%;padding:0 4px}
+.ptabs.vtabs .ptab.on{top:0;left:1px;height:18px;padding-top:0;box-shadow:inset 2px 0 0 var(--tab-accent);border-color:var(--border)}
+.ptabs.multi{flex-wrap:wrap-reverse;align-content:flex-start}
 
-/* ---- Table ---- */
+.t-LabelDecoration.link.dis .cap{text-decoration:none}
+.t-InputField .vsb .sbb,.t-ChoiceField .vsb .sbb{flex:none;width:100%;height:var(--sb);display:flex;align-items:center;justify-content:center;background:var(--cmdbar-bg)}
+.ptabs.rtabs{left:auto;right:0}
+.ptabs.rtabs .ptab{border:1px solid var(--sep);border-left:none;border-radius:0 var(--r-tab) var(--r-tab) 0}
+.ptabs.rtabs .ptab.on{left:-1px;box-shadow:inset -2px 0 0 var(--tab-accent);border-color:var(--border)}
+
+/* ---------- 8. Табличное поле — Table / TableColumn ---------- */
 .t-Table{background:#FFFFFF;border:1px solid var(--border)}
 .t-Table .th,.t-Table .tr,.t-Table .tf{position:absolute;left:0;right:0;display:flex;overflow:hidden}
-.t-Table .th{top:0;height:20px;background:linear-gradient(180deg,var(--head-from) 0%,var(--head-to) 100%);border-bottom:1px solid var(--sep)}
-.t-Table .colh{flex:0 0 auto;height:100%;padding:0 4px;display:flex;align-items:center;border-right:1px solid var(--sep);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.t-Table .tr{top:20px;height:18px;border-bottom:1px solid #CBD2D6}
+.t-Table .th{top:0;height:var(--head-h);background:linear-gradient(180deg,var(--head-from) 0%,var(--head-to) 100%);border-bottom:1px solid var(--sep)}
+.t-Table .colh{flex:0 0 auto;height:100%;padding:0 4px;display:flex;align-items:center;gap:3px;border-right:1px solid var(--head-sep);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-Table .th.mh .colh{white-space:normal;line-height:11px;justify-content:center;text-align:center} /* HeaderHeight > 1 */
+.t-Table .colh .srt{margin-left:auto;font-size:7px;color:#8C8670}
+.t-Table .tr{top:var(--head-h);height:var(--row-h);border-bottom:1px solid var(--row-line)}
 .t-Table .cell{flex:0 0 auto;height:100%;display:flex;align-items:center;gap:3px;padding-left:3px;overflow:hidden;white-space:nowrap}
-.t-Table .cell.ro{border-right:1px solid #ECE9D8}
+.t-Table .cell.ro{border-right:0}
+.t-Table.vl .cell{border-right:1px solid var(--col-line)}
+.t-Table.no-hl .tr{border-bottom-color:transparent}
+.t-Table .tr.alt{background:var(--alt-bg,#F7F6EE)}
+.t-Table .cell.num{justify-content:flex-end;padding-right:3px}
+.t-Table .cell.ctr{justify-content:center;padding-left:0}
+.t-Table .cell .lnk{color:var(--link);text-decoration:underline}
+.t-Table .cell .tree{width:9px;height:9px;border:1px solid #A9A9A9;background:#fff;font:7px/7px Tahoma,Arial,sans-serif;text-align:center;flex:none;color:#333}
 .t-Table .abl{display:inline-block;border:1px solid #6B7B8B;background:#fff;font:bold 7px/8px Tahoma,Arial,sans-serif;padding:0 1px;color:#1D4B7A}
-.t-Table .tf{height:20px;background:linear-gradient(180deg,#FAF9EE 0%,#F2EBCB 100%);border-top:1px solid var(--sep)}
-.t-Table .tf .fd{flex:0 0 auto;height:100%;border-right:1px solid var(--sep)}
-.t-Table .sb{position:absolute;left:0;right:0;bottom:0;height:16px;background:var(--scroll-bg);border-top:1px solid #ADA789;display:flex;align-items:stretch;font-size:8px}
-.t-Table .sb .sbb{flex:none;width:16px;display:flex;align-items:center;justify-content:center;background:var(--tab-bg);border:1px solid #ADA789;color:#555}
-.t-Table .sb .sbt{position:relative;margin:1px 0}
-.t-Table .sb .sbt i{position:absolute;left:0;top:0;bottom:0;background:var(--tab-bg);border:1px solid #ADA789}
+.t-Table .tf{height:var(--head-h);background:linear-gradient(180deg,var(--head-from) 0%,var(--head-to) 100%);border-top:1px solid var(--sep)}
+.t-Table .tf .fd{flex:0 0 auto;height:100%;border-right:1px solid var(--head-sep);display:flex;align-items:center;padding:0 3px;overflow:hidden}
+.t-Table .fixed{position:relative;z-index:1;box-shadow:1px 0 0 var(--head-sep)}
+/* полосы прокрутки (горизонтальная .sb, вертикальная .vsb) */
+.t-Table .sb{position:absolute;left:0;right:0;bottom:0;height:var(--sb);background:var(--scroll-bg);border-top:1px solid var(--scroll-border);display:flex;align-items:stretch;font-size:7px}
+.t-Table .sb .sbb,.t-Table .vsb .sbb{flex:none;width:var(--sb);display:flex;align-items:center;justify-content:center;background:var(--cmdbar-bg);border:0;color:var(--scroll-arrow)}
+.t-Table .sb .sbt{position:relative;margin:2px 1px}
+.t-Table .sb .sbt i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,#FFFFFF,#ECE8D3);border:1px solid var(--scroll-border);border-radius:2px}
+.t-Table .vsb{position:absolute;top:0;right:0;bottom:0;width:var(--sb);background:var(--scroll-bg);border-left:1px solid var(--scroll-border);display:flex;flex-direction:column;justify-content:space-between;font-size:7px}
+.t-Table .vsb .sbb{height:var(--sb)}
 
-/* ---- CommandBar ---- */
+/* ---------- 9. Командная панель — CommandBar / CommandBarButton ---------- */
 .t-CommandBar{background:var(--cmdbar-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1px;padding:0 2px;overflow:hidden}
-.t-CommandBar.bottom{border-bottom:none;border-top:1px solid #E4E1CC}
+.t-CommandBar.bottom{border-bottom:none;border-top:1px solid var(--border)}
 .t-CommandBar.right{justify-content:flex-end}
+.t-CommandBar.center{justify-content:center}
 .t-CommandBar.tall{flex-wrap:wrap;align-content:flex-start;padding:2px 4px;gap:2px 4px;background:var(--form-bg);border:none}
+.t-CommandBar.vert{flex-direction:column;align-items:stretch;padding:2px 1px;border-bottom:none;border-right:1px solid var(--border)}
+.t-CommandBar.vert .csep{width:auto;height:1px;margin:2px 1px}
+.t-CommandBar.tr-bg{border-color:transparent}
+.cbtn{display:inline-flex;align-items:center;gap:3px;height:21px;padding:0 4px;border:1px solid transparent;border-radius:2px;white-space:nowrap;flex:none;color:var(--text)}
+.cbtn .ic{width:16px;height:16px}
+.cbtn.ok{font-weight:bold}
+.cbtn.on{background:linear-gradient(180deg,#F3EFD9,#FDFBF0);border:1px solid var(--border)}
+.cbtn.dis{color:var(--text-dis)}
+.cbtn.dis .ic svg{opacity:.4;filter:grayscale(1)}
+.cbtn .ar{font-size:7px;margin-left:1px}
+.cbtn.hov{background:linear-gradient(180deg,#FFFDF2,#F6EFC9);border-color:#D9C88A}
+.csep{flex:none;width:1px;height:16px;margin:0 2px;background:var(--sep)}
+/* нижняя полоса формы: «OK | Записать | Закрыть» — разделители между текстовыми кнопками */
+.t-CommandBar.bottom.right .cbtn+.cbtn{border-left:1px solid transparent;box-shadow:-2px 0 0 -1px var(--sep)}
+
+/* ---------- 10. Картинка — PictureDecoration ---------- */
+.t-PictureDecoration{display:flex;align-items:center}
+.t-PictureDecoration.pic-box{border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;padding:0}
+.t-PictureDecoration.pic-box .pic-ph{display:none}
+.t-PictureDecoration.pic-has{background:var(--ph-bg)}
+.t-PictureDecoration .nptxt{color:#8C8775;padding:2px;white-space:normal;text-align:center}
+.t-PictureDecoration.link .cap{color:var(--link);text-decoration:underline}
+
+/* ---------- 11. Поле выбора — ChoiceField ---------- */
+.t-ChoiceField .tb.dd{font-size:7px}
+
+/* ---------- 12. Документы и прочие поля ---------- */
+.t-SpreadsheetDocumentField,.t-TextDocumentField,.t-HTMLDocumentField,.t-GraphicalSchemaField,.t-ListBox,
+.t-Chart,.t-PivotChart,.t-GanttChart,.t-Dendrogram,.t-GeographicalSchemaField,.t-PDFDocumentField,.t-ActiveXControl,.t-UnknownControl{background:#fff;border:1px solid var(--border);color:#8C8775}
+.t-SpreadsheetDocumentField.grid{background-color:#fff;
+  background-image:linear-gradient(#E3E0D3 1px,transparent 1px),linear-gradient(90deg,#E3E0D3 1px,transparent 1px);background-size:64px 17px;background-position:20px 16px}
+.t-SpreadsheetDocumentField .shd-h{position:absolute;left:0;right:var(--sb);top:0;height:16px;background:linear-gradient(180deg,var(--head-from),var(--head-to));border-bottom:1px solid var(--sep)}
+.t-SpreadsheetDocumentField .shd-v{position:absolute;left:0;top:0;bottom:var(--sb);width:20px;background:linear-gradient(90deg,var(--head-from),var(--head-to));border-right:1px solid var(--sep)}
+.t-SpreadsheetDocumentField .shd-g{position:absolute;left:0;top:0;right:var(--sb);height:9px;border-bottom:1px solid var(--sep);background:var(--form-bg)}
+.sdoc-v{position:absolute;top:0;right:0;bottom:var(--sb);width:var(--sb);background:var(--scroll-bg);border-left:1px solid var(--scroll-border);display:flex;flex-direction:column;justify-content:space-between;font-size:7px}
+.sdoc-h{position:absolute;left:0;right:var(--sb);bottom:0;height:var(--sb);background:var(--scroll-bg);border-top:1px solid var(--scroll-border);display:flex;align-items:stretch;justify-content:space-between;font-size:7px}
+.sdoc-v .sbb,.sdoc-h .sbb{flex:none;width:var(--sb);height:var(--sb);display:flex;align-items:center;justify-content:center;background:var(--cmdbar-bg);border:0;color:var(--scroll-arrow)}
+.sdoc-c{position:absolute;right:0;bottom:0;width:var(--sb);height:var(--sb);background:var(--cmdbar-bg)}
+.t-TextDocumentField .txt-ph{position:absolute;left:3px;top:2px;color:#8C8775}
+.t-HTMLDocumentField .html-ph{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;color:#B3AC86}
+.t-GraphicalSchemaField.gs-grid{background-image:radial-gradient(#D7D2BC 1px,transparent 1px);background-size:10px 10px}
+.t-ListBox{color:var(--text)}
+.t-ListBox .lb-row{position:absolute;left:0;right:0;height:17px;display:flex;align-items:center;gap:3px;padding-left:3px;white-space:nowrap}
+.t-ListBox .lb-row.sel{background:var(--sel-bg);color:var(--sel-text)}
+
+/* ---------- 13. Календарь — CalendarField ---------- */
+.t-CalendarField{border:1px solid var(--border);background:#fff;display:flex;flex-direction:column;font-size:10px;padding:1px;user-select:none;color:var(--text)}
+.cal-hd{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--head-from),var(--head-to));padding:1px 3px;border-bottom:1px solid var(--sep);font:var(--font)}
+.cal-hd .nav{color:#5A5A5A;font-size:8px}
+.t-CalendarField.nonav .cal-hd .nav{visibility:hidden}
+.cal-wk,.cal-gr{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;line-height:14px;padding:0 2px}
+.cal-wk{border-bottom:1px solid var(--sep);font-size:9px}
+.cal-wk .wk,.cal-gr .wk{color:var(--holiday)}
+.cal-gr .mut{color:#BDB8A6}
+.cal-gr .cur{background:var(--sel-bg);color:var(--sel-text);font-weight:bold}
+.cal-gr .rng{background:#C9D3F0}
+.cal-ft{margin-top:auto;border-top:1px solid var(--sep);text-align:center;font-size:10px;line-height:15px;background:var(--form-bg)}
+.t-CalendarField.nocur .cal-ft{display:none}
+
+/* ---------- 14. Индикатор — ProgressBar ---------- */
+.t-ProgressBar{border:1px solid var(--border);background:#fff;padding:1px;position:relative}
+.prg-fill{width:38%;height:100%;background:linear-gradient(180deg,#B9D88E 0%,#67A631 55%,#8CC152 100%);border:0}
+.t-ProgressBar.ps-Broken .prg-fill{background:repeating-linear-gradient(90deg,#67A631 0 8px,transparent 8px 10px)}
+.t-ProgressBar.ps-BrokenTilt .prg-fill{background:repeating-linear-gradient(115deg,#67A631 0 8px,transparent 8px 11px)}
+.t-ProgressBar.vert .prg-fill{width:100%;height:38%;position:absolute;left:1px;right:1px;bottom:1px;width:auto}
+.t-ProgressBar .prg-pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:var(--font);color:var(--text)}
+
+/* ---------- 15. Полоса регулирования — TrackBar ---------- */
+.t-TrackBar{background:var(--form-bg);border:none;display:flex;flex-direction:column;justify-content:center;padding:2px 6px;position:relative}
+.trk-ticks{display:flex;justify-content:space-between;align-items:flex-end;height:6px}
+.trk-ticks i{width:1px;height:4px;background:#8C8670}
+.trk-ticks.top{align-items:flex-start;order:-1}
+.trk-line{position:relative;height:4px;background:#fff;border:1px solid var(--border);margin:4px 0}
+.trk-thumb{position:absolute;left:2px;top:-6px;width:9px;height:14px;background:linear-gradient(180deg,var(--btn-from),var(--btn-to));border:1px solid var(--check-border);border-radius:1px 1px 4px 4px}
+.t-TrackBar.vert{flex-direction:row;padding:6px 2px}
+.t-TrackBar.vert .trk-line{width:4px;height:auto;margin:0 4px}
+.t-TrackBar.vert .trk-ticks{flex-direction:column;width:6px;height:auto}
+.t-TrackBar.vert .trk-ticks i{width:4px;height:1px}
+.t-TrackBar.vert .trk-thumb{left:-6px;top:2px;width:14px;height:9px;border-radius:1px 4px 4px 1px}
+
+/* ---------- 16. Разделитель — Splitter ---------- */
+.t-Splitter{background:transparent;border:none}
+.t-Splitter::after{content:"";position:absolute;left:50%;top:50%;width:2px;height:14px;margin:-7px 0 0 -1px;border-left:1px dotted #C9C2A0;border-right:1px dotted #C9C2A0}
+.t-Splitter.hor::after{width:14px;height:2px;margin:-1px 0 0 -7px;border:0;border-top:1px dotted #C9C2A0;border-bottom:1px dotted #C9C2A0}
+.t-Splitter.colored{background:var(--spl-bg)}
+#canvas .c{position:absolute;overflow:hidden;white-space:nowrap;font:var(--font)}
+#canvas svg{display:block;flex:none}
+.ic{display:inline-flex;flex:none;width:16px;height:16px;align-items:center;justify-content:center}
+.kind{display:block;padding:2px 4px;font-style:italic}
+.pic-ph{width:100%;height:100%;max-width:96px;max-height:110px;border:1px solid #999;overflow:hidden}
+/* inspector/overlay selection of table parts (class names shared with the viewer) */
 .colh[data-col],.t-Table .tr{cursor:pointer}
 .colh.sel,.cell.sel,.t-Table .tr.sel{background:rgba(13,98,217,0.12)}
 .colh.hl,.cell.hl,.t-Table .tr.hl{background:rgba(192,57,43,0.10)}
-.cbtn{display:inline-flex;align-items:center;gap:2px;height:21px;padding:0 3px;border:1px solid transparent;white-space:nowrap;flex:none}
 .cbtn[data-b]{cursor:pointer}
-.cbtn.ok{font-weight:bold}
-.cbtn.on{background:var(--tab-bg);border:1px solid var(--border)}
-.cbtn .ar{font-size:7px;margin-left:1px}
-.csep{flex:none;width:1px;height:15px;margin:0 1px;background:var(--sep)}
-
-/* ---- misc ---- */
-.t-Splitter{background:transparent;border:none}
-.t-Chart,.t-PivotChart,.t-GanttChart,.t-Dendrogram,.t-GraphicalSchemaField,.t-GeographicalSchemaField,.t-PDFDocumentField,.t-HTMLDocumentField,.t-SpreadsheetDocumentField,.t-TextDocumentField,.t-ListBox,.t-ActiveXControl,.t-UnknownControl{background:#fff;border:1px solid var(--field-border);color:#888}
-.t-PictureDecoration.pic-box{border:1px solid var(--field-border);background:#fff;display:flex;align-items:center;justify-content:center;padding:12px}
-.pic-ph{width:100%;height:100%;max-width:96px;max-height:110px;border:1px solid #999;overflow:hidden}
-.sdoc-v{position:absolute;top:0;right:0;bottom:16px;width:16px;background:var(--scroll-bg);border-left:1px solid #ADA789;display:flex;flex-direction:column;justify-content:space-between;font-size:8px}
-.sdoc-h{position:absolute;left:0;right:16px;bottom:0;height:16px;background:var(--scroll-bg);border-top:1px solid #ADA789;display:flex;align-items:stretch;justify-content:space-between;font-size:8px}
-.sdoc-v .sbb,.sdoc-h .sbb{flex:none;width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:var(--tab-bg);border:1px solid #ADA789;color:#555}
-.sdoc-v .sbt,.sdoc-h .sbt{flex:1}
-.t-CalendarField{border:1px solid var(--field-border);background:#fff;display:flex;flex-direction:column;font-size:10px;padding:1px;user-select:none}
-.cal-hd{display:flex;justify-content:space-between;align-items:center;background:var(--tab-bg);padding:1px 3px;font-size:10px;border-bottom:1px solid var(--sep)}
-.cal-wk,.cal-gr{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;line-height:14px;padding:0 2px}
-.cal-wk{border-bottom:1px solid #d8d2bd;font-size:9px}
-.cal-wk .wk,.cal-gr .wk{color:#c00}
-.cal-gr .mut{color:#b5b0a1}
-.cal-gr .cur{background:#316AC5;color:#fff;font-weight:bold}
-.cal-ft{margin-top:auto;background:var(--tab-bg);border-top:1px solid var(--sep);text-align:center;font-size:10px;line-height:15px}
-.t-TrackBar{background:var(--form-bg);border:none;display:flex;flex-direction:column;justify-content:center;padding:2px 6px}
-.trk-ticks{display:flex;justify-content:space-between;align-items:flex-end;height:10px;font-size:9px;color:#555;margin-bottom:2px}
-.trk-ticks i{width:1px;height:4px;background:#888}
-.trk-line{position:relative;height:4px;background:#fff;border:1px solid var(--field-border)}
-.trk-thumb{position:absolute;left:2px;top:-5px;width:8px;height:12px;background:var(--tab-bg);border:1px solid var(--border)}
-.t-ProgressBar{border:1px solid var(--field-border);background:#fff;padding:2px}
-.prg-fill{width:38%;height:100%;background:linear-gradient(180deg,#FCE3A1 0%,#E59730 55%,#F2BA59 100%);border:1px solid #C98222}
-.kind{display:block;padding:2px 4px;font-style:italic}
 
 /* ---- Layer bar, non-occluded selection overlay, tree badges & stack popup ---- */
 .ofr-bar{margin-bottom:6px;padding:4px 8px;background:#F7F4E4;border:1px solid #B3AC86;border-radius:3px;display:flex;flex-direction:column;gap:4px;font:11px Tahoma,Arial,sans-serif}
@@ -640,62 +858,92 @@ function fmt(n, d) {
 
 // ------------------------------------------------------------------ icons (inline SVG, no external resources)
 function sv(w, inner, vb) { return '<svg width="' + w + '" height="' + w + '" viewBox="0 0 ' + (vb || w) + ' ' + (vb || w) + '">' + inner + '</svg>'; }
+// Icons of render-spec §0.5 (inline SVG, no external resources) + viewer shell icons (eye, eyeOff, layers) + legacy landscape placeholder.
 var ICON = {
-  cal: sv(12, '<rect x="1.5" y="2.5" width="9" height="8" fill="#fff" stroke="#3A6EA5"/><rect x="1.5" y="2.5" width="9" height="2.5" fill="#3A6EA5"/><path d="M3.5 7h1M5.5 7h1M7.5 7h1M3.5 9h1M5.5 9h1" stroke="#555"/>'),
-  calc: sv(12, '<rect x="2" y="1.5" width="8" height="9" fill="#E8E8E8" stroke="#555"/><rect x="3" y="2.5" width="6" height="2" fill="#9FC7A0"/><path d="M3.5 6h1M5.5 6h1M7.5 6h1M3.5 8h1M5.5 8h1M7.5 8h1" stroke="#333"/>'),
-  mag: sv(12, '<circle cx="5" cy="5" r="3.2" fill="#E6F0FA" stroke="#2F5F9A" stroke-width="1.3"/><path d="M7.5 7.5L11 11" stroke="#2F5F9A" stroke-width="1.6"/>'),
-  user: sv(14, '<circle cx="7" cy="4" r="2.6" fill="#E8A33C" stroke="#9A5B00"/><path d="M1.5 13c0-3 2.4-4.8 5.5-4.8s5.5 1.8 5.5 4.8z" fill="#4C7BC5" stroke="#274A85"/>'),
-  pic: sv(16, '<rect x="2.5" y="3.5" width="11" height="9" fill="#fff" stroke="#6A7F99" stroke-dasharray="2 1"/><rect x="4" y="5" width="4" height="3" fill="#E8A33C"/><rect x="8" y="8" width="4" height="3" fill="#4C7BC5"/>'),
-  add: sv(16, '<circle cx="8" cy="8" r="6" fill="#3FAE49" stroke="#1F7A2A"/><path d="M8 4.5v7M4.5 8h7" stroke="#fff" stroke-width="2"/>'),
-  copy: sv(16, '<rect x="2.5" y="2.5" width="7" height="8" fill="#fff" stroke="#555"/><rect x="6.5" y="5.5" width="7" height="8" fill="#F5F2DD" stroke="#555"/><path d="M8 8h4M8 10h4" stroke="#999"/>'),
-  edit: sv(16, '<path d="M3 13l1-3 7-7 2 2-7 7z" fill="#E8C34A" stroke="#7A5A00"/><path d="M3 13l1-3 2 2z" fill="#333"/>'),
-  del: sv(16, '<path d="M4 4l8 8M12 4l-8 8" stroke="#D32F2F" stroke-width="2.4"/>'),
-  save: sv(16, '<rect x="2.5" y="2.5" width="11" height="11" fill="#6C8EBF" stroke="#2F4F7F"/><rect x="5" y="2.5" width="6" height="4" fill="#fff"/><rect x="5" y="9" width="6" height="4.5" fill="#E8E8E8"/>'),
-  up: sv(16, '<path d="M8 2.5l5 5H10v6H6v-6H3z" fill="#4C7BC5" stroke="#274A85"/>'),
-  down: sv(16, '<path d="M8 13.5l5-5H10v-6H6v6H3z" fill="#4C7BC5" stroke="#274A85"/>'),
-  az: sv(16, '<text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">A</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><path d="M12 3v10M9.5 10.5L12 13l2.5-2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/>'),
-  za: sv(16, '<text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">A</text><path d="M12 3v10M9.5 5.5L12 3l2.5 2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/>'),
-  flt: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/>'),
-  flt2: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#E8C34A" stroke="#7A5A00"/>'),
-  flt3: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/><path d="M10 10h4M12 8v4" stroke="#333"/>'),
-  unf: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#E8E8E8" stroke="#777"/><path d="M9 9l5 5M14 9l-5 5" stroke="#D32F2F" stroke-width="1.6"/>'),
-  more: sv(16, '<rect x="2.5" y="3.5" width="11" height="9" fill="#fff" stroke="#555"/><path d="M4 6h8M4 8.5h8M4 11h5" stroke="#777"/><circle cx="12" cy="11" r="2.5" fill="#3FAE49"/>'),
-  calcb: sv(16, '<rect x="3.5" y="2.5" width="9" height="11" fill="#E8E8E8" stroke="#555"/><rect x="5" y="4" width="6" height="2.5" fill="#9FC3A0"/><path d="M5 8.5h1.5M7.5 8.5h1.5M10 8.5h1M5 11h1.5M7.5 11h1.5M10 11h1" stroke="#333"/>'),
-  help: sv(16, '<circle cx="8" cy="8" r="6" fill="#E8A33C" stroke="#9A5B00"/><text x="5.2" y="11.4" font-size="9.5" font-weight="bold" font-family="Tahoma" fill="#fff">?</text>'),
-  tt: sv(16, '<text x="3.5" y="12.5" font-size="11" font-weight="bold" font-family="Tahoma" fill="#2F5F9A">T</text>'),
-  dk: sv(16, '<text x="0.5" y="7.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#2F5F9A">Дт</text><text x="6" y="14.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#B03030">Кт</text>'),
-  swap: sv(16, '<path d="M2 5h10M9 2.5L12 5 9 7.5M14 11H4M7 8.5L4 11l3 2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/>'),
-  dots: sv(16, '<rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="#333" stroke-dasharray="2 1.5"/>'),
+  choice: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="8" width="2" height="2" fill="#664C00"/><rect x="5" y="8" width="2" height="2" fill="#664C00"/><rect x="9" y="8" width="2" height="2" fill="#664C00"/></svg>',
+  calendar: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="#fff" stroke="#664C00"/><path d="M1.5 4.5h9M4.5 4.5v6M7.5 4.5v6M1.5 7.5h9" stroke="#887437"/></svg>',
+  calc: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="#fff" stroke="#664C00"/><rect x="3" y="3" width="6" height="2" fill="#887437"/><path d="M3 7h1.5M5.25 7h1.5M7.5 7h1.5M3 9h1.5M5.25 9h1.5M7.5 9h1.5" stroke="#664C00"/></svg>',
+  type: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2.5h8v2H7v6H5v-6H2z" fill="#3D3D3D"/></svg>',
+  clear: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="#664C00" stroke-width="1.8"/></svg>',
+  open: '<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="5" cy="5" r="3.3" fill="#fff" stroke="#5A5A5A" stroke-width="1.4"/><path d="M7.4 7.4L10.6 10.6" stroke="#5A5A5A" stroke-width="2"/></svg>',
+  drop: '<svg width="7" height="4" viewBox="0 0 7 4"><path d="M0 0h7L3.5 4z" fill="#3D3D3D"/></svg>',
+  spin: '<svg width="7" height="9" viewBox="0 0 7 9"><path d="M0 3.5h7L3.5 0zM0 5.5h7L3.5 9z" fill="#3D3D3D"/></svg>',
+  check: '<svg width="9" height="8" viewBox="0 0 9 8"><path d="M1 4l2.5 2.5L8 1.5" fill="none" stroke="#2B2B2B" stroke-width="2"/></svg>',
+  sortAsc: '<svg width="7" height="4" viewBox="0 0 7 4"><path d="M0 4h7L3.5 0z" fill="#8C8670"/></svg>',
+  treePlus: '<svg width="9" height="9" viewBox="0 0 9 9"><rect x=".5" y=".5" width="8" height="8" fill="#fff" stroke="#A9A9A9"/><path d="M2 4.5h5M4.5 2v5" stroke="#333"/></svg>',
+  folder: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 4.5h5l1 1.5h7v7.5h-13z" fill="#F7D774" stroke="#C9A227"/><path d="M1.5 6.5h13" stroke="#E8BE3C"/></svg>',
+  item: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="3" rx="1" fill="#7FA6D6" stroke="#3A6EA5"/></svg>',
+  arrowLeft: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M4.5 0v7L0 3.5z" fill="#A8A38E"/></svg>',
+  arrowRight: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M.5 0v7L5 3.5z" fill="#A8A38E"/></svg>',
+  arrowUp: '<svg width="7" height="5" viewBox="0 0 7 5"><path d="M0 4.5h7L3.5 0z" fill="#A8A38E"/></svg>',
+  arrowDown: '<svg width="7" height="5" viewBox="0 0 7 5"><path d="M0 .5h7L3.5 5z" fill="#A8A38E"/></svg>',
+  tabLeft: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M4.5 0v7L0 3.5z" fill="#3D3D3D"/></svg>',
+  tabRight: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M.5 0v7L5 3.5z" fill="#3D3D3D"/></svg>',
+  picture: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" fill="#fff" stroke="#B3AC86"/><path d="M3 12l3.5-4 2.5 3 2-2 2 3z" fill="#C9C2A0"/><circle cx="11" cy="5.5" r="1.3" fill="#E8C34A"/></svg>',
+  user: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.8" fill="#E8A33C" stroke="#9A5B00"/><path d="M2.5 15c0-3.2 2.5-5 5.5-5s5.5 1.8 5.5 5z" fill="#4C7BC5" stroke="#274A85"/></svg>',
+  add: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="#43A047" stroke="#2E7D32"/><path d="M8 4.5v7M4.5 8h7" stroke="#fff" stroke-width="2"/></svg>',
+  addGroup: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 4.5h5l1 1.5h7v7.5h-13z" fill="#F7D774" stroke="#C9A227"/><circle cx="11.5" cy="11.5" r="3.5" fill="#43A047"/><path d="M11.5 9.5v4M9.5 11.5h4" stroke="#fff" stroke-width="1.4"/></svg>',
+  copy: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="1.5" width="8" height="10" fill="#fff" stroke="#6B6B6B"/><rect x="5.5" y="4.5" width="8" height="10" fill="#fff" stroke="#6B6B6B"/><circle cx="12" cy="12.5" r="3" fill="#43A047"/><path d="M12 11v3M10.5 12.5h3" stroke="#fff"/></svg>',
+  edit: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 13l1-3.5 7-7 2.5 2.5-7 7z" fill="#8BC34A" stroke="#4E7A1E"/><path d="M3 13l1-3.5 2.5 2.5z" fill="#F0D9A0" stroke="#4E7A1E"/></svg>',
+  delete: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#fff" stroke="#B0B0B0"/><path d="M5 5l6 6M11 5l-6 6" stroke="#E53935" stroke-width="2"/></svg>',
+  save: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#7A92B8" stroke="#3B5579"/><rect x="5" y="2.5" width="6" height="4" fill="#fff"/><rect x="5" y="9" width="6" height="4.5" fill="#DCDCDC"/></svg>',
+  up: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2.5l5 5h-3v6H6v-6H3z" fill="#5C8FD6" stroke="#2F5F9A"/></svg>',
+  down: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13.5l5-5h-3v-6H6v6H3z" fill="#5C8FD6" stroke="#2F5F9A"/></svg>',
+  sortAz: '<svg width="16" height="16" viewBox="0 0 16 16"><text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">А</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><path d="M12 3v10M9.5 10.5L12 13l2.5-2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/></svg>',
+  sortZa: '<svg width="16" height="16" viewBox="0 0 16 16"><text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">А</text><path d="M12 3v10M9.5 5.5L12 3l2.5 2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/></svg>',
+  filter: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/></svg>',
+  filterValue: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#F2C94C" stroke="#8A6D00"/></svg>',
+  filterHistory: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/><path d="M12.5 10v5M10 12.5h5" stroke="#333"/></svg>',
+  filterOff: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#E6E6E6" stroke="#8A8A8A"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5" stroke="#E53935" stroke-width="1.6"/></svg>',
+  refresh: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none" stroke="#43A047" stroke-width="2"/><path d="M13.5 1.5v4h-4z" fill="#43A047"/></svg>',
+  outputList: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#fff" stroke="#6B6B6B"/><path d="M4.5 5.5h7M4.5 8h7M4.5 10.5h4" stroke="#8A8A8A"/><circle cx="12" cy="12" r="2.6" fill="#43A047"/></svg>',
+  hierarchy: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="6" height="4" fill="#F7D774" stroke="#C9A227"/><rect x="8.5" y="9.5" width="6" height="4" fill="#fff" stroke="#6B6B6B"/><path d="M4.5 6.5v5h4" fill="none" stroke="#6B6B6B"/></svg>',
+  help: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="#F0A830" stroke="#B26B00"/><text x="5.3" y="11.6" font-size="9.5" font-weight="bold" font-family="Tahoma" fill="#fff">?</text></svg>',
+  movements: '<svg width="16" height="16" viewBox="0 0 16 16"><text x=".5" y="7.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#2F5F9A">Дт</text><text x="6" y="14.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#B03030">Кт</text></svg>',
+  print: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="4.5" y="1.5" width="7" height="5" fill="#fff" stroke="#6B6B6B"/><rect x="1.5" y="6.5" width="13" height="6" fill="#B8C4D6" stroke="#55657F"/><rect x="4.5" y="10.5" width="7" height="4" fill="#fff" stroke="#6B6B6B"/></svg>',
+  run: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5l9 5.5-9 5.5z" fill="#43A047" stroke="#2E7D32"/></svg>',
+  cfgMarker: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="#333" stroke-dasharray="2 1.5"/></svg>',
   eye: sv(12, '<path d="M1 6c1.6-3 3.3-4.2 5-4.2S9.4 3 11 6c-1.6 3-3.3 4.2-5 4.2S2.6 9 1 6z" fill="#fff" stroke="#3A6EA5"/><circle cx="6" cy="6" r="1.8" fill="#1c5ccc"/>'),
   eyeOff: sv(12, '<path d="M1 6c1.6-3 3.3-4.2 5-4.2S9.4 3 11 6c-1.6 3-3.3 4.2-5 4.2S2.6 9 1 6z" fill="#f0f0f0" stroke="#999"/><path d="M2 10L10 2" stroke="#c33" stroke-width="1.6"/>'),
   layers: sv(12, '<path d="M6 1.5L11 4 6 6.5 1 4z" fill="#FFF3B8" stroke="#9A6B00"/><path d="M1 6.5L6 9l5-2.5M1 9l5 2.5L11 9" fill="none" stroke="#9A6B00"/>'),
   landscape: '<svg width="100%" height="100%" viewBox="0 0 80 80" preserveAspectRatio="none"><rect width="80" height="48" fill="#6396D6"/><ellipse cx="26" cy="20" rx="14" ry="7" fill="#DCE9FA" opacity=".85"/><ellipse cx="52" cy="24" rx="18" ry="8" fill="#EEF5FD" opacity=".9"/><rect y="48" width="80" height="32" fill="#5D8C2E"/><path d="M0 54 Q25 44 50 52 T80 50 L80 80 L0 80 Z" fill="#46731E"/><path d="M0 66 Q35 58 80 65 L80 80 L0 80 Z" fill="#76A841"/></svg>'
 };
-var AUTO_FORM_MID = ['copy', 'save', 'edit', 'more'];
 var AUTO_FORM = ['help'];
 var AUTO_FORM_EXT = ['act_menu', '|', 'help'];
-var AUTO_TABLE = ['add', 'copy', 'edit', 'del', '|', 'save', 'up', 'down', 'az', 'za', '|', 'flt', 'flt2', 'flt3', 'unf', '|', 'more'];
+// AutoFill sets by place of the bar (render-spec §13); '!' = unavailable button
+var AUTO_FORM_ITEM = ['act_menu', '|', 'save!', 'refresh!', 'copy', '|', 'goto', '|', 'help'];
+var AUTO_FORM_LIST = ['act_menu', 'add', 'addGroup', 'copy', 'edit', 'delete', '|', 'hierarchy', '|', 'filter', 'filterValue', 'filterOff', '|', 'refresh', '|', 'goto', '|', 'help'];
+var AUTO_TABLE = ['add', 'copy', 'edit', 'delete', '|', 'save', 'up', 'down', 'sortAz', 'sortZa', '|', 'filter', 'filterValue', 'filterHistory', 'filterOff', '|', 'outputList'];
+var AUTO_BOTTOM = ['ok', '|', 'write', '|', 'close'];
+var AUTO_BOTTOM_DOC = ['ok', '|', 'post', '|', 'write', '|', 'close'];
 var AUTO_META = {
   act_menu: { name: 'Действия', title: 'Действия', action: 'Standard:ActionsSubmenu', textSubmenu: true },
+  goto: { name: 'Перейти', title: 'Перейти', action: 'Standard:GoToSubmenu', textSubmenu: true },
+  ok: { name: 'ОК', title: 'OK', action: 'Standard:141', textBtn: true, okBtn: true },
+  write: { name: 'Записать', title: 'Записать', action: 'Standard:140', textBtn: true },
+  post: { name: 'Провести', title: 'Провести', action: 'Standard:142', textBtn: true },
+  close: { name: 'Закрыть', title: 'Закрыть', action: 'Standard:31', textBtn: true },
   add: { name: 'Добавить', title: 'Добавить строку (Ins)', action: 'Standard:AddRow' },
+  addGroup: { name: 'ДобавитьГруппу', title: 'Добавить группу (Ctrl+F9)', action: 'Standard:AddGroup' },
   copy: { name: 'Скопировать', title: 'Скопировать (F9)', action: 'Standard:CopyRow' },
   edit: { name: 'Изменить', title: 'Изменить текущий элемент (F2)', action: 'Standard:EditRow' },
-  del: { name: 'Удалить', title: 'Удалить текущий (Del)', action: 'Standard:DeleteRow' },
+  delete: { name: 'Удалить', title: 'Удалить текущий (Del)', action: 'Standard:DeleteRow' },
   save: { name: 'ЗакончитьРедактирование', title: 'Закончить редактирование строки', action: 'Standard:EndEdit' },
   up: { name: 'ПереместитьВверх', title: 'Переместить вверх', action: 'Standard:MoveUp' },
   down: { name: 'ПереместитьВниз', title: 'Переместить вниз', action: 'Standard:MoveDown' },
-  az: { name: 'СортироватьПоВозрастанию', title: 'Сортировать по возрастанию', action: 'Standard:SortAsc' },
-  za: { name: 'СортироватьПоУбыванию', title: 'Сортировать по убыванию', action: 'Standard:SortDesc' },
-  flt: { name: 'УстановитьОтбор', title: 'Установить отбор и сортировку списка…', action: 'Standard:SetFilter' },
-  flt2: { name: 'ОтборПоЗначению', title: 'Отбор по значению в текущей колонке', action: 'Standard:FilterByValue' },
-  flt3: { name: 'ИсторияОтборов', title: 'История отборов', action: 'Standard:FilterHistory' },
-  unf: { name: 'ОтключитьОтбор', title: 'Отключить отбор', action: 'Standard:ClearFilter' },
-  more: { name: 'ВывестиСписок', title: 'Вывести список…', action: 'Standard:OutputList' },
-  help: { name: 'Справка', title: 'Открыть справку (F1)', action: 'Standard:300' },
-  dots: { name: 'ПодменюКонфигуратора', title: 'Служебный маркер командной панели (Конфигуратор)', action: '' }
+  sortAz: { name: 'СортироватьПоВозрастанию', title: 'Сортировать по возрастанию', action: 'Standard:SortAsc' },
+  sortZa: { name: 'СортироватьПоУбыванию', title: 'Сортировать по убыванию', action: 'Standard:SortDesc' },
+  filter: { name: 'УстановитьОтбор', title: 'Установить отбор и сортировку списка…', action: 'Standard:SetFilter' },
+  filterValue: { name: 'ОтборПоЗначению', title: 'Отбор по значению в текущей колонке', action: 'Standard:FilterByValue' },
+  filterHistory: { name: 'ИсторияОтборов', title: 'История отборов', action: 'Standard:FilterHistory' },
+  filterOff: { name: 'ОтключитьОтбор', title: 'Отключить отбор', action: 'Standard:ClearFilter' },
+  outputList: { name: 'ВывестиСписок', title: 'Вывести список…', action: 'Standard:OutputList' },
+  hierarchy: { name: 'ИерархическийПросмотр', title: 'Иерархический просмотр', action: 'Standard:Hierarchy' },
+  refresh: { name: 'Обновить', title: 'Обновить (Ctrl+Shift+R)', action: 'Standard:146' },
+  help: { name: 'Справка', title: 'Открыть справку (F1)', action: 'Standard:300' }
 };
 var STD_TABLE_SKIP = { 'Standard:53': 1, 'Standard:91': 1, 'Standard:93': 1, 'Standard:97': 1 };
-var STD_ICON = { 'Standard:147': 'mag', 'Standard:146': 'swap', 'Standard:145': 'copy', 'Standard:300': 'help' };
+var STD_ICON = { 'Standard:147': 'open', 'Standard:146': 'refresh', 'Standard:145': 'copy', 'Standard:300': 'help' };
 var STD_NAMES = {
   'Standard:31': 'Закрыть',
   'Standard:140': 'Записать',
@@ -729,7 +977,7 @@ function parse(text) {
       k: k, tag: e.tagName, e: e, name: e.getAttribute('name') || '', id: e.getAttribute('id') || (isPage ? 'page-' + pi : ''), pi: pi,
       showTabs: st ? (st.getAttribute('code') || '0') : '', parent: parent, depth: depth, pd: pd, l: l, t: t, w: num(e, 'Width'), h: num(e, 'Height'), z: num(e, 'ZOrder'),
       al: ax, at: ay, ax: ax + pd, ay: ay + pd, ps: k, tabless: false,
-      visible: txt(e, 'Visible') !== 'false', caps: loc(e, isPage ? 'Title' : 'Caption'),
+      visible: txt(e, 'Visible') !== 'false', pr: elProps(e), caps: loc(e, isPage ? 'Title' : 'Caption'),
       dp: aid || (dp ? (dp.textContent || '').trim() : ''), dpName: (dp && (dp.textContent || '').trim()) || attrs[aid] || '',
       cols: kids(kid(e, 'Columns'), 'Column').map(function (c2) {
         var colk = Cols.length, cdp = kid(c2, 'DataPath'), caid = cdp ? (cdp.getAttribute('attributeId') || '') : '';
@@ -765,8 +1013,16 @@ function parse(text) {
   C.forEach(function (c) {
     if (c.tag !== 'Panel') return;
     var pgs = (kidsOf[c.k] || []).filter(function (x) { return x.tag === 'Page'; });
-    if (pgs.length > 1 && pgs[0].t <= 4 && pgs[0].l <= 4) { c.tabless = true; tablessPanels.push(c); }
+    if (pgs.length > 1 && tabStrip(c.w, c.h, pgs[0], c.showTabs).mode === 'none') { c.tabless = true; tablessPanels.push(c); }
   });
+  // first radio button of a group (same parent and DataPath): the sample value of the designer view (render-spec §7)
+  var radioFirst = {};
+  C.forEach(function (c) {
+    if (c.tag !== 'RadioButton' || !c.dp || !kid(c.e, 'SelectionValue')) return;
+    var key = c.parent + '|' + c.dp, f = radioFirst[key], ord = num(c.e, 'TabOrder') || c.z;
+    if (!f || ord < f.ord) radioFirst[key] = { c: c, ord: ord };
+  });
+  Object.keys(radioFirst).forEach(function (key) { radioFirst[key].c.radioFirst = true; });
   Object.keys(kidsOf).forEach(function (pk) {
     var sibs = ordered(kidsOf[pk]).filter(function (c) { return c.tag !== 'Page' && c.w > 0 && c.h > 0; });
     for (var i = 0; i < sibs.length; i++) {
@@ -801,6 +1057,7 @@ function parse(text) {
         kind: b.getAttribute('kind') || 'Action', checked: b.getAttribute('checked') === 'true',
         action: b.getAttribute('action') || '', actionKind: b.getAttribute('actionKind') || '',
         rep: b.getAttribute('representation') || 'Auto', pic: b.getAttribute('hasPicture') === 'true',
+        dis: b.getAttribute('enabled') === 'false' || txt(b, 'Enabled') === 'false', def: txt(b, 'DefaultButton') === 'true',
         caps: loc(b, 'Caption'), tips: loc(b, 'Tooltip'), kids: [], xml: fmt(b, 0)
       };
       B.push(item);
@@ -813,19 +1070,27 @@ function parse(text) {
     var p = C[c.parent];
     return !!(p && p.tag === 'Page' && p.parent < 0 && c.w >= p.w - 4 && (c.t <= 4 || c.t + c.h >= p.h - 4));
   }
+  var formH = num(root, 'Height'), isDoc = /DocumentObject|DocumentList|ДокументОбъект|ДокументСписок/.test(text);
+  // a list form: a table bound to the main attribute itself (not to a tabular part "Объект.Часть")
+  var isListForm = !!mainAttrId && C.some(function (t) { return t.tag === 'Table' && t.dp === mainAttrId && t.dpName.indexOf('.') < 0; });
   C.forEach(function (c) {
     if (c.tag === 'CommandBar') {
       btnsOf[c.k] = walkBtns(c.e, c.k, -1, 1);
-      var auto = txt(c.e, 'AutoFill') === 'true', formBar = isFormLevelBar(c);
-      var autoCodes = formBar ? (isExt && !btnsOf[c.k].length ? AUTO_FORM_EXT : AUTO_FORM) : AUTO_TABLE;
+      var auto = txt(c.e, 'AutoFill') === 'true', formBar = isFormLevelBar(c), noOwn = !btnsOf[c.k].length, autoCodes;
+      if (!formBar) autoCodes = AUTO_TABLE;
+      else if (txt(c.e, 'HorizontalAlign') === 'Right' && c.t + c.h / 2 > (c.parent >= 0 ? C[c.parent].h : formH) / 2) autoCodes = noOwn ? (isDoc ? AUTO_BOTTOM_DOC : AUTO_BOTTOM) : [];
+      else if (!noOwn) autoCodes = AUTO_FORM;
+      else autoCodes = isExt ? AUTO_FORM_EXT : isListForm ? AUTO_FORM_LIST : AUTO_FORM_ITEM;
       autoBtnsOf[c.k] = auto ? autoCodes.map(function (code2) {
         if (code2 === '|') return { sep: true };
+        var dis = code2.charAt(code2.length - 1) === '!';
+        if (dis) code2 = code2.slice(0, -1);
         var am = AUTO_META[code2] || { name: code2, title: code2, action: '' };
         var bk = B.length;
         var item = {
-          bk: bk, ck: c.k, parentBk: -1, depth: 1, auto: true, icoKey: code2, textSubmenu: !!am.textSubmenu,
+          bk: bk, ck: c.k, parentBk: -1, depth: 1, auto: true, icoKey: code2, textSubmenu: !!am.textSubmenu, textBtn: !!am.textBtn, okBtn: !!am.okBtn, dis: dis,
           name: am.name, id: '', kind: am.textSubmenu ? 'Submenu' : 'Action', checked: false,
-          action: am.action, actionKind: 'AutoFill', rep: am.textSubmenu ? 'Text' : 'Picture', pic: !am.textSubmenu,
+          action: am.action, actionKind: 'AutoFill', rep: am.textSubmenu || am.textBtn ? 'Text' : 'Picture', pic: !am.textSubmenu && !am.textBtn,
           caps: { ru: am.title }, tips: { ru: am.title }, kids: [], xml: '<!-- Стандартная кнопка автозаполнения (' + am.name + ') -->'
         };
         B.push(item);
@@ -869,56 +1134,180 @@ function isPageChainActive(c, R) {
   return true;
 }
 function pos(c) { return 'left:' + c.l + 'px;top:' + c.t + 'px;width:' + c.w + 'px;height:' + c.h + 'px'; }
-function colorOf(e, tag) {
-  var n = kid(e, tag);
-  return n ? (n.getAttribute('value') || '') : '';
+// ---- shared look helpers (render-spec §1): one translation of Font / Color / Border / Picture / alignment / Tooltip
+function hexOf(v) {
+  v = String(v || '').trim();
+  var m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(v) || /^(\d+)\s*,\s*(\d+)\s*,\s*(\d+)$/.exec(v);
+  if (m) return '#' + [m[1], m[2], m[3]].map(function (x) { return ('0' + Math.min(255, +x).toString(16)).slice(-2); }).join('').toUpperCase();
+  return v;
 }
-function fontBold(e) { var f = kid(e, 'Font'); return !!f && f.getAttribute('bold') === 'true'; }
+// colour of <tag kind="rgb|style|auto" value="#RRGGBB"/>: rgb -> value; style -> value when present (without value: absent); auto/unknown -> absent
+function colorCss(e, tag) {
+  var n = kid(e, tag);
+  if (!n) return '';
+  var kind = n.getAttribute('kind') || '', v = n.getAttribute('value') || '';
+  if (!v || kind === 'auto' || (kind && kind !== 'rgb' && kind !== 'style')) return '';
+  return hexOf(v);
+}
+var colorOf = colorCss;
+// <Font face bold italic underline strikeout size|height scale/> -> {cls: ' b f-i f-u f-s', st: ';font-family:..;font-size:..', bold: true|false|null}
+function fontSpec(e, tag) {
+  var f = kid(e, tag || 'Font'), r = { cls: '', st: '', bold: null }, face, size, scale, pt;
+  if (!f) return r;
+  var b = f.getAttribute('bold');
+  if (b === 'true') { r.cls += ' b'; r.bold = true; } else if (b === 'false') { r.st += ';font-weight:normal'; r.bold = false; }
+  if (f.getAttribute('italic') === 'true') r.cls += ' f-i';
+  if (f.getAttribute('underline') === 'true') r.cls += ' f-u';
+  if (f.getAttribute('strikeout') === 'true') r.cls += ' f-s';
+  face = f.getAttribute('face');
+  if (face) r.st += ";font-family:'" + face.replace(/['"\;<>{}]/g, '') + "',Tahoma,Arial,sans-serif";
+  size = parseFloat(f.getAttribute('size') || f.getAttribute('height')); scale = parseFloat(f.getAttribute('scale'));
+  pt = size > 0 ? size : 0;
+  if (scale > 0 && scale !== 100) r.st += ';font-size:calc(' + (pt || 8) + 'pt * ' + scale + ' / 100)';
+  else if (pt) r.st += ';font-size:' + pt + 'pt';
+  return r;
+}
+function styleAttr(s) { return s ? ' style="' + esc(s.replace(/^;/, '')) + '"' : ''; }
+function colorStyle(prop, v) { return v ? ';' + prop + ':' + v : ''; }
+// BorderStyle: <BorderStyle code="4">SingleLine</BorderStyle> (or type="…") -> ' bd-<type>'
+function borderType(e) {
+  var bs = kid(e, 'BorderStyle'), t, cd;
+  if (!bs) return '';
+  t = (bs.textContent || '').trim() || bs.getAttribute('type') || '';
+  if (!t) { cd = bs.getAttribute('code'); t = cd === '0' ? 'None' : cd === '4' ? 'SingleLine' : cd === '6' ? 'Frame' : ''; }
+  return /^[A-Za-z0-9]+$/.test(t) ? t : '';
+}
+function alignCls(e, tag, pre) {
+  var v = txt(e, tag);
+  return /^(Left|Center|Right|Justify|Top|Bottom)$/.test(v) && (pre === 'ha' ? v !== 'Top' && v !== 'Bottom' : v !== 'Left' && v !== 'Right' && v !== 'Justify') ? ' ' + pre + '-' + v : '';
+}
+function hasPicture(e, tag) {
+  var p = kid(e, tag || 'Picture');
+  return !!p && (!!p.getAttribute('refGuid') || !!p.getAttribute('kind') || (p.textContent || '').trim() === 'true');
+}
+function pic16(name) { return '<span class="pic16">' + (name === 'НадписьАвтор' ? ICON.user : ICON.picture) + '</span>'; }
+// properties common to every element, read once in parse()
+function elProps(e) {
+  return { en: txt(e, 'Enabled') !== 'false', ro: txt(e, 'ReadOnly') === 'true', tr: txt(e, 'TransparentBack') === 'true',
+    bd: borderType(e), hasTip: !!kid(e, 'Tooltip'), tips: loc(e, 'Tooltip') };
+}
+// title= of the root: Tooltip text of the selected language (name stays in the inspector); without Tooltip the element name
+function titleOf(c, R) { return c.pr && c.pr.hasTip ? T(c.pr.tips, R.lang) : c.name; }
+var mctx = null;
+function textW(s, font) {
+  try { if (!mctx) mctx = document.createElement('canvas').getContext('2d'); mctx.font = font; return mctx.measureText(s).width; } catch (err) { return String(s).length * 6; }
+}
+function pic12() { return ICON.picture.replace('width="16" height="16"', 'width="12" height="12"'); }
 function dateText(vt) {
   if (!vt) return '';
   if (vt.kind === 'DateTime') return ' . .   : :';
   if (vt.kind === 'Date') return ' . .';
+  if (vt.kind === 'Time') return '  : :';
   return '';
 }
+function numText(d) { return d > 0 ? '0,' + new Array(d + 1).join('0') : '0'; }
+// designer sample of an input field value: Mask, Format, ValueType (runtime: always empty)
+function sampleOf(e, vt) {
+  var mask = txt(e, 'Mask'), f = kid(e, 'Format'), ft = f ? ((kid(f, 'Item') || f).textContent || '') : '', m, r = { val: '', num: false };
+  if (txt(e, 'PasswordMode') === 'true') { r.val = '*****'; return r; }
+  if (mask) { r.val = mask.replace(/[9#NUX!@h]/g, ' '); return r; }
+  if ((m = /ЧДЦ\s*=\s*(\d+)/.exec(ft))) { r.val = numText(+m[1]); r.num = true; return r; }
+  if (/ДЛФ\s*=\s*T\b/.test(ft)) { r.val = '  : :'; return r; }
+  if (/ДЛФ\s*=\s*DT|HH|mm/.test(ft)) { r.val = ' . .   : :'; return r; }
+  if (/ДФ\s*=|ДЛФ\s*=/.test(ft)) { r.val = ' . .'; return r; }
+  if (vt && vt.kind === 'Number') { r.num = true; r.val = vt.fd === null || vt.fd === undefined ? '0,00' : numText(parseInt(vt.fd, 10) || 0); return r; }
+  r.val = dateText(vt);
+  return r;
+}
 
+// InputField / ChoiceField (render-spec §3, §18)
 function inputField(c, R) {
-  var e = c.e, des = R.mode === 'designer', vt = vtype(e), tb = [], val = '', cls = 'val';
-  if (des) {
-    if (vt && vt.kind === 'Number') { cls += ' num'; val = String(vt.fd) === '0' ? '0' : '0,00'; } else val = dateText(vt);
-  } else { cls += ' ph'; val = c.dpName || c.dp; }
-  if (kid(e, 'ChoiceButton')) {
-    if (txt(e, 'ChoiceButton') === 'true') {
-      if (vt && vt.composite) tb.push('<span class="tb bold">T</span>');
-      else if (vt && (vt.kind === 'DateTime' || vt.kind === 'Date')) tb.push('<span class="tb">' + ICON.cal + '</span>');
-      else if (vt && vt.kind === 'Number') tb.push('<span class="tb">' + ICON.calc + '</span>');
-      else tb.push('<span class="tb">...</span>');
+  var e = c.e, p = c.pr, des = R.mode === 'designer', vt = vtype(e), choice = c.tag === 'ChoiceField', fs = fontSpec(e, 'Font');
+  var smp = !choice && des ? sampleOf(e, vt) : { val: '', num: false };
+  var vcls = 'val' + (smp.num ? ' num' : '') + (txt(e, 'MultiLine') === 'true' ? ' ml' : '') + (!choice && des && txt(e, 'PasswordMode') === 'true' ? ' pw' : '') +
+    alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + fs.cls;
+  var vst = colorStyle('color', colorCss(e, 'FieldTextColor') || colorCss(e, 'TextColor')) + fs.st;
+  var tcls = (p.tr ? ' tr-bg' : '') + (colorCss(e, 'ButtonBackColor') ? ' colored' : '');
+  var tst = colorStyle('--tb-bg', colorCss(e, 'ButtonBackColor')) + colorStyle('color', colorCss(e, 'ButtonTextColor'));
+  var tb = [], tbAttr = styleAttr(tst);
+  function add(extra, svg) { tb.push('<span class="tb' + extra + tcls + '"' + tbAttr + '>' + svg + '</span>'); }
+  var cbTag = kid(e, 'ChoiceButton'), showChoice;
+  if (choice) showChoice = !cbTag || txt(e, 'ChoiceButton') === 'true';
+  else if (cbTag) showChoice = txt(e, 'ChoiceButton') === 'true';
+  else showChoice = !!vt && (vt.kind === 'Ref' || vt.kind === 'Date' || vt.kind === 'DateTime' || vt.kind === 'Number');
+  if (choice) {
+    if (showChoice) add(' dd', kid(e, 'ChoiceButtonPicture') ? pic12() : ICON.drop);
+  } else {
+    if (txt(e, 'DropListButton') === 'true') add(' dd', ICON.drop);
+    if (showChoice) {
+      add('', kid(e, 'ChoiceButtonPicture') ? pic12() : vt && vt.composite ? ICON.type : vt && (vt.kind === 'DateTime' || vt.kind === 'Date') ? ICON.calendar : vt && vt.kind === 'Number' ? ICON.calc : ICON.choice);
     }
-    if (txt(e, 'ClearButton') === 'true') tb.push('<span class="tb">×</span>');
-    if (txt(e, 'OpenButton') === 'true') tb.push('<span class="tb">' + ICON.mag + '</span>');
-  } else tb.push('<span class="tb">...</span>');
+  }
+  if (txt(e, 'ClearButton') === 'true') add('', ICON.clear);
+  if (txt(e, 'OpenButton') === 'true') add('', ICON.open);
+  if (txt(e, 'SpinButton') === 'true') add(' spin', '<i>▲</i><i>▼</i>');
+  if (tb.length && c.w < tb.length * 16 + 12) tb = [];
+  var vs = txt(e, 'VerticalScrollBar');
+  var vsb = vs === 'UseAlways' || vs === 'true' ? '<span class="vsb"><span class="sbb">' + ICON.arrowUp + '</span><span class="sbb">' + ICON.arrowDown + '</span></span>' : '';
   var mark = txt(e, 'AutoMarkIncomplete') === 'true' ? '<i class="mark"></i>' : '';
-  return '<span class="' + cls + '">' + esc(val) + mark + '</span>' + tb.join('');
+  var back = colorCss(e, 'FieldBackColor') || colorCss(e, 'BackColor'), bc = colorCss(e, 'BorderColor');
+  return {
+    cls: (p.ro && p.en ? ' ro' : '') + (p.bd ? ' bd-' + p.bd : ''), st: colorStyle('background', back) + colorStyle('border-color', bc),
+    inner: (hasPicture(e) ? pic16(c.name) : '') + '<span class="' + vcls + '"' + styleAttr(vst) + '>' + esc(smp.val) + mark + '</span>' + tb.join('') + vsb
+  };
 }
 
+// LabelDecoration / small PictureDecoration (render-spec §4)
 function label(c, R, cls, st) {
-  var e = c.e, des = R.mode === 'designer', cap = T(c.caps, R.lang), s = st;
+  var e = c.e, p = c.pr, des = R.mode === 'designer', cap = T(c.caps, R.lang), s = st, fs = fontSpec(e, 'Font');
   if (!cap && des && c.tag === 'LabelDecoration') cap = '<<' + c.name + '>>';
-  var color = colorOf(e, 'TextColor'), back = colorOf(e, 'BackColor'), al = txt(e, 'HorizontalAlign');
-  if (color) s += ';color:' + color;
+  var back = colorCss(e, 'BackColor'), vAl = txt(e, 'VerticalAlign'), link = txt(e, 'Hyperlink') === 'true', bc = colorCss(e, 'BorderColor');
+  var ml = vAl === 'Top' || (!vAl && c.h >= 28), pl = txt(e, 'LabelPictureLocation');
   if (back) s += ';background:' + back; else if (des) s += ';background:var(--form-bg)';
-  var link = txt(e, 'Hyperlink') === 'true';
-  if (link) s += ';color:#0054E3;text-decoration:underline';
-  if (al === 'Center') s += ';justify-content:center;text-align:center';
-  else if (al === 'Right') s += ';justify-content:flex-end;text-align:right';
-  var pic = txt(e, 'Picture') === 'true' ? '<span class="ic">' + ICON.user + '</span>' : '';
-  return { cls: cls + (link ? ' link' : ''), style: s, inner: pic + '<span class="cap' + (fontBold(e) ? ' b' : '') + '" data-k="' + c.k + '">' + esc(cap) + '</span>' };
+  s += colorStyle('border-color', bc);
+  cls += (link ? ' link' : '') + alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + (ml ? ' ml' : '') +
+    (/^(Right|Top|Bottom|Center)$/.test(pl) ? ' pl-' + pl : '') + (p.tr ? ' tr-bg' : '') + (p.bd ? ' bd-' + p.bd : '');
+  var cst = colorStyle('color', colorCss(e, 'TextColor')) + fs.st;
+  return { cls: cls, style: s, inner: (hasPicture(e) ? pic16(c.name) : '') + '<span class="cap' + fs.cls + '" data-k="' + c.k + '"' + styleAttr(cst) + '>' + esc(cap) + '</span>' };
 }
 
+// Button (render-spec §5)
+function buttonBox(c, R) {
+  var e = c.e, fs = fontSpec(e, 'Font'), cap = T(c.caps, R.lang), back = colorCss(e, 'ButtonBackColor'), bc = colorCss(e, 'BorderColor');
+  var mn = /^(Use|UseExtra|true)$/.test(txt(e, 'MenuMode')) ? '<span class="mn">' + ICON.drop + '</span>' : '';
+  var cst = colorStyle('color', colorCss(e, 'ButtonTextColor')) + fs.st;
+  return {
+    cls: (txt(e, 'DefaultButton') === 'true' ? ' def' : '') + (txt(e, 'MultiLine') === 'true' ? ' ml' : '') + (txt(e, 'PictureLocation') === 'Right' ? ' pl-Right' : '') +
+      alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + (back ? ' colored' : ''),
+    st: colorStyle('--btn-bg', back) + colorStyle('border-color', bc),
+    inner: (hasPicture(e) ? pic16(c.name) : '') + (cap && c.w >= 24 ? '<span class="cap' + fs.cls + '" data-k="' + c.k + '"' + styleAttr(cst) + '>' + esc(cap) + '</span>' : '') + mn
+  };
+}
+
+// CheckBox / RadioButton (render-spec §6, §7)
+function checkBox(c, R) {
+  var e = c.e, p = c.pr, rad = c.tag === 'RadioButton', fs = fontSpec(e, 'Font'), tl = txt(e, 'TitleLocation');
+  var on = rad && R.mode === 'designer' && !!c.radioFirst;
+  var mix = !rad && txt(e, 'ThreeState') === 'true';
+  var bst = colorStyle('border-color', colorCss(e, 'BorderColor')) + colorStyle('background', colorCss(e, 'FieldBackColor')) + colorStyle('--check-ink', colorCss(e, 'FieldTextColor'));
+  var cst = colorStyle('color', colorCss(e, 'TextColor')) + fs.st, cap = T(c.caps, R.lang);
+  return {
+    cls: (tl === 'TitleLeft' || tl === 'Left' ? ' tl-Left' : '') + alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + (p.tr ? ' tr-bg' : '') + (p.bd ? ' bd-' + p.bd : ''),
+    st: colorStyle('background', colorCss(e, 'BackColor')),
+    inner: '<span class="' + (rad ? 'rad' : 'box') + (on ? ' on' : '') + (mix ? ' mix' : '') + '"' + styleAttr(bst) + '></span>' +
+      (cap ? '<span class="cap' + fs.cls + '" data-k="' + c.k + '"' + styleAttr(cst) + '>' + esc(cap) + '</span>' : '')
+  };
+}
+
+// UsualGroup (render-spec §12)
 function groupBox(c, R, cap) {
-  var bs = txt(c.e, 'BorderStyle') || (c.h > 20 ? 'Frame' : 'SingleLine');
-  if (bs === 'None') return { cls: ' bs-None', inner: '' };
-  if (bs !== 'Frame' && bs !== 'SingleLine') bs = c.h > 20 ? 'Frame' : 'SingleLine';
-  return { cls: ' bs-' + bs, inner: '<i class="gf"></i>' + (cap ? '<span class="gt"><span class="cap" data-k="' + c.k + '">' + esc(cap) + '</span></span>' : '') };
+  var e = c.e, p = c.pr, bs = p.bd || (c.h > 20 ? 'Frame' : 'SingleLine'), fs = fontSpec(e, 'Font');
+  var back = colorCss(e, 'BackColor'), bc = colorCss(e, 'BorderColor');
+  if (bs !== 'None' && bs !== 'Frame' && bs !== 'SingleLine') bs = c.h > 20 ? 'Frame' : 'SingleLine';
+  var gst = colorStyle('color', !p.en ? 'var(--text-dis)' : colorCss(e, 'TextColor')) + fs.st;
+  var gt = cap ? '<span class="gt' + (p.tr ? ' tr-bg' : '') + fs.cls + '"' + styleAttr(gst) + '><span class="cap" data-k="' + c.k + '">' + esc(cap) + '</span></span>' : '';
+  if (bs === 'None') return { cls: ' bs-None', st: colorStyle('background', back), inner: gt };
+  return { cls: ' bs-' + bs, st: '', inner: '<i class="gf"' + styleAttr(colorStyle('border-color', bc) + colorStyle('background', back)) + '></i>' + gt };
 }
 
 function tableBox(c, R) {
@@ -952,15 +1341,18 @@ function btns(e) {
 function btnIcon(b, cap) {
   if (b.icoKey && ICON[b.icoKey]) return ICON[b.icoKey];
   if (STD_ICON[b.action]) return ICON[STD_ICON[b.action]];
-  if (b.actionKind === 'OpenMovements') return ICON.dk;
+  if (b.actionKind === 'OpenMovements') return ICON.movements;
   var s = (b.name + ' ' + cap).toLowerCase();
-  if (s.indexOf('провод') >= 0 && s.indexOf('журнал') >= 0) return ICON.tt;
-  if (s.indexOf('провод') >= 0 || s.indexOf('результат') >= 0 || s.indexOf('бухгалтер') >= 0) return ICON.dk;
-  if (s.indexOf('пересчет') >= 0) return ICON.calcb;
+  if (s.indexOf('провод') >= 0 || s.indexOf('результат') >= 0 || s.indexOf('бухгалтер') >= 0) return ICON.movements;
   if (s.indexOf('справка') >= 0) return ICON.help;
-  return ICON.pic;
+  return ICON.picture;
 }
-function cbtn(b, R) {
+// x: shared CommandBar look {dis, fs, col, back}; applied to every button of the bar (render-spec §13, §14)
+function cbtnStyle(x, b) {
+  return styleAttr(colorStyle('background', x.back) + colorStyle('color', x.col));
+}
+function cbtn(b, R, x) {
+  x = x || { fs: { cls: '', st: '' } };
   if (b.kind === 'Separator') return '<span class="csep" data-b="' + (b.bk !== undefined ? b.bk : '') + '" title="Разделитель: ' + esc(b.name) + '"></span>';
   var cap = T(b.caps, R.lang);
   if (!cap && b.kind === 'Submenu') {
@@ -969,30 +1361,32 @@ function cbtn(b, R) {
   }
   if (!cap) cap = b.name;
   var tip = T(b.tips, R.lang) || cap || b.name;
-  var stdIco = STD_ICON[b.action];
-  var ico = '<span class="ic">' + btnIcon(b, cap) + '</span>', h = '';
+  var stdIco = STD_ICON[b.action], h = '';
   var picture = !!stdIco || b.rep === 'Picture' || b.rep === 'PictureAndText' || (b.rep === 'Auto' && b.pic);
   var text = !stdIco && (b.rep === 'Text' || b.rep === 'PictureAndText' || (b.rep === 'Auto' && !b.pic));
-  if (picture) h += ico;
-  if (text) h += '<span class="cap">' + esc(cap) + '</span>';
-  if (b.kind === 'Submenu') h += '<span class="ar">▼</span>';
-  var ok = b.action === 'Standard:141' || /(ОК|OK)$/i.test(b.name);
+  if (picture) h += '<span class="ic">' + btnIcon(b, cap) + '</span>';
+  if (text) h += '<span class="cap' + x.fs.cls + '"' + styleAttr(x.fs.st) + '>' + esc(cap) + '</span>';
+  if (b.kind === 'Submenu') h += '<span class="ar">' + ICON.drop + '</span>';
+  if (!h) return '';
+  var ok = b.action === 'Standard:141' || b.def || /(ОК|OK)$/i.test(b.name);
   var bAttr = b.bk !== undefined ? ' id="b' + b.bk + '" data-b="' + b.bk + '"' : '';
-  return '<span class="cbtn' + (ok ? ' ok' : '') + (b.checked ? ' on' : '') + '"' + bAttr + ' title="' + esc(tip + (b.action ? ' [' + b.action + ']' : '')) + '">' + h + '</span>';
+  return '<span class="cbtn' + (ok ? ' ok' : '') + (b.checked ? ' on' : '') + (x.dis || b.dis ? ' dis' : '') + '"' + bAttr + cbtnStyle(x, b) + ' title="' + esc(tip + (b.action ? ' [' + b.action + ']' : '')) + '">' + h + '</span>';
 }
-function autoItems(list) {
+function autoItems(list, x) {
+  x = x || { fs: { cls: '', st: '' } };
   return (list || []).map(function (b) {
     if (b.sep) return '<span class="csep"></span>';
-    if (b.textSubmenu) {
-      return '<span class="cbtn" id="b' + b.bk + '" data-b="' + b.bk + '" title="' + esc((T(b.caps, 'ru') || b.name) + ' [автозаполнение]') + '"><span class="cap">' + esc(T(b.caps, 'ru') || b.name) + '</span><span class="ar">▼</span></span>';
-    }
-    return '<span class="cbtn" id="b' + b.bk + '" data-b="' + b.bk + '" title="' + esc((T(b.caps, 'ru') || b.name) + ' [автозаполнение]') + '"><span class="ic">' + ICON[b.icoKey] + '</span></span>';
+    var at = ' id="b' + b.bk + '" data-b="' + b.bk + '"' + cbtnStyle(x, b) + ' title="' + esc((T(b.caps, 'ru') || b.name) + ' [автозаполнение]') + '"';
+    var cc = 'cbtn' + (b.okBtn ? ' ok' : '') + (x.dis || b.dis ? ' dis' : '');
+    if (b.textSubmenu) return '<span class="' + cc + '"' + at + '><span class="cap' + x.fs.cls + '"' + styleAttr(x.fs.st) + '>' + esc(T(b.caps, 'ru') || b.name) + '</span><span class="ar">' + ICON.drop + '</span></span>';
+    if (b.textBtn) return '<span class="' + cc + '"' + at + '><span class="cap' + x.fs.cls + '"' + styleAttr(x.fs.st) + '>' + esc(T(b.caps, 'ru') || b.name) + '</span></span>';
+    return '<span class="' + cc + '"' + at + '><span class="ic">' + ICON[b.icoKey] + '</span></span>';
   }).join('');
 }
 function commandBar(c, R) {
-  var auto = txt(c.e, 'AutoFill') === 'true', p = c.parent >= 0 && R && R.m ? R.m.C[c.parent] : null;
-  var formBar = c.parent < 0 || !!(p && p.tag === 'Page' && p.parent < 0 && c.w >= p.w - 4 && (c.t <= 4 || c.t + c.h >= p.h - 4));
-  var raw = (R && R.m && R.m.btnsOf && R.m.btnsOf[c.k]) ? R.m.btnsOf[c.k].slice() : btns(c.e);
+  var e = c.e, p = c.pr, auto = txt(e, 'AutoFill') === 'true', par = c.parent >= 0 && R && R.m ? R.m.C[c.parent] : null;
+  var formBar = c.parent < 0 || !!(par && par.tag === 'Page' && par.parent < 0 && c.w >= par.w - 4 && (c.t <= 4 || c.t + c.h >= par.h - 4));
+  var raw = (R && R.m && R.m.btnsOf && R.m.btnsOf[c.k]) ? R.m.btnsOf[c.k].slice() : btns(e);
   if (auto && !formBar) {
     raw = raw.filter(function (b) {
       if (STD_TABLE_SKIP[b.action]) return false;
@@ -1001,26 +1395,61 @@ function commandBar(c, R) {
       return true;
     });
   }
-  var own = raw.map(function (b) { return cbtn(b, R); }).join('');
+  var x = { dis: !p.en, fs: fontSpec(e, 'Font'), col: colorCss(e, 'ButtonTextColor'), back: colorCss(e, 'ButtonBackColor') };
+  var own = raw.map(function (b) { return cbtn(b, R, x); }).join('');
   var autoList = (R && R.m && R.m.autoBtnsOf && R.m.autoBtnsOf[c.k]) || [];
-  var a = auto ? autoItems(autoList) : '';
-  var dots = R.mode === 'designer' ? '<span class="cbtn"><span class="ic">' + ICON.dots + '</span></span>' : '';
-  var ph = p ? p.h : R.m.height;
-  var cls = (c.t + c.h / 2 > ph / 2 && formBar ? ' bottom' : '') + (txt(c.e, 'HorizontalAlign') === 'Right' ? ' right' : '') + (c.h > 32 ? ' tall' : '');
-  var inner = formBar ? (txt(c.e, 'HorizontalAlign') === 'Right' ? dots + own : (own ? own + (a ? '<span class="csep"></span>' + a : '') : a) + dots) : a + own + dots;
-  return { cls: cls, inner: inner };
+  var a = auto ? autoItems(autoList, x) : '';
+  var dots = R.mode === 'designer' ? '<span class="cbtn"><span class="ic">' + ICON.cfgMarker + '</span></span>' : '';
+  var ph = par ? par.h : R.m.height, ha = txt(e, 'HorizontalAlign'), right = ha === 'Right';
+  var cls = (c.t + c.h / 2 > ph / 2 && formBar ? ' bottom' : '') + (right ? ' right' : '') + (ha === 'Center' ? ' center' : '') + (c.h > 32 ? ' tall' : '') +
+    (txt(e, 'Orientation') === 'Vertical' ? ' vert' : '') + (p.tr ? ' tr-bg' : '') + (p.bd ? ' bd-' + p.bd : '');
+  var inner = formBar ? (right ? dots + own + (own ? '' : a) : (own ? own + (a ? '<span class="csep"></span>' + a : '') : a) + dots) : a + own + dots;
+  return { cls: cls, st: colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')), inner: inner };
 }
 
+// Panel tabs (render-spec §10, §11): the strip position follows the geometry of the first page (the ShowTabs codes of the corpus do not follow the
+// platform enum order), ShowTabs=0 means no tabs; tabs are never squeezed, the ones that do not fit are cut by the strip and arrows are drawn.
+function tabStrip(pw, ph, pg, st) {
+  if (st === '0') return { mode: 'none', size: 0 };
+  if (pg.t > 4 && pg.t >= pg.l) return { mode: 'top', size: pg.t };
+  if (pg.l > 4) return { mode: 'left', size: pg.l };
+  if (st) {
+    var bh = ph - (pg.t + pg.h), rw = pw - (pg.l + pg.w);
+    if (bh > 4 && bh >= rw) return { mode: 'bottom', size: bh };
+    if (rw > 4) return { mode: 'right', size: rw };
+  }
+  return { mode: 'none', size: 0 };
+}
+function panelStrip(panel, pages, R) {
+  return tabStrip(panel.k >= 0 ? panel.w : R.m.width, panel.k >= 0 ? panel.h : R.m.height, pages[0], panel.k >= 0 ? panel.showTabs : R.m.showTabs);
+}
 function tabsHtml(panel, pages, first, R) {
-  var top = pages[0].t, left = pages[0].l, cls, st;
-  if (top >= left && top > 4) { cls = 'ptabs'; st = 'height:' + top + 'px'; }
-  else if (left > top && left > 4) { cls = 'ptabs vtabs'; st = 'width:' + left + 'px'; }
-  else return '';
-  return '<div class="' + cls + '" style="' + st + '">' + pages.map(function (p) {
-    var cap = T(p.caps, R.lang) || p.name;
-    var shrink = cap.length <= 7 ? ' style="flex-shrink:0"' : (pages.length >= 7 ? ' style="max-width:92px"' : '');
-    return '<span class="ptab' + (p.k === first ? ' on' : '') + (p.visible ? '' : ' hid') + '"' + shrink + ' data-k="' + p.k + '" data-p="' + panel.k + '">' + esc(cap) + '</span>';
-  }).join('') + '</div>';
+  var ts = panelStrip(panel, pages, R), e = panel.e, pfs = fontSpec(e, 'Font'), tc = colorCss(e, 'TextColor'), bc = colorCss(e, 'BorderColor');
+  var pdis = !!(panel.pr && !panel.pr.en), cls, st, total = 0, pw = panel.k >= 0 ? panel.w : R.m.width;
+  if (ts.mode === 'none') return '';
+  var multi = ts.mode === 'top' && ts.size >= 34;
+  if (ts.mode === 'top') { cls = 'ptabs' + (multi ? ' multi' : ''); st = 'height:' + ts.size + 'px'; }
+  else if (ts.mode === 'bottom') { cls = 'ptabs btabs'; st = 'height:' + ts.size + 'px'; }
+  else if (ts.mode === 'left') { cls = 'ptabs vtabs'; st = 'width:' + ts.size + 'px'; }
+  else { cls = 'ptabs vtabs rtabs'; st = 'width:' + ts.size + 'px'; }
+  var html = pages.map(function (p) {
+    var cap = T(p.caps, R.lang) || p.name, ti = hasPicture(p.e, 'TitlePicture');
+    total += textW(cap, (pfs.bold ? 'bold ' : '') + '8pt Tahoma, Arial, sans-serif') + 16 + 2 + 2 + (ti ? 19 : 0);
+    var on = p.k === first, sty = 'flex:none' + colorStyle('color', tc) + (on ? colorStyle('border-color', bc) : '') + pfs.st;
+    return '<span class="ptab' + (on ? ' on' : '') + (p.visible ? '' : ' hid') + (pdis || (p.pr && !p.pr.en) ? ' dis' : '') + pfs.cls + '" style="' + esc(sty) + '" data-k="' + p.k + '" data-p="' + panel.k + '">' +
+      (ti ? '<span class="pic16">' + ICON.picture + '</span>' : '') + esc(cap) + '</span>';
+  }).join('');
+  var scroll = (ts.mode === 'top' || ts.mode === 'bottom') && !multi && total > pw ? '<span class="pscroll"><i class="off">' + ICON.arrowLeft + '</i><i>' + ICON.tabRight + '</i></span>' : '';
+  return '<div class="' + cls + '" style="' + st + '">' + html + scroll + '</div>';
+}
+// pages of a panel (also of the pseudo panel of the form root): panel colours / border / transparency go to every page
+function pagesHtml(panel, seq, first, R) {
+  var e = panel.e, pr = panel.pr || {};
+  var pcls = (pr.tr ? ' tr-bg' : '') + (pr.bd ? ' bd-' + pr.bd : ''), pst = colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor'));
+  return seq.map(function (p) {
+    return '<div class="c t-Page' + (p.k === first ? ' on' : '') + pcls + '" id="c' + p.k + '" data-k="' + p.k + '" data-p="' + panel.k + '" style="' + pos(p) + pst + '" title="' + esc(p.name) + '">' +
+      ordered(R.m.kidsOf[p.k]).filter(function (x) { return vis(x, R); }).map(function (x) { return ctl(x, R); }).join('') + '</div>';
+  }).join('');
 }
 
 function calendarBox() {
@@ -1037,7 +1466,8 @@ function scrollDocBox() {
     '<div class="sdoc-h"><span class="sbb">◂</span><span class="sbt"></span><span class="sbb">▸</span></div>';
 }
 function ctl(c, R) {
-  var tag = c.tag, k = c.k, des = R.mode === 'designer', cls = 'c t-' + esc(tag) + (c.visible ? '' : ' hid'), st = pos(c), inner = '';
+  var tag = c.tag, k = c.k, des = R.mode === 'designer', p = c.pr;
+  var cls = 'c t-' + esc(tag) + (c.visible ? '' : ' hid') + (!p.en && tag !== 'UsualGroup' && tag !== 'Panel' ? ' dis' : ''), st = pos(c), inner = '';
   var cap = esc(T(c.caps, R.lang)), capspan = '<span class="cap" data-k="' + k + '">' + cap + '</span>';
   var ch = ordered(R.m.kidsOf[k]).filter(function (x) { return vis(x, R); });
   var body = '';
@@ -1046,21 +1476,17 @@ function ctl(c, R) {
   } else if (tag === 'LabelDecoration' || tag === 'PictureDecoration') {
     var l = label(c, R, cls, st); cls = l.cls; st = l.style; inner = l.inner;
   } else if (tag === 'Button') {
-    inner = capspan;
+    var bb = buttonBox(c, R); cls += bb.cls; st += bb.st; inner = bb.inner;
   } else if (tag === 'CommandBar') {
-    var cb = commandBar(c, R); cls += cb.cls; inner = cb.inner;
-  } else if (tag === 'InputField') {
-    inner = inputField(c, R);
-  } else if (tag === 'ChoiceField') {
-    inner = '<span class="val">' + (des ? '' : esc(c.dpName || c.dp)) + '</span><span class="tb">▾</span>';
-  } else if (tag === 'CheckBox') {
-    inner = '<span class="box"></span><span class="cap' + (fontBold(c.e) ? ' b' : '') + '" data-k="' + k + '">' + cap + '</span>';
-  } else if (tag === 'RadioButton') {
-    inner = '<span class="rad"></span><span class="cap' + (fontBold(c.e) ? ' b' : '') + '" data-k="' + k + '">' + cap + '</span>';
+    var cb = commandBar(c, R); cls += cb.cls; st += cb.st; inner = cb.inner;
+  } else if (tag === 'InputField' || tag === 'ChoiceField') {
+    var fl = inputField(c, R); cls += fl.cls; st += fl.st; inner = fl.inner;
+  } else if (tag === 'CheckBox' || tag === 'RadioButton') {
+    var cx = checkBox(c, R); cls += cx.cls; st += cx.st; inner = cx.inner;
   } else if (tag === 'Table') {
     inner = tableBox(c, R);
   } else if (tag === 'UsualGroup') {
-    var g = groupBox(c, R, T(c.caps, R.lang)); cls += g.cls; inner = g.inner;
+    var g = groupBox(c, R, T(c.caps, R.lang)); cls += g.cls; st += g.st; inner = g.inner;
   } else if (tag === 'CalendarField') {
     inner = calendarBox();
   } else if (tag === 'TrackBar') {
@@ -1081,15 +1507,13 @@ function ctl(c, R) {
     var seq = pages.slice().sort(function (a, b) { return a.k - b.k; });
     var first = R.active[k];
     if (!seq.some(function (p) { return p.k === first; })) { first = (seq.filter(function (p) { return p.visible; })[0] || seq[0]).k; R.active[k] = first; }
-    if (seq.length > 1 || (c.showTabs && c.showTabs !== '0')) body += tabsHtml(c, seq, first, R);
-    body += seq.map(function (p) {
-      return '<div class="c t-Page' + (p.k === first ? ' on' : '') + '" id="c' + p.k + '" data-k="' + p.k + '" data-p="' + k + '" style="' + pos(p) + '" title="' + esc(p.name) + '">' +
-        ordered(R.m.kidsOf[p.k]).filter(function (x) { return vis(x, R); }).map(function (x) { return ctl(x, R); }).join('') + '</div>';
-    }).join('');
+    var th = seq.length > 1 || (c.showTabs && c.showTabs !== '0') ? tabsHtml(c, seq, first, R) : '';
+    if (!th) cls += ' no-tabs';
+    body += th + pagesHtml(c, seq, first, R);
     ch = ch.filter(function (x) { return x.tag !== 'Page'; });
   }
   body += ch.map(function (x) { return ctl(x, R); }).join('');
-  return '<div class="' + cls + '" id="c' + k + '" data-k="' + k + '" style="' + st + '" title="' + esc(c.name) + '">' + inner + body + '</div>';
+  return '<div class="' + cls + '" id="c' + k + '" data-k="' + k + '" style="' + st + '" title="' + esc(titleOf(c, R)) + '">' + inner + body + '</div>';
 }
 
 // ------------------------------------------------------------------ inspector (properties with provenance)
@@ -1718,11 +2142,8 @@ function create(o) {
       var seq = rootPages.slice().sort(function (a, b) { return a.k - b.k; });
       var first = R.active[-1];
       if (!seq.some(function (p) { return p.k === first; })) { first = (seq.filter(function (p) { return p.visible; })[0] || seq[0]).k; R.active[-1] = first; }
-      if (seq.length > 1 || (m.showTabs && m.showTabs !== '0')) bodyHtml += tabsHtml({ k: -1 }, seq, first, R);
-      bodyHtml += seq.map(function (p) {
-        return '<div class="c t-Page' + (p.k === first ? ' on' : '') + '" id="c' + p.k + '" data-k="' + p.k + '" data-p="-1" style="' + pos(p) + '" title="' + esc(p.name) + '">' +
-          ordered(m.kidsOf[p.k]).filter(function (x) { return vis(x, R); }).map(function (x) { return ctl(x, R); }).join('') + '</div>';
-      }).join('');
+      if (seq.length > 1 || (m.showTabs && m.showTabs !== '0')) bodyHtml += tabsHtml({ k: -1, e: null }, seq, first, R);
+      bodyHtml += pagesHtml({ k: -1, e: null }, seq, first, R);
       topKids = topKids.filter(function (x) { return x.tag !== 'Page'; });
     }
     bodyHtml += topKids.map(function (c) { return ctl(c, R); }).join('');

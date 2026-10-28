@@ -25,62 +25,92 @@ function fmt(n, d) {
 
 // ------------------------------------------------------------------ icons (inline SVG, no external resources)
 function sv(w, inner, vb) { return '<svg width="' + w + '" height="' + w + '" viewBox="0 0 ' + (vb || w) + ' ' + (vb || w) + '">' + inner + '</svg>'; }
+// Icons of render-spec §0.5 (inline SVG, no external resources) + viewer shell icons (eye, eyeOff, layers) + legacy landscape placeholder.
 var ICON = {
-  cal: sv(12, '<rect x="1.5" y="2.5" width="9" height="8" fill="#fff" stroke="#3A6EA5"/><rect x="1.5" y="2.5" width="9" height="2.5" fill="#3A6EA5"/><path d="M3.5 7h1M5.5 7h1M7.5 7h1M3.5 9h1M5.5 9h1" stroke="#555"/>'),
-  calc: sv(12, '<rect x="2" y="1.5" width="8" height="9" fill="#E8E8E8" stroke="#555"/><rect x="3" y="2.5" width="6" height="2" fill="#9FC7A0"/><path d="M3.5 6h1M5.5 6h1M7.5 6h1M3.5 8h1M5.5 8h1M7.5 8h1" stroke="#333"/>'),
-  mag: sv(12, '<circle cx="5" cy="5" r="3.2" fill="#E6F0FA" stroke="#2F5F9A" stroke-width="1.3"/><path d="M7.5 7.5L11 11" stroke="#2F5F9A" stroke-width="1.6"/>'),
-  user: sv(14, '<circle cx="7" cy="4" r="2.6" fill="#E8A33C" stroke="#9A5B00"/><path d="M1.5 13c0-3 2.4-4.8 5.5-4.8s5.5 1.8 5.5 4.8z" fill="#4C7BC5" stroke="#274A85"/>'),
-  pic: sv(16, '<rect x="2.5" y="3.5" width="11" height="9" fill="#fff" stroke="#6A7F99" stroke-dasharray="2 1"/><rect x="4" y="5" width="4" height="3" fill="#E8A33C"/><rect x="8" y="8" width="4" height="3" fill="#4C7BC5"/>'),
-  add: sv(16, '<circle cx="8" cy="8" r="6" fill="#3FAE49" stroke="#1F7A2A"/><path d="M8 4.5v7M4.5 8h7" stroke="#fff" stroke-width="2"/>'),
-  copy: sv(16, '<rect x="2.5" y="2.5" width="7" height="8" fill="#fff" stroke="#555"/><rect x="6.5" y="5.5" width="7" height="8" fill="#F5F2DD" stroke="#555"/><path d="M8 8h4M8 10h4" stroke="#999"/>'),
-  edit: sv(16, '<path d="M3 13l1-3 7-7 2 2-7 7z" fill="#E8C34A" stroke="#7A5A00"/><path d="M3 13l1-3 2 2z" fill="#333"/>'),
-  del: sv(16, '<path d="M4 4l8 8M12 4l-8 8" stroke="#D32F2F" stroke-width="2.4"/>'),
-  save: sv(16, '<rect x="2.5" y="2.5" width="11" height="11" fill="#6C8EBF" stroke="#2F4F7F"/><rect x="5" y="2.5" width="6" height="4" fill="#fff"/><rect x="5" y="9" width="6" height="4.5" fill="#E8E8E8"/>'),
-  up: sv(16, '<path d="M8 2.5l5 5H10v6H6v-6H3z" fill="#4C7BC5" stroke="#274A85"/>'),
-  down: sv(16, '<path d="M8 13.5l5-5H10v-6H6v6H3z" fill="#4C7BC5" stroke="#274A85"/>'),
-  az: sv(16, '<text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">A</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><path d="M12 3v10M9.5 10.5L12 13l2.5-2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/>'),
-  za: sv(16, '<text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">A</text><path d="M12 3v10M9.5 5.5L12 3l2.5 2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/>'),
-  flt: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/>'),
-  flt2: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#E8C34A" stroke="#7A5A00"/>'),
-  flt3: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/><path d="M10 10h4M12 8v4" stroke="#333"/>'),
-  unf: sv(16, '<path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#E8E8E8" stroke="#777"/><path d="M9 9l5 5M14 9l-5 5" stroke="#D32F2F" stroke-width="1.6"/>'),
-  more: sv(16, '<rect x="2.5" y="3.5" width="11" height="9" fill="#fff" stroke="#555"/><path d="M4 6h8M4 8.5h8M4 11h5" stroke="#777"/><circle cx="12" cy="11" r="2.5" fill="#3FAE49"/>'),
-  calcb: sv(16, '<rect x="3.5" y="2.5" width="9" height="11" fill="#E8E8E8" stroke="#555"/><rect x="5" y="4" width="6" height="2.5" fill="#9FC3A0"/><path d="M5 8.5h1.5M7.5 8.5h1.5M10 8.5h1M5 11h1.5M7.5 11h1.5M10 11h1" stroke="#333"/>'),
-  help: sv(16, '<circle cx="8" cy="8" r="6" fill="#E8A33C" stroke="#9A5B00"/><text x="5.2" y="11.4" font-size="9.5" font-weight="bold" font-family="Tahoma" fill="#fff">?</text>'),
-  tt: sv(16, '<text x="3.5" y="12.5" font-size="11" font-weight="bold" font-family="Tahoma" fill="#2F5F9A">T</text>'),
-  dk: sv(16, '<text x="0.5" y="7.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#2F5F9A">Дт</text><text x="6" y="14.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#B03030">Кт</text>'),
-  swap: sv(16, '<path d="M2 5h10M9 2.5L12 5 9 7.5M14 11H4M7 8.5L4 11l3 2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/>'),
-  dots: sv(16, '<rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="#333" stroke-dasharray="2 1.5"/>'),
+  choice: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1" y="8" width="2" height="2" fill="#664C00"/><rect x="5" y="8" width="2" height="2" fill="#664C00"/><rect x="9" y="8" width="2" height="2" fill="#664C00"/></svg>',
+  calendar: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="#fff" stroke="#664C00"/><path d="M1.5 4.5h9M4.5 4.5v6M7.5 4.5v6M1.5 7.5h9" stroke="#887437"/></svg>',
+  calc: '<svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="#fff" stroke="#664C00"/><rect x="3" y="3" width="6" height="2" fill="#887437"/><path d="M3 7h1.5M5.25 7h1.5M7.5 7h1.5M3 9h1.5M5.25 9h1.5M7.5 9h1.5" stroke="#664C00"/></svg>',
+  type: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2.5h8v2H7v6H5v-6H2z" fill="#3D3D3D"/></svg>',
+  clear: '<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="#664C00" stroke-width="1.8"/></svg>',
+  open: '<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="5" cy="5" r="3.3" fill="#fff" stroke="#5A5A5A" stroke-width="1.4"/><path d="M7.4 7.4L10.6 10.6" stroke="#5A5A5A" stroke-width="2"/></svg>',
+  drop: '<svg width="7" height="4" viewBox="0 0 7 4"><path d="M0 0h7L3.5 4z" fill="#3D3D3D"/></svg>',
+  spin: '<svg width="7" height="9" viewBox="0 0 7 9"><path d="M0 3.5h7L3.5 0zM0 5.5h7L3.5 9z" fill="#3D3D3D"/></svg>',
+  check: '<svg width="9" height="8" viewBox="0 0 9 8"><path d="M1 4l2.5 2.5L8 1.5" fill="none" stroke="#2B2B2B" stroke-width="2"/></svg>',
+  sortAsc: '<svg width="7" height="4" viewBox="0 0 7 4"><path d="M0 4h7L3.5 0z" fill="#8C8670"/></svg>',
+  treePlus: '<svg width="9" height="9" viewBox="0 0 9 9"><rect x=".5" y=".5" width="8" height="8" fill="#fff" stroke="#A9A9A9"/><path d="M2 4.5h5M4.5 2v5" stroke="#333"/></svg>',
+  folder: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 4.5h5l1 1.5h7v7.5h-13z" fill="#F7D774" stroke="#C9A227"/><path d="M1.5 6.5h13" stroke="#E8BE3C"/></svg>',
+  item: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="7" width="10" height="3" rx="1" fill="#7FA6D6" stroke="#3A6EA5"/></svg>',
+  arrowLeft: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M4.5 0v7L0 3.5z" fill="#A8A38E"/></svg>',
+  arrowRight: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M.5 0v7L5 3.5z" fill="#A8A38E"/></svg>',
+  arrowUp: '<svg width="7" height="5" viewBox="0 0 7 5"><path d="M0 4.5h7L3.5 0z" fill="#A8A38E"/></svg>',
+  arrowDown: '<svg width="7" height="5" viewBox="0 0 7 5"><path d="M0 .5h7L3.5 5z" fill="#A8A38E"/></svg>',
+  tabLeft: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M4.5 0v7L0 3.5z" fill="#3D3D3D"/></svg>',
+  tabRight: '<svg width="5" height="7" viewBox="0 0 5 7"><path d="M.5 0v7L5 3.5z" fill="#3D3D3D"/></svg>',
+  picture: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" fill="#fff" stroke="#B3AC86"/><path d="M3 12l3.5-4 2.5 3 2-2 2 3z" fill="#C9C2A0"/><circle cx="11" cy="5.5" r="1.3" fill="#E8C34A"/></svg>',
+  user: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.8" fill="#E8A33C" stroke="#9A5B00"/><path d="M2.5 15c0-3.2 2.5-5 5.5-5s5.5 1.8 5.5 5z" fill="#4C7BC5" stroke="#274A85"/></svg>',
+  add: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="#43A047" stroke="#2E7D32"/><path d="M8 4.5v7M4.5 8h7" stroke="#fff" stroke-width="2"/></svg>',
+  addGroup: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 4.5h5l1 1.5h7v7.5h-13z" fill="#F7D774" stroke="#C9A227"/><circle cx="11.5" cy="11.5" r="3.5" fill="#43A047"/><path d="M11.5 9.5v4M9.5 11.5h4" stroke="#fff" stroke-width="1.4"/></svg>',
+  copy: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="1.5" width="8" height="10" fill="#fff" stroke="#6B6B6B"/><rect x="5.5" y="4.5" width="8" height="10" fill="#fff" stroke="#6B6B6B"/><circle cx="12" cy="12.5" r="3" fill="#43A047"/><path d="M12 11v3M10.5 12.5h3" stroke="#fff"/></svg>',
+  edit: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 13l1-3.5 7-7 2.5 2.5-7 7z" fill="#8BC34A" stroke="#4E7A1E"/><path d="M3 13l1-3.5 2.5 2.5z" fill="#F0D9A0" stroke="#4E7A1E"/></svg>',
+  delete: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#fff" stroke="#B0B0B0"/><path d="M5 5l6 6M11 5l-6 6" stroke="#E53935" stroke-width="2"/></svg>',
+  save: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#7A92B8" stroke="#3B5579"/><rect x="5" y="2.5" width="6" height="4" fill="#fff"/><rect x="5" y="9" width="6" height="4.5" fill="#DCDCDC"/></svg>',
+  up: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2.5l5 5h-3v6H6v-6H3z" fill="#5C8FD6" stroke="#2F5F9A"/></svg>',
+  down: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 13.5l5-5h-3v-6H6v6H3z" fill="#5C8FD6" stroke="#2F5F9A"/></svg>',
+  sortAz: '<svg width="16" height="16" viewBox="0 0 16 16"><text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">А</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><path d="M12 3v10M9.5 10.5L12 13l2.5-2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/></svg>',
+  sortZa: '<svg width="16" height="16" viewBox="0 0 16 16"><text x="1" y="7" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">Я</text><text x="1" y="15" font-size="7" font-family="Tahoma" font-weight="bold" fill="#333">А</text><path d="M12 3v10M9.5 5.5L12 3l2.5 2.5" stroke="#2F6FD0" fill="none" stroke-width="1.4"/></svg>',
+  filter: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/></svg>',
+  filterValue: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#F2C94C" stroke="#8A6D00"/></svg>',
+  filterHistory: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#9FC3E8" stroke="#2F5F9A"/><path d="M12.5 10v5M10 12.5h5" stroke="#333"/></svg>',
+  filterOff: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 3h11l-4 5v5l-3-1.5V8z" fill="#E6E6E6" stroke="#8A8A8A"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5" stroke="#E53935" stroke-width="1.6"/></svg>',
+  refresh: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6" fill="none" stroke="#43A047" stroke-width="2"/><path d="M13.5 1.5v4h-4z" fill="#43A047"/></svg>',
+  outputList: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" fill="#fff" stroke="#6B6B6B"/><path d="M4.5 5.5h7M4.5 8h7M4.5 10.5h4" stroke="#8A8A8A"/><circle cx="12" cy="12" r="2.6" fill="#43A047"/></svg>',
+  hierarchy: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="6" height="4" fill="#F7D774" stroke="#C9A227"/><rect x="8.5" y="9.5" width="6" height="4" fill="#fff" stroke="#6B6B6B"/><path d="M4.5 6.5v5h4" fill="none" stroke="#6B6B6B"/></svg>',
+  help: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="#F0A830" stroke="#B26B00"/><text x="5.3" y="11.6" font-size="9.5" font-weight="bold" font-family="Tahoma" fill="#fff">?</text></svg>',
+  movements: '<svg width="16" height="16" viewBox="0 0 16 16"><text x=".5" y="7.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#2F5F9A">Дт</text><text x="6" y="14.5" font-size="6.5" font-weight="bold" font-family="Tahoma" fill="#B03030">Кт</text></svg>',
+  print: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="4.5" y="1.5" width="7" height="5" fill="#fff" stroke="#6B6B6B"/><rect x="1.5" y="6.5" width="13" height="6" fill="#B8C4D6" stroke="#55657F"/><rect x="4.5" y="10.5" width="7" height="4" fill="#fff" stroke="#6B6B6B"/></svg>',
+  run: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 2.5l9 5.5-9 5.5z" fill="#43A047" stroke="#2E7D32"/></svg>',
+  cfgMarker: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="3" fill="none" stroke="#333" stroke-dasharray="2 1.5"/></svg>',
   eye: sv(12, '<path d="M1 6c1.6-3 3.3-4.2 5-4.2S9.4 3 11 6c-1.6 3-3.3 4.2-5 4.2S2.6 9 1 6z" fill="#fff" stroke="#3A6EA5"/><circle cx="6" cy="6" r="1.8" fill="#1c5ccc"/>'),
   eyeOff: sv(12, '<path d="M1 6c1.6-3 3.3-4.2 5-4.2S9.4 3 11 6c-1.6 3-3.3 4.2-5 4.2S2.6 9 1 6z" fill="#f0f0f0" stroke="#999"/><path d="M2 10L10 2" stroke="#c33" stroke-width="1.6"/>'),
   layers: sv(12, '<path d="M6 1.5L11 4 6 6.5 1 4z" fill="#FFF3B8" stroke="#9A6B00"/><path d="M1 6.5L6 9l5-2.5M1 9l5 2.5L11 9" fill="none" stroke="#9A6B00"/>'),
   landscape: '<svg width="100%" height="100%" viewBox="0 0 80 80" preserveAspectRatio="none"><rect width="80" height="48" fill="#6396D6"/><ellipse cx="26" cy="20" rx="14" ry="7" fill="#DCE9FA" opacity=".85"/><ellipse cx="52" cy="24" rx="18" ry="8" fill="#EEF5FD" opacity=".9"/><rect y="48" width="80" height="32" fill="#5D8C2E"/><path d="M0 54 Q25 44 50 52 T80 50 L80 80 L0 80 Z" fill="#46731E"/><path d="M0 66 Q35 58 80 65 L80 80 L0 80 Z" fill="#76A841"/></svg>'
 };
-var AUTO_FORM_MID = ['copy', 'save', 'edit', 'more'];
 var AUTO_FORM = ['help'];
 var AUTO_FORM_EXT = ['act_menu', '|', 'help'];
-var AUTO_TABLE = ['add', 'copy', 'edit', 'del', '|', 'save', 'up', 'down', 'az', 'za', '|', 'flt', 'flt2', 'flt3', 'unf', '|', 'more'];
+// AutoFill sets by place of the bar (render-spec §13); '!' = unavailable button
+var AUTO_FORM_ITEM = ['act_menu', '|', 'save!', 'refresh!', 'copy', '|', 'goto', '|', 'help'];
+var AUTO_FORM_LIST = ['act_menu', 'add', 'addGroup', 'copy', 'edit', 'delete', '|', 'hierarchy', '|', 'filter', 'filterValue', 'filterOff', '|', 'refresh', '|', 'goto', '|', 'help'];
+var AUTO_TABLE = ['add', 'copy', 'edit', 'delete', '|', 'save', 'up', 'down', 'sortAz', 'sortZa', '|', 'filter', 'filterValue', 'filterHistory', 'filterOff', '|', 'outputList'];
+var AUTO_BOTTOM = ['ok', '|', 'write', '|', 'close'];
+var AUTO_BOTTOM_DOC = ['ok', '|', 'post', '|', 'write', '|', 'close'];
 var AUTO_META = {
   act_menu: { name: 'Действия', title: 'Действия', action: 'Standard:ActionsSubmenu', textSubmenu: true },
+  goto: { name: 'Перейти', title: 'Перейти', action: 'Standard:GoToSubmenu', textSubmenu: true },
+  ok: { name: 'ОК', title: 'OK', action: 'Standard:141', textBtn: true, okBtn: true },
+  write: { name: 'Записать', title: 'Записать', action: 'Standard:140', textBtn: true },
+  post: { name: 'Провести', title: 'Провести', action: 'Standard:142', textBtn: true },
+  close: { name: 'Закрыть', title: 'Закрыть', action: 'Standard:31', textBtn: true },
   add: { name: 'Добавить', title: 'Добавить строку (Ins)', action: 'Standard:AddRow' },
+  addGroup: { name: 'ДобавитьГруппу', title: 'Добавить группу (Ctrl+F9)', action: 'Standard:AddGroup' },
   copy: { name: 'Скопировать', title: 'Скопировать (F9)', action: 'Standard:CopyRow' },
   edit: { name: 'Изменить', title: 'Изменить текущий элемент (F2)', action: 'Standard:EditRow' },
-  del: { name: 'Удалить', title: 'Удалить текущий (Del)', action: 'Standard:DeleteRow' },
+  delete: { name: 'Удалить', title: 'Удалить текущий (Del)', action: 'Standard:DeleteRow' },
   save: { name: 'ЗакончитьРедактирование', title: 'Закончить редактирование строки', action: 'Standard:EndEdit' },
   up: { name: 'ПереместитьВверх', title: 'Переместить вверх', action: 'Standard:MoveUp' },
   down: { name: 'ПереместитьВниз', title: 'Переместить вниз', action: 'Standard:MoveDown' },
-  az: { name: 'СортироватьПоВозрастанию', title: 'Сортировать по возрастанию', action: 'Standard:SortAsc' },
-  za: { name: 'СортироватьПоУбыванию', title: 'Сортировать по убыванию', action: 'Standard:SortDesc' },
-  flt: { name: 'УстановитьОтбор', title: 'Установить отбор и сортировку списка…', action: 'Standard:SetFilter' },
-  flt2: { name: 'ОтборПоЗначению', title: 'Отбор по значению в текущей колонке', action: 'Standard:FilterByValue' },
-  flt3: { name: 'ИсторияОтборов', title: 'История отборов', action: 'Standard:FilterHistory' },
-  unf: { name: 'ОтключитьОтбор', title: 'Отключить отбор', action: 'Standard:ClearFilter' },
-  more: { name: 'ВывестиСписок', title: 'Вывести список…', action: 'Standard:OutputList' },
-  help: { name: 'Справка', title: 'Открыть справку (F1)', action: 'Standard:300' },
-  dots: { name: 'ПодменюКонфигуратора', title: 'Служебный маркер командной панели (Конфигуратор)', action: '' }
+  sortAz: { name: 'СортироватьПоВозрастанию', title: 'Сортировать по возрастанию', action: 'Standard:SortAsc' },
+  sortZa: { name: 'СортироватьПоУбыванию', title: 'Сортировать по убыванию', action: 'Standard:SortDesc' },
+  filter: { name: 'УстановитьОтбор', title: 'Установить отбор и сортировку списка…', action: 'Standard:SetFilter' },
+  filterValue: { name: 'ОтборПоЗначению', title: 'Отбор по значению в текущей колонке', action: 'Standard:FilterByValue' },
+  filterHistory: { name: 'ИсторияОтборов', title: 'История отборов', action: 'Standard:FilterHistory' },
+  filterOff: { name: 'ОтключитьОтбор', title: 'Отключить отбор', action: 'Standard:ClearFilter' },
+  outputList: { name: 'ВывестиСписок', title: 'Вывести список…', action: 'Standard:OutputList' },
+  hierarchy: { name: 'ИерархическийПросмотр', title: 'Иерархический просмотр', action: 'Standard:Hierarchy' },
+  refresh: { name: 'Обновить', title: 'Обновить (Ctrl+Shift+R)', action: 'Standard:146' },
+  help: { name: 'Справка', title: 'Открыть справку (F1)', action: 'Standard:300' }
 };
 var STD_TABLE_SKIP = { 'Standard:53': 1, 'Standard:91': 1, 'Standard:93': 1, 'Standard:97': 1 };
-var STD_ICON = { 'Standard:147': 'mag', 'Standard:146': 'swap', 'Standard:145': 'copy', 'Standard:300': 'help' };
+var STD_ICON = { 'Standard:147': 'open', 'Standard:146': 'refresh', 'Standard:145': 'copy', 'Standard:300': 'help' };
 var STD_NAMES = {
   'Standard:31': 'Закрыть',
   'Standard:140': 'Записать',
@@ -114,7 +144,7 @@ function parse(text) {
       k: k, tag: e.tagName, e: e, name: e.getAttribute('name') || '', id: e.getAttribute('id') || (isPage ? 'page-' + pi : ''), pi: pi,
       showTabs: st ? (st.getAttribute('code') || '0') : '', parent: parent, depth: depth, pd: pd, l: l, t: t, w: num(e, 'Width'), h: num(e, 'Height'), z: num(e, 'ZOrder'),
       al: ax, at: ay, ax: ax + pd, ay: ay + pd, ps: k, tabless: false,
-      visible: txt(e, 'Visible') !== 'false', caps: loc(e, isPage ? 'Title' : 'Caption'),
+      visible: txt(e, 'Visible') !== 'false', pr: elProps(e), caps: loc(e, isPage ? 'Title' : 'Caption'),
       dp: aid || (dp ? (dp.textContent || '').trim() : ''), dpName: (dp && (dp.textContent || '').trim()) || attrs[aid] || '',
       cols: kids(kid(e, 'Columns'), 'Column').map(function (c2) {
         var colk = Cols.length, cdp = kid(c2, 'DataPath'), caid = cdp ? (cdp.getAttribute('attributeId') || '') : '';
@@ -150,8 +180,16 @@ function parse(text) {
   C.forEach(function (c) {
     if (c.tag !== 'Panel') return;
     var pgs = (kidsOf[c.k] || []).filter(function (x) { return x.tag === 'Page'; });
-    if (pgs.length > 1 && pgs[0].t <= 4 && pgs[0].l <= 4) { c.tabless = true; tablessPanels.push(c); }
+    if (pgs.length > 1 && tabStrip(c.w, c.h, pgs[0], c.showTabs).mode === 'none') { c.tabless = true; tablessPanels.push(c); }
   });
+  // first radio button of a group (same parent and DataPath): the sample value of the designer view (render-spec §7)
+  var radioFirst = {};
+  C.forEach(function (c) {
+    if (c.tag !== 'RadioButton' || !c.dp || !kid(c.e, 'SelectionValue')) return;
+    var key = c.parent + '|' + c.dp, f = radioFirst[key], ord = num(c.e, 'TabOrder') || c.z;
+    if (!f || ord < f.ord) radioFirst[key] = { c: c, ord: ord };
+  });
+  Object.keys(radioFirst).forEach(function (key) { radioFirst[key].c.radioFirst = true; });
   Object.keys(kidsOf).forEach(function (pk) {
     var sibs = ordered(kidsOf[pk]).filter(function (c) { return c.tag !== 'Page' && c.w > 0 && c.h > 0; });
     for (var i = 0; i < sibs.length; i++) {
@@ -186,6 +224,7 @@ function parse(text) {
         kind: b.getAttribute('kind') || 'Action', checked: b.getAttribute('checked') === 'true',
         action: b.getAttribute('action') || '', actionKind: b.getAttribute('actionKind') || '',
         rep: b.getAttribute('representation') || 'Auto', pic: b.getAttribute('hasPicture') === 'true',
+        dis: b.getAttribute('enabled') === 'false' || txt(b, 'Enabled') === 'false', def: txt(b, 'DefaultButton') === 'true',
         caps: loc(b, 'Caption'), tips: loc(b, 'Tooltip'), kids: [], xml: fmt(b, 0)
       };
       B.push(item);
@@ -198,19 +237,27 @@ function parse(text) {
     var p = C[c.parent];
     return !!(p && p.tag === 'Page' && p.parent < 0 && c.w >= p.w - 4 && (c.t <= 4 || c.t + c.h >= p.h - 4));
   }
+  var formH = num(root, 'Height'), isDoc = /DocumentObject|DocumentList|ДокументОбъект|ДокументСписок/.test(text);
+  // a list form: a table bound to the main attribute itself (not to a tabular part "Объект.Часть")
+  var isListForm = !!mainAttrId && C.some(function (t) { return t.tag === 'Table' && t.dp === mainAttrId && t.dpName.indexOf('.') < 0; });
   C.forEach(function (c) {
     if (c.tag === 'CommandBar') {
       btnsOf[c.k] = walkBtns(c.e, c.k, -1, 1);
-      var auto = txt(c.e, 'AutoFill') === 'true', formBar = isFormLevelBar(c);
-      var autoCodes = formBar ? (isExt && !btnsOf[c.k].length ? AUTO_FORM_EXT : AUTO_FORM) : AUTO_TABLE;
+      var auto = txt(c.e, 'AutoFill') === 'true', formBar = isFormLevelBar(c), noOwn = !btnsOf[c.k].length, autoCodes;
+      if (!formBar) autoCodes = AUTO_TABLE;
+      else if (txt(c.e, 'HorizontalAlign') === 'Right' && c.t + c.h / 2 > (c.parent >= 0 ? C[c.parent].h : formH) / 2) autoCodes = noOwn ? (isDoc ? AUTO_BOTTOM_DOC : AUTO_BOTTOM) : [];
+      else if (!noOwn) autoCodes = AUTO_FORM;
+      else autoCodes = isExt ? AUTO_FORM_EXT : isListForm ? AUTO_FORM_LIST : AUTO_FORM_ITEM;
       autoBtnsOf[c.k] = auto ? autoCodes.map(function (code2) {
         if (code2 === '|') return { sep: true };
+        var dis = code2.charAt(code2.length - 1) === '!';
+        if (dis) code2 = code2.slice(0, -1);
         var am = AUTO_META[code2] || { name: code2, title: code2, action: '' };
         var bk = B.length;
         var item = {
-          bk: bk, ck: c.k, parentBk: -1, depth: 1, auto: true, icoKey: code2, textSubmenu: !!am.textSubmenu,
+          bk: bk, ck: c.k, parentBk: -1, depth: 1, auto: true, icoKey: code2, textSubmenu: !!am.textSubmenu, textBtn: !!am.textBtn, okBtn: !!am.okBtn, dis: dis,
           name: am.name, id: '', kind: am.textSubmenu ? 'Submenu' : 'Action', checked: false,
-          action: am.action, actionKind: 'AutoFill', rep: am.textSubmenu ? 'Text' : 'Picture', pic: !am.textSubmenu,
+          action: am.action, actionKind: 'AutoFill', rep: am.textSubmenu || am.textBtn ? 'Text' : 'Picture', pic: !am.textSubmenu && !am.textBtn,
           caps: { ru: am.title }, tips: { ru: am.title }, kids: [], xml: '<!-- Стандартная кнопка автозаполнения (' + am.name + ') -->'
         };
         B.push(item);
@@ -254,56 +301,180 @@ function isPageChainActive(c, R) {
   return true;
 }
 function pos(c) { return 'left:' + c.l + 'px;top:' + c.t + 'px;width:' + c.w + 'px;height:' + c.h + 'px'; }
-function colorOf(e, tag) {
-  var n = kid(e, tag);
-  return n ? (n.getAttribute('value') || '') : '';
+// ---- shared look helpers (render-spec §1): one translation of Font / Color / Border / Picture / alignment / Tooltip
+function hexOf(v) {
+  v = String(v || '').trim();
+  var m = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i.exec(v) || /^(\d+)\s*,\s*(\d+)\s*,\s*(\d+)$/.exec(v);
+  if (m) return '#' + [m[1], m[2], m[3]].map(function (x) { return ('0' + Math.min(255, +x).toString(16)).slice(-2); }).join('').toUpperCase();
+  return v;
 }
-function fontBold(e) { var f = kid(e, 'Font'); return !!f && f.getAttribute('bold') === 'true'; }
+// colour of <tag kind="rgb|style|auto" value="#RRGGBB"/>: rgb -> value; style -> value when present (without value: absent); auto/unknown -> absent
+function colorCss(e, tag) {
+  var n = kid(e, tag);
+  if (!n) return '';
+  var kind = n.getAttribute('kind') || '', v = n.getAttribute('value') || '';
+  if (!v || kind === 'auto' || (kind && kind !== 'rgb' && kind !== 'style')) return '';
+  return hexOf(v);
+}
+var colorOf = colorCss;
+// <Font face bold italic underline strikeout size|height scale/> -> {cls: ' b f-i f-u f-s', st: ';font-family:..;font-size:..', bold: true|false|null}
+function fontSpec(e, tag) {
+  var f = kid(e, tag || 'Font'), r = { cls: '', st: '', bold: null }, face, size, scale, pt;
+  if (!f) return r;
+  var b = f.getAttribute('bold');
+  if (b === 'true') { r.cls += ' b'; r.bold = true; } else if (b === 'false') { r.st += ';font-weight:normal'; r.bold = false; }
+  if (f.getAttribute('italic') === 'true') r.cls += ' f-i';
+  if (f.getAttribute('underline') === 'true') r.cls += ' f-u';
+  if (f.getAttribute('strikeout') === 'true') r.cls += ' f-s';
+  face = f.getAttribute('face');
+  if (face) r.st += ";font-family:'" + face.replace(/['"\;<>{}]/g, '') + "',Tahoma,Arial,sans-serif";
+  size = parseFloat(f.getAttribute('size') || f.getAttribute('height')); scale = parseFloat(f.getAttribute('scale'));
+  pt = size > 0 ? size : 0;
+  if (scale > 0 && scale !== 100) r.st += ';font-size:calc(' + (pt || 8) + 'pt * ' + scale + ' / 100)';
+  else if (pt) r.st += ';font-size:' + pt + 'pt';
+  return r;
+}
+function styleAttr(s) { return s ? ' style="' + esc(s.replace(/^;/, '')) + '"' : ''; }
+function colorStyle(prop, v) { return v ? ';' + prop + ':' + v : ''; }
+// BorderStyle: <BorderStyle code="4">SingleLine</BorderStyle> (or type="…") -> ' bd-<type>'
+function borderType(e) {
+  var bs = kid(e, 'BorderStyle'), t, cd;
+  if (!bs) return '';
+  t = (bs.textContent || '').trim() || bs.getAttribute('type') || '';
+  if (!t) { cd = bs.getAttribute('code'); t = cd === '0' ? 'None' : cd === '4' ? 'SingleLine' : cd === '6' ? 'Frame' : ''; }
+  return /^[A-Za-z0-9]+$/.test(t) ? t : '';
+}
+function alignCls(e, tag, pre) {
+  var v = txt(e, tag);
+  return /^(Left|Center|Right|Justify|Top|Bottom)$/.test(v) && (pre === 'ha' ? v !== 'Top' && v !== 'Bottom' : v !== 'Left' && v !== 'Right' && v !== 'Justify') ? ' ' + pre + '-' + v : '';
+}
+function hasPicture(e, tag) {
+  var p = kid(e, tag || 'Picture');
+  return !!p && (!!p.getAttribute('refGuid') || !!p.getAttribute('kind') || (p.textContent || '').trim() === 'true');
+}
+function pic16(name) { return '<span class="pic16">' + (name === 'НадписьАвтор' ? ICON.user : ICON.picture) + '</span>'; }
+// properties common to every element, read once in parse()
+function elProps(e) {
+  return { en: txt(e, 'Enabled') !== 'false', ro: txt(e, 'ReadOnly') === 'true', tr: txt(e, 'TransparentBack') === 'true',
+    bd: borderType(e), hasTip: !!kid(e, 'Tooltip'), tips: loc(e, 'Tooltip') };
+}
+// title= of the root: Tooltip text of the selected language (name stays in the inspector); without Tooltip the element name
+function titleOf(c, R) { return c.pr && c.pr.hasTip ? T(c.pr.tips, R.lang) : c.name; }
+var mctx = null;
+function textW(s, font) {
+  try { if (!mctx) mctx = document.createElement('canvas').getContext('2d'); mctx.font = font; return mctx.measureText(s).width; } catch (err) { return String(s).length * 6; }
+}
+function pic12() { return ICON.picture.replace('width="16" height="16"', 'width="12" height="12"'); }
 function dateText(vt) {
   if (!vt) return '';
   if (vt.kind === 'DateTime') return ' . .   : :';
   if (vt.kind === 'Date') return ' . .';
+  if (vt.kind === 'Time') return '  : :';
   return '';
 }
+function numText(d) { return d > 0 ? '0,' + new Array(d + 1).join('0') : '0'; }
+// designer sample of an input field value: Mask, Format, ValueType (runtime: always empty)
+function sampleOf(e, vt) {
+  var mask = txt(e, 'Mask'), f = kid(e, 'Format'), ft = f ? ((kid(f, 'Item') || f).textContent || '') : '', m, r = { val: '', num: false };
+  if (txt(e, 'PasswordMode') === 'true') { r.val = '*****'; return r; }
+  if (mask) { r.val = mask.replace(/[9#NUX!@h]/g, ' '); return r; }
+  if ((m = /ЧДЦ\s*=\s*(\d+)/.exec(ft))) { r.val = numText(+m[1]); r.num = true; return r; }
+  if (/ДЛФ\s*=\s*T\b/.test(ft)) { r.val = '  : :'; return r; }
+  if (/ДЛФ\s*=\s*DT|HH|mm/.test(ft)) { r.val = ' . .   : :'; return r; }
+  if (/ДФ\s*=|ДЛФ\s*=/.test(ft)) { r.val = ' . .'; return r; }
+  if (vt && vt.kind === 'Number') { r.num = true; r.val = vt.fd === null || vt.fd === undefined ? '0,00' : numText(parseInt(vt.fd, 10) || 0); return r; }
+  r.val = dateText(vt);
+  return r;
+}
 
+// InputField / ChoiceField (render-spec §3, §18)
 function inputField(c, R) {
-  var e = c.e, des = R.mode === 'designer', vt = vtype(e), tb = [], val = '', cls = 'val';
-  if (des) {
-    if (vt && vt.kind === 'Number') { cls += ' num'; val = String(vt.fd) === '0' ? '0' : '0,00'; } else val = dateText(vt);
-  } else { cls += ' ph'; val = c.dpName || c.dp; }
-  if (kid(e, 'ChoiceButton')) {
-    if (txt(e, 'ChoiceButton') === 'true') {
-      if (vt && vt.composite) tb.push('<span class="tb bold">T</span>');
-      else if (vt && (vt.kind === 'DateTime' || vt.kind === 'Date')) tb.push('<span class="tb">' + ICON.cal + '</span>');
-      else if (vt && vt.kind === 'Number') tb.push('<span class="tb">' + ICON.calc + '</span>');
-      else tb.push('<span class="tb">...</span>');
+  var e = c.e, p = c.pr, des = R.mode === 'designer', vt = vtype(e), choice = c.tag === 'ChoiceField', fs = fontSpec(e, 'Font');
+  var smp = !choice && des ? sampleOf(e, vt) : { val: '', num: false };
+  var vcls = 'val' + (smp.num ? ' num' : '') + (txt(e, 'MultiLine') === 'true' ? ' ml' : '') + (!choice && des && txt(e, 'PasswordMode') === 'true' ? ' pw' : '') +
+    alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + fs.cls;
+  var vst = colorStyle('color', colorCss(e, 'FieldTextColor') || colorCss(e, 'TextColor')) + fs.st;
+  var tcls = (p.tr ? ' tr-bg' : '') + (colorCss(e, 'ButtonBackColor') ? ' colored' : '');
+  var tst = colorStyle('--tb-bg', colorCss(e, 'ButtonBackColor')) + colorStyle('color', colorCss(e, 'ButtonTextColor'));
+  var tb = [], tbAttr = styleAttr(tst);
+  function add(extra, svg) { tb.push('<span class="tb' + extra + tcls + '"' + tbAttr + '>' + svg + '</span>'); }
+  var cbTag = kid(e, 'ChoiceButton'), showChoice;
+  if (choice) showChoice = !cbTag || txt(e, 'ChoiceButton') === 'true';
+  else if (cbTag) showChoice = txt(e, 'ChoiceButton') === 'true';
+  else showChoice = !!vt && (vt.kind === 'Ref' || vt.kind === 'Date' || vt.kind === 'DateTime' || vt.kind === 'Number');
+  if (choice) {
+    if (showChoice) add(' dd', kid(e, 'ChoiceButtonPicture') ? pic12() : ICON.drop);
+  } else {
+    if (txt(e, 'DropListButton') === 'true') add(' dd', ICON.drop);
+    if (showChoice) {
+      add('', kid(e, 'ChoiceButtonPicture') ? pic12() : vt && vt.composite ? ICON.type : vt && (vt.kind === 'DateTime' || vt.kind === 'Date') ? ICON.calendar : vt && vt.kind === 'Number' ? ICON.calc : ICON.choice);
     }
-    if (txt(e, 'ClearButton') === 'true') tb.push('<span class="tb">×</span>');
-    if (txt(e, 'OpenButton') === 'true') tb.push('<span class="tb">' + ICON.mag + '</span>');
-  } else tb.push('<span class="tb">...</span>');
+  }
+  if (txt(e, 'ClearButton') === 'true') add('', ICON.clear);
+  if (txt(e, 'OpenButton') === 'true') add('', ICON.open);
+  if (txt(e, 'SpinButton') === 'true') add(' spin', '<i>▲</i><i>▼</i>');
+  if (tb.length && c.w < tb.length * 16 + 12) tb = [];
+  var vs = txt(e, 'VerticalScrollBar');
+  var vsb = vs === 'UseAlways' || vs === 'true' ? '<span class="vsb"><span class="sbb">' + ICON.arrowUp + '</span><span class="sbb">' + ICON.arrowDown + '</span></span>' : '';
   var mark = txt(e, 'AutoMarkIncomplete') === 'true' ? '<i class="mark"></i>' : '';
-  return '<span class="' + cls + '">' + esc(val) + mark + '</span>' + tb.join('');
+  var back = colorCss(e, 'FieldBackColor') || colorCss(e, 'BackColor'), bc = colorCss(e, 'BorderColor');
+  return {
+    cls: (p.ro && p.en ? ' ro' : '') + (p.bd ? ' bd-' + p.bd : ''), st: colorStyle('background', back) + colorStyle('border-color', bc),
+    inner: (hasPicture(e) ? pic16(c.name) : '') + '<span class="' + vcls + '"' + styleAttr(vst) + '>' + esc(smp.val) + mark + '</span>' + tb.join('') + vsb
+  };
 }
 
+// LabelDecoration / small PictureDecoration (render-spec §4)
 function label(c, R, cls, st) {
-  var e = c.e, des = R.mode === 'designer', cap = T(c.caps, R.lang), s = st;
+  var e = c.e, p = c.pr, des = R.mode === 'designer', cap = T(c.caps, R.lang), s = st, fs = fontSpec(e, 'Font');
   if (!cap && des && c.tag === 'LabelDecoration') cap = '<<' + c.name + '>>';
-  var color = colorOf(e, 'TextColor'), back = colorOf(e, 'BackColor'), al = txt(e, 'HorizontalAlign');
-  if (color) s += ';color:' + color;
+  var back = colorCss(e, 'BackColor'), vAl = txt(e, 'VerticalAlign'), link = txt(e, 'Hyperlink') === 'true', bc = colorCss(e, 'BorderColor');
+  var ml = vAl === 'Top' || (!vAl && c.h >= 28), pl = txt(e, 'LabelPictureLocation');
   if (back) s += ';background:' + back; else if (des) s += ';background:var(--form-bg)';
-  var link = txt(e, 'Hyperlink') === 'true';
-  if (link) s += ';color:#0054E3;text-decoration:underline';
-  if (al === 'Center') s += ';justify-content:center;text-align:center';
-  else if (al === 'Right') s += ';justify-content:flex-end;text-align:right';
-  var pic = txt(e, 'Picture') === 'true' ? '<span class="ic">' + ICON.user + '</span>' : '';
-  return { cls: cls + (link ? ' link' : ''), style: s, inner: pic + '<span class="cap' + (fontBold(e) ? ' b' : '') + '" data-k="' + c.k + '">' + esc(cap) + '</span>' };
+  s += colorStyle('border-color', bc);
+  cls += (link ? ' link' : '') + alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + (ml ? ' ml' : '') +
+    (/^(Right|Top|Bottom|Center)$/.test(pl) ? ' pl-' + pl : '') + (p.tr ? ' tr-bg' : '') + (p.bd ? ' bd-' + p.bd : '');
+  var cst = colorStyle('color', colorCss(e, 'TextColor')) + fs.st;
+  return { cls: cls, style: s, inner: (hasPicture(e) ? pic16(c.name) : '') + '<span class="cap' + fs.cls + '" data-k="' + c.k + '"' + styleAttr(cst) + '>' + esc(cap) + '</span>' };
 }
 
+// Button (render-spec §5)
+function buttonBox(c, R) {
+  var e = c.e, fs = fontSpec(e, 'Font'), cap = T(c.caps, R.lang), back = colorCss(e, 'ButtonBackColor'), bc = colorCss(e, 'BorderColor');
+  var mn = /^(Use|UseExtra|true)$/.test(txt(e, 'MenuMode')) ? '<span class="mn">' + ICON.drop + '</span>' : '';
+  var cst = colorStyle('color', colorCss(e, 'ButtonTextColor')) + fs.st;
+  return {
+    cls: (txt(e, 'DefaultButton') === 'true' ? ' def' : '') + (txt(e, 'MultiLine') === 'true' ? ' ml' : '') + (txt(e, 'PictureLocation') === 'Right' ? ' pl-Right' : '') +
+      alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + (back ? ' colored' : ''),
+    st: colorStyle('--btn-bg', back) + colorStyle('border-color', bc),
+    inner: (hasPicture(e) ? pic16(c.name) : '') + (cap && c.w >= 24 ? '<span class="cap' + fs.cls + '" data-k="' + c.k + '"' + styleAttr(cst) + '>' + esc(cap) + '</span>' : '') + mn
+  };
+}
+
+// CheckBox / RadioButton (render-spec §6, §7)
+function checkBox(c, R) {
+  var e = c.e, p = c.pr, rad = c.tag === 'RadioButton', fs = fontSpec(e, 'Font'), tl = txt(e, 'TitleLocation');
+  var on = rad && R.mode === 'designer' && !!c.radioFirst;
+  var mix = !rad && txt(e, 'ThreeState') === 'true';
+  var bst = colorStyle('border-color', colorCss(e, 'BorderColor')) + colorStyle('background', colorCss(e, 'FieldBackColor')) + colorStyle('--check-ink', colorCss(e, 'FieldTextColor'));
+  var cst = colorStyle('color', colorCss(e, 'TextColor')) + fs.st, cap = T(c.caps, R.lang);
+  return {
+    cls: (tl === 'TitleLeft' || tl === 'Left' ? ' tl-Left' : '') + alignCls(e, 'HorizontalAlign', 'ha') + alignCls(e, 'VerticalAlign', 'va') + (p.tr ? ' tr-bg' : '') + (p.bd ? ' bd-' + p.bd : ''),
+    st: colorStyle('background', colorCss(e, 'BackColor')),
+    inner: '<span class="' + (rad ? 'rad' : 'box') + (on ? ' on' : '') + (mix ? ' mix' : '') + '"' + styleAttr(bst) + '></span>' +
+      (cap ? '<span class="cap' + fs.cls + '" data-k="' + c.k + '"' + styleAttr(cst) + '>' + esc(cap) + '</span>' : '')
+  };
+}
+
+// UsualGroup (render-spec §12)
 function groupBox(c, R, cap) {
-  var bs = txt(c.e, 'BorderStyle') || (c.h > 20 ? 'Frame' : 'SingleLine');
-  if (bs === 'None') return { cls: ' bs-None', inner: '' };
-  if (bs !== 'Frame' && bs !== 'SingleLine') bs = c.h > 20 ? 'Frame' : 'SingleLine';
-  return { cls: ' bs-' + bs, inner: '<i class="gf"></i>' + (cap ? '<span class="gt"><span class="cap" data-k="' + c.k + '">' + esc(cap) + '</span></span>' : '') };
+  var e = c.e, p = c.pr, bs = p.bd || (c.h > 20 ? 'Frame' : 'SingleLine'), fs = fontSpec(e, 'Font');
+  var back = colorCss(e, 'BackColor'), bc = colorCss(e, 'BorderColor');
+  if (bs !== 'None' && bs !== 'Frame' && bs !== 'SingleLine') bs = c.h > 20 ? 'Frame' : 'SingleLine';
+  var gst = colorStyle('color', !p.en ? 'var(--text-dis)' : colorCss(e, 'TextColor')) + fs.st;
+  var gt = cap ? '<span class="gt' + (p.tr ? ' tr-bg' : '') + fs.cls + '"' + styleAttr(gst) + '><span class="cap" data-k="' + c.k + '">' + esc(cap) + '</span></span>' : '';
+  if (bs === 'None') return { cls: ' bs-None', st: colorStyle('background', back), inner: gt };
+  return { cls: ' bs-' + bs, st: '', inner: '<i class="gf"' + styleAttr(colorStyle('border-color', bc) + colorStyle('background', back)) + '></i>' + gt };
 }
 
 function tableBox(c, R) {
@@ -337,15 +508,18 @@ function btns(e) {
 function btnIcon(b, cap) {
   if (b.icoKey && ICON[b.icoKey]) return ICON[b.icoKey];
   if (STD_ICON[b.action]) return ICON[STD_ICON[b.action]];
-  if (b.actionKind === 'OpenMovements') return ICON.dk;
+  if (b.actionKind === 'OpenMovements') return ICON.movements;
   var s = (b.name + ' ' + cap).toLowerCase();
-  if (s.indexOf('провод') >= 0 && s.indexOf('журнал') >= 0) return ICON.tt;
-  if (s.indexOf('провод') >= 0 || s.indexOf('результат') >= 0 || s.indexOf('бухгалтер') >= 0) return ICON.dk;
-  if (s.indexOf('пересчет') >= 0) return ICON.calcb;
+  if (s.indexOf('провод') >= 0 || s.indexOf('результат') >= 0 || s.indexOf('бухгалтер') >= 0) return ICON.movements;
   if (s.indexOf('справка') >= 0) return ICON.help;
-  return ICON.pic;
+  return ICON.picture;
 }
-function cbtn(b, R) {
+// x: shared CommandBar look {dis, fs, col, back}; applied to every button of the bar (render-spec §13, §14)
+function cbtnStyle(x, b) {
+  return styleAttr(colorStyle('background', x.back) + colorStyle('color', x.col));
+}
+function cbtn(b, R, x) {
+  x = x || { fs: { cls: '', st: '' } };
   if (b.kind === 'Separator') return '<span class="csep" data-b="' + (b.bk !== undefined ? b.bk : '') + '" title="Разделитель: ' + esc(b.name) + '"></span>';
   var cap = T(b.caps, R.lang);
   if (!cap && b.kind === 'Submenu') {
@@ -354,30 +528,32 @@ function cbtn(b, R) {
   }
   if (!cap) cap = b.name;
   var tip = T(b.tips, R.lang) || cap || b.name;
-  var stdIco = STD_ICON[b.action];
-  var ico = '<span class="ic">' + btnIcon(b, cap) + '</span>', h = '';
+  var stdIco = STD_ICON[b.action], h = '';
   var picture = !!stdIco || b.rep === 'Picture' || b.rep === 'PictureAndText' || (b.rep === 'Auto' && b.pic);
   var text = !stdIco && (b.rep === 'Text' || b.rep === 'PictureAndText' || (b.rep === 'Auto' && !b.pic));
-  if (picture) h += ico;
-  if (text) h += '<span class="cap">' + esc(cap) + '</span>';
-  if (b.kind === 'Submenu') h += '<span class="ar">▼</span>';
-  var ok = b.action === 'Standard:141' || /(ОК|OK)$/i.test(b.name);
+  if (picture) h += '<span class="ic">' + btnIcon(b, cap) + '</span>';
+  if (text) h += '<span class="cap' + x.fs.cls + '"' + styleAttr(x.fs.st) + '>' + esc(cap) + '</span>';
+  if (b.kind === 'Submenu') h += '<span class="ar">' + ICON.drop + '</span>';
+  if (!h) return '';
+  var ok = b.action === 'Standard:141' || b.def || /(ОК|OK)$/i.test(b.name);
   var bAttr = b.bk !== undefined ? ' id="b' + b.bk + '" data-b="' + b.bk + '"' : '';
-  return '<span class="cbtn' + (ok ? ' ok' : '') + (b.checked ? ' on' : '') + '"' + bAttr + ' title="' + esc(tip + (b.action ? ' [' + b.action + ']' : '')) + '">' + h + '</span>';
+  return '<span class="cbtn' + (ok ? ' ok' : '') + (b.checked ? ' on' : '') + (x.dis || b.dis ? ' dis' : '') + '"' + bAttr + cbtnStyle(x, b) + ' title="' + esc(tip + (b.action ? ' [' + b.action + ']' : '')) + '">' + h + '</span>';
 }
-function autoItems(list) {
+function autoItems(list, x) {
+  x = x || { fs: { cls: '', st: '' } };
   return (list || []).map(function (b) {
     if (b.sep) return '<span class="csep"></span>';
-    if (b.textSubmenu) {
-      return '<span class="cbtn" id="b' + b.bk + '" data-b="' + b.bk + '" title="' + esc((T(b.caps, 'ru') || b.name) + ' [автозаполнение]') + '"><span class="cap">' + esc(T(b.caps, 'ru') || b.name) + '</span><span class="ar">▼</span></span>';
-    }
-    return '<span class="cbtn" id="b' + b.bk + '" data-b="' + b.bk + '" title="' + esc((T(b.caps, 'ru') || b.name) + ' [автозаполнение]') + '"><span class="ic">' + ICON[b.icoKey] + '</span></span>';
+    var at = ' id="b' + b.bk + '" data-b="' + b.bk + '"' + cbtnStyle(x, b) + ' title="' + esc((T(b.caps, 'ru') || b.name) + ' [автозаполнение]') + '"';
+    var cc = 'cbtn' + (b.okBtn ? ' ok' : '') + (x.dis || b.dis ? ' dis' : '');
+    if (b.textSubmenu) return '<span class="' + cc + '"' + at + '><span class="cap' + x.fs.cls + '"' + styleAttr(x.fs.st) + '>' + esc(T(b.caps, 'ru') || b.name) + '</span><span class="ar">' + ICON.drop + '</span></span>';
+    if (b.textBtn) return '<span class="' + cc + '"' + at + '><span class="cap' + x.fs.cls + '"' + styleAttr(x.fs.st) + '>' + esc(T(b.caps, 'ru') || b.name) + '</span></span>';
+    return '<span class="' + cc + '"' + at + '><span class="ic">' + ICON[b.icoKey] + '</span></span>';
   }).join('');
 }
 function commandBar(c, R) {
-  var auto = txt(c.e, 'AutoFill') === 'true', p = c.parent >= 0 && R && R.m ? R.m.C[c.parent] : null;
-  var formBar = c.parent < 0 || !!(p && p.tag === 'Page' && p.parent < 0 && c.w >= p.w - 4 && (c.t <= 4 || c.t + c.h >= p.h - 4));
-  var raw = (R && R.m && R.m.btnsOf && R.m.btnsOf[c.k]) ? R.m.btnsOf[c.k].slice() : btns(c.e);
+  var e = c.e, p = c.pr, auto = txt(e, 'AutoFill') === 'true', par = c.parent >= 0 && R && R.m ? R.m.C[c.parent] : null;
+  var formBar = c.parent < 0 || !!(par && par.tag === 'Page' && par.parent < 0 && c.w >= par.w - 4 && (c.t <= 4 || c.t + c.h >= par.h - 4));
+  var raw = (R && R.m && R.m.btnsOf && R.m.btnsOf[c.k]) ? R.m.btnsOf[c.k].slice() : btns(e);
   if (auto && !formBar) {
     raw = raw.filter(function (b) {
       if (STD_TABLE_SKIP[b.action]) return false;
@@ -386,26 +562,61 @@ function commandBar(c, R) {
       return true;
     });
   }
-  var own = raw.map(function (b) { return cbtn(b, R); }).join('');
+  var x = { dis: !p.en, fs: fontSpec(e, 'Font'), col: colorCss(e, 'ButtonTextColor'), back: colorCss(e, 'ButtonBackColor') };
+  var own = raw.map(function (b) { return cbtn(b, R, x); }).join('');
   var autoList = (R && R.m && R.m.autoBtnsOf && R.m.autoBtnsOf[c.k]) || [];
-  var a = auto ? autoItems(autoList) : '';
-  var dots = R.mode === 'designer' ? '<span class="cbtn"><span class="ic">' + ICON.dots + '</span></span>' : '';
-  var ph = p ? p.h : R.m.height;
-  var cls = (c.t + c.h / 2 > ph / 2 && formBar ? ' bottom' : '') + (txt(c.e, 'HorizontalAlign') === 'Right' ? ' right' : '') + (c.h > 32 ? ' tall' : '');
-  var inner = formBar ? (txt(c.e, 'HorizontalAlign') === 'Right' ? dots + own : (own ? own + (a ? '<span class="csep"></span>' + a : '') : a) + dots) : a + own + dots;
-  return { cls: cls, inner: inner };
+  var a = auto ? autoItems(autoList, x) : '';
+  var dots = R.mode === 'designer' ? '<span class="cbtn"><span class="ic">' + ICON.cfgMarker + '</span></span>' : '';
+  var ph = par ? par.h : R.m.height, ha = txt(e, 'HorizontalAlign'), right = ha === 'Right';
+  var cls = (c.t + c.h / 2 > ph / 2 && formBar ? ' bottom' : '') + (right ? ' right' : '') + (ha === 'Center' ? ' center' : '') + (c.h > 32 ? ' tall' : '') +
+    (txt(e, 'Orientation') === 'Vertical' ? ' vert' : '') + (p.tr ? ' tr-bg' : '') + (p.bd ? ' bd-' + p.bd : '');
+  var inner = formBar ? (right ? dots + own + (own ? '' : a) : (own ? own + (a ? '<span class="csep"></span>' + a : '') : a) + dots) : a + own + dots;
+  return { cls: cls, st: colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')), inner: inner };
 }
 
+// Panel tabs (render-spec §10, §11): the strip position follows the geometry of the first page (the ShowTabs codes of the corpus do not follow the
+// platform enum order), ShowTabs=0 means no tabs; tabs are never squeezed, the ones that do not fit are cut by the strip and arrows are drawn.
+function tabStrip(pw, ph, pg, st) {
+  if (st === '0') return { mode: 'none', size: 0 };
+  if (pg.t > 4 && pg.t >= pg.l) return { mode: 'top', size: pg.t };
+  if (pg.l > 4) return { mode: 'left', size: pg.l };
+  if (st) {
+    var bh = ph - (pg.t + pg.h), rw = pw - (pg.l + pg.w);
+    if (bh > 4 && bh >= rw) return { mode: 'bottom', size: bh };
+    if (rw > 4) return { mode: 'right', size: rw };
+  }
+  return { mode: 'none', size: 0 };
+}
+function panelStrip(panel, pages, R) {
+  return tabStrip(panel.k >= 0 ? panel.w : R.m.width, panel.k >= 0 ? panel.h : R.m.height, pages[0], panel.k >= 0 ? panel.showTabs : R.m.showTabs);
+}
 function tabsHtml(panel, pages, first, R) {
-  var top = pages[0].t, left = pages[0].l, cls, st;
-  if (top >= left && top > 4) { cls = 'ptabs'; st = 'height:' + top + 'px'; }
-  else if (left > top && left > 4) { cls = 'ptabs vtabs'; st = 'width:' + left + 'px'; }
-  else return '';
-  return '<div class="' + cls + '" style="' + st + '">' + pages.map(function (p) {
-    var cap = T(p.caps, R.lang) || p.name;
-    var shrink = cap.length <= 7 ? ' style="flex-shrink:0"' : (pages.length >= 7 ? ' style="max-width:92px"' : '');
-    return '<span class="ptab' + (p.k === first ? ' on' : '') + (p.visible ? '' : ' hid') + '"' + shrink + ' data-k="' + p.k + '" data-p="' + panel.k + '">' + esc(cap) + '</span>';
-  }).join('') + '</div>';
+  var ts = panelStrip(panel, pages, R), e = panel.e, pfs = fontSpec(e, 'Font'), tc = colorCss(e, 'TextColor'), bc = colorCss(e, 'BorderColor');
+  var pdis = !!(panel.pr && !panel.pr.en), cls, st, total = 0, pw = panel.k >= 0 ? panel.w : R.m.width;
+  if (ts.mode === 'none') return '';
+  var multi = ts.mode === 'top' && ts.size >= 34;
+  if (ts.mode === 'top') { cls = 'ptabs' + (multi ? ' multi' : ''); st = 'height:' + ts.size + 'px'; }
+  else if (ts.mode === 'bottom') { cls = 'ptabs btabs'; st = 'height:' + ts.size + 'px'; }
+  else if (ts.mode === 'left') { cls = 'ptabs vtabs'; st = 'width:' + ts.size + 'px'; }
+  else { cls = 'ptabs vtabs rtabs'; st = 'width:' + ts.size + 'px'; }
+  var html = pages.map(function (p) {
+    var cap = T(p.caps, R.lang) || p.name, ti = hasPicture(p.e, 'TitlePicture');
+    total += textW(cap, (pfs.bold ? 'bold ' : '') + '8pt Tahoma, Arial, sans-serif') + 16 + 2 + 2 + (ti ? 19 : 0);
+    var on = p.k === first, sty = 'flex:none' + colorStyle('color', tc) + (on ? colorStyle('border-color', bc) : '') + pfs.st;
+    return '<span class="ptab' + (on ? ' on' : '') + (p.visible ? '' : ' hid') + (pdis || (p.pr && !p.pr.en) ? ' dis' : '') + pfs.cls + '" style="' + esc(sty) + '" data-k="' + p.k + '" data-p="' + panel.k + '">' +
+      (ti ? '<span class="pic16">' + ICON.picture + '</span>' : '') + esc(cap) + '</span>';
+  }).join('');
+  var scroll = (ts.mode === 'top' || ts.mode === 'bottom') && !multi && total > pw ? '<span class="pscroll"><i class="off">' + ICON.arrowLeft + '</i><i>' + ICON.tabRight + '</i></span>' : '';
+  return '<div class="' + cls + '" style="' + st + '">' + html + scroll + '</div>';
+}
+// pages of a panel (also of the pseudo panel of the form root): panel colours / border / transparency go to every page
+function pagesHtml(panel, seq, first, R) {
+  var e = panel.e, pr = panel.pr || {};
+  var pcls = (pr.tr ? ' tr-bg' : '') + (pr.bd ? ' bd-' + pr.bd : ''), pst = colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor'));
+  return seq.map(function (p) {
+    return '<div class="c t-Page' + (p.k === first ? ' on' : '') + pcls + '" id="c' + p.k + '" data-k="' + p.k + '" data-p="' + panel.k + '" style="' + pos(p) + pst + '" title="' + esc(p.name) + '">' +
+      ordered(R.m.kidsOf[p.k]).filter(function (x) { return vis(x, R); }).map(function (x) { return ctl(x, R); }).join('') + '</div>';
+  }).join('');
 }
 
 function calendarBox() {
@@ -422,7 +633,8 @@ function scrollDocBox() {
     '<div class="sdoc-h"><span class="sbb">◂</span><span class="sbt"></span><span class="sbb">▸</span></div>';
 }
 function ctl(c, R) {
-  var tag = c.tag, k = c.k, des = R.mode === 'designer', cls = 'c t-' + esc(tag) + (c.visible ? '' : ' hid'), st = pos(c), inner = '';
+  var tag = c.tag, k = c.k, des = R.mode === 'designer', p = c.pr;
+  var cls = 'c t-' + esc(tag) + (c.visible ? '' : ' hid') + (!p.en && tag !== 'UsualGroup' && tag !== 'Panel' ? ' dis' : ''), st = pos(c), inner = '';
   var cap = esc(T(c.caps, R.lang)), capspan = '<span class="cap" data-k="' + k + '">' + cap + '</span>';
   var ch = ordered(R.m.kidsOf[k]).filter(function (x) { return vis(x, R); });
   var body = '';
@@ -431,21 +643,17 @@ function ctl(c, R) {
   } else if (tag === 'LabelDecoration' || tag === 'PictureDecoration') {
     var l = label(c, R, cls, st); cls = l.cls; st = l.style; inner = l.inner;
   } else if (tag === 'Button') {
-    inner = capspan;
+    var bb = buttonBox(c, R); cls += bb.cls; st += bb.st; inner = bb.inner;
   } else if (tag === 'CommandBar') {
-    var cb = commandBar(c, R); cls += cb.cls; inner = cb.inner;
-  } else if (tag === 'InputField') {
-    inner = inputField(c, R);
-  } else if (tag === 'ChoiceField') {
-    inner = '<span class="val">' + (des ? '' : esc(c.dpName || c.dp)) + '</span><span class="tb">▾</span>';
-  } else if (tag === 'CheckBox') {
-    inner = '<span class="box"></span><span class="cap' + (fontBold(c.e) ? ' b' : '') + '" data-k="' + k + '">' + cap + '</span>';
-  } else if (tag === 'RadioButton') {
-    inner = '<span class="rad"></span><span class="cap' + (fontBold(c.e) ? ' b' : '') + '" data-k="' + k + '">' + cap + '</span>';
+    var cb = commandBar(c, R); cls += cb.cls; st += cb.st; inner = cb.inner;
+  } else if (tag === 'InputField' || tag === 'ChoiceField') {
+    var fl = inputField(c, R); cls += fl.cls; st += fl.st; inner = fl.inner;
+  } else if (tag === 'CheckBox' || tag === 'RadioButton') {
+    var cx = checkBox(c, R); cls += cx.cls; st += cx.st; inner = cx.inner;
   } else if (tag === 'Table') {
     inner = tableBox(c, R);
   } else if (tag === 'UsualGroup') {
-    var g = groupBox(c, R, T(c.caps, R.lang)); cls += g.cls; inner = g.inner;
+    var g = groupBox(c, R, T(c.caps, R.lang)); cls += g.cls; st += g.st; inner = g.inner;
   } else if (tag === 'CalendarField') {
     inner = calendarBox();
   } else if (tag === 'TrackBar') {
@@ -466,15 +674,13 @@ function ctl(c, R) {
     var seq = pages.slice().sort(function (a, b) { return a.k - b.k; });
     var first = R.active[k];
     if (!seq.some(function (p) { return p.k === first; })) { first = (seq.filter(function (p) { return p.visible; })[0] || seq[0]).k; R.active[k] = first; }
-    if (seq.length > 1 || (c.showTabs && c.showTabs !== '0')) body += tabsHtml(c, seq, first, R);
-    body += seq.map(function (p) {
-      return '<div class="c t-Page' + (p.k === first ? ' on' : '') + '" id="c' + p.k + '" data-k="' + p.k + '" data-p="' + k + '" style="' + pos(p) + '" title="' + esc(p.name) + '">' +
-        ordered(R.m.kidsOf[p.k]).filter(function (x) { return vis(x, R); }).map(function (x) { return ctl(x, R); }).join('') + '</div>';
-    }).join('');
+    var th = seq.length > 1 || (c.showTabs && c.showTabs !== '0') ? tabsHtml(c, seq, first, R) : '';
+    if (!th) cls += ' no-tabs';
+    body += th + pagesHtml(c, seq, first, R);
     ch = ch.filter(function (x) { return x.tag !== 'Page'; });
   }
   body += ch.map(function (x) { return ctl(x, R); }).join('');
-  return '<div class="' + cls + '" id="c' + k + '" data-k="' + k + '" style="' + st + '" title="' + esc(c.name) + '">' + inner + body + '</div>';
+  return '<div class="' + cls + '" id="c' + k + '" data-k="' + k + '" style="' + st + '" title="' + esc(titleOf(c, R)) + '">' + inner + body + '</div>';
 }
 
 // ------------------------------------------------------------------ inspector (properties with provenance)
@@ -1103,11 +1309,8 @@ function create(o) {
       var seq = rootPages.slice().sort(function (a, b) { return a.k - b.k; });
       var first = R.active[-1];
       if (!seq.some(function (p) { return p.k === first; })) { first = (seq.filter(function (p) { return p.visible; })[0] || seq[0]).k; R.active[-1] = first; }
-      if (seq.length > 1 || (m.showTabs && m.showTabs !== '0')) bodyHtml += tabsHtml({ k: -1 }, seq, first, R);
-      bodyHtml += seq.map(function (p) {
-        return '<div class="c t-Page' + (p.k === first ? ' on' : '') + '" id="c' + p.k + '" data-k="' + p.k + '" data-p="-1" style="' + pos(p) + '" title="' + esc(p.name) + '">' +
-          ordered(m.kidsOf[p.k]).filter(function (x) { return vis(x, R); }).map(function (x) { return ctl(x, R); }).join('') + '</div>';
-      }).join('');
+      if (seq.length > 1 || (m.showTabs && m.showTabs !== '0')) bodyHtml += tabsHtml({ k: -1, e: null }, seq, first, R);
+      bodyHtml += pagesHtml({ k: -1, e: null }, seq, first, R);
       topKids = topKids.filter(function (x) { return x.tag !== 'Page'; });
     }
     bodyHtml += topKids.map(function (c) { return ctl(c, R); }).join('');

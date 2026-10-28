@@ -21,6 +21,11 @@ fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
 }
 
+/// `GOLDEN_BLESS=1` rewrites the stored preview pages that differ (deliberate re-bless after a change of the page assets).
+fn bless() -> bool {
+    std::env::var("GOLDEN_BLESS").is_ok_and(|v| v == "1")
+}
+
 fn read_tree(base: &Path) -> Tree {
     let mut out = Tree::new();
     fn walk(base: &Path, dir: &Path, out: &mut Tree) {
@@ -148,6 +153,12 @@ fn golden_form_previews_are_byte_identical() {
                 .unwrap_or_default();
             let alias = dir.rsplit('/').next().unwrap();
             let got = render_form_preview_html(xml, &module, &object, alias).unwrap();
+            if bless() && got != *want {
+                fs::write(repo().join("tests/golden").join(&name).join("expected").join(path), &got).unwrap();
+                eprintln!("blessed {name}: {path}");
+                checked += 1;
+                continue;
+            }
             assert!(got == *want, "{name}: {path} differs (expected {} bytes, got {})", want.len(), got.len());
             // no network access beyond what the Reference output already contains
             let (w, g) = (String::from_utf8(want.clone()).unwrap(), String::from_utf8(got).unwrap());
@@ -270,6 +281,12 @@ fn golden_workspace_viewer_is_byte_identical() {
         for (p, w) in &want {
             let rel = &p[prefix.len()..];
             let got = actual.get(rel).unwrap_or_else(|| panic!("{name}: missing {p}"));
+            if bless() && got != *w {
+                fs::write(repo().join("tests/golden").join(&name).join("expected").join(p.as_str()), got).unwrap();
+                eprintln!("blessed {name}: {p}");
+                checked += 1;
+                continue;
+            }
             assert!(got == *w, "{name}: {p} differs (expected {} bytes, got {})", w.len(), got.len());
             checked += 1;
         }
