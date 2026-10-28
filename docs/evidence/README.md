@@ -18,6 +18,7 @@
 | Страницы и `ShowTabs` существующей панели настоящего отчёта | [functional-report](functional-report.md) | подтверждено платформой (сборка `.erf` + выгрузка) для переименования, добавления, удаления, перестановки и `ShowTabs` 0 ↔ 1; в живой 1С открыты итоговая форма и перестановка/`ShowTabs` 0 → 1 (V1, V2) |
 | Реквизиты формы и таблица значений | [add-form-attributes-and-value-tables](add-form-attributes-and-value-tables.md) | таблица значений — да; простые реквизиты формы — **нет артефакта** (V6) |
 | Кнопки выбора у ссылочного поля | [input-field-selection-buttons](input-field-selection-buttons.md) | **не закрыто**, только состояние «до» (V5) |
+| Элементы в формах потока версий 25 и 26 | [controls-in-older-stream-versions](controls-in-older-stream-versions.md) | подтверждено для 4 видов; остальные виды — отказ `unsupported-stream-version` |
 | Сплошная проверка свойств | [property-sweep](property-sweep.md) | частично: 9 наблюдаемых изменений из 40 мутаций, 1 566 строк кнопок панелей не разобраны |
 | `clone-form` | [clone-form](clone-form.md) | обработка и отчёт — да; справочник — нет дампа |
 | Добавление элемента в малые формы | [add-remove-elements-small-forms](add-remove-elements-small-forms.md) | надпись в 3 формах; удаление и 26 типов — нет |
