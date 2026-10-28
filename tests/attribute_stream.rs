@@ -166,3 +166,39 @@ fn every_kind_is_still_added_to_a_version_27_form() {
         assert_ne!(e.params["kind"].as_str(), Some("unsupported-stream-version"), "{e}");
     }
 }
+
+// ---- pilot-findings: `composite` of a ValueType is optional
+
+#[test]
+fn an_attribute_value_type_without_composite_is_accepted() {
+    let source = stream("MailGroupForm");
+    let s = parse_spanned(&source).unwrap();
+    let base = baseline("MailGroupForm");
+    let plain = NEW_ATTRIBUTE.replace(" composite=\"false\"", "");
+    assert!(!plain.contains("composite"));
+    let edited = base.replacen("  </Attributes>", &plain, 1);
+    let patched = patch_form(&s, base.as_bytes(), edited.as_bytes()).unwrap().bytes;
+    assert!(text(&patched).contains("{{200},0,0,1,\"Nov\",{\"Pattern\",{\"S\",100,1}}}"));
+    // a wrong value of composite is refused with a message that says what to check
+    let wrong = NEW_ATTRIBUTE.replace("composite=\"false\"", "composite=\"yes\"");
+    let edited = base.replacen("  </Attributes>", &wrong, 1);
+    let e = patch_form(&s, base.as_bytes(), edited.as_bytes()).expect_err("refused");
+    assert!(e.to_string().contains("composite is true or false when given"), "{e}");
+}
+
+#[test]
+fn the_attribute_example_of_the_manual_is_accepted_by_pack() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let source = stream("MailGroupForm");
+    let s = parse_spanned(&source).unwrap();
+    let base = baseline("MailGroupForm");
+    for doc in ["docs/agent-guide.md", "skills/oneform-forms/SKILL.md"] {
+        let manual = std::fs::read_to_string(root.join(doc)).unwrap();
+        let from = manual.find("<Attribute id=\"200\"").unwrap_or_else(|| panic!("{doc}: no Attribute example"));
+        let example = &manual[from..from + manual[from..].find("</Attribute>").unwrap() + "</Attribute>".len()];
+        let edited = base.replacen("  </Attributes>", &format!("    {example}
+  </Attributes>"), 1);
+        let patched = patch_form(&s, base.as_bytes(), edited.as_bytes()).unwrap_or_else(|e| panic!("{doc}: {example}: {e}")).bytes;
+        assert!(text(&patched).contains("\"Примечание\""), "{doc}");
+    }
+}

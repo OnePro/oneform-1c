@@ -139,10 +139,65 @@ pub(crate) fn read_text(path: &Path) -> Result<String> {
     String::from_utf8(bytes).map_err(|_| err(format!("{} is not UTF-8", path.display())))
 }
 
+/// The directory with its own name: `.` and `..` become the absolute path, so the object name is the name of the
+/// directory (`clone-form .` from inside `Catalogs/Контрагенты`).
+pub(crate) fn named_dir(object_dir: &Path) -> Result<PathBuf> {
+    if object_dir.file_name().is_some() {
+        return Ok(object_dir.to_path_buf());
+    }
+    let abs = std::path::absolute(object_dir).map_err(|e| err(format!("cannot resolve {}: {e}", object_dir.display())))?;
+    let mut clean = PathBuf::new();
+    for c in abs.components() {
+        match c {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                clean.pop();
+            }
+            other => clean.push(other.as_os_str()),
+        }
+    }
+    if clean.file_name().is_none() {
+        return Err(err(format!(
+            "the object directory {} has no name; give the object directory of a configuration dump, e.g. Catalogs/Контрагенты (next to Catalogs/Контрагенты.xml)",
+            object_dir.display()
+        )));
+    }
+    Ok(clean)
+}
+
 pub(crate) fn object_xml_path(object_dir: &Path) -> Result<PathBuf> {
+    let object_dir = named_dir(object_dir)?;
     let name = object_dir.file_name().and_then(|n| n.to_str()).ok_or_else(|| err("the object directory has no name"))?;
     let parent = object_dir.parent().ok_or_else(|| err("the object directory has no parent"))?;
     Ok(parent.join(format!("{name}.xml")))
+}
+
+/// What clone-form works with: the object directory of an XML dump of a configuration, not an `.epf` file or its directory.
+fn check_is_object_dir(object_dir: &Path) -> Result<()> {
+    let is_epf = object_dir.extension().is_some_and(|e| e.eq_ignore_ascii_case("epf") || e.eq_ignore_ascii_case("erf"));
+    if object_dir.is_file() || is_epf {
+        return Err(err(format!(
+            "clone-form works with the object directory of an XML dump of a configuration (e.g. Catalogs/Контрагенты, next to Catalogs/Контрагенты.xml), not with {}; for an .epf run epf-dump first and add the form to the dump",
+            object_dir.display()
+        )));
+    }
+    Ok(())
+}
+
+/// The files of `src/` of the object that differ from the manifest of the last extract: edits that are not packed yet.
+fn unpacked_edits(object_dir: &Path) -> Vec<String> {
+    let src = object_dir.join("src");
+    let Ok(manifest) = fs::read(src.join(crate::manifest::MANIFEST_PATH)) else { return Vec::new() };
+    let Ok(manifest) = serde_json::from_slice::<serde_json::Value>(&manifest) else { return Vec::new() };
+    let mut changed = Vec::new();
+    for f in manifest["files"].as_array().into_iter().flatten() {
+        let (Some(path), Some(digest)) = (f["path"].as_str(), f["sha256"].as_str()) else { continue };
+        let same = fs::read(src.join(path)).is_ok_and(|b| crate::canonical::sha256_hex(&b) == digest);
+        if !same {
+            changed.push(path.to_string());
+        }
+    }
+    changed
 }
 
 /// Create form `name` in `object_dir` (e.g. `.../Catalogs/Контрагенты`) as a copy of its form `from`.
@@ -151,14 +206,25 @@ pub fn clone_form(object_dir: &Path, from: &str, name: &str, synonym: Option<&st
     if !valid_name(name) {
         return Err(err(format!("{name:?} is not a valid form name (letters, digits and _, not starting with a digit)")));
     }
+    check_is_object_dir(object_dir)?;
+    let object_dir = named_dir(object_dir)?;
+    let object_dir = object_dir.as_path();
     let object_xml_file = object_xml_path(object_dir)?;
     let forms = object_dir.join("Forms");
     let src_meta = forms.join(format!("{from}.xml"));
     let src_bin = forms.join(from).join("Ext").join("Form.bin");
     if !src_meta.is_file() || !src_bin.is_file() {
         return Err(err(format!(
-            "form {from} not found in {} (expected Forms/{from}.xml and Forms/{from}/Ext/Form.bin)",
+            "form {from} not found in {} (expected Forms/{from}.xml and Forms/{from}/Ext/Form.bin: clone-form works with the object directory of an XML dump of a configuration; for an .epf run epf-dump first)",
             object_dir.display()
+        )));
+    }
+    let edits = unpacked_edits(object_dir);
+    if !edits.is_empty() {
+        return Err(err(format!(
+            "{} has edits in src/ that are not packed yet ({}); run `oneform pack` first: after clone-form the next pack stops with SOURCE_CHANGED and extract with the generated-file error, and --replace-generated would discard the edits",
+            object_dir.display(),
+            edits.join(", ")
         )));
     }
     let dst_meta = forms.join(format!("{name}.xml"));

@@ -433,6 +433,19 @@ impl Form {
 
 // --------------------------------------------------------------------------- error rules
 
+/// The hint for a control that reaches past the container along one axis: where to move it, or how large the container
+/// must be; a size below 1 is never suggested.
+fn overflow_fix(pos_name: &str, size_name: &str, pos: f64, size: f64, container: f64) -> String {
+    let enlarge = format!("enlarge the container to {size_name} {}", num(pos + size));
+    if size <= container {
+        format!("move the control to {pos_name} {} or {enlarge}", num(container - size))
+    } else if container >= 1.0 {
+        format!("reduce {size_name} to {} (at {pos_name} 0) or {enlarge}", num(container))
+    } else {
+        enlarge
+    }
+}
+
 fn r_outside(f: &Form, out: &mut Vec<Finding>) {
     for (ci, cont) in f.conts.iter().enumerate() {
         let (Some(cw), Some(ch)) = (cont.w, cont.h) else { continue };
@@ -450,11 +463,11 @@ fn r_outside(f: &Form, out: &mut Vec<Finding>) {
                 f.report("outside-container", None, Some(i), format!("negative coordinates in {place}"), fix, out);
             }
             if l + w > cw {
-                let fix = format!("reduce Width to {} or Left to {}, or enlarge the container", num((cw - l).max(0.0)), num((cw - w).max(0.0)));
+                let fix = overflow_fix("Left", "Width", l, w, cw);
                 f.report("outside-container", None, Some(i), format!("right edge {} is beyond the width {} of {place}", num(l + w), num(cw)), fix, out);
             }
             if t + h > ch {
-                let fix = format!("reduce Height to {} or Top to {}, or enlarge the container", num((ch - t).max(0.0)), num((ch - h).max(0.0)));
+                let fix = overflow_fix("Top", "Height", t, h, ch);
                 f.report("outside-container", None, Some(i), format!("bottom edge {} is beyond the height {} of {place}", num(t + h), num(ch)), fix, out);
             }
         }

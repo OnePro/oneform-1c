@@ -40,6 +40,9 @@ pub const SOURCE_CHANGED: &str = "SOURCE_CHANGED";
 pub const OUTPUT_NOT_OWNED: &str = "OUTPUT_NOT_OWNED";
 pub const OUTPUT_SCHEMA_UNKNOWN: &str = "OUTPUT_SCHEMA_UNKNOWN";
 pub const GENERATED_FILE_MODIFIED: &str = "GENERATED_FILE_MODIFIED";
+/// A requested edit of `Form.xml` or of the form module that the tool refuses (invalid XML, duplicate names, an
+/// unsupported change); the generated files themselves were not tampered with.
+pub const FORM_EDIT_REJECTED: &str = "FORM_EDIT_REJECTED";
 pub const RECOVERY_REQUIRED: &str = "RECOVERY_REQUIRED";
 pub const PUBLISH_VERIFY_FAILED: &str = "PUBLISH_VERIFY_FAILED";
 pub const IO_ERROR: &str = "IO_ERROR";

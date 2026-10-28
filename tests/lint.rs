@@ -147,8 +147,27 @@ fn field_beyond_the_form_width_is_an_error_with_its_line() {
         line_of(&xml, "Наименование")
     );
     assert!(out.contains(&want), "{out}");
-    assert!(out.contains("(fix: reduce Width to 308 or Left to 60"), "{out}");
+    assert!(out.contains("(fix: move the control to Left 60 or enlarge the container to Width 432)"), "{out}");
     assert!(out.contains("1 errors"), "{out}");
+}
+
+#[test]
+fn overflow_hints_name_a_position_or_a_container_size_and_never_a_size_below_one() {
+    // below the form: the hint moves the control or enlarges the container, not "reduce Height to 0"
+    let mut c = clean_item();
+    c[3] = field(4, "Наименование", [92, 190, 300, 19]);
+    let xml = form_xml(400, 200, &c);
+    let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &xml);
+    let (_, out, _) = lint(&root, &[]);
+    assert!(out.contains("(fix: move the control to Top 181 or enlarge the container to Height 209)"), "{out}");
+    assert!(!out.contains("reduce Height to 0") && !out.contains("reduce Height to 1 "), "{out}");
+    // taller than the whole form: only a size that fits is suggested
+    let mut c = clean_item();
+    c[3] = field(4, "Наименование", [92, 33, 300, 250]);
+    let xml = form_xml(400, 200, &c);
+    let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &xml);
+    let (_, out, _) = lint(&root, &[]);
+    assert!(out.contains("(fix: reduce Height to 200 (at Top 0) or enlarge the container to Height 283)"), "{out}");
 }
 
 #[test]

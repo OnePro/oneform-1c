@@ -16,7 +16,7 @@ use crate::config::{effective_config, load_json_bytes};
 use crate::container::{deflate, inflate, parse_container, serialize_container, EntryOut, Limits};
 use crate::encoding::decode_payload;
 use crate::errors::{
-    ExtractionError, Result, ENCODING_INVALID, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
+    ExtractionError, Result, ENCODING_INVALID, FORM_EDIT_REJECTED, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
     PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
 use crate::form_patch::{diff_forms_full, parse_form_xml, FormDiff, plan_form_patch, verify_preserved, FormXml, PatchedForm};
@@ -89,7 +89,7 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
     }
     if existing.get(stream_path) != Some(original) {
         return Err(ExtractionError::new(
-            GENERATED_FILE_MODIFIED,
+            FORM_EDIT_REJECTED,
             format!(
                 "{xml_path} layout edits and independent {stream_path} edits cannot be combined: it is ambiguous which one wins; edit only one of them"
             ),

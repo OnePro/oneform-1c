@@ -4,7 +4,7 @@
 
 use serde_json::Value;
 
-use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED};
+use crate::errors::{ExtractionError, Result, FORM_EDIT_REJECTED};
 
 /// A procedure or function that follows a statement of the module body.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,7 +133,7 @@ pub fn check_module_edit(path: &str, original: Option<&[u8]>, edited: &[u8]) -> 
         return Ok(());
     }
     Err(ExtractionError::new(
-        GENERATED_FILE_MODIFIED,
+        FORM_EDIT_REJECTED,
         format!(
             "{path}: line {}: '{}' is defined after the statements of the module body (the first one is at line {}); 1C does not compile it («Определения процедур и функций должны размещаться перед операторами тела модуля»): put the procedure before the section «ОПЕРАТОРЫ ОСНОВНОЙ ПРОГРАММЫ» / before the first top-level statement",
             first.line, first.name, first.body_line

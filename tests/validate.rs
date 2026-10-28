@@ -108,6 +108,16 @@ fn snapshot(root: &Path) -> BTreeMap<String, (Vec<u8>, SystemTime)> {
 }
 
 #[test]
+fn inside_the_object_directory_the_form_is_named_with_the_object_path() {
+    let w = config_copy();
+    let object = w.path().join("Documents/ДокументТест");
+    let o = run(&["validate", "."], &object);
+    let text = out(&o);
+    assert!(text.contains(&format!("{DOC_LABEL}: IN_SCOPE")), "{text}");
+    assert!(!text.contains("./ФормаДокумента"), "{text}");
+}
+
+#[test]
 fn ordinary_forms_are_in_scope() {
     let w = config_copy();
     let o = run(&["validate", "."], w.path());

@@ -1,6 +1,6 @@
 //! Packing edited `Form.xml` for both pack targets (EPF and configuration `Form.bin`): supported edits of
 //! existing controls are patched into the form stream, unsupported ones are rejected with
-//! `GENERATED_FILE_MODIFIED`, and every failure leaves XML, BSL and containers untouched. Unchanged and
+//! `FORM_EDIT_REJECTED`, and every failure leaves XML, BSL and containers untouched. Unchanged and
 //! BSL-only packing keeps working.
 
 use std::collections::BTreeMap;
@@ -157,8 +157,8 @@ fn assert_rejected(target: Target, xml: bool, bsl: bool) {
         "{target:?} xml={xml} bsl={bsl}: pack accepted edited Form.xml: {msg}"
     );
     assert!(
-        msg.contains("GENERATED_FILE_MODIFIED"),
-        "{target:?}: expected GENERATED_FILE_MODIFIED, got: {msg}"
+        msg.contains("FORM_EDIT_REJECTED"),
+        "{target:?}: expected FORM_EDIT_REJECTED, got: {msg}"
     );
     assert!(
         msg.contains("Form.xml"),
@@ -298,7 +298,7 @@ fn config_bsl_only_edit_still_packs() {
 // Supported edits of existing controls (tasks 5.1-5.3)
 // ---------------------------------------------------------------------------------------------------------
 
-use oneform::errors::{ExtractionError, GENERATED_FILE_MODIFIED, PUBLISH_VERIFY_FAILED};
+use oneform::errors::{ExtractionError, FORM_EDIT_REJECTED, PUBLISH_VERIFY_FAILED};
 use oneform::pack::set_patch_hook;
 use oneform::transaction::{read_tree, set_rename_hook};
 
@@ -548,7 +548,7 @@ fn simultaneous_stream_and_xml_layout_edits_are_ambiguous() {
         let msg = text(&out);
         assert!(!out.status.success(), "{target:?}: {msg}");
         assert!(
-            msg.contains("GENERATED_FILE_MODIFIED") && msg.contains("ambiguous"),
+            msg.contains("FORM_EDIT_REJECTED") && msg.contains("ambiguous"),
             "{target:?}: {msg}"
         );
         assert_eq!(before, w.snap(), "{target:?}: files changed after rejection");
@@ -597,7 +597,7 @@ fn unsupported_control_edits_are_rejected_without_changes() {
             let out = run(w.root(), &["pack", "."]);
             let msg = text(&out);
             assert!(!out.status.success(), "{target:?} {edit:?}: {msg}");
-            assert!(msg.contains("GENERATED_FILE_MODIFIED"), "{target:?} {edit:?}: {msg}");
+            assert!(msg.contains("FORM_EDIT_REJECTED"), "{target:?} {edit:?}: {msg}");
             assert_eq!(before, w.snap(), "{target:?} {edit:?}: files changed after rejection");
         }
     }
@@ -753,7 +753,7 @@ fn unsupported_edit_error_is_actionable() {
         let w = Work::new(target);
         w.edit_xml();
         let err = stage(&w).expect_err("form-level edit is unsupported");
-        assert_eq!(err.code, GENERATED_FILE_MODIFIED);
+        assert_eq!(err.code, FORM_EDIT_REJECTED);
         assert!(err.to_string().contains("Form.xml"), "{err}");
         assert!(err.params["problems"].to_string().contains("Width"), "{err:?}");
     }

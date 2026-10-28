@@ -331,7 +331,7 @@ pub(super) fn resolve_new_edges(
 }
 
 fn anchor_err(c: &ControlXml, message: String) -> ExtractionError {
-    ExtractionError::new(GENERATED_FILE_MODIFIED, format!("{} '{}' (id {}): {message}", c.type_name, c.name, c.id))
+    ExtractionError::new(FORM_EDIT_REJECTED, format!("{} '{}' (id {}): {message}", c.type_name, c.name, c.id))
         .with("kind", "invalid-xml")
         .with("property", "Anchors")
         .with("id", c.id)
@@ -609,7 +609,7 @@ pub(super) fn reanchor_dependants(
             if let Some(u) = user.get(&(d.id, e, part)) {
                 if removed.contains(&u.target) {
                     return Err(ExtractionError::new(
-                        GENERATED_FILE_MODIFIED,
+                        FORM_EDIT_REJECTED,
                         format!("{}: <Anchors> points to the control {} that is removed by the same edit", name(), u.target),
                     )
                     .with("kind", "invalid-xml")
@@ -635,7 +635,7 @@ pub(super) fn reanchor_dependants(
                         3 => (2, rect[2]),
                         _ => {
                             return Err(ExtractionError::new(
-                                GENERATED_FILE_MODIFIED,
+                                FORM_EDIT_REJECTED,
                                 format!("{} is attached to a removed control and cannot be re-anchored", name()),
                             )
                             .with("kind", "unsupported-anchor")

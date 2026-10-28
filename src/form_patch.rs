@@ -21,7 +21,7 @@
 //! derived, not user-editable (editing them is still rejected); [`PatchedForm::derived_pages`] reports what the
 //! decoder produces so requested-vs-decoded comparisons can account for exactly these changes.
 //!
-//! All errors use [`GENERATED_FILE_MODIFIED`] (the code pack already uses for rejected `Form.xml` edits)
+//! All errors use [`FORM_EDIT_REJECTED`] (the code of every rejected `Form.xml` edit)
 //! with `kind`, `form`, `source` and a `problems` list; each problem names control, property and line.
 
 use std::cell::RefCell;
@@ -34,7 +34,7 @@ mod cb_edit;
 pub use cb_edit::{module_declares, new_handlers};
 
 use crate::brace::{parse_spanned, Atom, AtomKind, Item, Node, Replacement, Span, SpanItem, SpanNode, SpannedMetadata, BARE, QUOTED};
-use crate::errors::{ExtractionError, Result, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
+use crate::errors::{ExtractionError, Result, FORM_EDIT_REJECTED, METADATA_LAYOUT_UNSUPPORTED};
 use crate::metaref::{ConfigTypeLookup, ANY_REF_GUID, VALUE_LIST_GUID, VALUE_TABLE_GUID, VALUE_TREE_GUID};
 use crate::naming::is_uuid;
 use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_val, table, CONTROL_GUIDS};
@@ -231,7 +231,7 @@ fn fail(form: &str, source: &str, problems: Vec<Problem>) -> ExtractionError {
     let shown: Vec<Value> = problems.iter().take(MAX_REPORTED).map(|p| Value::from(p.message.clone())).collect();
     let more = if problems.len() > 1 { format!(" (+{} more)", problems.len() - 1) } else { String::new() };
     ExtractionError::new(
-        GENERATED_FILE_MODIFIED,
+        FORM_EDIT_REJECTED,
         format!("{source} Form.xml of form '{form}': {}{more}", first.message),
     )
     .with("kind", first.kind)
@@ -431,9 +431,11 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
         return None;
     }
     let kind = e.attrs.get("kind")?.clone();
-    let composite = match e.attrs.get("composite")?.as_str() {
-        "true" => true,
-        "false" => false,
+    // `composite` is optional: absent means "derive from the references" (false for everything but several references).
+    let composite_attr = match e.attrs.get("composite").map(String::as_str) {
+        Some("true") => Some(true),
+        Some("false") => Some(false),
+        None => None,
         _ => return None,
     };
     let bool_attr = |attr: &str| -> Option<bool> {
@@ -483,6 +485,7 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
     if ref_guids.iter().any(|g| is_builtin_type_guid(g)) {
         return None;
     }
+    let composite = composite_attr.unwrap_or(kind == "Ref" && ref_guids.len() > 1);
     let composite_ok = match (kind.as_str(), ref_guids.len()) {
         ("Ref", 1) => !composite,
         ("Ref", _) => composite,
@@ -2740,7 +2743,6 @@ impl FormXml {
                     c.values.choice_button = None;
                     c.values.clear_button = None;
                     c.values.open_button = None;
-                    c.values.read_only = false;
                 }
                 "ListBox" | "GraphicalSchemaField" | "TextDocumentField" => {
                     c.values.read_only = false;
@@ -4226,7 +4228,7 @@ fn extract_form_attributes(shell: &mut XmlElement) -> (HashMap<i64, String>, Vec
                         vt_info = Some(spec);
                     } else {
                         bad(format!(
-                            "line {}: this <ValueType> is not supported (kind String with length, Number with digits and fractionDigits, Date, DateTime, Time, Boolean, a reference with refGuid, ValueTable, ValueTree and ValueList are)",
+                            "line {}: this <ValueType> is not supported: check kind (String needs length; Number takes digits and fractionDigits; Date, DateTime, Time, Boolean, Ref with refGuid, ValueTable, ValueTree and ValueList are known), that composite is true or false when given (true only for several references) and that no attribute is unknown",
                             ch.line
                         ));
                         break 'attrs;
@@ -4483,7 +4485,7 @@ fn version_is_older(version: &str) -> bool {
 
 pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     let malformed = |m: String| {
-        ExtractionError::new(GENERATED_FILE_MODIFIED, format!("{label} Form.xml is not valid: {m}"))
+        ExtractionError::new(FORM_EDIT_REJECTED, format!("{label} Form.xml is not valid: {m}"))
             .with("kind", "malformed-xml")
             .with("source", label)
     };
@@ -4499,7 +4501,7 @@ pub fn parse_form_xml(bytes: &[u8], label: &str) -> Result<FormXml> {
     }
     if let Some(old) = root.attrs.get("ordinaryFormVersion").filter(|v| version_is_older(v)) {
         return Err(ExtractionError::new(
-            GENERATED_FILE_MODIFIED,
+            FORM_EDIT_REJECTED,
             format!(
                 "{label} Form.xml was extracted by an older oneform (ordinaryFormVersion=\"{old}\", now \"{}\"); run `oneform extract` again",
                 crate::oof::ORDINARY_FORM_VERSION
@@ -5330,6 +5332,7 @@ pub fn diff_forms_full(
         }
     }
     check_attribute_edits(baseline, edited, &mut problems);
+    check_page_names(baseline, edited, &mut problems);
     if !problems.is_empty() {
         return Err(fail(&baseline.name, &edited.label, problems));
     }
@@ -6030,6 +6033,27 @@ fn attribute_user(edited: &FormXml, aid: i64) -> Option<String> {
                 })
         })
         .map(ControlXml::describe)
+}
+
+/// A page that is added or renamed needs a name that is an identifier (`Страницы.<Имя>` cannot address any other);
+/// the names of the existing pages stay as they are.
+fn check_page_names(baseline: &FormXml, edited: &FormXml, problems: &mut Vec<Problem>) {
+    for c in edited.controls.iter().filter(|c| c.type_name == "Panel") {
+        let old: Vec<&str> = baseline.control(c.id).map(|b| b.values.pages.iter().map(|p| p.name.as_str()).collect()).unwrap_or_default();
+        for p in &c.values.pages {
+            if !old.contains(&p.name.as_str()) && !crate::naming::is_identifier(&p.name) {
+                problems.push(problem(
+                    "page-name",
+                    format!(
+                        "line {}: {}: the name '{}' of a page is not an identifier (letters, digits and _, not starting with a digit); the caption can be any text",
+                        c.line,
+                        c.describe(),
+                        p.name
+                    ),
+                ));
+            }
+        }
+    }
 }
 
 /// The refusals of the form attribute edits: a new name that is not an identifier, and an attribute that is removed
@@ -7560,7 +7584,7 @@ impl PatchedForm {
 /// Check byte equality of `original` and `patched` outside the authorized `replacements` (sorted, disjoint,
 /// ranges relative to `original`) and that each authorized range holds exactly its recorded bytes.
 pub fn verify_preserved(original: &[u8], patched: &[u8], replacements: &[AppliedReplacement]) -> Result<()> {
-    let bad = |m: String| ExtractionError::new(GENERATED_FILE_MODIFIED, m).with("kind", "unauthorized-stream-change");
+    let bad = |m: String| ExtractionError::new(FORM_EDIT_REJECTED, m).with("kind", "unauthorized-stream-change");
     let (mut o, mut p) = (0usize, 0usize);
     for r in replacements {
         let (start, end) = (r.range.start, r.range.end);
@@ -7617,7 +7641,7 @@ impl Site<'_, '_> {
 
     /// The requested value (or the baseline XML) is not acceptable.
     fn invalid(&self, kind: &'static str, property: &str, message: String) -> ExtractionError {
-        self.error(GENERATED_FILE_MODIFIED, kind, property, message)
+        self.error(FORM_EDIT_REJECTED, kind, property, message)
     }
 
     fn mismatch(&self, property: &str, xml: &str, stream: &str) -> ExtractionError {
@@ -10643,7 +10667,7 @@ impl FormPatchPlan<'_> {
                 .ok_or_else(|| layout_err("form stream: root[1][4] height atom missing"))?;
             if self.diff.old_form_size != (Some(cur_w), Some(cur_h)) {
                 return Err(ExtractionError::new(
-                    GENERATED_FILE_MODIFIED,
+                    FORM_EDIT_REJECTED,
                     format!("form size mismatch: XML has {:?}, stream has ({cur_w}, {cur_h})", self.diff.old_form_size),
                 )
                 .with("kind", "baseline-mismatch"));
@@ -10683,7 +10707,7 @@ impl FormPatchPlan<'_> {
                                 let updated = coord + delta;
                                 if updated < 1 {
                                     return Err(ExtractionError::new(
-                                        GENERATED_FILE_MODIFIED,
+                                        FORM_EDIT_REJECTED,
                                         "form resize would shrink a root page client area below 1".to_string(),
                                     )
                                     .with("kind", "invalid-geometry"));
@@ -11299,7 +11323,7 @@ impl FormPatchPlan<'_> {
     /// After structural patching: additions are present with the requested values, deletions are gone.
     fn verify_structural(&self, index: &ControlIndex, allocated: &[(i64, i64)]) -> Result<()> {
         // stored checks are recomputed by structural_pieces; keep the signature small by re-deriving
-        let bad = |m: String| ExtractionError::new(GENERATED_FILE_MODIFIED, m).with("kind", "verification-failed");
+        let bad = |m: String| ExtractionError::new(FORM_EDIT_REJECTED, m).with("kind", "verification-failed");
         for d in &self.diff.deletions {
             if index.get(d.id).is_some() {
                 return Err(bad(format!("deleted control '{}' (id {}) is still present", d.name, d.id)));
@@ -11408,7 +11432,7 @@ impl FormPatchPlan<'_> {
                 if let Some((second, _, _)) = members[a + 1..].iter().find(|m| m.2 == *z) {
                     let edited_one = if edited.contains_key(&first.id) { first } else { second };
                     return Err(ExtractionError::new(
-                        GENERATED_FILE_MODIFIED,
+                        FORM_EDIT_REJECTED,
                         format!(
                             "{} '{}' (id {}), ZOrder: value {z} collides with '{}' (id {}) under the same parent; ZOrder values must stay unique among siblings",
                             edited_one.type_name,
@@ -11455,7 +11479,7 @@ impl FormPatchPlan<'_> {
         verify_preserved(self.source.source(), &bytes, &replacements)?;
         if let Some(at) = empty_list_item(&bytes) {
             return Err(ExtractionError::new(
-                GENERATED_FILE_MODIFIED,
+                FORM_EDIT_REJECTED,
                 format!("the patched stream has an empty list item at byte {at}; 1C would refuse it as a stream format error"),
             )
             .with("kind", "verification-failed"));
@@ -11467,7 +11491,7 @@ impl FormPatchPlan<'_> {
             attr_check::attribute_section_issues(&reparsed.root).into_iter().filter(|m| !before.contains(m)).collect();
         if !fresh.is_empty() {
             return Err(ExtractionError::new(
-                GENERATED_FILE_MODIFIED,
+                FORM_EDIT_REJECTED,
                 format!("the attribute section of the patched stream is malformed (the platform would refuse the form): {}", fresh.join("; ")),
             )
             .with("kind", "verification-failed"));
@@ -11478,7 +11502,7 @@ impl FormPatchPlan<'_> {
             let same_layout = index.entries.len() == self.index.entries.len()
                 && index.entries.iter().zip(&self.index.entries).all(|(a, b)| (a.id, &a.path, a.page) == (b.id, &b.path, self.page_after(b)));
             if !same_layout {
-                return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, "the patched stream has a different control layout")
+                return Err(ExtractionError::new(FORM_EDIT_REJECTED, "the patched stream has a different control layout")
                     .with("kind", "verification-failed"));
             }
         } else {
@@ -11487,7 +11511,7 @@ impl FormPatchPlan<'_> {
             let violations = anchors::anchor_violations_of(&reparsed, &added);
             if !violations.is_empty() {
                 return Err(ExtractionError::new(
-                    GENERATED_FILE_MODIFIED,
+                    FORM_EDIT_REJECTED,
                     format!("the anchor graph of the added controls is inconsistent after patching: {}", violations.join("; ")),
                 )
                 .with("kind", "verification-failed")
@@ -11499,7 +11523,7 @@ impl FormPatchPlan<'_> {
                     anchors::anchor_graph_violations(&reparsed).into_iter().filter(|v| !before.contains(v)).collect();
                 if !fresh.is_empty() {
                     return Err(ExtractionError::new(
-                        GENERATED_FILE_MODIFIED,
+                        FORM_EDIT_REJECTED,
                         format!("the anchor graph is inconsistent after removing controls: {}", fresh.join("; ")),
                     )
                     .with("kind", "verification-failed")
@@ -11510,7 +11534,7 @@ impl FormPatchPlan<'_> {
         for e in &index.entries {
             if let Some(old) = self.index.get(e.id).filter(|old| self.page_after(old) != old.page) {
                 if e.page != self.page_after(old) {
-                    return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, format!("control '{}' (id {}) is not on the page the request moves it to", e.name, e.id))
+                    return Err(ExtractionError::new(FORM_EDIT_REJECTED, format!("control '{}' (id {}) is not on the page the request moves it to", e.name, e.id))
                         .with("kind", "verification-failed"));
                 }
             }
@@ -11528,7 +11552,7 @@ impl FormPatchPlan<'_> {
             let got_w = h1.atom(3).and_then(|(a, _)| strict_int(&a.value));
             let got_h = h1.atom(4).and_then(|(a, _)| strict_int(&a.value));
             if (got_w, got_h) != (Some(new_w), Some(new_h)) {
-                return Err(ExtractionError::new(GENERATED_FILE_MODIFIED, "patched form size did not read back")
+                return Err(ExtractionError::new(FORM_EDIT_REJECTED, "patched form size did not read back")
                     .with("kind", "verification-failed"));
             }
             if let Ok(pinfo) = index.at_path(&[1, 2, 1]) {
@@ -11554,7 +11578,7 @@ impl FormPatchPlan<'_> {
     }
 
     fn verify_form_props(&self, index: &ControlIndex) -> Result<()> {
-        let bad = |m: String| ExtractionError::new(GENERATED_FILE_MODIFIED, m).with("kind", "verification-failed");
+        let bad = |m: String| ExtractionError::new(FORM_EDIT_REJECTED, m).with("kind", "verification-failed");
         let fp = &self.diff.new_form_props;
         let root = index.at_path(&[])?;
         let h1 = index.at_path(&[1])?;

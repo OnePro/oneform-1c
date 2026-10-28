@@ -1,4 +1,4 @@
-Catalogs/Тест/ФормаЭлемента: error outside-container line 39: Наименование: right edge 432 is beyond the width 400 of the form (fix: reduce Width to 308 or Left to 60, or enlarge the container)
+Catalogs/Тест/ФормаЭлемента: error outside-container line 39: Наименование: right edge 432 is beyond the width 400 of the form (fix: move the control to Left 60 or enlarge the container to Width 432)
 Catalogs/Тест/ФормаЭлемента: warning overlap line 48: Второе: overlaps 'Наименование' (line 39) by 200 x 12 px (fix: move or resize one of the two controls so that they do not intersect)
 Catalogs/Тест/ФормаЭлемента: warning label-row line 56: НадписьТретье: the label stands at Top 90 but its field 'Третье' at Top 97 (fix: set Top to 97)
 Lint: 1 forms, 1 with findings; 1 errors, 2 warnings, 0 info; exit 1

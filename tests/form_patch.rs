@@ -7,7 +7,7 @@ mod common;
 use std::path::{Path, PathBuf};
 
 use oneform::brace::{parse_spanned, Replacement, SpannedMetadata};
-use oneform::errors::{ExtractionError, GENERATED_FILE_MODIFIED, METADATA_LAYOUT_UNSUPPORTED};
+use oneform::errors::{ExtractionError, FORM_EDIT_REJECTED, METADATA_LAYOUT_UNSUPPORTED};
 use oneform::form_patch::{
     anchor_graph_violations, diff_forms, enrich_ext_properties, parse_form_xml, patch_form, plan_form_patch, ControlIndex, FormPatchPlan, FormXml, NodeRef, PatchedForm, Property,
 };
@@ -53,7 +53,7 @@ fn plan<'a>(s: &'a SpannedMetadata, edited: &str) -> Result<FormPatchPlan<'a>, E
 fn rejected(edited: &str) -> (String, String) {
     let s = stream("DonorForm");
     let e = plan(&s, edited).expect_err("must be rejected");
-    assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+    assert_eq!(e.code, FORM_EDIT_REJECTED, "{e}");
     let kind = e.params["kind"].as_str().unwrap().to_string();
     (kind, format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default()))
 }
@@ -972,7 +972,7 @@ fn unsupported_or_partially_applicable_edits_produce_no_stream() {
     let xml = edit_ctl(&base, "Надпись1", &[("<Left>79</Left>", "<Left>80</Left>")]);
     let xml = xml.replace("<DataPath attributeId=\"3\">ПолеВвода1</DataPath>", "<DataPath attributeId=\"4\">ПолеВвода1</DataPath>");
     let e = patch("DonorForm", &xml).unwrap_err();
-    assert_eq!(e.code, GENERATED_FILE_MODIFIED);
+    assert_eq!(e.code, FORM_EDIT_REJECTED);
     // A good edit on one control and an impossible one on another: no partial result.
     let xml = edit_ctl(&base, "Надпись1", &[("<Left>79</Left>", "<Left>80</Left>")]);
     let xml = edit_ctl(&xml, "Надпись1", &[("<Width>53</Width>", "<Width>-3</Width>")]);
@@ -2415,6 +2415,22 @@ fn remaining_table_column_page_button_and_form_root_properties_round_trip() {
 }
 
 #[test]
+fn read_only_of_an_existing_choice_field_round_trips() {
+    let anchor = "<ZOrder>7</ZOrder>
+      <TabOrder>10</TabOrder>";
+    let edited = replace_once(&baseline("AbcShapeForm"), anchor, &format!("{anchor}
+      <ReadOnly>true</ReadOnly>"));
+    let s = stream("AbcShapeForm");
+    let pf = patch_form(&s, baseline("AbcShapeForm").as_bytes(), edited.as_bytes()).unwrap();
+    let got = parse_form_xml(decode_xml("AbcShapeForm", &pf.bytes).as_bytes(), "decoded").unwrap();
+    assert!(got.control(19).unwrap().values.read_only);
+    assert!(!got.control(18).unwrap().values.read_only);
+    // the comparison model of the pack check keeps the requested flag (it used to be reset for ChoiceField)
+    let requested = parse_form_xml(edited.as_bytes(), "requested").unwrap().in_decoder_order();
+    assert!(requested.control(19).unwrap().values.read_only);
+}
+
+#[test]
 fn final_catalog_extensions_choiceitem_and_spreadsheet_doc_round_trip() {
     const STYLE: &str = "6b2c1a56-4e1f-4f27-8d93-2f0b5f4e9a10";
     let mut edited = baseline("DonorForm");
@@ -3442,7 +3458,7 @@ mod object_binding {
     fn refusal(schema: Option<ObjectSchema>, edited: &str) -> String {
         let s = stream("DonorForm");
         let e = with_object_schema(schema, || plan(&s, edited)).expect_err("must be refused");
-        assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+        assert_eq!(e.code, FORM_EDIT_REJECTED, "{e}");
         format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
     }
 
@@ -3538,7 +3554,7 @@ mod object_binding {
         let Err(e) = with_object_schema(Some(schema("Catalog")), || plan_form_patch(s, base.as_bytes(), edited.as_bytes())) else {
             panic!("must be refused");
         };
-        assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+        assert_eq!(e.code, FORM_EDIT_REJECTED, "{e}");
         format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
     }
 
@@ -3630,7 +3646,7 @@ mod object_binding {
         let old = mutate("ordinaryFormVersion=\"2.2\"", "ordinaryFormVersion=\"2.1\"");
         for (b, e) in [(&old, &base), (&base, &old)] {
             let Err(err) = plan_form_patch(&s, b.as_bytes(), e.as_bytes()) else { panic!("must be refused") };
-            assert_eq!(err.code, GENERATED_FILE_MODIFIED);
+            assert_eq!(err.code, FORM_EDIT_REJECTED);
             assert_eq!(err.params["kind"], "stale-form-xml");
             assert!(err.to_string().contains("oneform extract") && err.to_string().contains("2.1"), "{err}");
         }
@@ -3827,7 +3843,7 @@ mod tabular_binding {
     fn refusal(edited: &str) -> String {
         let s = stream("DonorForm");
         let e = with_object_schema(Some(schema()), || plan(&s, edited)).expect_err("must be refused");
-        assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+        assert_eq!(e.code, FORM_EDIT_REJECTED, "{e}");
         format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
     }
 
@@ -4168,7 +4184,7 @@ mod tabular_binding {
 
         fn refusal(&self, edited: &str) -> String {
             let e = self.try_patch(edited).expect_err("must be refused");
-            assert_eq!(e.code, GENERATED_FILE_MODIFIED, "{e}");
+            assert_eq!(e.code, FORM_EDIT_REJECTED, "{e}");
             format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
         }
 
@@ -4421,13 +4437,13 @@ mod tabular_binding {
         let edited = base.replacen("</Columns>", "<Column name=\"Колонка3\" id=\"7\"><Header><Item language=\"ru\">К3</Item></Header><Width>90</Width></Column></Columns>", 1);
         assert_ne!(edited, base);
         let err = with_object_schema(Some(schema()), || plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply())).expect_err("must be refused");
-        assert_eq!(err.code, GENERATED_FILE_MODIFIED, "{err}");
+        assert_eq!(err.code, FORM_EDIT_REJECTED, "{err}");
         // remove the first column of the value table
         let start = base.find("<Column name=\"Колонка1\"").unwrap();
         let end = start + base[start..].find("</Column>").unwrap() + "</Column>".len();
         let edited = format!("{}{}", &base[..start], &base[end..]);
         let err = with_object_schema(Some(schema()), || plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).and_then(|p| p.apply())).expect_err("must be refused");
-        assert_eq!(err.code, GENERATED_FILE_MODIFIED, "{err}");
+        assert_eq!(err.code, FORM_EDIT_REJECTED, "{err}");
     }
 
     // ------------------------------------------------------------------ Boolean columns: check box data
@@ -6248,6 +6264,20 @@ mod panel_pages {
         let s = stream("DonorForm");
         let e = plan_form_patch(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).and_then(|p| p.apply()).expect_err("must be refused");
         format!("{e} {}", e.params.get("problems").map(|p| p.to_string()).unwrap_or_default())
+    }
+
+    #[test]
+    fn a_page_name_that_is_not_an_identifier_is_refused_when_added_or_renamed() {
+        let text = refused_xml(&rename_pages(&baseline("DonorForm"), "Первая", "О программе"));
+        assert!(text.contains("'О программе' of a page is not an identifier"), "{text}");
+        let xml = replace_once(
+            &baseline("DonorForm"),
+            PANEL_PAGES_END,
+            &format!("            <Page name=\"Новая стр\"><Title><Item language=\"ru\">Новая стр</Item></Title></Page>
+{PANEL_PAGES_END}"),
+        );
+        let text = refused_xml(&xml);
+        assert!(text.contains("is not an identifier"), "{text}");
     }
 
     #[test]

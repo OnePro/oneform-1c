@@ -289,6 +289,20 @@ fn judge_staged(
     Ok(out)
 }
 
+/// The object path in the verdicts: `Catalogs/Контрагенты` as `lint` prints it, also when the validated root is the
+/// object directory itself (`.`: the names of the directory and of its parent).
+fn config_label(root: &Path, rel: &str) -> String {
+    if rel != "." {
+        return rel.to_string();
+    }
+    let abs = std::path::absolute(root).unwrap_or_else(|_| root.to_path_buf());
+    let name = |p: &Path| p.file_name().map(|n| n.to_string_lossy().into_owned());
+    match (abs.parent().and_then(name), name(&abs)) {
+        (Some(parent), Some(own)) => format!("{parent}/{own}"),
+        _ => rel.to_string(),
+    }
+}
+
 fn validate_config(root: &Path, obj: &ConfigObject, limits: &Limits, oof_path: Option<&str>) -> Result<Vec<Verdict>> {
     let mut sources = Sources::new();
     for n in &obj.forms {
@@ -317,7 +331,7 @@ fn validate_config(root: &Path, obj: &ConfigObject, limits: &Limits, oof_path: O
     };
     let existing = read_tree(&src_dir(root, obj)).unwrap_or_default();
     let scope = |f: &mut dyn FnMut()| with_object_schema(schema.clone(), || with_type_lookup(type_lookup.clone(), f));
-    judge_staged(&obj.rel, &staged.files, &staged.diagnostics, &existing, true, &exact, &scope)
+    judge_staged(&config_label(root, &obj.rel), &staged.files, &staged.diagnostics, &existing, true, &exact, &scope)
 }
 
 fn validate_epf(root: &Path, t: &Target, oof_path: Option<&str>) -> Result<Vec<Verdict>> {
@@ -358,7 +372,7 @@ fn validate_target(root: &Path, t: &Target, limits: &Limits, oof_path: Option<&s
         _ => validate_epf(root, t, oof_path),
     }));
     let object = match (&t.kind, &t.config) {
-        (Kind::Config, Some(obj)) => obj.rel.clone(),
+        (Kind::Config, Some(obj)) => config_label(root, &obj.rel),
         _ if t.rel == "." => t.epf.clone(),
         _ => format!("{}/{}", t.rel, t.epf),
     };

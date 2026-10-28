@@ -152,7 +152,7 @@ def main():
                     stats["PACKED:extra-diff"] += 1
                     findings.write(json.dumps({"round": rnd, "obj": rel, "what": what, "outcome": "packed-extra-diff",
                                                "ops": [(o[0], before[o[1]:o[2]][:2], after[o[3]:o[4]][:2]) for o in ops[:3]]}, ensure_ascii=False) + "\n")
-            elif res[0] == "FAILED" and res[1] not in ("GENERATED_FILE_MODIFIED",):
+            elif res[0] == "FAILED" and res[1] not in ("GENERATED_FILE_MODIFIED", "FORM_EDIT_REJECTED"):
                 findings.write(json.dumps({"round": rnd, "obj": rel, "what": what, "outcome": kind, "msg": res[2][:3]}, ensure_ascii=False) + "\n")
             elif res[0] == "FAILED":
                 findings.write(json.dumps({"round": rnd, "obj": rel, "what": what, "outcome": kind, "msg": res[2][:2]}, ensure_ascii=False) + "\n")

@@ -267,7 +267,7 @@ pub fn plan_columns(attr_name: &str, attr_id: i64, requests: &[VtColumnRequest])
         let value = match &r.value_type {
             None => Ok(VtType::String { length: None }),
             Some((line, None)) => Err(format!(
-                "line {line}: column '{}': this <ValueType> is not supported (kind String with length, Number, Date, DateTime or Boolean)",
+                "line {line}: column '{}': this <ValueType> is not supported (use kind String with length, Number, Date, DateTime or Boolean; composite is true or false when given; no other attributes)",
                 r.name
             )),
             Some((line, Some(spec))) => VtType::from_spec(spec).map_err(|why| format!("line {line}: column '{}': {why}", r.name)),
