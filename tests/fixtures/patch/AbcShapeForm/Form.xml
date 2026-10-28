@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="1914dc88-7a05-47af-8f65-cd5697846282" name="Форма" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">АВС-анализ продаж</Item>
+  </Caption>
+  <Width>672</Width>
+  <Height>430</Height>
+  <MainAttribute attributeId="0"/>
+  <FormExtension guid="343b4e00-29f0-11d6-a3c7-0050bae0a776"/>
+  <Events>
+    <BeforeOpen id="70000">ПередОткрытием</BeforeOpen>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <BeforeWrite id="80000">ПередСохранениемЗначений</BeforeWrite>
+    <OnWrite id="80001">ПослеВосстановленияЗначений</OnWrite>
+  </Events>
+  <Attributes>
+    <Attribute id="0" name="ОбработкаОбъект">
+      <Main>true</Main>
+      <StoredData>true</StoredData>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="9" name="НеЗаполнятьНастройкиПриОткрытии">
+      <StoredData>true</StoredData>
+      <ValueType kind="Boolean" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <CommandBar name="КоманднаяПанельФормы" id="2">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>672</Width>
+      <Height>25</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors bottom="Top" bottomTarget="2" bottomOffset="25" left="Left" right="Right"/>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="Подменю" id="624" kind="Submenu" checked="false" actionKind="StdSubmenu">
+          <Caption>
+            <Item language="ru">Действия</Item>
+          </Caption>
+          <Buttons>
+            <Button name="Разделитель1" id="169" kind="Separator" checked="false"/>
+            <Button name="Сформировать" id="295" kind="Action" checked="false" representation="PictureAndText" actionKind="Handler" action="КоманднаяПанельФормыСформировать">
+              <Caption>
+                <Item language="ru">Сформировать</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Сформировать</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Разделитель2" id="246" kind="Separator" checked="false"/>
+            <Button name="Отбор" id="186" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыОтбор">
+              <Caption>
+                <Item language="ru">Отбор</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Отбор</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Разделитель3" id="270" kind="Separator" checked="false"/>
+            <Button name="Заголовок" id="210" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыЗаголовок">
+              <Caption>
+                <Item language="ru">Заголовок</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Заголовок</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Разделитель4" id="282" kind="Separator" checked="false"/>
+            <Button name="Настройка" id="229" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыНастройка">
+              <Caption>
+                <Item language="ru">Настройка ...</Item>
+              </Caption>
+              <Tooltip>
+                <Item language="ru">Настройка</Item>
+              </Tooltip>
+            </Button>
+            <Button name="Действие" id="625" kind="Action" checked="false" actionKind="Standard" action="Standard:144">
+              <Caption>
+                <Item language="ru">Восстановить значения...</Item>
+              </Caption>
+            </Button>
+            <Button name="Действие1" id="626" kind="Action" checked="false" actionKind="Standard" action="Standard:143">
+              <Caption>
+                <Item language="ru">Сохранить значения...</Item>
+              </Caption>
+            </Button>
+            <Button name="Разделитель" id="627" kind="Separator" checked="false"/>
+            <Button name="Действие2" id="628" kind="Action" checked="false" actionKind="Standard" action="Standard:142">
+              <Caption>
+                <Item language="ru">Закрыть</Item>
+              </Caption>
+            </Button>
+          </Buttons>
+        </Button>
+        <Button name="Разделитель2" id="645" kind="Separator" checked="false"/>
+        <Button name="Сформировать" id="95" kind="Action" checked="false" representation="PictureAndText" actionKind="Handler" action="КоманднаяПанельФормыСформировать">
+          <Caption>
+            <Item language="ru">Сформировать</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Сформировать</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель3" id="96" kind="Separator" checked="false"/>
+        <Button name="Отбор" id="97" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыОтбор">
+          <Caption>
+            <Item language="ru">Отбор</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Отбор</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель4" id="98" kind="Separator" checked="false"/>
+        <Button name="Заголовок" id="99" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыЗаголовок">
+          <Caption>
+            <Item language="ru">Заголовок</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Заголовок</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель5" id="100" kind="Separator" checked="false"/>
+        <Button name="Настройка" id="101" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыНастройка">
+          <Caption>
+            <Item language="ru">Настройка ...</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Настройка</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Действие" id="630" kind="Action" checked="false" actionKind="Standard" action="Standard:144">
+          <Caption>
+            <Item language="ru">Восстановить значения...</Item>
+          </Caption>
+        </Button>
+        <Button name="Действие1" id="631" kind="Action" checked="false" actionKind="Standard" action="Standard:143">
+          <Caption>
+            <Item language="ru">Сохранить значения...</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель6" id="568" kind="Separator" checked="false"/>
+        <Button name="Диаграмма" id="569" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыДиаграмма">
+          <Caption>
+            <Item language="ru">Диаграмма</Item>
+          </Caption>
+          <Tooltip>
+            <Item language="ru">Диаграмма</Item>
+          </Tooltip>
+        </Button>
+        <Button name="Разделитель" id="629" kind="Separator" checked="false"/>
+        <Button name="Действие2" id="633" kind="Action" checked="false" actionKind="Standard" action="Standard:300">
+          <Caption>
+            <Item language="ru">Справка</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+      <Secondary>false</Secondary>
+    </CommandBar>
+    <SpreadsheetDocumentField name="ОсновнойДокумент" id="5">
+      <Left>8</Left>
+      <Top>105</Top>
+      <Width>656</Width>
+      <Height>318</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>12</TabOrder>
+      <Anchors top="Bottom" topTarget="22" topOffset="5" bottom="Bottom" bottomOffset="-7" left="Left" leftOffset="8" right="Right" rightOffset="-8"/>
+    </SpreadsheetDocumentField>
+    <LabelDecoration name="Надпись1" id="14">
+      <Caption>
+        <Item language="ru">Период с:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>33</Top>
+      <Width>60</Width>
+      <Height>19</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Top" bottomTarget="14" bottomOffset="19" right="Left" rightTarget="14" rightOffset="60"/>
+    </LabelDecoration>
+    <InputField name="ДатаНачала" id="15">
+      <DataPath attributeId="0" steps="65dce702-1861-459e-b8b6-43f72295d4ba">ОбработкаОбъект.ДатаНачала</DataPath>
+      <Left>70</Left>
+      <Top>33</Top>
+      <Width>80</Width>
+      <Height>19</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors bottom="Top" bottomTarget="15" bottomOffset="19" right="Left" rightTarget="15" rightOffset="80"/>
+      <Tooltip>
+        <Item language="ru">Дата отчета</Item>
+      </Tooltip>
+      <ValueType kind="Date" composite="false"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <LabelDecoration name="Надпись2" id="16">
+      <Caption>
+        <Item language="ru">по:</Item>
+      </Caption>
+      <Left>152</Left>
+      <Top>33</Top>
+      <Width>16</Width>
+      <Height>19</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors bottom="Top" bottomTarget="16" bottomOffset="19" right="Left" rightTarget="16" rightOffset="16"/>
+      <HorizontalAlign>Center</HorizontalAlign>
+    </LabelDecoration>
+    <InputField name="ДатаОкончания" id="17">
+      <DataPath attributeId="0" steps="6d3a74f7-ed40-4110-8855-b042e45c8cd1">ОбработкаОбъект.ДатаОкончания</DataPath>
+      <Left>170</Left>
+      <Top>33</Top>
+      <Width>80</Width>
+      <Height>19</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors bottom="Top" bottomTarget="17" bottomOffset="19" right="Left" rightTarget="17" rightOffset="80"/>
+      <Tooltip>
+        <Item language="ru">Дата отчета</Item>
+      </Tooltip>
+      <ValueType kind="Date" composite="false"/>
+      <ChoiceButton>true</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <TextEdit>true</TextEdit>
+      <AutoCellHeight>false</AutoCellHeight>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+      <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+    </InputField>
+    <ChoiceField name="ОбъектАнализа" id="18">
+      <DataPath attributeId="0" steps="56b7ba86-82c6-457b-889b-21f041878894">ОбработкаОбъект.ОбъектАнализа</DataPath>
+      <Left>98</Left>
+      <Top>57</Top>
+      <Width>220</Width>
+      <Height>19</Height>
+      <ZOrder>6</ZOrder>
+      <TabOrder>8</TabOrder>
+      <Anchors bottom="Top" bottomTarget="18" bottomOffset="19" right="Left" rightOffset="318" rightAlt="Right" rightAltOffset="-354"/>
+      <Events>
+        <OnChange id="2147483647">ОбъектАнализаПриИзменении</OnChange>
+      </Events>
+    </ChoiceField>
+    <ChoiceField name="ПараметрАнализа" id="19">
+      <DataPath attributeId="0" steps="214bbb4d-41a3-4c9b-b19b-479d7f910890">ОбработкаОбъект.ПараметрАнализа</DataPath>
+      <Left>444</Left>
+      <Top>57</Top>
+      <Width>220</Width>
+      <Height>19</Height>
+      <ZOrder>7</ZOrder>
+      <TabOrder>10</TabOrder>
+      <Anchors bottom="Top" bottomTarget="19" bottomOffset="19" left="Right" leftTarget="18" leftOffset="126" right="Right" rightOffset="-8"/>
+    </ChoiceField>
+    <LabelDecoration name="Надпись3" id="20">
+      <Caption>
+        <Item language="ru">Параметр анализа:</Item>
+      </Caption>
+      <Left>338</Left>
+      <Top>57</Top>
+      <Width>104</Width>
+      <Height>19</Height>
+      <ZOrder>8</ZOrder>
+      <TabOrder>9</TabOrder>
+      <Anchors bottom="Top" bottomTarget="20" bottomOffset="19" left="Right" leftTarget="18" leftOffset="20" right="Left" rightTarget="20" rightOffset="104"/>
+    </LabelDecoration>
+    <LabelDecoration name="Надпись4" id="21">
+      <Caption>
+        <Item language="ru">Объект анализа:</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>57</Top>
+      <Width>88</Width>
+      <Height>19</Height>
+      <ZOrder>9</ZOrder>
+      <TabOrder>7</TabOrder>
+      <Anchors bottom="Top" bottomTarget="21" bottomOffset="19" right="Left" rightTarget="21" rightOffset="88"/>
+    </LabelDecoration>
+    <Panel name="ПанельОтбор" id="22">
+      <Left>8</Left>
+      <Top>81</Top>
+      <Width>656</Width>
+      <Height>19</Height>
+      <ZOrder>10</ZOrder>
+      <TabOrder>11</TabOrder>
+      <Anchors top="Top" topOffset="81" bottom="Top" bottomOffset="100" left="Left" leftOffset="8" right="Right" rightOffset="-8"/>
+      <ShowTabs type="ShowTabs" member="None" code="0"/>
+      <ChildItems>
+        <Page name="Страница1">
+          <Title>
+            <Item language="ru">Страница1</Item>
+          </Title>
+          <Left>0</Left>
+          <Top>0</Top>
+          <Width>656</Width>
+          <Height>19</Height>
+          <ChildItems>
+            <InputField name="ОтборЗначениеКласс" id="28">
+              <DataPath attributeId="0" steps="88c83639-dad0-4de3-a94c-3ea697c9b864">ОбработкаОбъект.ОтборЗначениеКласс</DataPath>
+              <Left>313</Left>
+              <Top>0</Top>
+              <Width>343</Width>
+              <Height>19</Height>
+              <ZOrder>0</ZOrder>
+              <TabOrder>3</TabOrder>
+              <Anchors left="Right" leftTarget="32" leftOffset="3" right="Right"/>
+              <ValueType kind="ValueList" composite="true">
+                <Type kind="ValueList" refGuid="4772b3b4-f4a3-49c0-a1a5-8cb5961511a3"/>
+                <Type kind="Ref" refGuid="f16bb925-7339-48bf-9481-d0a3cca92e31"/>
+              </ValueType>
+              <ChoiceButton>true</ChoiceButton>
+              <ClearButton>true</ClearButton>
+              <OpenButton>false</OpenButton>
+              <TextEdit>true</TextEdit>
+              <DropListButton>false</DropListButton>
+              <SpinButton>false</SpinButton>
+              <AutoChoiceIncomplete>false</AutoChoiceIncomplete>
+              <Events>
+                <OnChange id="2147483647">ОтборЗначениеКлассПриИзменении</OnChange>
+              </Events>
+            </InputField>
+            <CheckBox name="ОтборФлагКласс" id="29">
+              <DataPath attributeId="0" steps="8d3fe771-b0b3-4bd5-a6de-8718542195d8">ОбработкаОбъект.ОтборФлагКласс</DataPath>
+              <Caption>
+                <Item language="ru">АВС-класс:</Item>
+              </Caption>
+              <Left>0</Left>
+              <Top>0</Top>
+              <Width>88</Width>
+              <Height>18</Height>
+              <ZOrder>1</ZOrder>
+              <TabOrder>1</TabOrder>
+              <Anchors top="Top" bottom="Top" bottomOffset="18" left="Left" right="Left" rightOffset="88"/>
+            </CheckBox>
+            <ChoiceField name="ОтборВидСравненияКласс" id="32">
+              <DataPath attributeId="0" steps="1074c1b9-b654-40fd-abb6-0d0fed37e8c0">ОбработкаОбъект.ОтборВидСравненияКласс</DataPath>
+              <Left>90</Left>
+              <Top>0</Top>
+              <Width>220</Width>
+              <Height>19</Height>
+              <ZOrder>2</ZOrder>
+              <TabOrder>2</TabOrder>
+              <Anchors top="Top" bottom="Top" bottomOffset="19" left="Right" leftTarget="29" leftOffset="2" right="Left" rightOffset="310" rightAlt="Right" rightAltOffset="-346"/>
+              <Events>
+                <OnChange id="2147483647">ОтборВидСравненияКлассПриИзменении</OnChange>
+              </Events>
+            </ChoiceField>
+          </ChildItems>
+        </Page>
+      </ChildItems>
+    </Panel>
+    <Button name="КнопкаНастройкаПериода" id="33">
+      <Caption>
+        <Item language="ru">...</Item>
+      </Caption>
+      <Left>256</Left>
+      <Top>33</Top>
+      <Width>19</Width>
+      <Height>19</Height>
+      <ZOrder>11</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors bottom="Top" bottomTarget="33" bottomOffset="19" right="Left" rightTarget="33" rightOffset="19"/>
+      <Events>
+        <Click id="0">КнопкаНастройкаПериодаНажатие</Click>
+      </Events>
+    </Button>
+  </ChildItems>
+</Form>

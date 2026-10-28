@@ -41,6 +41,7 @@ use crate::oof::{control_parts, control_type, geom_page, int, panel_pages, str_v
 use crate::oof_props::{atom, caption_path, localized};
 
 mod anchors;
+pub mod attr_check;
 pub use anchors::{anchor_graph_stale_entries, anchor_graph_violations};
 mod ext_read;
 pub use ext_read::enrich_ext_properties;
@@ -496,12 +497,44 @@ fn parse_value_type_spec(e: &XmlElement) -> Option<ValueTypeSpec> {
 
 /// `raw_pattern` is the unchanged original pattern text of the attribute; it is kept byte for byte
 /// (flags such as `nonNegative`/`fixed` or mixed composites are not representable in `Form.xml`).
-fn format_attr_record(a: &FormAttribute, raw_pattern: Option<&str>) -> Result<String> {
+/// Whether the attribute records of this stream carry the `kind` slot: decided by the stream version (`root[0]`: 27 with,
+/// 19..=26 without) and checked against the records that the form already has; any other shape is refused.
+fn attribute_record_has_kind(version: Option<&Item>, list: NodeRef) -> Result<bool> {
+    let version = match version {
+        Some(Item::Atom(a)) => a.value.trim().parse::<i64>().ok(),
+        _ => None,
+    };
+    let with_kind = match version {
+        Some(27) => true,
+        Some(v) if (19..=26).contains(&v) => false,
+        other => {
+            return Err(layout_err(format!(
+                "form attributes: the stream version {other:?} is not known (supported: 19..=27); the attribute list cannot be rewritten"
+            )))
+        }
+    };
+    let expected = if with_kind { 6 } else { 5 };
+    for rec in list.node.children.iter().skip(1).filter_map(Item::as_node) {
+        if rec.children.len() != expected {
+            return Err(layout_err(format!(
+                "form attributes: an attribute record of {} items in a stream of version {} (expected {expected}); the attribute list cannot be rewritten",
+                rec.children.len(),
+                version.unwrap_or(0)
+            )));
+        }
+    }
+    Ok(with_kind)
+}
+
+/// Attribute record `{{id},main,stored,[kind,]"name",pattern}`: streams of version 27 carry the `kind` slot (1 = plain
+/// attribute), the older ones (<= 26) do not; a record of the wrong shape makes the platform reject the whole form.
+fn format_attr_record(a: &FormAttribute, raw_pattern: Option<&str>, with_kind: bool) -> Result<String> {
     let pat = match raw_pattern {
         Some(raw) => raw.to_string(),
         None => format_attr_pattern(a).ok_or_else(|| layout_err(format!("unsupported attribute ValueType '{}' (composite={})", a.kind, a.composite)))?,
     };
-    Ok(format!("{{{{{}}},{},{},1,{},{}}}", a.id, i32::from(a.main), i32::from(a.stored), quote(&a.name), pat))
+    let kind = if with_kind { "1," } else { "" };
+    Ok(format!("{{{{{}}},{},{},{}{},{}}}", a.id, i32::from(a.main), i32::from(a.stored), kind, quote(&a.name), pat))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10827,6 +10860,7 @@ impl FormPatchPlan<'_> {
                 .child(2)
                 .ok_or_else(|| layout_err("form stream: attributes list missing at root[2][2]"))?;
             let (_k, acount) = list_entry(attr_list)?;
+            let with_kind = attribute_record_has_kind(self.source.root.children.first(), attr_list)?;
             let mut orig_by_id: HashMap<i64, Span> = HashMap::new();
             let mut orig_pattern_by_id: HashMap<i64, Span> = HashMap::new();
             let mut kept_records: Vec<String> = Vec::new();
@@ -10871,7 +10905,7 @@ impl FormPatchPlan<'_> {
                     ),
                     _ => None,
                 };
-                kept_records.push(format_attr_record(a, raw_pattern)?);
+                kept_records.push(format_attr_record(a, raw_pattern, with_kind)?);
             }
             // an attribute that is removed must not be linked from a control that stays
             for old in self.diff.old_attributes.iter().filter(|o| !self.diff.new_attributes.iter().any(|a| a.id == o.id)) {
@@ -11393,6 +11427,16 @@ impl FormPatchPlan<'_> {
         }
 
         let reparsed = parse_spanned(&bytes)?;
+        let before: std::collections::HashSet<String> = attr_check::attribute_section_issues(&self.source.root).into_iter().collect();
+        let fresh: Vec<String> =
+            attr_check::attribute_section_issues(&reparsed.root).into_iter().filter(|m| !before.contains(m)).collect();
+        if !fresh.is_empty() {
+            return Err(ExtractionError::new(
+                GENERATED_FILE_MODIFIED,
+                format!("the attribute section of the patched stream is malformed (the platform would refuse the form): {}", fresh.join("; ")),
+            )
+            .with("kind", "verification-failed"));
+        }
         let index = ControlIndex::build(&reparsed)?;
         let structural = !self.diff.additions.is_empty() || !self.diff.deletions.is_empty();
         if !structural {

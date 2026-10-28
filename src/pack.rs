@@ -526,6 +526,7 @@ pub fn stage_pack(
         let rec = &forms[&f.uuid];
         let mod_path = rec["module"]["path"].as_str().unwrap_or("");
         if let Some(payload) = text_change(mod_path, &rec["module"], existing_src, &current.files, &mut packed, &mut expected)? {
+            crate::bsl_order::check_module_edit(mod_path, current.files.get(mod_path).map(Vec::as_slice), &expected[mod_path])?;
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("module".into(), payload);
         }
         let bin_path = rec["layout"]["binary"]["path"].as_str().unwrap_or("");

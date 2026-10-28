@@ -861,6 +861,7 @@ pub fn stage_config_pack(
         let ex_mod = existing_file(existing, mod_path)?;
         if Some(ex_mod) != current.files.get(mod_path) {
             if let Some((payload, canonical)) = encode_text(mod_path, ex_mod, &rec["module"])? {
+                crate::bsl_order::check_module_edit(mod_path, current.files.get(mod_path).map(Vec::as_slice), &canonical)?;
                 edits.entry(name.as_str()).or_default().push(("module", payload));
                 expected.insert(mod_path.to_string(), canonical);
                 packed.push(mod_path.to_string());
