@@ -75,6 +75,12 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .f-u{text-decoration:underline}
 .f-s{text-decoration:line-through}
 .f-u.f-s{text-decoration:underline line-through}
+/* Font of the whole element (Table, CalendarField): classes sit on the root .c, children inherit (`#canvas .c` resets the font shorthand) */
+#canvas .c.b{font-weight:bold}
+#canvas .c.f-i{font-style:italic}
+#canvas .c.f-u,#canvas .c.f-u *{text-decoration:underline}
+#canvas .c.f-s,#canvas .c.f-s *{text-decoration:line-through}
+#canvas .c.f-u.f-s,#canvas .c.f-u.f-s *{text-decoration:underline line-through}
 /* недоступный элемент (Enabled=false) (JS: класс .dis на корне .c) */
 .c.dis,.c.dis .cap,.c.dis .val{color:var(--text-dis)!important}
 .c.dis svg{opacity:.45;filter:grayscale(1)}
@@ -224,7 +230,9 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .t-Table .cell.ro{border-right:0}
 .t-Table.vl .cell{border-right:1px solid var(--col-line)}
 .t-Table.no-hl .tr{border-bottom-color:transparent}
+.t-Table .tr.rsel{background:var(--sel-bg);color:var(--sel-text);border-bottom-color:var(--sel-line)} /* selected sample row (class rsel: `sel` is the inspector highlight) */
 .t-Table .tr.alt{background:var(--alt-bg,#F7F6EE)}
+.t-Table .cell.csel{background:var(--sel-bg);color:var(--sel-text);box-shadow:inset 0 0 0 1px var(--sel-bg)} /* RowSelectionMode=Cell */
 .t-Table .cell.num{justify-content:flex-end;padding-right:3px}
 .t-Table .cell.ctr{justify-content:center;padding-left:0}
 .t-Table .cell .lnk{color:var(--link);text-decoration:underline}
@@ -267,6 +275,10 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .t-PictureDecoration.pic-box{border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;padding:0}
 .t-PictureDecoration.pic-box .pic-ph{display:none}
 .t-PictureDecoration.pic-has{background:var(--ph-bg)}
+.t-PictureDecoration.pic-has::after{content:"";width:16px;height:16px;flex:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='16' height='16'%3E%3Crect x='1.5' y='2.5' width='13' height='11' fill='%23fff' stroke='%23B3AC86'/%3E%3Cpath d='M3 12l3.5-4 2.5 3 2-2 2 3z' fill='%23C9C2A0'/%3E%3Ccircle cx='11' cy='5.5' r='1.3' fill='%23E8C34A'/%3E%3C/svg%3E") no-repeat center}
+.t-PictureDecoration.pic-has.ps-tl{justify-content:flex-start;align-items:flex-start;padding:2px}
+.t-PictureDecoration.pic-has.dis::after{opacity:.45}
 .t-PictureDecoration .nptxt{color:#8C8775;padding:2px;white-space:normal;text-align:center}
 .t-PictureDecoration.link .cap{color:var(--link);text-decoration:underline}
 
@@ -294,7 +306,7 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 
 /* ---------- 13. Календарь — CalendarField ---------- */
 .t-CalendarField{border:1px solid var(--border);background:#fff;display:flex;flex-direction:column;font-size:10px;padding:1px;user-select:none;color:var(--text)}
-.cal-hd{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--head-from),var(--head-to));padding:1px 3px;border-bottom:1px solid var(--sep);font:var(--font)}
+.cal-hd{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--head-from),var(--head-to));padding:1px 3px;border-bottom:1px solid var(--sep);font:inherit}
 .cal-hd .nav{color:#5A5A5A;font-size:8px}
 .t-CalendarField.nonav .cal-hd .nav{visibility:hidden}
 .cal-wk,.cal-gr{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;line-height:14px;padding:0 2px}
@@ -305,6 +317,8 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .cal-gr .rng{background:#C9D3F0}
 .cal-ft{margin-top:auto;border-top:1px solid var(--sep);text-align:center;font-size:10px;line-height:15px;background:var(--form-bg)}
 .t-CalendarField.nocur .cal-ft{display:none}
+.t-CalendarField.dis .cal-hd,.t-CalendarField.dis .cal-gr{color:var(--text-dis)}
+.t-CalendarField.dis .cal-gr .cur{background:#C9C4AB}
 
 /* ---------- 14. Индикатор — ProgressBar ---------- */
 .t-ProgressBar{border:1px solid var(--border);background:#fff;padding:1px;position:relative}
@@ -312,7 +326,7 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .t-ProgressBar.ps-Broken .prg-fill{background:repeating-linear-gradient(90deg,#67A631 0 8px,transparent 8px 10px)}
 .t-ProgressBar.ps-BrokenTilt .prg-fill{background:repeating-linear-gradient(115deg,#67A631 0 8px,transparent 8px 11px)}
 .t-ProgressBar.vert .prg-fill{width:100%;height:38%;position:absolute;left:1px;right:1px;bottom:1px;width:auto}
-.t-ProgressBar .prg-pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:var(--font);color:var(--text)}
+.t-ProgressBar .prg-pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:inherit;color:var(--text)}
 
 /* ---------- 15. Полоса регулирования — TrackBar ---------- */
 .t-TrackBar{background:var(--form-bg);border:none;display:flex;flex-direction:column;justify-content:center;padding:2px 6px;position:relative}
@@ -426,3 +440,13 @@ body.chrome-0 #view,body.chrome-0 #main{padding:0;margin:0;border:0;display:bloc
 body.chrome-0 .zoomer{width:auto!important;height:auto!important}
 body.chrome-0 .formwrap{border:none;box-shadow:none;margin:0;padding:0;transform:none!important}
 body.chrome-0 #canvas{position:fixed;left:0;top:0;border:none;box-shadow:none;margin:0;z-index:100000}
+
+/* state rules of render-spec §16-§25 */
+.t-ProgressBar.dis .prg-fill{filter:grayscale(1);opacity:.5}
+.t-TrackBar.dis .trk-thumb,.t-TrackBar.dis .trk-ticks{opacity:.5}
+.t-ListBox.dis .lb-row.sel{background:#C9C4AB}
+.t-Splitter.dis::after{opacity:.4}
+.t-Splitter.nh::after{display:none}
+.t-TextDocumentField.dis{background:var(--form-bg)}
+.t-TextDocumentField.dis .txt-ph{color:var(--text-dis)}
+.t-GraphicalSchemaField.gs-grid.dis{background-image:radial-gradient(#ECE9DB 1px,transparent 1px)}

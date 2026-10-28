@@ -81,9 +81,9 @@ ROWS = {}
 ROWS['Form'] = """
 Width|D|draw|ширина #canvas, .formwrap = ширина+2|-|-
 Height|D|draw|высота #canvas|-|-
-Caption|P|draw|текст .form-title (22px, жёлтый градиент) только для выбранного языка, иначе имя формы; настоящей рамки окна 1С нет|{G01}: рамка окна и заголовок с иконкой, кнопки «развернуть/закрыть»|-
+Caption|D|draw|текст `.form-title` выбранного языка, иначе имя формы (Form@name); вне холста, при chrome=0 не выводится|{G01}: рамка окна и заголовок с иконкой, кнопки «развернуть/закрыть»|-
 ShowTabs|P|tabsHtml|закладки корня через tabsHtml; проверяется только code≠0, member/type игнорируются|-|None
-CaptionPicture|I|-|игнорируется (иконка в заголовке окна не рисуется)|{G01}: иконка формы слева в заголовке окна|нет
+CaptionPicture|D|draw|значок 16×16 перед текстом `.form-title`|{G01}: иконка формы слева в заголовке окна|нет
 """
 
 ROWS['InputField'] = """
@@ -204,69 +204,69 @@ VerticalAlign|I|-|игнорируется|-|Top
 """
 
 ROWS['Table'] = """
-Footer|D|tableBox|строка подвала .tf (20px) снизу, пустые ячейки|-|false
-HeaderHeight|I|-|игнорируется (шапка всегда 20px)|-|1
-FooterHeight|I|-|игнорируется (подвал всегда 20px)|-|1
-HeaderFont|I|-|игнорируется (шапка обычным шрифтом)|-|шрифт таблицы
-FooterFont|I|-|игнорируется|-|шрифт таблицы
-HeaderBackColor|I|-|игнорируется (градиент --head-from→--head-to)|{G01}: шапка — вертикальный светлый градиент #FAFAF0→#F2EBCC, разделители колонок #BFB999|-
-HeaderTextColor|I|-|игнорируется|-|-
-FooterBackColor|I|-|игнорируется|-|-
-FooterTextColor|I|-|игнорируется|-|-
-=Font
-=BackColor
-=TextColor
-=FieldBackColor
-=FieldTextColor
-=BorderColor
-=BorderStyle
-HorizontalLines|I|-|игнорируется (линии между строками всегда есть)|{G01}: тонкие линии строк #CBD2D6|true
-VerticalLines|I|-|игнорируется (вертикальных линий в строках нет)|-|true
-UseAlternationRowColor|I|-|игнорируется (чередование цвета строк)|-|false
-AlternationRowBackColor|I|-|игнорируется|-|-
-SelectionBackColor|I|-|игнорируется (выбранная строка не показывается)|{G01}: текущая строка — синяя заливка с белым текстом|системный синий
-SelectionTextColor|I|-|игнорируется|-|белый
-HorizontalScrollBar|I|-|игнорируется (полоса 16px рисуется всегда)|{G01}: горизонтальная полоса внизу|Auto
-VerticalScrollBar|I|-|игнорируется (вертикальная полоса рисуется всегда)|{G01}: вертикальная полоса справа|Auto
-InitialTreeView|I|-|игнорируется (дерево рисуется как плоская таблица)|{G01}: дерево групп слева: узел «+» и значок папки|-
-SelectionMode|I|-|игнорируется|-|Single
-RowSelectionMode|I|-|игнорируется (выделение строки или ячейки)|-|Row
-FixedLeft|I|-|игнорируется (закреплённые колонки слева)|-|0
-FixedRight|I|-|игнорируется|-|0
-=ReadOnly
-=Enabled
-=TransparentBack
-=Tooltip
-=Visible
+Footer|D|tableBox|подвал `.tf` над горизонтальной полосой, ячейки `.fd` по ширинам колонок с FooterText|-|false
+HeaderHeight|D|tableBox|высота шапки 20+(N-1)*13 px (`--head-h`, `.mh`: перенос по словам, по центру)|-|1
+FooterHeight|D|tableBox|высота подвала 20+(N-1)*13 px|-|1
+HeaderFont|D|tableBox|классы/стиль шрифта на все `.colh`|-|шрифт таблицы
+FooterFont|D|tableBox|классы/стиль шрифта на все `.fd`|-|шрифт таблицы
+HeaderBackColor|D|tableBox|сплошной фон на `.th` и `.colh` (без градиента)|{G01}: шапка — вертикальный светлый градиент #FAFAF0→#F2EBCC, разделители колонок #BFB999|-
+HeaderTextColor|D|tableBox|цвет текста `.colh`|-|-
+FooterBackColor|D|tableBox|сплошной фон на `.tf` и `.fd`|-|-
+FooterTextColor|D|tableBox|цвет текста `.fd`|-|-
+Font|D|tableBox|классы `.b/.f-i/.f-u/.f-s` и font-family/size на корне (ячейки и шапка без HeaderFont)|-|шрифт формы (Tahoma 8)
+BackColor|D|tableBox|фон области без строк (корень)|-|-
+TextColor|D|tableBox|цвет текста `.cell` (FieldTextColor важнее)|-|-
+FieldBackColor|D|tableBox|фон строк `.tr` (кроме выделенной)|-|-
+FieldTextColor|D|tableBox|цвет текста `.cell`|-|-
+BorderColor|D|tableBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+HorizontalLines|D|tableBox|`false` → `.no-hl`: линии между строками прозрачные|{G01}: тонкие линии строк #CBD2D6|true
+VerticalLines|D|tableBox|`false` → без `.vl`: вертикальных линий в строках нет (по умолчанию есть)|-|true
+UseAlternationRowColor|D|tableBox|designer: вторая строка-образец `.alt`|-|false
+AlternationRowBackColor|D|tableBox|переменная `--alt-bg` на корне|-|-
+SelectionBackColor|D|tableBox|фон выделенной строки-образца `.tr.rsel` (designer; основной список формы или таблица с Selection*)|{G01}: текущая строка — синяя заливка с белым текстом|системный синий
+SelectionTextColor|D|tableBox|цвет текста выделенной строки-образца|-|белый
+HorizontalScrollBar|D|tableBox|`DontUse`/`false` — полосы нет; иначе `.sb` рисуется всегда|{G01}: горизонтальная полоса внизу|Auto
+VerticalScrollBar|D|tableBox|`UseAlways`/`true` → `.vsb` со стрелками; иначе не рисуется|{G01}: вертикальная полоса справа|Auto
+InitialTreeView|D|tableBox|в первой колонке (или с ShowHierarchy) строки-образца: узел «+» и папка|{G01}: дерево групп слева: узел «+» и значок папки|-
+SelectionMode|I|-|не отображается: влияет только на поведение|-|Single
+RowSelectionMode|D|tableBox|`Cell`: синяя только первая редактируемая ячейка (`.cell.csel`), фон строки белый|-|Row
+FixedLeft|D|tableBox|первые N колонок `.fixed` (тень-разделитель)|-|0
+FixedRight|D|tableBox|последние N колонок `.fixed`|-|0
+ReadOnly|D|tableBox|designer: все ячейки-образцы пустые|-|false
+Enabled|D|ctl|класс `.dis`: серые шапка и текст ячеек|-|true
+TransparentBack|D|ctl|класс `.tr-bg` (прозрачный фон)|-|false
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['TableColumn'] = """
-Header|D|tableBox|текст `.colh`; пустой заголовок заменяется именем колонки; обрезается по ширине|{G06}: «Автошина», «Нач. периода» — подписи слева; {G01}: значок сортировки «▲» у активной колонки|-
-Width|D|parse|flex-basis и width в px; 0 или нет тега → 75|{G01}|75
-Visible|D|tableBox|скрытая колонка не рисуется|-|true
-ReadOnly|D|tableBox|в «Конфигураторе»: редактируемая колонка = значок «ab» + <Поле ввода>, ReadOnly = пустая ячейка (.cell.ro)|-|false
-Editor|S|inspectCol|только в inspector; флажки в колонках не рисуются|-|InputField
-ValueType|S|inspectCol|только в inspector; образец значения по типу не рисуется|-|-
-HeaderFont|I|-|игнорируется|-|шрифт таблицы
-HeaderTextColor|I|-|игнорируется|-|-
-HeaderBackColor|I|-|игнорируется|-|-
-HeaderHorizontalAlign|I|-|игнорируется (подпись всегда слева)|-|Auto
-HorizontalAlignInColumn|I|-|игнорируется|-|Auto
-HeaderPicture|I|-|игнорируется|-|нет
-RowsPictures|I|-|игнорируется (значки в строках: папка/элемент)|{G01}: значки папок и элементов в первой колонке|нет
-FooterText|S|inspectCol|читается, но в подвале не рисуется|-|-
-FooterFont|I|-|игнорируется|-|-
-FooterBackColor|I|-|игнорируется|-|-
-FooterTextColor|I|-|игнорируется|-|-
-=FieldBackColor
-=FieldTextColor
-TextFont|I|-|игнорируется (шрифт текста ячеек)|-|шрифт таблицы
-Hyperlink|I|-|игнорируется (ячейки-ссылки)|-|false
-MarkNegatives|I|-|игнорируется|-|false
-CheckBoxThreeState|I|-|игнорируется|-|false
-ShowHierarchy|I|-|игнорируется (отступ и «+» в колонке дерева)|{G01}: узел «+» в колонке дерева|false
-=Enabled
-Tooltip|P|tableBox|только title= при наведении на заголовок|-|нет
+Header|D|tableBox|текст `.colh` (ellipsis); пустой заголовок — пустая ячейка шапки, имя только в title=|{G06}: «Автошина», «Нач. периода» — подписи слева; {G01}: значок сортировки «▲» у активной колонки|-
+Width|D|parse|flex:0 0 Npx и width на `.colh`/`.cell`/`.fd`; 0 или нет тега → 75|{G01}|75
+Visible|D|tableBox|скрытая колонка не рисуется; в режиме «показывать скрытые» — с opacity .35|-|true
+ReadOnly|D|tableBox|designer: ячейка-образец пустая (`.cell.ro`), иначе значок «ab» + <Поле ввода>|-|false
+Editor|D|tableBox|CheckBox → флажок по центру; ChoiceField → «ab» + <Поле выбора>; InputField/нет → <Поле ввода>; прочие — пусто|-|InputField
+ValueType|D|tableBox|Number → образец `0` / `0,00` по fractionDigits (`.num`)|-|-
+HeaderFont|D|tableBox|классы/стиль шрифта на `.colh` колонки|-|шрифт таблицы
+HeaderTextColor|D|tableBox|цвет текста `.colh` колонки|-|-
+HeaderBackColor|D|tableBox|фон `.colh` колонки|-|-
+HeaderHorizontalAlign|D|tableBox|`.ha-Center` / `.ha-Right` на `.colh`|-|Auto
+HorizontalAlignInColumn|D|tableBox|`.num` / `.ctr` на `.cell` (число — вправо по умолчанию)|-|Auto
+HeaderPicture|D|tableBox|значок 16×16 в `.colh` перед текстом (без подписи — по центру)|-|нет
+RowsPictures|D|tableBox|значок `icon-item` по центру ячейки-образца (и у колонки «Картинка»)|{G01}: значки папок и элементов в первой колонке|нет
+FooterText|D|tableBox|текст `.fd` колонки при Footer=true|-|-
+FooterFont|D|tableBox|классы/стиль шрифта на `.fd` колонки|-|-
+FooterBackColor|D|tableBox|фон `.fd` колонки|-|-
+FooterTextColor|D|tableBox|цвет текста `.fd` колонки|-|-
+FieldBackColor|D|tableBox|фон `.cell` колонки|-|-
+FieldTextColor|D|tableBox|цвет текста `.cell` колонки|-|-
+TextFont|D|tableBox|классы/стиль шрифта на `.cell` колонки|-|шрифт таблицы
+Hyperlink|D|tableBox|текст образца в `.lnk` (синий, подчёркнутый)|-|false
+MarkNegatives|I|-|не отображается: в превью нет данных|-|false
+CheckBoxThreeState|D|tableBox|флажок-образец `.mix`|-|false
+ShowHierarchy|D|tableBox|перед текстом образца узел «+» и папка|{G01}: узел «+» в колонке дерева|false
+Enabled|D|tableBox|серый текст `.colh`/`.cell`/`.fd` колонки|-|true
+Tooltip|P|tableBox|только title= заголовка колонки|-|нет
 """
 
 ROWS['Panel'] = """
@@ -339,53 +339,53 @@ ButtonOrder|I|-|игнорируется|-|-
 """
 
 ROWS['PictureDecoration'] = """
-Picture|P|label|без подписи и размер >24px → `.pic-box` с «пейзажем»-заглушкой (максимум 96×110), иначе значок 14px; настоящая картинка не рисуется|{G02}: пустые рамки (картинки не заданы) — тонкая рамка #B3AC86 без заглушки|нет
-PictureSize|I|-|игнорируется (растянуть, пропорционально, реальный размер, плитка)|-|-
-Zoomable|I|-|игнорируется|-|false
-Hyperlink|D|label|подчёркивание + синий цвет|-|false
-NonselectedPictureText|I|-|игнорируется (текст, если картинка не выбрана)|-|-
-UseContextMenu|I|-|игнорируется|-|true
-=BackColor
-=BorderColor
-=BorderStyle
-=TransparentBack
-=TextColor
-=Font
-=Enabled
-=Tooltip
-=Visible
+Picture|D|pictureBox|без подписи и >24px: `.pic-box` (пустая рамка) или `.pic-box.pic-has` с заглушкой 16×16; маленькая/с подписью — значок в `label`|{G02}: пустые рамки (картинки не заданы) — тонкая рамка #B3AC86 без заглушки|нет
+PictureSize|P|pictureBox|AutoSize/RealSize/Tile → заглушка в левом верхнем углу (`.ps-tl`); остальное — по центру|-|-
+Zoomable|I|-|не отображается: поведение|-|false
+Hyperlink|D|label|подпись синяя подчёркнутая (`.link`)|-|false
+NonselectedPictureText|D|pictureBox|текст `.nptxt` по центру пустой рамки, если картинки нет|-|-
+UseContextMenu|I|-|не отображается: поведение|-|true
+BackColor|D|pictureBox|`background` на корне|-|-
+BorderColor|D|pictureBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+TransparentBack|D|ctl|класс `.tr-bg` (прозрачный фон)|-|false
+TextColor|D|label|цвет подписи `.cap`|-|-
+Font|D|label|шрифт подписи `.cap`|-|шрифт формы (Tahoma 8)
+Enabled|D|ctl|класс `.dis`: заглушка бледная, подпись серая|-|true
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['SpreadsheetDocumentField'] = """
-ShowGrid|I|-|игнорируется (сетка ячеек не рисуется)|-|true
-ShowHeaders|I|-|игнорируется (заголовки строк/колонок)|-|true
-ShowGroups|I|-|игнорируется (группировки по краям)|-|true
-FixedBackground|I|-|игнорируется|-|false
-HorizontalScrollBar|I|-|игнорируется (полосы рисуются всегда: .sdoc-h/.sdoc-v)|-|Auto
-VerticalScrollBar|I|-|игнорируется|-|Auto
-=ReadOnly
-=BorderColor
-=BorderStyle
-=Visible
+ShowGrid|D|sdocBox|`false` — белое поле; иначе сетка 64×17 (`.grid`)|-|true
+ShowHeaders|D|sdocBox|`true` → заголовки колонок `.shd-h` и строк `.shd-v`|-|true
+ShowGroups|D|sdocBox|`false` — без полосы группировок `.shd-g` (9 px)|-|true
+FixedBackground|I|-|не отображается: поведение|-|false
+HorizontalScrollBar|D|sdocBox|`DontUse`/`false` — без полосы `.sdoc-h`; поле ниже 40 px — без полос|-|Auto
+VerticalScrollBar|D|sdocBox|`DontUse`/`false` — без полосы `.sdoc-v`|-|Auto
+ReadOnly|I|-|не отображается: вид не меняется|-|false
+BorderColor|D|sdocBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['CalendarField'] = """
-=FieldBackColor
-=FieldTextColor
-=ButtonBackColor
-SelectionBackColor|I|-|игнорируется (выделение всегда #316AC5)|-|системный синий
-SelectionTextColor|I|-|игнорируется|-|белый
-HolidayColor|I|-|игнорируется (выходные всегда #c00)|-|красный
-ShowCurrentDate|I|-|игнорируется (подпись «Сегодня» внизу всегда есть)|-|true
-CalendarNavigation|I|-|игнорируется (стрелки смены месяца)|-|true
-SelectionMode|I|-|игнорируется (одна дата / несколько / интервал)|-|Single
-=Font
-=BorderColor
-=BorderStyle
-=TransparentBack
-=Enabled
-=Tooltip
-=Visible
+FieldBackColor|D|calendarBox|`background` корня|-|-
+FieldTextColor|D|calendarBox|цвет чисел `.cal-gr`|-|-
+ButtonBackColor|D|calendarBox|фон шапки `.cal-hd`|-|-
+SelectionBackColor|D|calendarBox|`--sel-bg` на корне (выбранный день)|-|системный синий
+SelectionTextColor|D|calendarBox|`--sel-text` на корне|-|белый
+HolidayColor|D|calendarBox|`--holiday` на корне (выходные)|-|красный
+ShowCurrentDate|D|calendarBox|`false` или поле меньше 140×110 — без подвала (`.nocur`)|-|true
+CalendarNavigation|D|calendarBox|`false` — стрелки скрыты (`.nonav`)|-|true
+SelectionMode|D|calendarBox|Single — один день; Multiple — два несмежных; Interval — три подряд (средний `.rng`)|-|Single
+Font|P|calendarBox|жирность/курсив/гарнитура на корне; размер не доходит до дней недели и подвала|-|шрифт формы (Tahoma 8)
+BorderColor|D|calendarBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+TransparentBack|D|ctl|класс `.tr-bg` (прозрачный фон)|-|false
+Enabled|D|ctl|класс `.dis`: серые числа и шапка, выделение #C9C4AB|-|true
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['ChoiceField'] = """
@@ -413,113 +413,113 @@ ChoiceListHeight|I|-|игнорируется (высота выпадающег
 """
 
 ROWS['ProgressBar'] = """
-ShowPercent|I|-|игнорируется (процент текстом)|-|false
-ShowStyle|I|-|игнорируется (Smooth/Broken/BrokenTilt — сплошной/блоки/наклонные блоки)|-|Smooth
-Orientation|I|-|игнорируется (всегда горизонтально)|-|Horizontal
-MinValue|I|-|игнорируется (заполнение всегда 38%)|-|0
-MaxValue|I|-|игнорируется|-|100
-Step|I|-|игнорируется|-|1
-=BackColor
-=BorderColor
-=BorderStyle
-=Font
-=Enabled
-=Tooltip
-=Visible
+ShowPercent|D|progressBox|`<span class="prg-pct">38%</span>` по центру|-|false
+ShowStyle|D|progressBox|`Broken`/`BrokenTilt` → `.ps-*` блоки|-|Smooth
+Orientation|D|progressBox|`Vertical` → `.vert`: заполнение снизу вверх|-|Horizontal
+MinValue|I|-|не отображается: доля образца 38 %|-|0
+MaxValue|I|-|не отображается: доля образца 38 %|-|100
+Step|I|-|не отображается: поведение|-|1
+BackColor|D|progressBox|`background` корня|-|-
+BorderColor|D|progressBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+Font|D|progressBox|шрифт `.prg-pct`|-|шрифт формы (Tahoma 8)
+Enabled|D|ctl|класс `.dis`: заполнение серое, opacity .5|-|true
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['TrackBar'] = """
-Orientation|I|-|игнорируется (всегда горизонтально)|-|Horizontal
-MarkingAppearance|I|-|игнорируется (деления: нет / сверху-слева / снизу-справа / с обеих сторон)|-|BottomRight
-MarkingStep|I|-|игнорируется (шаг делений; рисуется 9 делений)|-|1
-Step|I|-|игнорируется|-|1
-LargeStep|I|-|игнорируется|-|5
-MinValue|I|-|игнорируется|-|0
-MaxValue|I|-|игнорируется|-|10
-=BackColor
-=TextColor
-=ButtonBackColor
-=BorderColor
-=BorderStyle
-=TransparentBack
-=Enabled
-=Tooltip
-=Visible
+Orientation|D|trackBox|`Vertical` → `.vert`|-|Horizontal
+MarkingAppearance|D|trackBox|DontShow / TopLeft / Both / BottomRight (по умолчанию под линией)|-|BottomRight
+MarkingStep|D|trackBox|число делений = (Max−Min)/шаг+1, не больше 21|-|1
+Step|I|-|не отображается: поведение|-|1
+LargeStep|I|-|не отображается: поведение|-|5
+MinValue|D|trackBox|участвует в числе делений|-|0
+MaxValue|D|trackBox|число делений (по умолчанию 10 → 11)|-|10
+BackColor|D|trackBox|`background` корня|-|-
+TextColor|D|trackBox|цвет делений|-|-
+ButtonBackColor|D|trackBox|фон ползунка|-|-
+BorderColor|D|trackBox|`border-color` линии `.trk-line`|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+TransparentBack|D|ctl|класс `.tr-bg` (прозрачный фон)|-|false
+Enabled|D|ctl|класс `.dis`: ползунок и деления opacity .5|-|true
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['ListBox'] = """
-ShowCheckBox|I|-|игнорируется (флажки в строках)|-|false
-ShowPicture|I|-|игнорируется (значки в строках)|-|false
-=FieldBackColor
-=FieldTextColor
-=ReadOnly
-=BorderColor
-=BorderStyle
-=Enabled
-=Tooltip
-=Visible
+ShowCheckBox|D|listBox|designer: флажок `.box` в строках-образцах|-|false
+ShowPicture|D|listBox|designer: значок `icon-item` в строках-образцах|-|false
+FieldBackColor|D|listBox|`background` корня|-|-
+FieldTextColor|D|listBox|цвет текста строк-образцов|-|-
+ReadOnly|I|-|не отображается: вид не меняется|-|false
+BorderColor|D|listBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+Enabled|D|ctl|класс `.dis`: серые строки, выделение #C9C4AB|-|true
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['Splitter'] = """
-Orientation|I|-|игнорируется (разделитель рисуется пустым)|{G01}: вертикальный разделитель 6px между деревом и списком (едва заметный)|Vertical
-=BackColor
-=BorderColor
-=BorderStyle
-=Enabled
-=Tooltip
-=Visible
+Orientation|D|splitterBox|Vertical/Horizontal/Auto (по пропорциям); ручка из точек по центру, не рисуется при длине < 20 px|{G01}: вертикальный разделитель 6px между деревом и списком (едва заметный)|Vertical
+BackColor|D|splitterBox|`--spl-bg`, класс `.colored`|-|-
+BorderColor|I|-|игнорируется: у разделителя нет рамки|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+Enabled|D|ctl|класс `.dis`: ручка opacity .4|-|true
+Tooltip|D|titleOf|текст подсказки выбранного языка в title= корня (без тега — имя элемента); на холсте подсказки нет|-|нет
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['TextDocumentField'] = """
-=Font
-=BackColor
-=TextColor
-=ReadOnly
-=BorderColor
-=BorderStyle
-=Enabled
-=Visible
+Font|D|textDocBox|шрифт текста-образца `.txt-ph`|-|шрифт формы (Tahoma 8)
+BackColor|D|textDocBox|`background` корня|-|-
+TextColor|D|textDocBox|цвет текста-образца|-|-
+ReadOnly|I|-|не отображается: вид не меняется|-|false
+BorderColor|D|textDocBox|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+Enabled|D|ctl|класс `.dis`: фон формы, серый текст-образец|-|true
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['HTMLDocumentField'] = """
-=BorderColor
-=BorderStyle
-=Visible
+BorderColor|D|ctl|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 ROWS['GraphicalSchemaField'] = """
-=ReadOnly
-=BackColor
-=BorderColor
-=BorderStyle
-=TransparentBack
-=Enabled
-=Visible
+ReadOnly|I|-|не отображается: вид не меняется|-|false
+BackColor|D|ctl|`background-color` корня|-|-
+BorderColor|D|ctl|`border-color` на корне|-|-
+BorderStyle|D|ctl|класс `.bd-<тип>`: None — без рамки, SingleLine/Frame/Single3D/Double/Rounded/Overline/Underline/Embossed/Indented|-|-
+TransparentBack|D|ctl|класс `.tr-bg` (прозрачный фон)|-|false
+Enabled|D|ctl|класс `.dis`: сетка бледнее|-|true
+Visible|D|vis|скрытый элемент не рисуется; в режиме «показывать скрытые» — полупрозрачный с пунктирной рамкой (.hid)|-|true
 """
 
 # Shared structures: (id, xml, ru, values, default, status, now, ref)
 SHARED = {
     'Font': [
-        ('face', 'Font@face', 'Имя', 'название шрифта (Tahoma, Arial, Verdana, Courier New…)', 'шрифт формы', 'I', 'в inspector строка Font; на холсте всегда Tahoma', '{G05}'),
-        ('size', 'Font@size', 'Размер', 'число, пункты', '8', 'I', 'игнорируется', '-'),
-        ('bold', 'Font@bold', 'Жирный', 'true / false', 'false', 'P', 'читается только у Label, CheckBox, RadioButton', '{G06}'),
-        ('italic', 'Font@italic', 'Наклонный', 'true / false', 'false', 'I', 'игнорируется', '{G05}'),
-        ('underline', 'Font@underline', 'Подчеркивание', 'true / false', 'false', 'I', 'игнорируется', '{G05}'),
-        ('strikeout', 'Font@strikeout', 'Зачеркивание', 'true / false', 'false', 'I', 'игнорируется', '{G05}'),
-        ('scale', 'Font@scale', 'Масштаб', 'число, %', '100', 'I', 'игнорируется', '-'),
+        ('face', 'Font@face', 'Имя', 'название шрифта (Tahoma, Arial, Verdana, Courier New…)', 'шрифт формы', 'D', 'font-family на носителе текста (fontSpec)', '{G05}'),
+        ('size', 'Font@size', 'Размер', 'число, пункты', '8', 'D', 'font-size в pt на носителе текста', '-'),
+        ('bold', 'Font@bold', 'Жирный', 'true / false', 'false', 'D', 'класс `.b` (false — font-weight:normal); у всех классов со шрифтом', '{G06}'),
+        ('italic', 'Font@italic', 'Наклонный', 'true / false', 'false', 'D', 'класс `.f-i`', '{G05}'),
+        ('underline', 'Font@underline', 'Подчеркивание', 'true / false', 'false', 'D', 'класс `.f-u`', '{G05}'),
+        ('strikeout', 'Font@strikeout', 'Зачеркивание', 'true / false', 'false', 'D', 'класс `.f-s` (вместе с `.f-u` — оба)', '{G05}'),
+        ('scale', 'Font@scale', 'Масштаб', 'число, %', '100', 'D', 'font-size: calc(Npt * scale / 100)', '-'),
         ('source', 'Font@source', 'Вид', 'bin — шрифт задан в форме; style — из стиля 1С; без атрибута — по умолчанию', '-', 'I', 'игнорируется', '-'),
     ],
     'Color': [
-        ('kind', '*Color@kind', 'Вид', 'rgb — прямой цвет; style — элемент стиля 1С (ссылка ref, часто с запасным value)', '-', 'P', 'читается только value у TextColor/BackColor подписей', '-'),
-        ('value', '*Color@value', 'Красный/Зеленый/Синий (RGB)', '#RRGGBB', '-', 'P', 'читается только у TextColor/BackColor подписей; у kind=style без value цвет не определяется', '{G06}'),
+        ('kind', '*Color@kind', 'Вид', 'rgb — прямой цвет; style — элемент стиля 1С (ссылка ref, часто с запасным value)', '-', 'D', 'rgb и style с value → цвет; style без value и auto → цвет по умолчанию роли (colorCss)', '-'),
+        ('value', '*Color@value', 'Красный/Зеленый/Синий (RGB)', '#RRGGBB', '-', 'D', 'inline-цвет (color/background/border-color) по роли свойства; у kind=style без value цвет не задаётся', '{G06}'),
         ('ref', '*Color@ref', 'Элемент стиля', 'GUID элемента стиля 1С (например, «цвет фона формы»)', '-', 'I', 'игнорируется: имена стилевых цветов в превью не сопоставлены с hex', '-'),
     ],
     'Border': [
-        ('type', 'BorderStyle', 'Вид / Рамка', 'None — нет; SingleLine — линия; Frame — рамка', 'зависит от класса', 'P', 'читается только у UsualGroup', '{G06}'),
-        ('code', 'BorderStyle@code', 'ТипРамки', 'число: 0 = None, 4 = SingleLine, 6 = Frame', '-', 'I', 'игнорируется', '-'),
+        ('type', 'BorderStyle', 'Вид / Рамка', 'None — нет; SingleLine — линия; Frame — рамка', 'зависит от класса', 'D', 'класс `.bd-<тип>` (у UsualGroup — `.bs-*`); у всех классов с рамкой (borderType)', '{G06}'),
+        ('code', 'BorderStyle@code', 'ТипРамки', 'число: 0 = None, 4 = SingleLine, 6 = Frame', '-', 'D', 'используется, если нет type: 0 → None, 4 → SingleLine, 6 → Frame', '-'),
     ],
     'Picture': [
-        ('kind', 'Picture@kind', 'Вид', '1 — картинка из библиотеки/ресурсов (refGuid); true — «у элемента есть картинка»; нет тега — нет картинки', 'нет', 'P', 'рисуется только как фиксированная иконка на подписях', '{G02}'),
+        ('kind', 'Picture@kind', 'Вид', '1 — картинка из библиотеки/ресурсов (refGuid); true — «у элемента есть картинка»; нет тега — нет картинки', 'нет', 'D', 'заглушка `icon-picture` 16×16 (подписи, кнопки, поля, закладки, заголовок формы, колонки); у PictureDecoration — `.pic-has`', '{G02}'),
         ('refGuid', 'Picture@refGuid', 'Ссылка', 'GUID картинки в конфигурации; пиксели в Form.xml не лежат', '-', 'I', 'недоступно: изображение подставить нельзя, нужна заглушка', '-'),
     ],
     'Shortcut': [

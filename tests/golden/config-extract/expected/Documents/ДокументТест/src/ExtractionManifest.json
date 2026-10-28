@@ -101,8 +101,8 @@
     {
       "path": "Forms/ФормаДокумента/FormPreview.html",
       "role": "form-preview",
-      "size": 285928,
-      "sha256": "8e43bafa979d745926879a74dea5e9e2d17e21311866997f4ecf3c02d046d3c7"
+      "size": 300950,
+      "sha256": "b80dbb80885b164ebb50f671d3edb0e4a30c96e0cdd463e0ed90964c85b7146d"
     },
     {
       "path": "Forms/ФормаДокумента/Reference/FormStream.bin",

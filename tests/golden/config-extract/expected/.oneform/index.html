@@ -77,6 +77,12 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .f-u{text-decoration:underline}
 .f-s{text-decoration:line-through}
 .f-u.f-s{text-decoration:underline line-through}
+/* Font of the whole element (Table, CalendarField): classes sit on the root .c, children inherit (`#canvas .c` resets the font shorthand) */
+#canvas .c.b{font-weight:bold}
+#canvas .c.f-i{font-style:italic}
+#canvas .c.f-u,#canvas .c.f-u *{text-decoration:underline}
+#canvas .c.f-s,#canvas .c.f-s *{text-decoration:line-through}
+#canvas .c.f-u.f-s,#canvas .c.f-u.f-s *{text-decoration:underline line-through}
 /* недоступный элемент (Enabled=false) (JS: класс .dis на корне .c) */
 .c.dis,.c.dis .cap,.c.dis .val{color:var(--text-dis)!important}
 .c.dis svg{opacity:.45;filter:grayscale(1)}
@@ -226,7 +232,9 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .t-Table .cell.ro{border-right:0}
 .t-Table.vl .cell{border-right:1px solid var(--col-line)}
 .t-Table.no-hl .tr{border-bottom-color:transparent}
+.t-Table .tr.rsel{background:var(--sel-bg);color:var(--sel-text);border-bottom-color:var(--sel-line)} /* selected sample row (class rsel: `sel` is the inspector highlight) */
 .t-Table .tr.alt{background:var(--alt-bg,#F7F6EE)}
+.t-Table .cell.csel{background:var(--sel-bg);color:var(--sel-text);box-shadow:inset 0 0 0 1px var(--sel-bg)} /* RowSelectionMode=Cell */
 .t-Table .cell.num{justify-content:flex-end;padding-right:3px}
 .t-Table .cell.ctr{justify-content:center;padding-left:0}
 .t-Table .cell .lnk{color:var(--link);text-decoration:underline}
@@ -269,6 +277,10 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .t-PictureDecoration.pic-box{border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;padding:0}
 .t-PictureDecoration.pic-box .pic-ph{display:none}
 .t-PictureDecoration.pic-has{background:var(--ph-bg)}
+.t-PictureDecoration.pic-has::after{content:"";width:16px;height:16px;flex:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg' width='16' height='16'%3E%3Crect x='1.5' y='2.5' width='13' height='11' fill='%23fff' stroke='%23B3AC86'/%3E%3Cpath d='M3 12l3.5-4 2.5 3 2-2 2 3z' fill='%23C9C2A0'/%3E%3Ccircle cx='11' cy='5.5' r='1.3' fill='%23E8C34A'/%3E%3C/svg%3E") no-repeat center}
+.t-PictureDecoration.pic-has.ps-tl{justify-content:flex-start;align-items:flex-start;padding:2px}
+.t-PictureDecoration.pic-has.dis::after{opacity:.45}
 .t-PictureDecoration .nptxt{color:#8C8775;padding:2px;white-space:normal;text-align:center}
 .t-PictureDecoration.link .cap{color:var(--link);text-decoration:underline}
 
@@ -296,7 +308,7 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 
 /* ---------- 13. Календарь — CalendarField ---------- */
 .t-CalendarField{border:1px solid var(--border);background:#fff;display:flex;flex-direction:column;font-size:10px;padding:1px;user-select:none;color:var(--text)}
-.cal-hd{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--head-from),var(--head-to));padding:1px 3px;border-bottom:1px solid var(--sep);font:var(--font)}
+.cal-hd{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,var(--head-from),var(--head-to));padding:1px 3px;border-bottom:1px solid var(--sep);font:inherit}
 .cal-hd .nav{color:#5A5A5A;font-size:8px}
 .t-CalendarField.nonav .cal-hd .nav{visibility:hidden}
 .cal-wk,.cal-gr{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;line-height:14px;padding:0 2px}
@@ -307,6 +319,8 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .cal-gr .rng{background:#C9D3F0}
 .cal-ft{margin-top:auto;border-top:1px solid var(--sep);text-align:center;font-size:10px;line-height:15px;background:var(--form-bg)}
 .t-CalendarField.nocur .cal-ft{display:none}
+.t-CalendarField.dis .cal-hd,.t-CalendarField.dis .cal-gr{color:var(--text-dis)}
+.t-CalendarField.dis .cal-gr .cur{background:#C9C4AB}
 
 /* ---------- 14. Индикатор — ProgressBar ---------- */
 .t-ProgressBar{border:1px solid var(--border);background:#fff;padding:1px;position:relative}
@@ -314,7 +328,7 @@ body{margin:0;font:12px Tahoma,Arial,sans-serif;background:#d8d5cc;color:#000}
 .t-ProgressBar.ps-Broken .prg-fill{background:repeating-linear-gradient(90deg,#67A631 0 8px,transparent 8px 10px)}
 .t-ProgressBar.ps-BrokenTilt .prg-fill{background:repeating-linear-gradient(115deg,#67A631 0 8px,transparent 8px 11px)}
 .t-ProgressBar.vert .prg-fill{width:100%;height:38%;position:absolute;left:1px;right:1px;bottom:1px;width:auto}
-.t-ProgressBar .prg-pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:var(--font);color:var(--text)}
+.t-ProgressBar .prg-pct{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font:inherit;color:var(--text)}
 
 /* ---------- 15. Полоса регулирования — TrackBar ---------- */
 .t-TrackBar{background:var(--form-bg);border:none;display:flex;flex-direction:column;justify-content:center;padding:2px 6px;position:relative}
@@ -428,6 +442,16 @@ body.chrome-0 #view,body.chrome-0 #main{padding:0;margin:0;border:0;display:bloc
 body.chrome-0 .zoomer{width:auto!important;height:auto!important}
 body.chrome-0 .formwrap{border:none;box-shadow:none;margin:0;padding:0;transform:none!important}
 body.chrome-0 #canvas{position:fixed;left:0;top:0;border:none;box-shadow:none;margin:0;z-index:100000}
+
+/* state rules of render-spec §16-§25 */
+.t-ProgressBar.dis .prg-fill{filter:grayscale(1);opacity:.5}
+.t-TrackBar.dis .trk-thumb,.t-TrackBar.dis .trk-ticks{opacity:.5}
+.t-ListBox.dis .lb-row.sel{background:#C9C4AB}
+.t-Splitter.dis::after{opacity:.4}
+.t-Splitter.nh::after{display:none}
+.t-TextDocumentField.dis{background:var(--form-bg)}
+.t-TextDocumentField.dis .txt-ph{color:var(--text-dis)}
+.t-GraphicalSchemaField.gs-grid.dis{background-image:radial-gradient(#ECE9DB 1px,transparent 1px)}
 
 .code{background:#fff;border:1px solid #888;font:12px Consolas,monospace;padding:4px 0}
 .l{white-space:pre;padding-right:8px}
@@ -925,7 +949,6 @@ var ICON = {
   eye: sv(12, '<path d="M1 6c1.6-3 3.3-4.2 5-4.2S9.4 3 11 6c-1.6 3-3.3 4.2-5 4.2S2.6 9 1 6z" fill="#fff" stroke="#3A6EA5"/><circle cx="6" cy="6" r="1.8" fill="#1c5ccc"/>'),
   eyeOff: sv(12, '<path d="M1 6c1.6-3 3.3-4.2 5-4.2S9.4 3 11 6c-1.6 3-3.3 4.2-5 4.2S2.6 9 1 6z" fill="#f0f0f0" stroke="#999"/><path d="M2 10L10 2" stroke="#c33" stroke-width="1.6"/>'),
   layers: sv(12, '<path d="M6 1.5L11 4 6 6.5 1 4z" fill="#FFF3B8" stroke="#9A6B00"/><path d="M1 6.5L6 9l5-2.5M1 9l5 2.5L11 9" fill="none" stroke="#9A6B00"/>'),
-  landscape: '<svg width="100%" height="100%" viewBox="0 0 80 80" preserveAspectRatio="none"><rect width="80" height="48" fill="#6396D6"/><ellipse cx="26" cy="20" rx="14" ry="7" fill="#DCE9FA" opacity=".85"/><ellipse cx="52" cy="24" rx="18" ry="8" fill="#EEF5FD" opacity=".9"/><rect y="48" width="80" height="32" fill="#5D8C2E"/><path d="M0 54 Q25 44 50 52 T80 50 L80 80 L0 80 Z" fill="#46731E"/><path d="M0 66 Q35 58 80 65 L80 80 L0 80 Z" fill="#76A841"/></svg>'
 };
 var AUTO_FORM = ['help'];
 var AUTO_FORM_EXT = ['act_menu', '|', 'help'];
@@ -1001,7 +1024,7 @@ function parse(text) {
       cols: kids(kid(e, 'Columns'), 'Column').map(function (c2) {
         var colk = Cols.length, cdp = kid(c2, 'DataPath'), caid = cdp ? (cdp.getAttribute('attributeId') || '') : '';
         var colObj = {
-          colk: colk, ck: k, name: c2.getAttribute('name') || '', id: c2.getAttribute('id') || '',
+          colk: colk, ck: k, e: c2, name: c2.getAttribute('name') || '', id: c2.getAttribute('id') || '',
           headers: loc(c2, 'Header'), footers: loc(c2, 'FooterText'), tips: loc(c2, 'Tooltip'),
           editor: txt(c2, 'Editor'), w: num(c2, 'Width') || 75,
           visible: txt(c2, 'Visible') !== 'false', ro: txt(c2, 'ReadOnly') === 'true', vt: vtype(c2),
@@ -1092,6 +1115,7 @@ function parse(text) {
   var formH = num(root, 'Height'), isDoc = /DocumentObject|DocumentList|ДокументОбъект|ДокументСписок/.test(text);
   // a list form: a table bound to the main attribute itself (not to a tabular part "Объект.Часть")
   var isListForm = !!mainAttrId && C.some(function (t) { return t.tag === 'Table' && t.dp === mainAttrId && t.dpName.indexOf('.') < 0; });
+  C.forEach(function (t) { if (t.tag === 'Table' && !!mainAttrId && t.dp === mainAttrId && t.dpName.indexOf('.') < 0) t.mainList = true; });
   C.forEach(function (c) {
     if (c.tag === 'CommandBar') {
       btnsOf[c.k] = walkBtns(c.e, c.k, -1, 1);
@@ -1129,7 +1153,7 @@ function parse(text) {
   return {
     root: root, A: A, C: C, Cols: Cols, B: B, btnsOf: btnsOf, autoBtnsOf: autoBtnsOf, kidsOf: kidsOf, ov: ov, members: members, tablessPanels: tablessPanels,
     formId: root.getAttribute('id') || '', formName: root.getAttribute('name') || '', showTabs: rootShowTabs, isExt: isExt,
-    langs: langs, width: num(root, 'Width'), height: num(root, 'Height'), caps: loc(root, 'Caption'),
+    langs: langs, width: num(root, 'Width'), height: num(root, 'Height'), caps: loc(root, 'Caption'), capPic: !!kid(root, 'CaptionPicture'),
     events: kids(kid(root, 'Events')).map(function (v) { return { name: v.tagName, handler: (v.textContent || '').trim() }; })
   };
 }
@@ -1329,25 +1353,84 @@ function groupBox(c, R, cap) {
   return { cls: ' bs-' + bs, st: '', inner: '<i class="gf"' + styleAttr(colorStyle('border-color', bc) + colorStyle('background', back)) + '></i>' + gt };
 }
 
+// Table / TableColumn (render-spec §8, §9): header, sample row(s) of the designer view, footer, scroll bars, lines, colours, fonts
 function tableBox(c, R) {
-  var des = R.mode === 'designer', cols = c.cols.filter(function (x) { return x.visible; });
-  var heads = cols.map(function (col) {
-    return '<span class="colh" id="colh' + col.colk + '" data-col="' + col.colk + '" style="flex-basis:' + col.w + 'px;width:' + col.w + 'px" data-k="' + c.k + '" data-i="' + c.cols.indexOf(col) + '" title="' + esc((T(col.tips, R.lang) || T(col.headers, R.lang) || col.name) + ' [' + col.name + '] — клик для выбора колонки') + '">' + esc(T(col.headers, R.lang) || col.name) + '</span>';
-  }).join('');
+  var e = c.e, des = R.mode === 'designer', cols = c.cols.filter(function (x) { return x.visible || R.showHidden; });
+  var hdrOff = txt(e, 'Header') === 'false', hn = Math.max(1, parseInt(txt(e, 'HeaderHeight'), 10) || 1), fn = Math.max(1, parseInt(txt(e, 'FooterHeight'), 10) || 1);
+  var headH = hdrOff ? 0 : 20 + (hn - 1) * 13, footH = 20 + (fn - 1) * 13, footer = txt(e, 'Footer') === 'true';
+  var tfs = fontSpec(e, 'Font'), hfs = fontSpec(e, 'HeaderFont'), ffs = fontSpec(e, 'FooterFont');
+  var hBack = colorCss(e, 'HeaderBackColor'), hCol = colorCss(e, 'HeaderTextColor'), fBack = colorCss(e, 'FooterBackColor'), fCol = colorCss(e, 'FooterTextColor');
+  var tText = colorCss(e, 'TextColor'), fldBack = colorCss(e, 'FieldBackColor'), fldText = colorCss(e, 'FieldTextColor');
+  var selBack = colorCss(e, 'SelectionBackColor'), selText = colorCss(e, 'SelectionTextColor'), altBack = colorCss(e, 'AlternationRowBackColor');
+  var hs = txt(e, 'HorizontalScrollBar'), vs = txt(e, 'VerticalScrollBar');
+  var showSb = hs !== 'DontUse' && hs !== 'false', showVsb = vs === 'UseAlways' || vs === 'true';
+  var cellMode = txt(e, 'RowSelectionMode') === 'Cell', alt = txt(e, 'UseAlternationRowColor') === 'true';
+  var tree = !!kid(e, 'InitialTreeView') || cols.some(function (x) { return txt(x.e, 'ShowHierarchy') === 'true'; });
+  var treeCol = cols.filter(function (x) { return txt(x.e, 'ShowHierarchy') === 'true'; })[0] || cols[0];
+  var fl = parseInt(txt(e, 'FixedLeft'), 10) || 0, fr = parseInt(txt(e, 'FixedRight'), 10) || 0;
+  var sbH = showSb ? 16 : 0, rowH = 19;
+  var rows = des && c.h >= 40 ? 1 : 0;
+  var sel = rows && (c.mainList || cellMode || !!selBack || !!selText);
   var total = cols.reduce(function (s, x) { return s + x.w; }, 0), inner = Math.max(1, c.w - 2);
-  var h = '<div class="th">' + heads + '</div>';
-  if (des) {
-    h += '<div class="tr" id="row' + c.k + '" data-row="' + c.k + '" title="Строка табличного поля ' + esc(c.name) + '">' + cols.map(function (col) {
-      return col.ro ? '<span class="cell ro" id="colc' + col.colk + '" style="flex-basis:' + col.w + 'px;width:' + col.w + 'px"></span>'
-        : '<span class="cell" id="colc' + col.colk + '" style="flex-basis:' + col.w + 'px;width:' + col.w + 'px"><span class="abl">ab|</span>&lt;Поле ввода&gt;</span>';
+  var cls = (txt(e, 'VerticalLines') === 'false' ? '' : ' vl') + (txt(e, 'HorizontalLines') === 'false' ? ' no-hl' : '') + tfs.cls;
+  var st = (hn > 1 || hdrOff ? ';--head-h:' + headH + 'px' : '') + colorStyle('--alt-bg', altBack) + colorStyle('background', colorCss(e, 'BackColor')) +
+    colorStyle('border-color', colorCss(e, 'BorderColor')) + tfs.st;
+  function fx(col, w) { return 'flex:0 0 ' + w + 'px;width:' + w + 'px'; }
+  function fixedCls(i) { return (i < fl || i >= cols.length - fr) && cols.length ? ' fixed' : ''; }
+  function hid(col) { return col.visible ? '' : ';opacity:.35'; }
+  var heads = cols.map(function (col, i) {
+    var ce = col.e, cfs = fontSpec(ce, 'HeaderFont'), fs = cfs.cls || cfs.st ? cfs : hfs, cap = T(col.headers, R.lang), pic = hasPicture(ce, 'HeaderPicture');
+    var bg = colorCss(ce, 'HeaderBackColor') || hBack, fg = txt(ce, 'Enabled') === 'false' ? 'var(--text-dis)' : colorCss(ce, 'HeaderTextColor') || hCol;
+    var ha = alignCls(ce, 'HeaderHorizontalAlign', 'ha') + (pic && !cap ? ' ha-Center' : '');
+    return '<span class="colh' + fs.cls + ha + fixedCls(i) + '" id="colh' + col.colk + '" data-col="' + col.colk + '" style="' + esc(fx(col, col.w) + colorStyle('background', bg) + colorStyle('color', fg) + fs.st + hid(col)) +
+      '" data-k="' + c.k + '" data-i="' + c.cols.indexOf(col) + '" title="' + esc((T(col.tips, R.lang) || cap || col.name) + ' [' + col.name + '] — клик для выбора колонки') + '">' +
+      (pic ? pic16(col.name) : '') + (col.w >= 20 ? esc(cap) : '') + '</span>';
+  }).join('');
+  var h = hdrOff ? '' : '<div class="th' + (hn > 1 ? ' mh' : '') + '"' + styleAttr((hn > 1 ? 'height:' + headH + 'px' : '') + colorStyle('background', hBack)) + '>' + heads + '</div>';
+  function sample(col, rowSel) {
+    var ce = col.e, ed = col.editor || txt(ce, 'Editor'), vt = col.vt, num = false, ctr = false, html = '', ro = c.pr.ro || col.ro, extra = '';
+    var ha = txt(ce, 'HorizontalAlignInColumn'), isNum = !!vt && vt.kind === 'Number' && !vt.composite;
+    var tcol = tree && col === treeCol;
+    if (tcol) html += ICON.treePlus + ICON.folder;
+    if (c.pr.ro) { /* empty sample */ }
+    else if (hasPicture(ce, 'RowsPictures') || col.name === 'Картинка') { html += ICON.item; ctr = true; }
+    else if (ed === 'CheckBox') { html += '<span class="box' + (txt(ce, 'CheckBoxThreeState') === 'true' ? ' mix' : '') + '"></span>'; ctr = true; }
+    else if (isNum) { html += (txt(ce, 'Hyperlink') === 'true' ? '<span class="lnk">' : '') + numText(parseInt(vt.fd, 10) || 0) + (txt(ce, 'Hyperlink') === 'true' ? '</span>' : ''); num = true; }
+    else if (col.ro) { /* empty sample */ }
+    else if (ed === 'ChoiceField') html += '<span class="abl">ab|</span>' + (txt(ce, 'Hyperlink') === 'true' ? '<span class="lnk">&lt;Поле выбора&gt;</span>' : '&lt;Поле выбора&gt;');
+    else if (!ed || ed === 'InputField') html += '<span class="abl">ab|</span>' + (txt(ce, 'Hyperlink') === 'true' ? '<span class="lnk">&lt;Поле ввода&gt;</span>' : '&lt;Поле ввода&gt;');
+    if (ha === 'Right') { num = true; ctr = false; } else if (ha === 'Center') { ctr = true; num = false; }
+    return { html: html, num: num, ctr: ctr, ro: ro && !html };
+  }
+  function row(idx, isSel, isAlt) {
+    var firstEdit = cols.filter(function (x) { return !x.ro && !c.pr.ro; })[0];
+    var rst = 'top:calc(var(--head-h) + ' + idx * rowH + 'px)' + (!isSel && !isAlt ? colorStyle('background', fldBack) : '');
+    if (isSel && !cellMode) rst += colorStyle('background', selBack) + colorStyle('color', selText);
+    return '<div class="tr' + (isSel && !cellMode ? ' rsel' : '') + (isAlt ? ' alt' : '') + '"' + (idx === 0 ? ' id="row' + c.k + '" data-row="' + c.k + '" title="Строка табличного поля ' + esc(c.name) + '"' : '') + ' style="' + esc(rst) + '">' +
+      cols.map(function (col, i) {
+        var s = sample(col, isSel), ce = col.e, cfs = fontSpec(ce, 'TextFont'), cs = fx(col, col.w);
+        var csel = isSel && cellMode && col === firstEdit;
+        var fg = txt(ce, 'Enabled') === 'false' ? 'var(--text-dis)' : colorCss(ce, 'FieldTextColor') || fldText || tText;
+        if (csel) cs += colorStyle('background', selBack) + colorStyle('color', selText);
+        else { if (!(isSel && !cellMode)) cs += colorStyle('background', colorCss(ce, 'FieldBackColor')); if (!(isSel && !cellMode && selText)) cs += colorStyle('color', fg); }
+        return '<span class="cell' + (s.ro ? ' ro' : '') + (s.num ? ' num' : '') + (s.ctr ? ' ctr' : '') + fixedCls(i) + (csel ? ' csel' : '') + cfs.cls + '" id="colc' + (idx === 0 ? col.colk : 'a' + col.colk) + '" style="' + esc(cs + cfs.st + hid(col)) + '">' + s.html + '</span>';
+      }).join('') + '</div>';
+  }
+  if (rows) {
+    h += row(0, sel, false);
+    if (alt && c.h >= headH + 2 * rowH + sbH + 2) h += row(1, false, true);
+  }
+  if (footer) {
+    h += '<div class="tf" style="' + esc('bottom:' + sbH + 'px;height:' + footH + 'px' + colorStyle('background', fBack)) + '">' + cols.map(function (col, i) {
+      var cfs = fontSpec(col.e, 'FooterFont'), fs = cfs.cls || cfs.st ? cfs : ffs;
+      var bg = colorCss(col.e, 'FooterBackColor') || fBack, fg = txt(col.e, 'Enabled') === 'false' ? 'var(--text-dis)' : colorCss(col.e, 'FooterTextColor') || fCol;
+      return '<span class="fd' + fs.cls + fixedCls(i) + '" style="' + esc(fx(col, col.w) + colorStyle('background', bg) + colorStyle('color', fg) + fs.st + hid(col)) + '">' + (col.w >= 20 ? esc(T(col.footers, R.lang)) : '') + '</span>';
     }).join('') + '</div>';
   }
-  if (txt(c.e, 'Footer') === 'true') {
-    h += '<div class="tf" style="bottom:16px">' + cols.map(function (col) { return '<span class="fd" style="flex-basis:' + col.w + 'px;width:' + col.w + 'px"></span>'; }).join('') + '</div>';
-  }
   var pct = total > inner ? Math.max(8, Math.round(100 * inner / total)) : 100;
-  h += '<div class="sb"><span class="sbb">◂</span><span class="sbt" style="flex:1"><i style="width:' + pct + '%"></i></span><span class="sbb">▸</span></div>';
-  return h;
+  if (showSb) h += '<div class="sb"' + (showVsb ? ' style="right:16px"' : '') + '><span class="sbb">' + ICON.arrowLeft + '</span><span class="sbt" style="flex:1"><i style="width:' + pct + '%"></i></span><span class="sbb">' + ICON.arrowRight + '</span></div>';
+  if (showVsb) h += '<div class="vsb"' + (showSb ? ' style="bottom:16px"' : '') + '><span class="sbb">' + ICON.arrowUp + '</span><span class="sbb">' + ICON.arrowDown + '</span></div>';
+  return { cls: cls, st: st, inner: h };
 }
 
 function btns(e) {
@@ -1471,18 +1554,89 @@ function pagesHtml(panel, seq, first, R) {
   }).join('');
 }
 
-function calendarBox() {
+// CalendarField (render-spec §17)
+function calendarBox(c, R) {
+  var e = c.e, mode = txt(e, 'SelectionMode'), fs = fontSpec(e, 'Font'), small = c.w < 140 || c.h < 110;
   var days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', '<b class="wk">Сб</b>', '<b class="wk">Вс</b>'].map(function (d) { return '<span>' + d + '</span>'; }).join('');
+  var curIdx = mode === 'Multiple' ? { 17: 'cur', 24: 'cur' } : mode === 'Interval' ? { 23: 'cur', 24: 'rng', 25: 'cur' } : { 24: 'cur' };
   var nums = [28, 29, 30, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 1].map(function (n, i) {
-    var mut = i < 3 || i >= 34 ? ' mut' : (i % 7 >= 5 ? ' wk' : '');
-    return '<span class="' + (n === 22 ? 'cur' : mut) + '">' + n + '</span>';
+    return '<span class="' + (curIdx[i] || (i < 3 || i >= 34 ? 'mut' : (i % 7 >= 5 ? 'wk' : ''))) + '">' + n + '</span>';
   }).join('');
-  return '<div class="cal-hd"><span>◂◄</span><b>Октябрь 2026</b><span>►▸</span></div>' +
-    '<div class="cal-wk">' + days + '</div><div class="cal-gr">' + nums + '</div><div class="cal-ft">22 октября 2026 г. ▾</div>';
+  var back = colorCss(e, 'ButtonBackColor'), txtc = colorCss(e, 'FieldTextColor');
+  var st = colorStyle('background', colorCss(e, 'FieldBackColor')) + colorStyle('--holiday', colorCss(e, 'HolidayColor')) + colorStyle('--sel-bg', colorCss(e, 'SelectionBackColor')) +
+    colorStyle('--sel-text', colorCss(e, 'SelectionTextColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')) + fs.st;
+  return {
+    cls: fs.cls + (txt(e, 'CalendarNavigation') === 'false' ? ' nonav' : '') + (txt(e, 'ShowCurrentDate') === 'false' || small ? ' nocur' : '') + (c.pr.tr ? ' tr-bg' : '') + (c.pr.bd ? ' bd-' + c.pr.bd : ''),
+    st: st,
+    inner: '<div class="cal-hd"' + styleAttr(colorStyle('background', back)) + '><span class="nav">◂◄</span><b>Октябрь 2026</b><span class="nav">►▸</span></div>' +
+      '<div class="cal-wk">' + days + '</div><div class="cal-gr"' + styleAttr(colorStyle('color', txtc)) + '>' + nums + '</div><div class="cal-ft">22 октября 2026 г.</div>'
+  };
 }
-function scrollDocBox() {
-  return '<div class="sdoc-v"><span class="sbb">▴</span><span class="sbt"></span><span class="sbb">▾</span></div>' +
-    '<div class="sdoc-h"><span class="sbb">◂</span><span class="sbt"></span><span class="sbb">▸</span></div>';
+// scroll bars of SpreadsheetDocumentField / TextDocumentField (render-spec §16, §23)
+function sdocBars(c, vBar, hBar) {
+  var v = vBar ? '<div class="sdoc-v"' + (hBar ? '' : ' style="bottom:0"') + '><span class="sbb">' + ICON.arrowUp + '</span><span class="sbb">' + ICON.arrowDown + '</span></div>' : '';
+  var hb = hBar ? '<div class="sdoc-h"' + (vBar ? '' : ' style="right:0"') + '><span class="sbb">' + ICON.arrowLeft + '</span><span class="sbb">' + ICON.arrowRight + '</span></div>' : '';
+  return v + hb + (vBar && hBar ? '<span class="sdoc-c"></span>' : '');
+}
+function sdocBox(c, R) {
+  var e = c.e, hs = txt(e, 'HorizontalScrollBar'), vs = txt(e, 'VerticalScrollBar'), tall = c.h >= 40;
+  var grp = txt(e, 'ShowGroups') !== 'false', hd = txt(e, 'ShowHeaders') === 'true', top = grp ? 9 : 0;
+  var inner = (grp ? '<div class="shd-g"></div>' : '') +
+    (hd ? '<div class="shd-h"' + (grp ? ' style="top:9px"' : '') + '></div><div class="shd-v"' + (grp ? ' style="top:9px"' : '') + '></div>' : '') +
+    sdocBars(c, tall && vs !== 'DontUse' && vs !== 'false', tall && hs !== 'DontUse' && hs !== 'false');
+  return { cls: (txt(e, 'ShowGrid') === 'false' ? '' : ' grid') + (c.pr.bd ? ' bd-' + c.pr.bd : ''), st: colorStyle('border-color', colorCss(e, 'BorderColor')), inner: inner };
+}
+function textDocBox(c, R) {
+  var e = c.e, fs = fontSpec(e, 'Font'), ph = R.mode === 'designer' ? '<span class="txt-ph' + fs.cls + '"' + styleAttr(colorStyle('color', colorCss(e, 'TextColor')) + fs.st) + '>Текст</span>' : '';
+  return { cls: (c.pr.bd ? ' bd-' + c.pr.bd : ''), st: colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')),
+    inner: ph + (c.h >= 40 ? sdocBars(c, true, false) : '') };
+}
+// ProgressBar (render-spec §19)
+function progressBox(c, R) {
+  var e = c.e, fs = fontSpec(e, 'Font'), ss = txt(e, 'ShowStyle'), vert = txt(e, 'Orientation') === 'Vertical';
+  return {
+    cls: (ss === 'Broken' || ss === 'BrokenTilt' ? ' ps-' + ss : '') + (vert ? ' vert' : '') + (c.pr.bd ? ' bd-' + c.pr.bd : ''),
+    st: colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')),
+    inner: (c.h >= 8 ? '<div class="prg-fill"></div>' : '') + (txt(e, 'ShowPercent') === 'true' && c.h >= 8 ? '<span class="prg-pct' + fs.cls + '"' + styleAttr(fs.st) + '>38%</span>' : '')
+  };
+}
+// TrackBar (render-spec §20)
+function trackBox(c, R) {
+  var e = c.e, mn = parseFloat(txt(e, 'MinValue')) || 0, mx = txt(e, 'MaxValue') === '' ? 10 : parseFloat(txt(e, 'MaxValue')), step = parseFloat(txt(e, 'MarkingStep')) || 1;
+  var ma = txt(e, 'MarkingAppearance'), n = Math.max(1, Math.min(21, Math.floor((mx - mn) / step) + 1)), i, ticks = '';
+  var tcol = colorCss(e, 'TextColor'), tst = styleAttr(colorStyle('background', tcol));
+  for (i = 0; i < n; i++) ticks += '<i' + tst + '></i>';
+  var top = ma === 'TopLeft' || ma === 'Both', bot = ma !== 'DontShow' && ma !== 'TopLeft';
+  return {
+    cls: (txt(e, 'Orientation') === 'Vertical' ? ' vert' : '') + (c.pr.bd ? ' bd-' + c.pr.bd : ''),
+    st: colorStyle('background', colorCss(e, 'BackColor')),
+    inner: (top ? '<div class="trk-ticks top">' + ticks + '</div>' : '') + '<div class="trk-line"' + styleAttr(colorStyle('border-color', colorCss(e, 'BorderColor'))) + '><span class="trk-thumb"' +
+      styleAttr(colorStyle('background', colorCss(e, 'ButtonBackColor'))) + '></span></div>' + (bot ? '<div class="trk-ticks">' + ticks + '</div>' : '')
+  };
+}
+// ListBox (render-spec §21): three sample rows in the designer view, the first one selected
+function listBox(c, R) {
+  var e = c.e, rows = '', n = R.mode === 'designer' ? Math.min(3, Math.floor((c.h - 2) / 17)) : 0, i, fg = colorCss(e, 'FieldTextColor');
+  for (i = 0; i < n; i++) {
+    rows += '<div class="lb-row' + (i === 0 ? ' sel' : '') + '" style="top:' + (i * 17) + 'px' + (i ? colorStyle('color', fg) : '') + '">' + (txt(e, 'ShowCheckBox') === 'true' ? '<span class="box"></span>' : '') +
+      (txt(e, 'ShowPicture') === 'true' ? ICON.item : '') + '<span class="cap">Элемент списка ' + (i + 1) + '</span></div>';
+  }
+  return { cls: (c.pr.bd ? ' bd-' + c.pr.bd : ''), st: colorStyle('background', colorCss(e, 'FieldBackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')), inner: rows };
+}
+// Splitter (render-spec §22)
+function splitterBox(c, R) {
+  var e = c.e, o = txt(e, 'Orientation'), back = colorCss(e, 'BackColor');
+  if (o === 'Auto' || (c.w > 8 && c.h > 8)) o = c.w < c.h ? 'Vertical' : 'Horizontal';
+  return { cls: (o === 'Horizontal' ? ' hor' : '') + (back ? ' colored' : '') + (Math.max(c.w, c.h) < 20 ? ' nh' : '') + (c.pr.bd ? ' bd-' + c.pr.bd : ''), st: colorStyle('--spl-bg', back), inner: '' };
+}
+// PictureDecoration without a label (render-spec §15): an empty frame, or the picture stub when <Picture> is set
+function pictureBox(c, R) {
+  var e = c.e, has = hasPicture(e), np = T(loc(e, 'NonselectedPictureText'), R.lang), ps = txt(e, 'PictureSize');
+  return {
+    cls: ' pic-box' + (has ? ' pic-has' : '') + (ps === 'AutoSize' || ps === 'RealSize' || ps === 'Tile' ? ' ps-tl' : '') + (c.pr.tr ? ' tr-bg' : '') + (c.pr.bd ? ' bd-' + c.pr.bd : ''),
+    st: colorStyle('background', colorCss(e, 'BackColor')) + colorStyle('border-color', colorCss(e, 'BorderColor')),
+    inner: !has && np ? '<span class="nptxt">' + esc(np) + '</span>' : ''
+  };
 }
 function ctl(c, R) {
   var tag = c.tag, k = c.k, des = R.mode === 'designer', p = c.pr;
@@ -1491,7 +1645,7 @@ function ctl(c, R) {
   var ch = ordered(R.m.kidsOf[k]).filter(function (x) { return vis(x, R); });
   var body = '';
   if (tag === 'PictureDecoration' && !cap && c.w > 24 && c.h > 24) {
-    cls += ' pic-box'; inner = '<div class="pic-ph">' + ICON.landscape + '</div>';
+    var pb = pictureBox(c, R); cls += pb.cls; st += pb.st; inner = pb.inner;
   } else if (tag === 'LabelDecoration' || tag === 'PictureDecoration') {
     var l = label(c, R, cls, st); cls = l.cls; st = l.style; inner = l.inner;
   } else if (tag === 'Button') {
@@ -1503,21 +1657,28 @@ function ctl(c, R) {
   } else if (tag === 'CheckBox' || tag === 'RadioButton') {
     var cx = checkBox(c, R); cls += cx.cls; st += cx.st; inner = cx.inner;
   } else if (tag === 'Table') {
-    inner = tableBox(c, R);
+    var tb = tableBox(c, R); cls += tb.cls + (c.pr.bd ? ' bd-' + c.pr.bd : '') + (c.pr.tr ? ' tr-bg' : ''); st += tb.st; inner = tb.inner;
   } else if (tag === 'UsualGroup') {
     var g = groupBox(c, R, T(c.caps, R.lang)); cls += g.cls; st += g.st; inner = g.inner;
   } else if (tag === 'CalendarField') {
-    inner = calendarBox();
+    var cal = calendarBox(c, R); cls += cal.cls; st += cal.st; inner = cal.inner;
   } else if (tag === 'TrackBar') {
-    inner = '<div class="trk-ticks"><span>0</span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="trk-line"><span class="trk-thumb"></span></div>';
+    var tk = trackBox(c, R); cls += tk.cls; st += tk.st; inner = tk.inner;
   } else if (tag === 'ProgressBar') {
-    inner = '<div class="prg-fill"></div>';
-  } else if (tag === 'SpreadsheetDocumentField' || tag === 'TextDocumentField') {
-    inner = scrollDocBox();
-  } else if (tag === 'ListBox' || tag === 'HTMLDocumentField' || tag === 'GeographicalSchemaField' || tag === 'PDFDocumentField') {
-    inner = '';
+    var pg = progressBox(c, R); cls += pg.cls; st += pg.st; inner = pg.inner;
+  } else if (tag === 'SpreadsheetDocumentField') {
+    var sd = sdocBox(c, R); cls += sd.cls; st += sd.st; inner = sd.inner;
+  } else if (tag === 'TextDocumentField') {
+    var td = textDocBox(c, R); cls += td.cls; st += td.st; inner = td.inner;
+  } else if (tag === 'ListBox') {
+    var lb = listBox(c, R); cls += lb.cls; st += lb.st; inner = lb.inner;
+  } else if (tag === 'HTMLDocumentField') {
+    cls += c.pr.bd ? ' bd-' + c.pr.bd : ''; st += colorStyle('border-color', colorCss(c.e, 'BorderColor')); inner = des ? '<span class="html-ph">HTML</span>' : '';
+  } else if (tag === 'GraphicalSchemaField' || tag === 'GeographicalSchemaField' || tag === 'PDFDocumentField') {
+    cls += (tag === 'GraphicalSchemaField' ? ' gs-grid' : '') + (c.pr.tr ? ' tr-bg' : '') + (c.pr.bd ? ' bd-' + c.pr.bd : '');
+    st += colorStyle('background-color', colorCss(c.e, 'BackColor')) + colorStyle('border-color', colorCss(c.e, 'BorderColor'));
   } else if (tag === 'Splitter') {
-    inner = '';
+    var sp = splitterBox(c, R); cls += sp.cls; st += sp.st;
   } else if (tag !== 'Panel') {
     inner = '<span class="kind">' + esc(tag) + '</span>' + capspan;
   }
@@ -2153,7 +2314,7 @@ function create(o) {
         if (pgs.length) R.active[pan.k] = (pgs.filter(function (p) { return p.visible; })[0] || pgs[0]).k;
       }
     });
-    var title = T(m.caps, R.lang) || V.alias || '';
+    var title = T(m.caps, R.lang) || m.formName || V.alias || '';
     var topKids = ordered(m.kidsOf[-1]).filter(function (c) { return vis(c, R); });
     var rootPages = topKids.filter(function (x) { return x.tag === 'Page'; });
     var bodyHtml = '';
@@ -2166,7 +2327,7 @@ function create(o) {
       topKids = topKids.filter(function (x) { return x.tag !== 'Page'; });
     }
     bodyHtml += topKids.map(function (c) { return ctl(c, R); }).join('');
-    h = renderBar() + '<div class="zoomer"><div class="formwrap" style="width:' + (m.width + 2) + 'px"><div class="form-title">' + esc(title) + '</div>' +
+    h = renderBar() + '<div class="zoomer"><div class="formwrap" style="width:' + (m.width + 2) + 'px"><div class="form-title">' + (m.capPic ? '<span class="pic16">' + ICON.picture + '</span>' : '') + esc(title) + '</div>' +
       '<div id="canvas" class="theme-' + esc(R.theme) + ' mode-' + esc(R.mode) + '" style="width:' + m.width + 'px;height:' + m.height + 'px">' +
       bodyHtml + '</div></div></div>';
     o.host.innerHTML = h;

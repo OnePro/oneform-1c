@@ -191,8 +191,8 @@
     {
       "path": "Forms/MainForm/FormPreview.html",
       "role": "form-preview",
-      "size": 314467,
-      "sha256": "13411b63e644eb7db8930905ed60309f3e15a866b065110cffc7ef877d98bb25"
+      "size": 329489,
+      "sha256": "18f5189becc9cc3c5ab29dae24bed5fd53b2b325b59236c70a7300725f093079"
     },
     {
       "path": "Forms/MainForm/Reference/FormStream.bin",
