@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Release oneform: tag, push, let GitHub Actions build Windows and macOS, publish the GitHub release.
+
+  python scripts/release.py [VERSION] [--local] [--dry-run] [--skip-tests]
+
+* Without VERSION the version of Cargo.toml is released. With VERSION (for example 0.2.0) Cargo.toml and
+  Cargo.lock are bumped and committed first.
+* Checks: `gh` is logged in, the branch is main, the working tree is clean, the tag does not exist, `cargo test --locked`
+  and `cargo clippy` pass (unless --skip-tests).
+* Default: pushes main and the tag `v<version>`; the workflow `.github/workflows/release.yml` builds
+  windows-x64, macos-arm64, macos-x64 and publishes the release with archives and sha256 files. The script waits for the run.
+* --local: no CI; builds the Windows binary on this machine and publishes a release with only the Windows archive
+  (macOS archives are not built; add them later by re-running the workflow from the Actions tab).
+* --dry-run: prints what would happen, changes nothing.
+"""
+import argparse, json, re, subprocess, sys, time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+WORKFLOW = "release.yml"
+
+
+def run(cmd, check=True, capture=False, dry=False, **kw):
+    print("+", " ".join(cmd))
+    if dry:
+        return ""
+    r = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=capture, **kw)
+    if check and r.returncode != 0:
+        sys.exit(f"command failed ({r.returncode}): {' '.join(cmd)}\n{(r.stdout or '') + (r.stderr or '')}")
+    return (r.stdout or "").strip() if capture else ""
+
+
+def cargo_version() -> str:
+    m = re.search(r'^version\s*=\s*"([^"]+)"', (ROOT / "Cargo.toml").read_text(encoding="utf-8"), re.M)
+    return m.group(1)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("version", nargs="?")
+    ap.add_argument("--local", action="store_true")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--skip-tests", action="store_true")
+    a = ap.parse_args()
+    dry = a.dry_run
+
+    if subprocess.run(["gh", "auth", "status"], cwd=ROOT, capture_output=True).returncode != 0:
+        sys.exit("gh is not logged in: run `gh auth login`")
+    branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture=True)
+    if branch != "main":
+        sys.exit(f"release only from main (current branch: {branch})")
+    if run(["git", "status", "--porcelain"], capture=True):
+        sys.exit("working tree is not clean: commit or stash changes first")
+
+    version = a.version or cargo_version()
+    if not re.fullmatch(r"\d+\.\d+\.\d+([-.][0-9A-Za-z.]+)?", version):
+        sys.exit(f"bad version: {version}")
+    tag = f"v{version}"
+    if run(["git", "tag", "-l", tag], capture=True):
+        sys.exit(f"tag {tag} already exists")
+    if run(["git", "ls-remote", "--tags", "origin", tag], capture=True):
+        sys.exit(f"tag {tag} already exists on origin")
+
+    if not a.skip_tests:
+        run(["cargo", "test", "--locked"], dry=dry)
+        run(["cargo", "clippy", "--locked", "--all-targets", "--", "-D", "warnings"], dry=dry)
+
+    if version != cargo_version():
+        print(f"bump version {cargo_version()} -> {version}")
+        if not dry:
+            text = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
+            text = re.sub(r'^version\s*=\s*"[^"]+"', f'version = "{version}"', text, count=1, flags=re.M)
+            (ROOT / "Cargo.toml").write_text(text, encoding="utf-8")
+        run(["cargo", "update", "-p", "oneform", "--offline"], dry=dry)
+        run(["git", "add", "Cargo.toml", "Cargo.lock"], dry=dry)
+        run(["git", "commit", "-m", f"release {version}"], dry=dry)
+
+    if a.local:
+        run(["cargo", "build", "--release", "--locked"], dry=dry)
+        exe = ROOT / "target" / "release" / "oneform.exe"
+        arch = run([sys.executable, "scripts/package_release.py", str(exe), "windows-x64"], capture=True, dry=dry) if not dry else "<archive>"
+        run(["git", "tag", tag], dry=dry)
+        run(["git", "push", "origin", "main", tag], dry=dry)
+        files = [arch, arch + ".sha256"] if not dry else ["<archive>", "<archive>.sha256"]
+        run(["gh", "release", "create", tag, *files, "--title", f"oneform {version}", "--generate-notes"], dry=dry)
+        print(f"released {tag} (Windows only)")
+        return
+
+    run(["git", "tag", tag], dry=dry)
+    run(["git", "push", "origin", "main", tag], dry=dry)
+    if dry:
+        print("dry run: CI would build windows-x64, macos-arm64, macos-x64 and publish the release")
+        return
+    print("waiting for the workflow run ...")
+    run_id = ""
+    for _ in range(30):
+        out = run(["gh", "run", "list", "--workflow", WORKFLOW, "--branch", tag, "--limit", "1", "--json", "databaseId"],
+                  capture=True, check=False)
+        try:
+            runs = json.loads(out or "[]")
+        except json.JSONDecodeError:
+            runs = []
+        if runs:
+            run_id = str(runs[0]["databaseId"])
+            break
+        time.sleep(5)
+    if not run_id:
+        sys.exit(f"the workflow run for {tag} did not start: see the Actions tab")
+    rc = subprocess.run(["gh", "run", "watch", run_id, "--exit-status"], cwd=ROOT).returncode
+    if rc != 0:
+        sys.exit(f"workflow failed: gh run view {run_id} --log-failed")
+    print(run(["gh", "release", "view", tag, "--json", "url", "-q", ".url"], capture=True))
+
+
+if __name__ == "__main__":
+    main()

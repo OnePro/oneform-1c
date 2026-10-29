@@ -30,3 +30,20 @@ preview dir=".":
 # Verify that committed src/ trees match their binary sources (exit 3 on drift).
 check dir=".":
     "{{bin}}" check "{{dir}}"
+
+# `just release [VERSION]`: test, tag, push; CI builds Windows + macOS and publishes the GitHub release (VERSION bumps Cargo.toml first).
+release version="":
+    python scripts/release.py {{version}}
+
+# Release with the Windows binary built on this machine (no macOS archive, no CI).
+release-local version="":
+    python scripts/release.py {{version}} --local
+
+# Show what `just release` would do, without changing anything.
+release-dry version="":
+    python scripts/release.py {{version}} --dry-run --skip-tests
+
+# Build the release archive for this machine into target/release-dist (no publishing).
+dist: build
+    python scripts/package_release.py "{{bin}}" {{ if os() == "windows" { "windows-x64" } else { "host" } }}
+
