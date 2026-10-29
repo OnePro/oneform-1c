@@ -20,7 +20,7 @@ def cargo_version() -> str:
     return m.group(1)
 
 
-INSTALL = """oneform {version} ({platform})
+INSTALL = r"""oneform {version} ({platform})
 
 1. Put `{exe}` in a folder that is on PATH (or call it by full path).
 2. Check: `{exe} --help`.
