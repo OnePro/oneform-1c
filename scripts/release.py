@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Release oneform: tag, push, let GitHub Actions build Windows and macOS, publish the GitHub release.
 
-  python scripts/release.py [VERSION] [--local] [--dry-run] [--skip-tests]
+  python scripts/release.py [VERSION] [--local [--no-mac]] [--dry-run] [--skip-tests]
 
 * Without VERSION the version of Cargo.toml is released. With VERSION (for example 0.2.0) Cargo.toml and
   Cargo.lock are bumped and committed first.
@@ -9,8 +9,8 @@
   and `cargo clippy` pass (unless --skip-tests).
 * Default: pushes main and the tag `v<version>`; the workflow `.github/workflows/release.yml` builds
   windows-x64, macos-arm64, macos-x64 and publishes the release with archives and sha256 files. The script waits for the run.
-* --local: no CI; builds the Windows binary on this machine and publishes a release with only the Windows archive
-  (macOS archives are not built; add them later by re-running the workflow from the Actions tab).
+* --local: no CI; builds the Windows binary here and the macOS binaries with Zig (scripts/build_mac.py; not run or tested on a
+  Mac) and publishes the release with these archives; --no-mac builds only Windows.
 * --dry-run: prints what would happen, changes nothing.
 """
 import argparse, json, re, subprocess, sys, time
@@ -39,6 +39,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("version", nargs="?")
     ap.add_argument("--local", action="store_true")
+    ap.add_argument("--no-mac", action="store_true", help="with --local: skip the Zig macOS build")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--skip-tests", action="store_true")
     a = ap.parse_args()
@@ -78,12 +79,21 @@ def main() -> None:
     if a.local:
         run(["cargo", "build", "--release", "--locked"], dry=dry)
         exe = ROOT / "target" / "release" / "oneform.exe"
-        arch = run([sys.executable, "scripts/package_release.py", str(exe), "windows-x64"], capture=True, dry=dry) if not dry else "<archive>"
+        archives = []
+        if dry:
+            archives = ["<windows archive>"] + ([] if a.no_mac else ["<macos-arm64 archive>", "<macos-x64 archive>"])
+        else:
+            archives.append(run([sys.executable, "scripts/package_release.py", str(exe), "windows-x64"], capture=True))
+            if not a.no_mac:
+                out = run([sys.executable, "scripts/build_mac.py"], capture=True)
+                archives += [l.strip() for l in out.splitlines() if l.strip()]
+        files = []
+        for x in archives:
+            files += [x, x + ".sha256"]
         run(["git", "tag", tag], dry=dry)
         run(["git", "push", "origin", "main", tag], dry=dry)
-        files = [arch, arch + ".sha256"] if not dry else ["<archive>", "<archive>.sha256"]
         run(["gh", "release", "create", tag, *files, "--title", f"oneform {version}", "--generate-notes"], dry=dry)
-        print(f"released {tag} (Windows only)")
+        print(f"released {tag} ({'Windows' if a.no_mac else 'Windows + macOS built with Zig, not tested on a Mac'})")
         return
 
     run(["git", "tag", tag], dry=dry)

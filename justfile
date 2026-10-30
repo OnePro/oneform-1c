@@ -35,7 +35,7 @@ check dir=".":
 release version="":
     python scripts/release.py {{version}}
 
-# Release with the Windows binary built on this machine (no macOS archive, no CI).
+# Release without CI: Windows built here, macOS cross-built with Zig (needs zig + cargo-zigbuild; add `--no-mac` via script for Windows only).
 release-local version="":
     python scripts/release.py {{version}} --local
 
@@ -47,3 +47,6 @@ release-dry version="":
 dist: build
     python scripts/package_release.py "{{bin}}" {{ if os() == "windows" { "windows-x64" } else { "host" } }}
 
+# Cross-build and package macOS (arm64 + x64) without a Mac, with Zig (cargo install cargo-zigbuild; pip install ziglang).
+dist-mac arch="both":
+    python scripts/build_mac.py --arch {{arch}}
