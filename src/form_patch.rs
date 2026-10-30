@@ -3088,7 +3088,7 @@ impl Parser<'_> {
         };
         let opt_enum_of = |tag: &str, allowed: &[&str]| -> Result<Option<String>> {
             if found.contains_key(tag) {
-                Ok(Some(enum_of(tag, allowed, " ")?))
+                Ok(Some(enum_of(tag, allowed, "\0")?))
             } else {
                 Ok(None)
             }

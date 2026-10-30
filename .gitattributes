@@ -1,17 +1,47 @@
-*.epf -text -diff
-*.EPF -text -diff
-*.bin -text -diff
-*.bsl text eol=lf
-*.json text eol=lf
+# Line endings: every text file is LF in the repository and in checkouts on every OS
+# (independent of core.autocrlf). Only Windows batch files are CRLF.
+* text=auto eol=lf
+
+# Source and docs
+*.rs text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
 *.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
 *.xml text eol=lf
 *.html text eol=lf
-*.toml text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.csv text eol=lf
+*.lst text eol=lf
+*.log text eol=lf
+*.bsl text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
 *.py text eol=lf
-*.lock text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
 justfile text eol=lf
+LICENSE* text eol=lf
+rust-toolchain.toml text eol=lf
+Cargo.lock text eol=lf
 .gitattributes text eol=lf
 .gitignore text eol=lf
+
+# Windows batch files need CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binaries: never touched
+*.epf -text -diff
+*.EPF -text -diff
+*.erf -text -diff
+*.bin -text -diff
 *.png -text
 *.gif -text
 *.jpg -text
+*.zip -text
+*.gz -text
+
+# tests/golden is compared byte for byte: see tests/golden/.gitattributes (-text).
