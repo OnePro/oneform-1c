@@ -10,9 +10,12 @@ use serde_json::{json, Map, Value};
 use crate::canonical::{dumps_json, dumps_with, SORTED_SPACED};
 use crate::config::{load_json_bytes, validate_codec, validate_override_key, validate_root_config};
 use crate::discovery::{discover_all, find_epfs, resolve_selectors, CONFIG_NAME};
-use crate::errors::{ExtractionError, Result, CONFIG_INVALID, IO_ERROR};
+use crate::errors::{ExtractionError, Result, CONFIG_INVALID, EXPERIMENTAL_REQUIRED, IO_ERROR};
 use crate::manifest::{tools_record, MANIFEST_PATH};
-use crate::pack::{publish_pack, stage_pack, PACK_PACKED, PACK_UNCHANGED};
+use crate::pack::{
+    experimental_done_line, experimental_dry_line, experimental_refusal, publish_pack, stage_pack, PACK_PACKED,
+    PACK_UNCHANGED,
+};
 use crate::props;
 use crate::stage::{stage_processor, StageOpts, STATUS_PARTIAL};
 use crate::transaction::{
@@ -34,6 +37,8 @@ pub struct Outcome {
     pub summary: String,
     pub lines: Vec<String>,
     pub duration: f64,
+    /// A pack that rewrote the form stream (layout) with `--experimental`.
+    pub experimental: bool,
 }
 
 impl Outcome {
@@ -47,6 +52,7 @@ impl Outcome {
             summary: String::new(),
             lines: Vec::new(),
             duration: 0.0,
+            experimental: false,
         }
     }
 
@@ -111,6 +117,8 @@ pub struct EpfArgs {
     pub keep_work: bool,
     pub replace_generated: bool,
     pub report_json: Option<String>,
+    /// `--experimental`: a pack that writes the form layout or a template is allowed.
+    pub experimental: bool,
 }
 
 const EPILOG: &str = "\
@@ -118,6 +126,8 @@ Outputs under <processor>/src are REFERENCE-ONLY projections for review and diff
 Nothing is written back to an EPF unless you ask for it with --pack (epf-pack): then
 edited ObjectModule.bsl, FormModule.bsl, FormStream.bin, Template.html and Template.bin
 files are written back into the EPF and src/ is regenerated from the packed EPF.
+STABLE: module text (ObjectModule.bsl, FormModule.bsl). EXPERIMENTAL (needs --experimental): FormStream.bin, Template.html, Template.bin;
+without the flag such a pack is refused as a whole (EXPERIMENTAL_REQUIRED, exit 2) and --dry-run marks the plan.
 Definition files, Form.xml (--form-backend oof) and the manifest are never packed. One-off --encoding overrides are not saved; move accepted
 values to the processor extraction.json. Exit codes: 0 ok, 1 extraction/publication
 failure, 2 CLI/config error, 3 --check found differences.";
@@ -145,6 +155,12 @@ fn build_command(prog: &'static str) -> Command {
         .arg(Arg::new("keep_work").long("keep-work").action(ArgAction::SetTrue))
         .arg(Arg::new("replace_generated").long("replace-generated").action(ArgAction::SetTrue))
         .arg(Arg::new("report_json").long("report-json").value_name("PATH"))
+        .arg(
+            Arg::new("experimental")
+                .long("experimental")
+                .action(ArgAction::SetTrue)
+                .help("--pack: allow writing the form stream, FormStream.bin and templates (the form may be one that 1C refuses to open; agents need the user's explicit confirmation)"),
+        )
 }
 
 fn parse_args(argv: &[String], prog: &'static str) -> std::result::Result<EpfArgs, i32> {
@@ -186,6 +202,10 @@ fn parse_args(argv: &[String], prog: &'static str) -> std::result::Result<EpfArg
         eprintln!("{prog}: error: --pack cannot be combined with --check or --replace-generated");
         return Err(EXIT_USAGE);
     }
+    if m.get_flag("experimental") && !pack {
+        eprintln!("{prog}: error: --experimental requires --pack");
+        return Err(EXIT_USAGE);
+    }
     if (backup || no_backup) && !pack {
         eprintln!("{prog}: error: --backup/--no-backup require --pack");
         return Err(EXIT_USAGE);
@@ -206,6 +226,7 @@ fn parse_args(argv: &[String], prog: &'static str) -> std::result::Result<EpfArg
         keep_work: m.get_flag("keep_work"),
         replace_generated,
         report_json: m.get_one::<String>("report_json").cloned(),
+        experimental: m.get_flag("experimental"),
     })
 }
 
@@ -329,11 +350,15 @@ fn pack_one(
         return Ok(out);
     }
     let (added, updated, deleted) = plan(&plan_.existing, &plan_.result.files);
+    let layout = plan_.status == PACK_PACKED && !plan_.layout_paths.is_empty();
     if args.dry_run {
         if !packed.is_empty() {
             let mut out = Outcome::new(proc_rel, "WOULD_PACK");
             out.summary = plural(plan_.packed_paths.len(), "file");
             notes.extend(packed);
+            if layout {
+                notes.push(experimental_dry_line(&plan_.layout_paths, args.experimental));
+            }
             out.lines = notes;
             return Ok(out);
         }
@@ -342,6 +367,9 @@ fn pack_one(
         notes.extend(plan_lines(&added, &updated, &deleted));
         out.lines = notes;
         return Ok(out);
+    }
+    if layout && !args.experimental {
+        return Err(experimental_refusal(&format!("pack of {proc_rel}"), &packed));
     }
     let (hist_id, hist_lines) = if plan_.status == PACK_PACKED {
         crate::history::record_epf(epf_path, &plan_, snap)
@@ -368,6 +396,10 @@ fn pack_one(
             notes.push(format!("  backup {epf_name}.bak"));
         }
         notes.extend(hist_lines);
+        if layout {
+            notes.push(experimental_done_line(&plan_.layout_paths));
+            out.experimental = true;
+        }
         out.lines = notes;
         return Ok(out);
     }
@@ -427,7 +459,7 @@ pub fn print_outcome(o: &Outcome, dry_run: bool) {
 
 fn exit_code(outcomes: &[Outcome], args: &EpfArgs) -> i32 {
     let failed: Vec<&Outcome> = outcomes.iter().filter(|o| o.status == "FAILED").collect();
-    if failed.iter().any(|o| o.code == Some(CONFIG_INVALID)) {
+    if failed.iter().any(|o| matches!(o.code, Some(CONFIG_INVALID | EXPERIMENTAL_REQUIRED))) {
         return EXIT_USAGE;
     }
     if !failed.is_empty() {

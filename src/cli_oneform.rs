@@ -25,13 +25,16 @@ use crate::cli_epf::{
 use crate::config::{effective_config, load_json_bytes};
 use crate::container::Limits;
 use crate::discovery::{is_epf, is_erf, CONFIG_NAME, ERF_HINT};
-use crate::errors::{ExtractionError, Result, CONFIG_INVALID, IO_ERROR, RECOVERY_REQUIRED};
+use crate::errors::{ExtractionError, Result, CONFIG_INVALID, EXPERIMENTAL_REQUIRED, IO_ERROR, RECOVERY_REQUIRED};
 use crate::formbin::{
     check_config_object, discover_config_objects, extract_config_object, find_object_module, pack_config_object,
     read_module_text, walk_dirs, ConfigObject, ConfigRunOpts, OBJECT_CLASS_TITLES,
 };
 use crate::manifest::MANIFEST_PATH;
-use crate::pack::{publish_pack, stage_pack, PACK_PACKED, PACK_UNCHANGED};
+use crate::pack::{
+    experimental_done_line, experimental_dry_line, experimental_refusal, publish_pack, stage_pack, PACK_PACKED,
+    PACK_UNCHANGED,
+};
 use crate::preview::{
     build_workspace_preview, is_ordinary_form_xml, render_form_preview_html, WorkspaceItem, WORKSPACE_DIR,
 };
@@ -48,34 +51,57 @@ const PREVIEW_HEAD: usize = 4096;
 const WORKER_STACK: usize = 64 << 20;
 
 const EPILOG: &str = "\
-Without a command, PATH is extracted (oneform DIR == oneform extract DIR). Every .epf gets src/ next to it
-(several EPF files in one directory: <dir>/<epf stem>/src); without extraction.json the original 1C names are
-used for Forms/<name>/ and Templates/<name>/. Every configuration object with Forms/<Form>/Ext/Form.bin
-(or CommonForms/<Form>/Ext/Form.bin) gets <ObjDir>/src/. pack writes edited FormModule.bsl / FormStream.bin /
-ObjectModule.bsl back; preview renders FormPreview.html next to every ordinary Form.xml.
-clone-form OBJDIR --from FORM --name NAME copies a form of a configuration object; new-form OBJDIR --kind
-processor|report|catalog-item|catalog-list|document --name NAME [--synonym TEXT] [--default] creates a blank ordinary form
-(OBJDIR: an object directory of a configuration dump or of the dump of an external processor/report) and extracts it.
-lint [PATH] [--json] [--strict] checks the layout of every extracted Form.xml (outside the form, overlap, stretching, bottom panel,
-tab order, deviations from the usual values of the form kind) and writes nothing; exit 1 when an error is found, 3 with --strict
-when there are warnings.
-Every pack that changes a form first saves the previous state in <object directory>/.oneform/history/<time>-<form>/ (before/, after/,
-manifest.json; the last 20 per object, env ONEFORM_HISTORY_KEEP, 0 = off) and prints `history <id>`. history [PATH] [--json] lists
-the snapshots; history restore [PATH] <id> [--dry-run] [--replace-generated] puts the saved Form.bin / .epf back (the current state is
-saved as a new snapshot first) and refreshes src/ with extract; it refuses when src/ holds unpacked edits unless --replace-generated.
-history diff [PATH] [id] prints a unified diff of before/ and after/ (Form.xml, FormModule.bsl) of the latest or the given snapshot.
+COMMANDS
+Without a command, PATH is extracted (oneform DIR == oneform extract DIR).
+
+STABLE (no flag needed):
+  extract [PATH]            every .epf gets src/ next to it (several EPF files in one directory: <dir>/<epf stem>/src); without
+                            extraction.json the original 1C names are used for Forms/<name>/ and Templates/<name>/. Every configuration
+                            object with Forms/<Form>/Ext/Form.bin (or CommonForms/<Form>/Ext/Form.bin) gets <ObjDir>/src/.
+  check [PATH]              compares src/ with a fresh extraction; exit 3 when it differs.
+  preview [PATH]            renders FormPreview.html next to every ordinary Form.xml.
+  lint [PATH] [--json] [--strict]   checks the layout of every extracted Form.xml (outside the form, overlap, stretching, bottom panel,
+                            tab order, deviations from the usual values of the form kind) and writes nothing; exit 1 when an error is
+                            found, 3 with --strict when there are warnings.
+  validate [PATH] [--json]  decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
+                            (format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection,
+                            unreadable); it reads the Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is
+                            in scope, 1 when any is not.
+  history [PATH] [--json]   lists the snapshots; history restore [PATH] <id> [--dry-run] [--replace-generated] puts the saved Form.bin /
+                            .epf back (the current state is saved as a new snapshot first) and refreshes src/ with extract; it refuses
+                            when src/ holds unpacked edits unless --replace-generated. history diff [PATH] [id] prints a unified diff of
+                            before/ and after/ (Form.xml, FormModule.bsl) of the latest or the given snapshot.
+  diagnose [PATH] [--json]  (read-only) shows the last 10 diagnostics entries, the last snapshot, the validate verdicts, the section of
+                            docs/agent-guide.md for each refusal code and the commands for 'the form did not open in 1C'.
+  feedback add [PATH] [--history ID] [--note TEXT] [--1c-error TEXT] [--kind bug|wish] [--no-files] [--include-binaries]
+                            writes <project dir>/.oneform/feedback/<time>-<kind>/ (report.md, report.json, the text files of the
+                            snapshot; modules may hold tokens or passwords: read the report before you share it; binaries only with
+                            --include-binaries) and mirrors it to $ONEFORM_FEEDBACK_DIR/<project dir name>/<id> when that is set;
+                            feedback list [PATH] [--json]; feedback show [PATH] <id> [--json].
+  pack [PATH]               writes edited module text (FormModule.bsl, ObjectModule.bsl) back; --dry-run prints the plan. A pack that
+                            would also change the form stream is refused (see EXPERIMENTAL). Every pack that changes a form first saves
+                            the previous state in <object directory>/.oneform/history/<time>-<form>/ (before/, after/, manifest.json;
+                            the last 20 per object, env ONEFORM_HISTORY_KEEP, 0 = off) and prints `history <id>`.
+
+EXPERIMENTAL (needs --experimental): writing the form layout may produce a form that 1C refuses to open; the agent instructions require
+the user's explicit confirmation first. With the flag the snapshot manifest and the diagnostics entry say `experimental: true`.
+  pack [PATH] --experimental   also writes what changes the form stream: an edited Form.xml (layout), an edited FormStream.bin,
+                            Template.html / Template.bin. Without the flag such a plan is refused as a whole (modules included) before
+                            anything is written, with EXPERIMENTAL_REQUIRED; `pack --dry-run` works without the flag and marks the plan
+                            with an EXPERIMENTAL line.
+  clone-form OBJDIR --from FORM --name NAME --experimental   copies a form of a configuration object.
+  new-form OBJDIR --kind processor|report|catalog-item|catalog-list|document --name NAME [--synonym TEXT] [--default] --experimental
+                            creates a blank ordinary form (OBJDIR: an object directory of a configuration dump or of the dump of an
+                            external processor/report) and extracts it.
+
+--experimental is a usage error (exit 2) for every other command. No environment variable turns the mode on.
+
+LOG
 extract, pack, clone-form, new-form and history restore that end with a refusal, a failure or warnings append one line (metadata only, no file
 contents; the last 500, env ONEFORM_DIAG_CAP) to <project dir>/.oneform/diagnostics.jsonl; --dry-run records refusals too.
-diagnose [PATH] [--json] (read-only) shows the last 10 of them, the last snapshot, the validate verdicts, the section of docs/agent-guide.md for each
-refusal code and the commands for 'the form did not open in 1C'. feedback add [PATH] [--history ID] [--note TEXT] [--1c-error TEXT] [--kind bug|wish]
-[--no-files] [--include-binaries] writes <project dir>/.oneform/feedback/<time>-<kind>/ (report.md, report.json, the text files of the snapshot;
-modules may hold tokens or passwords: read the report before you share it; binaries only with --include-binaries) and mirrors it to
-$ONEFORM_FEEDBACK_DIR/<project dir name>/<id> when that is set; feedback list [PATH] [--json]; feedback show [PATH] <id> [--json].
-validate [PATH] [--json] decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
-(format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection, unreadable); it reads the
-Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is in scope, 1 when any is not.
 A binary external report (.erf) is not read: every command skips it and says so on stderr (dump it with erf-dump first).
-The viewer is PATH/.oneform/index.html. Exit codes: 0 ok, 1 failure, 2 usage/config error, 3 check found differences.";
+The viewer is PATH/.oneform/index.html.
+Exit codes: 0 ok, 1 failure, 2 usage/config error and EXPERIMENTAL_REQUIRED (a layout write without --experimental), 3 check found differences.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
@@ -118,6 +144,8 @@ pub struct Options {
     pub backup: bool,
     pub replace_generated: bool,
     pub oof_path: Option<String>,
+    /// `--experimental`: a pack that writes the form layout is allowed.
+    pub experimental: bool,
 }
 
 pub type Job = (Options, PathBuf, Target);
@@ -311,8 +339,12 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
 
         packed.extend(plan_.edit_notes.iter().cloned());
         let (added, updated, deleted) = plan(&plan_.existing, &plan_.result.files);
+        let layout = plan_.status == PACK_PACKED && !plan_.layout_paths.is_empty();
         if opts.dry_run {
             if !packed.is_empty() {
+                if layout {
+                    packed.push(experimental_dry_line(&plan_.layout_paths, opts.experimental));
+                }
                 return Ok(outcome(name, "WOULD_PACK", format!("{} file(s)", plan_.packed_paths.len()), packed));
             }
             return Ok(outcome(
@@ -321,6 +353,9 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
                 counts(added.len(), updated.len(), deleted.len()),
                 plan_lines(&added, &updated, &deleted),
             ));
+        }
+        if layout && !opts.experimental {
+            return Err(experimental_refusal(&format!("pack of {name}"), &packed));
         }
         if let Some(parent) = src.parent() {
             fs::create_dir_all(parent)?;
@@ -342,7 +377,12 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
                 lines.push(format!("  backup {}.bak", file_name(&epf_path)));
             }
             lines.extend(hist_lines);
-            return Ok(outcome(name, "PACKED", format!("{} file(s), {summary}", plan_.packed_paths.len()), lines));
+            if layout {
+                lines.push(experimental_done_line(&plan_.layout_paths));
+            }
+            let mut out = outcome(name, "PACKED", format!("{} file(s), {summary}", plan_.packed_paths.len()), lines);
+            out.experimental = layout;
+            return Ok(out);
         }
         return Ok(outcome(name, "UPDATED", summary, Vec::new()));
     }
@@ -396,6 +436,7 @@ fn process_config(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
         oof_path: opts.oof_path.as_deref(),
         limits: Some(&limits),
         recover_leftovers: false,
+        experimental: opts.experimental,
     };
     match opts.command.as_str() {
         "check" => check_config_object(root, obj, &run),
@@ -847,15 +888,19 @@ pub struct Cli {
     pub onec_error: Option<String>,
     pub no_files: bool,
     pub include_binaries: bool,
+    pub experimental: bool,
 }
 
+const STABLE_HEADING: &str = "STABLE";
+const EXPERIMENTAL_HEADING: &str = "EXPERIMENTAL (needs --experimental)";
+
 fn build_command() -> Command {
-    Command::new("oneform")
+    let cmd = Command::new("oneform")
         .version(env!("CARGO_PKG_VERSION"))
         .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|clone-form|new-form|history|diagnose|feedback] [PATH]")
         .about("Extract, pack, check and preview 1C ordinary forms of EPF files and configuration dumps.")
         .after_help(EPILOG)
-        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form|history|diagnose|feedback]").help("command (default: extract; clone-form and new-form take the object directory as PATH; history: list snapshots, `history diff [PATH] [id]` or `history restore [PATH] <id>`; diagnose: summary of refusals and the last snapshot; feedback: `feedback add [PATH]`, `feedback list`, `feedback show <id>`)"))
+        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|clone-form|new-form|history|diagnose|feedback]").help("command (default: extract). STABLE: extract, check, preview, lint, validate, history, diagnose, feedback, pack (module text). EXPERIMENTAL (needs --experimental): pack that rewrites the form stream, new-form, clone-form. clone-form and new-form take the object directory as PATH; history: list snapshots, `history diff [PATH] [id]` or `history restore [PATH] <id>`; diagnose: summary of refusals and the last snapshot; feedback: `feedback add [PATH]`, `feedback list`, `feedback show <id>`)"))
         .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .)"))
         .arg(Arg::new("extra").value_name("ID").num_args(0..).help("history diff [PATH] [id], history restore [PATH] <id>, feedback show <id>: the snapshot / report id"))
         .arg(
@@ -909,6 +954,19 @@ fn build_command() -> Command {
                 .action(ArgAction::SetTrue)
                 .help("extract: also write the verbatim binary records (raw/sig, *Record elements) used by form compilers; env ONEFORM_CARRIERS=1"),
         )
+        .arg(
+            Arg::new("experimental")
+                .long("experimental")
+                .action(ArgAction::SetTrue)
+                .help("pack that rewrites the form stream (Form.xml layout, FormStream.bin, templates), clone-form, new-form: allow it; the form may be one that 1C refuses to open, agents need the user's explicit confirmation; without it such a pack is refused (EXPERIMENTAL_REQUIRED, exit 2)"),
+        );
+    let stable = [
+        "workers", "dry_run", "backup", "no_backup", "replace_generated", "oof_path", "progress", "no_progress", "history_id", "note",
+        "onec_error", "no_files", "include_binaries", "json", "strict", "carriers",
+    ];
+    let experimental = ["experimental", "from", "name", "synonym", "kind", "default"];
+    let cmd = stable.iter().fold(cmd, |c, id| c.mut_arg(*id, |a| a.help_heading(STABLE_HEADING)));
+    experimental.iter().fold(cmd, |c, id| c.mut_arg(*id, |a| a.help_heading(EXPERIMENTAL_HEADING)))
 }
 
 pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
@@ -951,6 +1009,7 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
         onec_error: m.get_one::<String>("onec_error").cloned(),
         no_files: m.get_flag("no_files"),
         include_binaries: m.get_flag("include_binaries"),
+        experimental: m.get_flag("experimental"),
     })
 }
 
@@ -1015,7 +1074,7 @@ fn print_outcome(o: &Outcome, dry_run: bool) {
 
 fn exit_code(outcomes: &[Outcome], command: &str) -> i32 {
     let failed: Vec<&Outcome> = outcomes.iter().filter(|o| o.status == "FAILED").collect();
-    if failed.iter().any(|o| o.code == Some(CONFIG_INVALID)) {
+    if failed.iter().any(|o| matches!(o.code, Some(CONFIG_INVALID | EXPERIMENTAL_REQUIRED))) {
         return EXIT_USAGE;
     }
     if !failed.is_empty() {
@@ -1028,23 +1087,39 @@ fn exit_code(outcomes: &[Outcome], command: &str) -> i32 {
 }
 
 /// Diagnostics line of a refused `clone-form` / `new-form` (the object directory is the project directory).
-fn log_error(command: &str, path: &str, dry_run: bool, e: &ExtractionError) {
+fn log_error(command: &str, path: &str, dry_run: bool, experimental: bool, e: &ExtractionError) {
     let dir = clean_path(Path::new(path));
     // a directory that is not a project (missing, empty) gets no `.oneform`
     if !fs::read_dir(&dir).is_ok_and(|rd| rd.flatten().any(|e| e.file_name() != WORKSPACE_DIR)) {
         return;
     }
     let kind = e.params.get("kind").and_then(Value::as_str);
-    let record = crate::diagnostics::from_error(command, dry_run, EXIT_FAILED, Some(e.code), kind, &e.message);
+    let mut record = crate::diagnostics::from_error(command, dry_run, EXIT_FAILED, Some(e.code), kind, &e.message);
+    record.experimental = experimental;
     crate::diagnostics::append(&dir, &record);
 }
 
+/// `clone-form` / `new-form` without `--experimental`: refuse before anything is created (exit 2) and log the refusal.
+fn refuse_experimental(command: &str, path: &str, what: &str) -> i32 {
+    let e = experimental_refusal(command, &[format!("  {what}")]);
+    eprintln!("oneform: error: {}: {}", e.code, e.message);
+    let dir = clean_path(Path::new(path));
+    if fs::read_dir(&dir).is_ok_and(|rd| rd.flatten().any(|e| e.file_name() != WORKSPACE_DIR)) {
+        let mut record = crate::diagnostics::from_error(command, false, EXIT_USAGE, Some(e.code), None, &e.message);
+        record.experimental = false;
+        crate::diagnostics::append(&dir, &record);
+    }
+    EXIT_USAGE
+}
+
 /// Diagnostics lines of `extract` / `pack` targets that ended with a failure or warnings (a clean target writes nothing).
-fn log_outcomes(root: &Path, targets: &[Target], outcomes: &[Outcome], command: &str, dry_run: bool) {
+fn log_outcomes(root: &Path, targets: &[Target], outcomes: &[Outcome], command: &str, dry_run: bool, experimental: bool) {
     for o in outcomes {
         let Some(t) = targets.iter().find(|t| t.display() == o.path) else { continue };
         let code = exit_code(std::slice::from_ref(o), command);
-        if let Some(r) = crate::diagnostics::from_outcome(command, dry_run, code, o) {
+        if let Some(mut r) = crate::diagnostics::from_outcome(command, dry_run, code, o) {
+            // a failure of a pack with the flag may have happened before the plan was known: it still ran in the mode
+            r.experimental |= experimental && command == "pack" && o.status == "FAILED";
             crate::diagnostics::append(&path_of(root, &t.rel), &r);
         }
     }
@@ -1069,10 +1144,16 @@ pub fn main(argv: &[String]) -> i32 {
     if feedback_only && command != "feedback" {
         return fail("--history, --note, --1c-error, --no-files and --include-binaries are only valid for feedback add");
     }
+    if args.experimental && !matches!(command.as_str(), "pack" | "new-form" | "clone-form") {
+        return fail("--experimental is only valid for pack, new-form and clone-form");
+    }
     if command == "clone-form" {
         let (Some(from), Some(name)) = (args.from.as_deref(), args.name.as_deref()) else {
             return fail("clone-form needs --from <existing form> and --name <new form>");
         };
+        if !args.experimental {
+            return refuse_experimental("clone-form", &path, &format!("clone-form would create the form {name} as a copy of {from}"));
+        }
         return match crate::clone_form::clone_form(Path::new(&path), from, name, args.synonym.as_deref()) {
             Ok(files) => {
                 println!("{path}: CLONED, form {name} created from {from}");
@@ -1084,7 +1165,7 @@ pub fn main(argv: &[String]) -> i32 {
             }
             Err(e) => {
                 eprintln!("oneform: error: {}", e.message);
-                log_error("clone-form", &path, false, &e);
+                log_error("clone-form", &path, false, args.experimental, &e);
                 EXIT_FAILED
             }
         };
@@ -1093,6 +1174,10 @@ pub fn main(argv: &[String]) -> i32 {
         let (Some(kind), Some(name)) = (args.kind.as_deref(), args.name.as_deref()) else {
             return fail(&format!("new-form needs --kind <{}> and --name <new form>", crate::new_form::KINDS.join("|")));
         };
+        if !args.experimental {
+            let what = format!("new-form would create the blank {kind} form {name}");
+            return refuse_experimental("new-form", &path, &what);
+        }
         let result = crate::new_form::Kind::parse(kind)
             .and_then(|k| crate::new_form::new_form_with(Path::new(&path), k, name, args.synonym.as_deref(), args.default_form, args.replace_generated));
         return match result {
@@ -1107,7 +1192,7 @@ pub fn main(argv: &[String]) -> i32 {
             }
             Err(e) => {
                 eprintln!("oneform: error: {}", e.message);
-                log_error("new-form", &path, false, &e);
+                log_error("new-form", &path, false, args.experimental, &e);
                 EXIT_FAILED
             }
         };
@@ -1192,6 +1277,7 @@ pub fn main(argv: &[String]) -> i32 {
         backup: args.backup,
         replace_generated: args.replace_generated,
         oof_path: args.oof_path.clone().or_else(|| std::env::var("EPF_OOF_PATH").ok()).filter(|s| !s.is_empty()),
+        experimental: args.experimental,
     };
     let targets = discover_targets(&root, &command);
     if targets.is_empty() {
@@ -1234,10 +1320,13 @@ pub fn main(argv: &[String]) -> i32 {
     }
     let mut code = exit_code(&outcomes, &command);
     if matches!(command.as_str(), "extract" | "pack") {
-        log_outcomes(&root, &targets, &outcomes, &command, args.dry_run);
+        log_outcomes(&root, &targets, &outcomes, &command, args.dry_run, args.experimental);
     }
 
-    if command != "check" && !args.dry_run {
+    // a pack refused as a whole by the experimental gate writes nothing, the viewer included
+    let refused = outcomes.iter().any(|o| o.code == Some(EXPERIMENTAL_REQUIRED))
+        && !outcomes.iter().any(|o| matches!(o.status, "UPDATED" | "PACKED"));
+    if command != "check" && !args.dry_run && !refused {
         let items = collect_items(&root, &targets);
         if !items.is_empty() {
             match build_workspace_preview(&root, &items) {
@@ -1377,7 +1466,7 @@ mod tests {
         let manifest = json!({"schemaVersion": 1, "files": [
             {"path": "Forms/F/FormPreview.html", "role": "form-preview", "size": 3, "sha256": "x"}]});
         write(&root.join("Documents/D/src").join(MANIFEST_PATH), &dumps_json(&manifest).unwrap());
-        let opts = Options { command: "preview".into(), dry_run: false, backup: false, replace_generated: false, oof_path: None };
+        let opts = Options { command: "preview".into(), dry_run: false, backup: false, replace_generated: false, oof_path: None, experimental: false };
         let t = Target::new(Kind::Xml, "Documents/D/src/Forms/F/Form.xml".into());
         let out = run_target(&(opts.clone(), root.to_path_buf(), t.clone()));
         assert_eq!((out.status, out.summary.as_str()), ("UPDATED", "FormPreview.html"));

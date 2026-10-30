@@ -43,6 +43,9 @@ pub const GENERATED_FILE_MODIFIED: &str = "GENERATED_FILE_MODIFIED";
 /// A requested edit of `Form.xml` or of the form module that the tool refuses (invalid XML, duplicate names, an
 /// unsupported change); the generated files themselves were not tampered with.
 pub const FORM_EDIT_REJECTED: &str = "FORM_EDIT_REJECTED";
+/// A plan that writes the form layout (the form stream, `Form.bin`, templates) was requested without `--experimental`;
+/// nothing was written. Exit code 2, like a usage error.
+pub const EXPERIMENTAL_REQUIRED: &str = "EXPERIMENTAL_REQUIRED";
 pub const RECOVERY_REQUIRED: &str = "RECOVERY_REQUIRED";
 pub const PUBLISH_VERIFY_FAILED: &str = "PUBLISH_VERIFY_FAILED";
 pub const IO_ERROR: &str = "IO_ERROR";

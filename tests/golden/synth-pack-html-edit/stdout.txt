@@ -1,3 +1,4 @@
 Synth: PACKED, 1 file, code complete, 1 form, 1 template, reference partial (1 warning)
   pack Templates/Template_68b792c0_6443_4ad3_86cf_adadc7d25135/Template.html
+EXPERIMENTAL: FormStream.bin or a template was written as edited; open the form in 1C and check it
 Batch: 1 packed, 0 updated, 0 unchanged, 0 failed; exit 0

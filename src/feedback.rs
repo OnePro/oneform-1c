@@ -219,6 +219,7 @@ fn add(path: &Path, o: &AddOptions) -> i32 {
         "note": o.note,
         "1c_error": o.onec_error,
         "history": snapshot.as_ref().map(|(_, i)| i.id.clone()),
+        "experimental": snapshot.as_ref().is_some_and(|(_, i)| history::is_experimental(&i.manifest)),
         "snapshot": snapshot.as_ref().map(|(_, i)| i.manifest.clone()),
         "diagnostics": entries,
         "validate": verdict_json,
@@ -298,6 +299,8 @@ fn report_md(r: &Value, verdicts: &[String], diff: &[String], o: &AddOptions, co
     } else {
         let snap = &r["snapshot"];
         m.push_str(&format!("- id: {}\n- форма: {}\n- время: {}\n- причина: {}\n", s(&snap["id"]), s(&snap["form"]), s(&snap["time"]), s(&snap["reason"])));
+        m.push_str(&format!("- experimental: {}
+", r["experimental"].as_bool() == Some(true)));
         for line in snap["summary"].as_array().into_iter().flatten().filter_map(Value::as_str) {
             m.push_str(&format!("- {line}\n"));
         }

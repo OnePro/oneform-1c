@@ -2,6 +2,7 @@
   "argv": [
     "epf",
     "--pack",
+    "--experimental",
     "--root",
     ".",
     "--all",

@@ -59,6 +59,8 @@ pub struct Record {
     pub target: Option<String>,
     pub form: Option<String>,
     pub dry_run: bool,
+    /// The command ran with `--experimental` (`pack` that changed the form stream, `new-form`, `clone-form`).
+    pub experimental: bool,
 }
 
 fn first_line(text: &str) -> String {
@@ -109,6 +111,7 @@ fn to_json(r: &Record) -> Value {
         "stream_version": stream_version(&r.message),
         "oneform_version": env!("CARGO_PKG_VERSION"),
         "dry_run": r.dry_run,
+        "experimental": r.experimental,
     })
 }
 
@@ -167,6 +170,7 @@ pub fn from_outcome(command: &str, dry_run: bool, exit_code: i32, o: &Outcome) -
         target: Some(o.path.clone()),
         form: o.params.get("form").and_then(Value::as_str).map(str::to_string).or_else(|| form_of_path(o.params.get("path").and_then(Value::as_str))),
         dry_run,
+        experimental: o.experimental,
     })
 }
 
@@ -247,6 +251,7 @@ pub(crate) fn entry_line(e: &Value) -> String {
         (c, k) => format!("{c}/{k}"),
     };
     let dry = if e["dry_run"].as_bool() == Some(true) { " (dry-run)" } else { "" };
+    let dry = if e["experimental"].as_bool() == Some(true) { format!("{dry} [experimental]") } else { dry.to_string() };
     let msg = if s("message").is_empty() { s("warnings").to_string() } else { s("message").to_string() };
     let msg = if msg.is_empty() { e["warnings"][0].as_str().unwrap_or("").to_string() } else { msg };
     format!("  {}  {} exit {}{dry}  {what}: {msg}", s("time"), s("command"), e["exit_code"])
@@ -315,6 +320,7 @@ pub fn run_cli(path: &str, json_output: bool) -> i32 {
                 "form": i.manifest["form"],
                 "time": i.manifest["time"],
                 "summary": i.manifest["summary"],
+                "experimental": history::is_experimental(&i.manifest),
             })),
             "validate": validate_json,
             "validate_error": verdicts.as_ref().err().map(|e| e.to_string()),
@@ -337,11 +343,12 @@ pub fn run_cli(path: &str, json_output: bool) -> i32 {
         Some((dir, i)) => {
             let summary: Vec<&str> = i.manifest["summary"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
             println!(
-                "Последний снимок истории: {} (форма {}, {}), {}",
+                "Последний снимок истории: {} (форма {}, {}), {}{}",
                 i.id,
                 i.manifest["form"].as_str().unwrap_or(""),
                 history::rel_of(&root, dir),
-                summary.join("; ")
+                summary.join("; "),
+                if history::is_experimental(&i.manifest) { " [experimental: форма записана с --experimental]" } else { "" }
             );
         }
         None => println!("Последний снимок истории: нет (pack ещё не менял форму)"),

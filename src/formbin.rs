@@ -30,7 +30,10 @@ use crate::metaref::ConfigTypeLookup;
 use crate::object_schema::{with_object_schema, ObjectSchema};
 use crate::naming::{is_uuid, resolve_1c_aliases, safe_join};
 use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, FORM_XML_NAME, META_KIND_KEY};
-use crate::pack::{atomic_write, encode_text, plan_layout_patch, LayoutPatch, PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES};
+use crate::pack::{
+    atomic_write, encode_text, experimental_done_line, experimental_dry_line, experimental_refusal, plan_layout_patch, LayoutPatch,
+    PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES,
+};
 use crate::preview::{render_form_preview_html, FORM_PREVIEW_NAME};
 use crate::stage::{ExtractionResult, STATUS_PARTIAL};
 use crate::transaction::{
@@ -640,6 +643,8 @@ pub struct ConfigRunOpts<'a> {
     pub oof_path: Option<&'a str>,
     pub limits: Option<&'a Limits>,
     pub recover_leftovers: bool,
+    /// `--experimental` is given: a plan that writes the form layout may be published.
+    pub experimental: bool,
 }
 
 impl Default for ConfigRunOpts<'_> {
@@ -652,6 +657,7 @@ impl Default for ConfigRunOpts<'_> {
             oof_path: None,
             limits: None,
             recover_leftovers: true,
+            experimental: false,
         }
     }
 }
@@ -741,6 +747,9 @@ pub struct ConfigPackPlan {
     /// `PACK_UNCHANGED` | `PACK_PACKED` | `PACK_SRC_ONLY`
     pub status: &'static str,
     pub packed_paths: Vec<String>,
+    /// The packed paths that are not module text (an edited `Form.xml` that changes the form stream, `FormStream.bin`):
+    /// such a plan is experimental.
+    pub layout_paths: Vec<String>,
     /// One line per detected `Form.xml` edit (control, properties), for the pack report.
     pub edit_notes: Vec<String>,
     /// Form name -> new `Form.bin` (only changed forms).
@@ -848,6 +857,7 @@ pub fn stage_config_pack(
     let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut packed: Vec<String> = Vec::new();
     let mut layouts: Vec<LayoutPatch> = Vec::new();
+    let mut layout_paths: Vec<String> = Vec::new();
     let type_lookup = ConfigTypeLookup::for_config_root(&ConfigTypeLookup::find_config_root(root).unwrap_or_else(|| root.to_path_buf()));
     let schema = if obj.common {
         None
@@ -885,11 +895,13 @@ pub fn stage_config_pack(
             edits.entry(name.as_str()).or_default().push(("form", lp.patched.bytes.clone()));
             expected.insert(stream_path.to_string(), lp.patched.bytes.clone());
             packed.push(lp.xml_path.clone());
+            layout_paths.push(lp.xml_path.clone());
             layouts.push(lp);
         } else if Some(ex_stream) != current.files.get(stream_path) {
             edits.entry(name.as_str()).or_default().push(("form", ex_stream.clone()));
             expected.insert(stream_path.to_string(), ex_stream.clone());
             packed.push(stream_path.to_string());
+            layout_paths.push(stream_path.to_string());
         }
     }
 
@@ -898,6 +910,7 @@ pub fn stage_config_pack(
         return Ok(ConfigPackPlan {
             status,
             packed_paths: Vec::new(),
+            layout_paths: Vec::new(),
             edit_notes: Vec::new(),
             new_sources: Sources::new(),
             result: current,
@@ -927,6 +940,7 @@ pub fn stage_config_pack(
     Ok(ConfigPackPlan {
         status: PACK_PACKED,
         packed_paths: packed,
+        layout_paths,
         edit_notes,
         new_sources,
         result: new,
@@ -954,9 +968,13 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
     }
     let mut packed: Vec<String> = plan_.packed_paths.iter().map(|p| format!("  pack {p}")).collect();
     packed.extend(plan_.edit_notes.iter().cloned());
+    let layout = plan_.status == PACK_PACKED && !plan_.layout_paths.is_empty();
     if opts.dry_run {
         if !packed.is_empty() {
             notes.extend(packed.iter().cloned());
+            if layout {
+                notes.push(experimental_dry_line(&plan_.layout_paths, opts.experimental));
+            }
             return Ok(outcome(&obj.rel, "WOULD_PACK", format!("{} file(s)", plan_.packed_paths.len()), notes));
         }
         let (added, updated, deleted) = plan(&plan_.existing, &plan_.result.files);
@@ -967,6 +985,9 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
             format!("+{} ~{} -{}", added.len(), updated.len(), deleted.len()),
             notes,
         ));
+    }
+    if layout && !opts.experimental {
+        return Err(experimental_refusal(&format!("pack of {}", obj.rel), &packed));
     }
     verify(root, obj, &snaps)?;
     let (hist_ids, hist_lines) = if plan_.status == PACK_PACKED {
@@ -1014,7 +1035,12 @@ pub fn pack_config_object(root: &Path, obj: &ConfigObject, opts: &ConfigRunOpts<
             notes.push("  backup Form.bin.bak".to_string());
         }
         notes.extend(hist_lines);
-        return Ok(outcome(&obj.rel, "PACKED", text, notes));
+        if layout {
+            notes.push(experimental_done_line(&plan_.layout_paths));
+        }
+        let mut out = outcome(&obj.rel, "PACKED", text, notes);
+        out.experimental = layout;
+        return Ok(out);
     }
     Ok(outcome(&obj.rel, "UPDATED", summary, notes))
 }

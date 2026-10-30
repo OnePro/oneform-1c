@@ -80,7 +80,13 @@ fn workspace(c: &Case) -> (tempfile::TempDir, PathBuf, PathBuf) {
 }
 
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_oneform")).args(args).output().unwrap()
+    Command::new(env!("CARGO_BIN_EXE_oneform")).args(args).args(experimental(args)).output().unwrap()
+}
+
+/// `pack`, `new-form` and `clone-form` may write the form layout: they need `--experimental` (the gate itself is tested in
+/// experimental_gate.rs).
+fn experimental(args: &[&str]) -> Option<&'static str> {
+    matches!(args.first(), Some(&("pack" | "new-form" | "clone-form"))).then_some("--experimental")
 }
 
 fn text(out: &std::process::Output) -> String {

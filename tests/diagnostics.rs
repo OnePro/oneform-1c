@@ -24,11 +24,17 @@ fn copy_dir(from: &Path, to: &Path) {
 
 fn run_env(root: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
     let mut c = Command::new(env!("CARGO_BIN_EXE_oneform"));
-    c.args(args).arg("-j").arg("1").arg("--no-progress").current_dir(root);
+    c.args(args).args(experimental(args)).arg("-j").arg("1").arg("--no-progress").current_dir(root);
     for (k, v) in env {
         c.env(k, v);
     }
     c.output().unwrap()
+}
+
+/// `pack`, `new-form` and `clone-form` may write the form layout: they need `--experimental` (the gate itself is tested in
+/// experimental_gate.rs).
+fn experimental(args: &[&str]) -> Option<&'static str> {
+    matches!(args.first(), Some(&("pack" | "new-form" | "clone-form"))).then_some("--experimental")
 }
 
 fn run(root: &Path, args: &[&str]) -> Output {

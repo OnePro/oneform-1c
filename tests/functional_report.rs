@@ -35,7 +35,13 @@ fn copy_dir(from: &Path, to: &Path) {
 }
 
 fn run(dir: &Path, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_oneform")).args(args).arg(dir).arg("--no-progress").output().unwrap()
+    Command::new(env!("CARGO_BIN_EXE_oneform")).args(args).args(experimental(args)).arg(dir).arg("--no-progress").output().unwrap()
+}
+
+/// `pack`, `new-form` and `clone-form` may write the form layout: they need `--experimental` (the gate itself is tested in
+/// experimental_gate.rs).
+fn experimental(args: &[&str]) -> Option<&'static str> {
+    matches!(args.first(), Some(&("pack" | "new-form" | "clone-form"))).then_some("--experimental")
 }
 
 fn text(out: &Output) -> String {

@@ -54,6 +54,8 @@ pub struct Entry {
     pub after_files: Vec<(String, Vec<u8>)>,
     pub summary: Vec<String>,
     pub warnings: Vec<String>,
+    /// The pack rewrote the form stream (layout): `--experimental`.
+    pub experimental: bool,
 }
 
 // --------------------------------------------------------------------------- time
@@ -178,6 +180,7 @@ fn write_snapshot(partial: &Path, id: &str, secs: i64, e: &Entry) -> Result<(), 
         "afterSha256": e.after_sha256,
         "summary": e.summary,
         "warnings": e.warnings,
+        "experimental": e.experimental,
         "oneformVersion": env!("CARGO_PKG_VERSION"),
     });
     let text = serde_json::to_string_pretty(&manifest).map_err(|err| err.to_string())?;
@@ -343,6 +346,7 @@ pub fn record_epf(epf_path: &Path, plan: &PackPlan, snap: &Snapshot) -> (Option<
         after_files,
         summary,
         warnings,
+        experimental: !plan.layout_paths.is_empty(),
     };
     note(save_for_pack(dir, &entry))
 }
@@ -361,6 +365,8 @@ pub fn record_config(object_dir: &Path, obj: &ConfigObject, plan: &ConfigPackPla
             })
         });
         let xml = rec.and_then(|r| r["layout"]["xml"].as_str()).unwrap_or("");
+        let stream = rec.and_then(|r| r["layout"]["binary"]["path"].as_str()).unwrap_or("");
+        let experimental = plan.layout_paths.iter().any(|p| (!xml.is_empty() && p == xml) || (!stream.is_empty() && p == stream));
         let module = rec.and_then(|r| r["module"]["path"].as_str()).unwrap_or("");
         let projection = (!xml.is_empty()).then(|| dirname(xml).to_string());
         let own: Vec<String> = [xml, module].iter().filter(|p| !p.is_empty()).map(|p| (*p).to_string()).collect();
@@ -382,6 +388,7 @@ pub fn record_config(object_dir: &Path, obj: &ConfigObject, plan: &ConfigPackPla
             after_files,
             summary,
             warnings,
+            experimental,
         };
         let (id, l) = note(save_for_pack(object_dir, &entry));
         ids.extend(id);
@@ -406,6 +413,11 @@ fn summary_text(m: &Value) -> String {
         text = text.chars().take(107).collect::<String>() + "...";
     }
     text
+}
+
+/// `experimental` of a snapshot manifest (absent in old manifests: false).
+pub(crate) fn is_experimental(manifest: &Value) -> bool {
+    manifest["experimental"].as_bool() == Some(true)
 }
 
 pub(crate) fn rel_of(root: &Path, dir: &Path) -> String {
@@ -592,6 +604,7 @@ fn list_cmd(root: &Path, json: bool) -> i32 {
                     "kind": m["kind"],
                     "summary": m["summary"],
                     "warnings": m["warnings"],
+                    "experimental": is_experimental(m),
                     "beforeSha256": m["beforeSha256"],
                     "afterSha256": m["afterSha256"],
                     "path": item.path.to_string_lossy(),
@@ -610,11 +623,12 @@ fn list_cmd(root: &Path, json: bool) -> i32 {
         for item in items.iter().rev() {
             let m = &item.manifest;
             println!(
-                "  {}  {}  {}  {}",
+                "  {}  {}  {}  {}{}",
                 item.id,
                 m["time"].as_str().unwrap_or(""),
                 m["reason"].as_str().unwrap_or(""),
-                summary_text(m)
+                summary_text(m),
+                if is_experimental(m) { "  [experimental]" } else { "" }
             );
         }
     }
@@ -732,6 +746,7 @@ fn restore_item(root: &Path, obj_dir: &Path, item: &Item, dry_run: bool, replace
         after_files: Vec::new(),
         summary: vec![format!("restore of {}", item.id)],
         warnings: Vec::new(),
+        experimental: false,
     };
     // a restore stays reversible even when automatic history is off: the current state is always saved first
     let new_id = save(obj_dir, &entry, keep_limit().max(1))
@@ -743,7 +758,7 @@ fn restore_item(root: &Path, obj_dir: &Path, item: &Item, dry_run: bool, replace
     lines.push(format!("{label}: RESTORED snapshot {} ({form}), {binary} {} -> {}", item.id, short(&current_sha), short(&saved_sha)));
     lines.push(format!("  history {new_id} (the state before the restore)"));
     if existing.is_some() {
-        let opts = Options { command: "extract".to_string(), dry_run: false, backup: false, replace_generated, oof_path: None };
+        let opts = Options { command: "extract".to_string(), dry_run: false, backup: false, replace_generated, oof_path: None, experimental: false };
         let out = run_target(&(opts, root.to_path_buf(), target));
         if out.status == "FAILED" {
             return Err(format!(

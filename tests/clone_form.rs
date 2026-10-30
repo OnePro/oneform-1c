@@ -27,7 +27,13 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn run(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_oneform")).args(args).output().unwrap()
+    Command::new(env!("CARGO_BIN_EXE_oneform")).args(args).args(experimental(args)).output().unwrap()
+}
+
+/// `pack`, `new-form` and `clone-form` may write the form layout: they need `--experimental` (the gate itself is tested in
+/// experimental_gate.rs).
+fn experimental(args: &[&str]) -> Option<&'static str> {
+    matches!(args.first(), Some(&("pack" | "new-form" | "clone-form"))).then_some("--experimental")
 }
 
 #[test]
@@ -75,7 +81,7 @@ fn clone_form_accepts_the_current_directory_as_the_object() {
     let (_tmp, object) = workspace();
     let out = Command::new(env!("CARGO_BIN_EXE_oneform"))
         .current_dir(&object)
-        .args(["clone-form", ".", "--from", "ФормаДокумента", "--name", "ИзТекущей"])
+        .args(["clone-form", ".", "--from", "ФормаДокумента", "--name", "ИзТекущей", "--experimental"])
         .output()
         .unwrap();
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));

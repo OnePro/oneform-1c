@@ -16,8 +16,8 @@ use crate::config::{effective_config, load_json_bytes};
 use crate::container::{deflate, inflate, parse_container, serialize_container, EntryOut, Limits};
 use crate::encoding::decode_payload;
 use crate::errors::{
-    ExtractionError, Result, ENCODING_INVALID, FORM_EDIT_REJECTED, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING,
-    PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
+    ExtractionError, Result, ENCODING_INVALID, EXPERIMENTAL_REQUIRED, FORM_EDIT_REJECTED, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED,
+    PAYLOAD_MISSING, PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
 };
 use crate::form_patch::{diff_forms_full, parse_form_xml, FormDiff, plan_form_patch, verify_preserved, FormXml, PatchedForm};
 use crate::manifest::MANIFEST_PATH;
@@ -335,6 +335,9 @@ pub struct PackPlan {
     /// `PACK_UNCHANGED` | `PACK_PACKED` | `PACK_SRC_ONLY`
     pub status: &'static str,
     pub packed_paths: Vec<String>,
+    /// The packed paths that are not module text: an edited `Form.xml` that changes the form stream, an edited
+    /// `FormStream.bin`, a template. Such a plan is experimental (needs `--experimental`).
+    pub layout_paths: Vec<String>,
     /// One line per detected `Form.xml` edit (control, properties), for the pack report.
     pub edit_notes: Vec<String>,
     pub new_epf: Vec<u8>,
@@ -520,6 +523,7 @@ pub fn stage_pack(
     let mut expected: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut packed: BTreeSet<String> = BTreeSet::new();
     let mut layouts: Vec<LayoutPatch> = Vec::new();
+    let mut layout_paths: BTreeSet<String> = BTreeSet::new();
 
     fn text_change(
         path: &str,
@@ -582,8 +586,10 @@ pub fn stage_pack(
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), lp.patched.bytes.clone());
             expected.insert(bin_path.to_string(), lp.patched.bytes.clone());
             packed.insert(lp.xml_path.clone());
+            layout_paths.insert(lp.xml_path.clone());
             layouts.push(lp);
         } else if let Some(payload) = binary_change(bin_path, existing_src, &current.files, &mut packed, &mut expected) {
+            layout_paths.insert(bin_path.to_string());
             inner.entry(format!("{}.0", f.uuid)).or_default().insert("form".into(), payload);
         }
     }
@@ -595,8 +601,10 @@ pub fn stage_pack(
         if path.ends_with("/Template.html") {
             if let Some(html) = text_change(path, content, existing_src, &current.files, &mut packed, &mut expected)? {
                 top.insert(format!("{}.0", t.uuid), wrap_html(&t.content_payload.raw, &html)?);
+                layout_paths.insert(path.to_string());
             }
         } else if let Some(payload) = binary_change(path, existing_src, &current.files, &mut packed, &mut expected) {
+            layout_paths.insert(path.to_string());
             top.insert(format!("{}.0", t.uuid), payload);
         }
     }
@@ -606,6 +614,7 @@ pub fn stage_pack(
         return Ok(PackPlan {
             status,
             packed_paths: vec![],
+            layout_paths: Vec::new(),
             edit_notes: Vec::new(),
             new_epf: epf_bytes.to_vec(),
             result: current,
@@ -654,12 +663,52 @@ pub fn stage_pack(
     Ok(PackPlan {
         status: PACK_PACKED,
         packed_paths: packed.into_iter().collect(),
+        layout_paths: layout_paths.into_iter().collect(),
         edit_notes: layouts.iter().flat_map(|lp| lp.summary()).collect(),
         new_epf,
         result: new,
         existing: existing_src.clone(),
         baseline: current.files,
     })
+}
+
+/// Whether the layout paths of a plan hold an edited `Form.xml` (the stream is rewritten from it) and not only
+/// `FormStream.bin` or templates.
+fn rewrites_stream(layout_paths: &[String]) -> bool {
+    layout_paths.iter().any(|p| p == "Form.xml" || p.ends_with("/Form.xml"))
+}
+
+/// Line of a dry run that marks a plan which changes the form stream (`flag`: `--experimental` is already given).
+pub fn experimental_dry_line(layout_paths: &[String], flag: bool) -> String {
+    let what = if rewrites_stream(layout_paths) { "the form stream" } else { "FormStream.bin or a template" };
+    if flag {
+        format!("EXPERIMENTAL: this plan changes {what} (--experimental is given)")
+    } else {
+        format!("EXPERIMENTAL: this plan changes {what}; a real pack needs --experimental")
+    }
+}
+
+/// Line of a real experimental pack.
+pub fn experimental_done_line(layout_paths: &[String]) -> String {
+    if rewrites_stream(layout_paths) {
+        "EXPERIMENTAL: the form stream was rewritten from Form.xml; open the form in 1C and check it".to_string()
+    } else {
+        "EXPERIMENTAL: FormStream.bin or a template was written as edited; open the form in 1C and check it".to_string()
+    }
+}
+
+/// The refusal of a plan that writes the form layout without `--experimental`: it lists what would be written (the lines of
+/// the normal dry-run summary) and how to enable the mode.
+pub fn experimental_refusal(what: &str, plan_lines: &[String]) -> ExtractionError {
+    let mut message = format!("{what} would write more than module text (the form layout, FormStream.bin or a template), which needs --experimental; nothing was written");
+    for l in plan_lines {
+        message.push('\n');
+        message.push_str(l);
+    }
+    message.push_str(
+        "\n  To enable it, run the same command with --experimental. Writing the form layout or a template is experimental: it may produce a form that 1C refuses to open; an agent needs the user's explicit confirmation before it uses --experimental.",
+    );
+    ExtractionError::new(EXPERIMENTAL_REQUIRED, message)
 }
 
 pub fn atomic_write(path: &Path, data: &[u8]) -> Result<()> {
