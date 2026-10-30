@@ -169,11 +169,31 @@ oneform explore run --matrix <spec.json|dir> --epf <donor.epf> --base <infobase>
 | `just extract/pack/preview/check [DIR]` | запуск собранного `oneform` |
 | `just dist` | архив релиза для текущей машины в `target/release-dist/` |
 | `just dist-mac [arm64\|x64\|both]` | сборка и упаковка macOS без Mac (нужны Zig и `cargo-zigbuild`) |
-| `just release [ВЕРСИЯ]` | тесты, тег `v<версия>`, push; GitHub Actions собирает Windows, macOS и Linux и публикует релиз с архивами и `SHA256SUMS.txt` |
-| `just release-local [ВЕРСИЯ]` | то же без CI: бинарник этой машины собирается локально, macOS через Zig (если это не Mac) |
-| `just release-dry` | показать, что сделает релиз, ничего не меняя |
+| `just release [patch\|minor\|major\|X.Y.Z]` | выпуск релиза (правило и порядок — «Выпуск релиза» ниже): запись в `CHANGELOG.md`, тесты, подъём версии, один коммит, тег `v<версия>`, push; GitHub Actions собирает Windows, macOS и Linux и публикует релиз |
+| `just release-local [patch\|minor\|major\|X.Y.Z]` | то же без CI: бинарник этой машины собирается локально, macOS через Zig (если это не Mac) |
+| `just release-dry [patch\|minor\|major\|X.Y.Z]` | показать версию и перенос записей `CHANGELOG.md`, ничего не меняя |
+| `just changelog-check` | проверить формат `CHANGELOG.md` и прогнать модульные тесты скрипта |
 
-CI (`.github/workflows/ci.yml`) прогоняет проверку переносимости (`scripts/check_repo_portable.py`), тесты и `clippy` на Linux, Windows и macOS; сборку релиза выполняет `.github/workflows/release.yml`.
+CI (`.github/workflows/ci.yml`) прогоняет проверку переносимости (`scripts/check_repo_portable.py`), проверку `CHANGELOG.md` и её модульные тесты, тесты и `clippy` на Linux, Windows и macOS; сборку релиза выполняет `.github/workflows/release.yml`.
+
+### Выпуск релиза
+
+**Правило: релиз без записи в [`CHANGELOG.md`](CHANGELOG.md) со списком изменений невозможен.** Каждое заметное пользователю или агенту изменение получает пункт `- ` в разделе `## [Unreleased]` в том же коммите (подробности — [`CONTRIBUTING.md`](CONTRIBUTING.md)). Проверка делается скриптом `scripts/check_changelog.py`, детерминированно, и повторяется в трёх местах: `scripts/release.py` перед выпуском, CI на каждый push и pull request, задача `gate` в `.github/workflows/release.yml` перед сборкой.
+
+Команды (из ветки `main`, с чистым деревом, `gh auth login` выполнен):
+
+```bash
+just release patch    # следующая патч-версия от Cargo.toml (0.1.0 -> 0.1.1)
+just release minor    # 0.1.0 -> 0.2.0
+just release major    # 0.1.0 -> 1.0.0
+just release 0.3.0    # явная версия (допустимо и 0.3.0-rc.1)
+just release          # версия из Cargo.toml; если её тег уже есть — отказ и подсказка с тремя следующими версиями
+just release-dry minor   # показать версию и перенос записей, ничего не меняя
+```
+
+Что делает `scripts/release.py`, по порядку: проверяет вход в `gh`, ветку `main`, чистое дерево и отсутствие тега локально и в `origin`; запускает `check_changelog.py check`; требует хотя бы один пункт в `[Unreleased]` (иначе: «в [Unreleased] нет записей: описывать нечего, релиз запрещён»); гоняет `cargo test` и `cargo clippy` (без `--skip-tests`); поднимает версию в `Cargo.toml` и `Cargo.lock`; переносит `[Unreleased]` в раздел `## [X.Y.Z] - дата`; проверяет результат (`check_changelog.py release X.Y.Z`: запись есть и самая новая, версия равна версии `Cargo.toml`, `[Unreleased]` пуст); делает **один** коммит `release X.Y.Z` (`Cargo.toml`, `Cargo.lock`, `CHANGELOG.md`), ставит тег `vX.Y.Z` и отправляет `main` и тег. Если что-то падает до коммита, три файла возвращаются в состояние последнего коммита (`git checkout HEAD --`). Текст раздела `CHANGELOG.md` становится описанием релиза GitHub (`--notes-file`).
+
+Обойти правило нельзя: флага для этого нет, а тег, отправленный вручную, остановит задача `gate` (тег должен быть `v<версия Cargo.toml>`, а в `CHANGELOG.md` должна быть запись об этой версии) — только правка самих скриптов и workflow, которая видна в обзоре изменений.
 
 Правила разработки: байты, которых правка не касается, сохраняются; `cargo test --locked` проходит без платформы 1С; `cargo clippy --locked --all-targets` без замечаний; golden-эталоны меняются только осознанно (`GOLDEN_BLESS=1`). Изменения по спецификациям (OpenSpec) в репозиторий не входят.
 
@@ -204,6 +224,8 @@ CI (`.github/workflows/ci.yml`) прогоняет проверку перено
 | [`docs/todo.md`](docs/todo.md) | единый список задач и долг проверки, находки пилота |
 | [`docs/property-coverage-map.md`](docs/property-coverage-map.md) | каталог свойств потока и их статус |
 | [`docs/property-exploration.md`](docs/property-exploration.md) | находки по слотам свойств |
+| [`CHANGELOG.md`](CHANGELOG.md) | история изменений по версиям; раздел `[Unreleased]` обязателен для выпуска |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | как вносить изменения: запись в `CHANGELOG.md`, стабильное и экспериментальное, выпуск, переносимость, тесты |
 
 ---
 

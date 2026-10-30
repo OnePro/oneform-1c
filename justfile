@@ -39,7 +39,7 @@ preview dir=".":
 check dir=".":
     "{{bin}}" check "{{dir}}"
 
-# `just release [VERSION]`: test, tag, push; CI builds Windows, macOS and Linux and publishes the GitHub release (VERSION bumps Cargo.toml first).
+# `just release [patch|minor|major|X.Y.Z]`: needs entries under [Unreleased] in CHANGELOG.md; test, bump, move the entries to [X.Y.Z], one commit, tag, push; CI builds Windows, macOS and Linux and publishes the GitHub release.
 release version="":
     {{py}} scripts/release.py {{version}}
 
@@ -47,9 +47,14 @@ release version="":
 release-local version="":
     {{py}} scripts/release.py {{version}} --local
 
-# Show what `just release` would do, without changing anything.
+# Show what `just release [patch|minor|major|X.Y.Z]` would do (version, the planned CHANGELOG.md move), without changing anything.
 release-dry version="":
     {{py}} scripts/release.py {{version}} --dry-run --skip-tests
+
+# Check the format of CHANGELOG.md and run the unit tests of the changelog script.
+changelog-check:
+    {{py}} scripts/check_changelog.py check
+    {{py}} -m unittest discover -s scripts/tests
 
 # Build the release archive for this machine into target/release-dist (no publishing).
 dist: build

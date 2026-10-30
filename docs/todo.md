@@ -115,6 +115,7 @@
 3. `todo.md` — единственный бэклог; крупные задачи оформляются изменением OpenSpec (`propose → validate → apply → test → archive`).
 4. Эталоны `GOLDEN_BLESS` принимаются только с диффом в коммите.
 5. Статус 🟢 в `compatibility-matrix.md` и `rw` в `property-coverage-map.md` означают «поток читает и пишет по каталогу и тестам», а не «проверено в живой 1С».
+6. Изменение, заметное пользователю или агенту, получает пункт в `## [Unreleased]` файла [`CHANGELOG.md`](../CHANGELOG.md) в том же коммите; релиз без записи в `CHANGELOG.md` невозможен (`scripts/check_changelog.py`, `scripts/release.py`; правила — [`CONTRIBUTING.md`](../CONTRIBUTING.md)).
 
 ---
 

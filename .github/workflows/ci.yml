@@ -19,5 +19,9 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: portable
         run: python3 scripts/check_repo_portable.py
+      - name: changelog
+        run: python3 scripts/check_changelog.py check
+      - name: changelog unit tests
+        run: python3 -m unittest discover -s scripts/tests -v
       - run: cargo test --locked --no-fail-fast
       - run: cargo clippy --locked --all-targets -- -D warnings

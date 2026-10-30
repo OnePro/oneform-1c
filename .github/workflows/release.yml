@@ -10,7 +10,25 @@ on:
 permissions:
   contents: write
 jobs:
+  gate:
+    # no release without a changelog entry: the tag must be v<Cargo.toml version> and CHANGELOG.md must hold that version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - name: Tag, Cargo.toml version and CHANGELOG.md
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          if [ "$TAG" != "v$version" ]; then
+            echo "tag $TAG is not v$version (version of Cargo.toml)"
+            exit 1
+          fi
+          python3 scripts/check_changelog.py release "$version"
   build:
+    needs: gate
     strategy:
       fail-fast: true
       matrix:
@@ -50,16 +68,22 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          path: src
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag || github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
+          python3 src/scripts/check_changelog.py --file src/CHANGELOG.md notes "${TAG#v}" > notes.md
           cd dist
           cat *.sha256 > SHA256SUMS.txt
           if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release upload "$TAG" --repo "$REPO" --clobber *.zip *.tar.gz SHA256SUMS.txt
+            gh release edit "$TAG" --repo "$REPO" --notes-file ../notes.md
           else
-            gh release create "$TAG" --repo "$REPO" --title "oneform ${TAG#v}" --generate-notes *.zip *.tar.gz SHA256SUMS.txt
+            gh release create "$TAG" --repo "$REPO" --title "oneform ${TAG#v}" --notes-file ../notes.md *.zip *.tar.gz SHA256SUMS.txt
           fi
