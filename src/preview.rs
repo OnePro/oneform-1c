@@ -18,6 +18,7 @@ use serde_json::{json, Map, Value};
 use crate::canonical::{dumps_with, COMPACT_SORTED, PRETTY};
 use crate::encoding::decode_payload;
 use crate::errors::{ExtractionError, Result, FORM_PREVIEW_FAILED, IO_ERROR, OUTPUT_NOT_OWNED};
+use crate::fsretry;
 
 pub const FORM_PREVIEW_NAME: &str = "FormPreview.html";
 /// `ordinaryFormVersion` values the preview reads (the format only grew by attributes it ignores).
@@ -664,6 +665,12 @@ pub fn workspace_html() -> String {
 /// Published atomically (temp dir + rename). An existing `.oneform` that lacks the `owner.json` marker of
 /// `oneform` and is not an empty directory yields `OUTPUT_NOT_OWNED`.
 pub fn build_workspace_preview(target_root: &Path, items: &[WorkspaceItem]) -> Result<PathBuf> {
+    build_workspace_preview_noted(target_root, items).map(|(out, _)| out)
+}
+
+/// [`build_workspace_preview`] that also says whether the directory could not be renamed (another process holds it, e.g. a
+/// file watcher) and its files were updated in place instead.
+pub fn build_workspace_preview_noted(target_root: &Path, items: &[WorkspaceItem]) -> Result<(PathBuf, bool)> {
     let root = target_root;
     let out = root.join(WORKSPACE_DIR);
     check_workspace_owner(&out)?;
@@ -675,37 +682,55 @@ pub fn build_workspace_preview(target_root: &Path, items: &[WorkspaceItem]) -> R
         .unwrap_or(0)
         ^ std::process::id().rotate_left(16);
     let tmp = root.join(format!("{WORKSPACE_DIR}.tmp-{nonce:08x}"));
-    let res = (|| -> Result<()> {
-        fs::create_dir_all(tmp.join("forms")).map_err(|e| io_err(e, &tmp))?;
+    let old = root.join(format!("{WORKSPACE_DIR}.old-{nonce:08x}"));
+    let res = (|| -> Result<bool> {
+        fsretry::create_dir_all(&tmp.join("forms")).map_err(|e| io_err(e, &tmp))?;
         for (rel, data) in &files {
             let p = tmp.join(rel);
-            fs::write(&p, data).map_err(|e| io_err(e, &p))?;
+            fsretry::write(&p, data).map_err(|e| io_err(e, &p))?;
         }
         if out.exists() {
             let mut kept: Vec<&str> = Vec::new();
             for name in KEPT_ENTRIES {
                 let from = out.join(name);
                 if from.exists() {
-                    fs::rename(&from, tmp.join(name)).map_err(|e| io_err(e, &from))?;
+                    fsretry::rename(&from, &tmp.join(name)).map_err(|e| io_err(e, &from))?;
                     kept.push(name);
                 }
             }
-            if let Err(e) = fs::remove_dir_all(&out) {
+            // the old viewer is moved aside rather than deleted in place: a directory that cannot be renamed is detected
+            // before anything is lost
+            if let Err(e) = fsretry::rename(&out, &old) {
                 // the snapshots, log and reports must survive a failed viewer rebuild: put them back before `tmp` is cleaned up
-                let _ = fs::create_dir_all(&out);
                 for name in kept {
-                    let _ = fs::rename(tmp.join(name), out.join(name));
+                    let _ = fsretry::rename(&tmp.join(name), &out.join(name));
+                }
+                if fsretry::is_transient(&e) {
+                    // held by another process: the files inside can still be replaced
+                    fsretry::sync_dir(&out, &files, &|rel| KEPT_ENTRIES.contains(&rel), Some("owner.json"))
+                        .map_err(|e| io_err(e, &out))?;
+                    return Ok(true);
                 }
                 return Err(io_err(e, &out));
             }
+            if let Err(e) = fsretry::rename(&tmp, &out) {
+                let _ = fsretry::rename(&old, &out);
+                for name in kept {
+                    let _ = fsretry::rename(&tmp.join(name), &out.join(name));
+                }
+                return Err(io_err(e, &out));
+            }
+            // `tmp` is now `out`; the old viewer (without the kept entries) goes away, a leftover is cleaned up next time
+            let _ = fsretry::remove_dir_all(&old);
+            return Ok(false);
         }
-        fs::rename(&tmp, &out).map_err(|e| io_err(e, &out))
+        fsretry::rename(&tmp, &out).map_err(|e| io_err(e, &out))?;
+        Ok(false)
     })();
     if tmp.exists() {
-        let _ = fs::remove_dir_all(&tmp);
+        let _ = fsretry::remove_dir_all(&tmp);
     }
-    res?;
-    Ok(out)
+    Ok((out, res?))
 }
 
 const CSS: &str = r####"

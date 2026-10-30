@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
@@ -12,6 +12,7 @@ use serde_json::Value;
 
 use crate::brace::parse_spanned;
 use crate::canonical::sha256_hex;
+use crate::fsretry;
 use crate::config::{effective_config, load_json_bytes};
 use crate::container::{deflate, inflate, parse_container, serialize_container, EntryOut, Limits};
 use crate::encoding::decode_payload;
@@ -720,7 +721,7 @@ pub fn atomic_write(path: &Path, data: &[u8]) -> Result<()> {
         fh.flush()?;
         fh.sync_all()?;
     }
-    fs::rename(&tmp, path)?;
+    fsretry::rename(&tmp, path)?;
     Ok(())
 }
 
@@ -751,7 +752,7 @@ pub fn publish_pack(
 
     let run_dir = work_dir(root).join(token_hex8());
     let outcome = (|| -> Result<()> {
-        fs::create_dir_all(&run_dir)?;
+        fsretry::create_dir_all(&run_dir)?;
         let new_epf_file = run_dir.join("NewEpf");
         {
             let mut fh = File::create(&new_epf_file)?;
@@ -764,7 +765,7 @@ pub fn publish_pack(
             let name = epf_path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             atomic_write(&epf_path.with_file_name(format!("{name}.bak")), &snap.data)?;
         }
-        fs::rename(&new_epf_file, epf_path)?;
+        fsretry::rename(&new_epf_file, epf_path)?;
         let new_snap = Snapshot {
             data: plan.new_epf.clone(),
             size: plan.new_epf.len(),
@@ -780,7 +781,7 @@ pub fn publish_pack(
         Ok(())
     })();
     if run_dir.exists() && !keep_work {
-        let _ = fs::remove_dir_all(&run_dir);
+        let _ = fsretry::remove_dir_all(&run_dir);
     }
     outcome?;
     Ok(PublishResult { status: "UPDATED", run_dir: if keep_work { Some(run_dir) } else { None } })

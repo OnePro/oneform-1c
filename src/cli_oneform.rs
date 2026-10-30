@@ -36,7 +36,7 @@ use crate::pack::{
     PACK_UNCHANGED,
 };
 use crate::preview::{
-    build_workspace_preview, is_ordinary_form_xml, render_form_preview_html, WorkspaceItem, WORKSPACE_DIR,
+    build_workspace_preview_noted, is_ordinary_form_xml, render_form_preview_html, WorkspaceItem, WORKSPACE_DIR,
 };
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
@@ -358,7 +358,7 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
             return Err(experimental_refusal(&format!("pack of {name}"), &packed));
         }
         if let Some(parent) = src.parent() {
-            fs::create_dir_all(parent)?;
+            crate::fsretry::create_dir_all(parent)?;
         }
         let (hist_id, hist_lines) = if plan_.status == PACK_PACKED {
             crate::history::record_epf(&epf_path, &plan_, &snap)
@@ -418,7 +418,7 @@ fn process_epf(opts: &Options, root: &Path, t: &Target) -> Result<Outcome> {
         ));
     }
     if let Some(parent) = src.parent() {
-        fs::create_dir_all(parent)?;
+        crate::fsretry::create_dir_all(parent)?;
     }
     let publ = publish(root, &t.proc_rel, &result.files, &epf_path, &snap, false, opts.replace_generated)?;
     Ok(outcome(name, publ.status, summary, Vec::new()))
@@ -474,8 +474,8 @@ fn object_module_bytes(src_root: &Path) -> Vec<u8> {
 /// Rewrite `target` through a `.tmp` sibling (`os.replace`).
 fn replace_file(target: &Path, data: &[u8]) -> std::io::Result<()> {
     let tmp = target.with_file_name(format!("{}.tmp", file_name(target)));
-    fs::write(&tmp, data)?;
-    fs::rename(&tmp, target)
+    crate::fsretry::write(&tmp, data)?;
+    crate::fsretry::rename(&tmp, target)
 }
 
 /// Refresh `size`/`sha256` of the `FormPreview.html` entry of an existing `src/ExtractionManifest.json`.
@@ -1329,11 +1329,14 @@ pub fn main(argv: &[String]) -> i32 {
     if command != "check" && !args.dry_run && !refused {
         let items = collect_items(&root, &targets);
         if !items.is_empty() {
-            match build_workspace_preview(&root, &items) {
-                Ok(out) => {
+            match build_workspace_preview_noted(&root, &items) {
+                Ok((out, in_place)) => {
                     let n_objects =
                         items.iter().map(|i| (i.class_name.as_str(), i.rel_path.as_str())).collect::<BTreeSet<_>>().len();
                     println!("Viewer: {} ({n_objects} objects, {} forms)", out.join("index.html").display(), items.len());
+                    if in_place {
+                        eprintln!("oneform: warning: viewer updated in place (the directory is held by another process)");
+                    }
                 }
                 Err(e) if e.code == IO_ERROR => {
                     eprintln!("oneform: viewer: {}", e.message);

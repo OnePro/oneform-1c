@@ -13,6 +13,7 @@ use serde_json::{json, Value};
 use crate::canonical::sha256_hex;
 use crate::cli_epf::{clean_path, EXIT_FAILED, EXIT_OK, EXIT_USAGE};
 use crate::cli_oneform::{discover_targets, path_of, run_target, Kind, Options};
+use crate::fsretry;
 use crate::formbin::{form_bin_rel, walk_dirs, ConfigObject, ConfigPackPlan, Sources};
 use crate::manifest::MANIFEST_PATH;
 use crate::pack::{atomic_write, PackPlan};
@@ -151,9 +152,9 @@ fn is_snapshot_name(name: &str) -> bool {
 
 fn write_file(path: &Path, data: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        fsretry::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
-    fs::write(path, data).map_err(|e| format!("{}: {e}", path.display()))
+    fsretry::write(path, data).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn write_snapshot(partial: &Path, id: &str, secs: i64, e: &Entry) -> Result<(), String> {
@@ -198,7 +199,7 @@ pub fn save(object_dir: &Path, e: &Entry, keep: usize) -> Result<String, String>
         ));
     }
     let dir = history_dir(object_dir);
-    fs::create_dir_all(&dir).map_err(|err| format!("{}: {err}", dir.display()))?;
+    fsretry::create_dir_all(&dir).map_err(|err| format!("{}: {err}", dir.display()))?;
     let mut secs = local_secs();
     let form = file_component(&e.form);
     let id = loop {
@@ -209,11 +210,11 @@ pub fn save(object_dir: &Path, e: &Entry, keep: usize) -> Result<String, String>
         secs += 1;
     };
     let partial = dir.join(format!(".{id}.partial"));
-    let _ = fs::remove_dir_all(&partial);
+    let _ = fsretry::remove_dir_all(&partial);
     let written = write_snapshot(&partial, &id, secs, e)
-        .and_then(|()| fs::rename(&partial, dir.join(&id)).map_err(|err| format!("{}: {err}", partial.display())));
+        .and_then(|()| fsretry::rename(&partial, &dir.join(&id)).map_err(|err| format!("{}: {err}", partial.display())));
     if let Err(err) = written {
-        let _ = fs::remove_dir_all(&partial);
+        let _ = fsretry::remove_dir_all(&partial);
         return Err(err);
     }
     prune(&dir, keep);
@@ -240,7 +241,7 @@ fn note(result: Result<Option<String>, String>) -> (Option<String>, Vec<String>)
 /// Remove a snapshot written for a pack whose publication then failed.
 pub fn discard(object_dir: &Path, id: &str) {
     if is_snapshot_name(id) {
-        let _ = fs::remove_dir_all(history_dir(object_dir).join(id));
+        let _ = fsretry::remove_dir_all(&history_dir(object_dir).join(id));
     }
 }
 
@@ -276,7 +277,7 @@ pub fn prune(dir: &Path, keep: usize) {
     let items = list(dir);
     let excess = items.len().saturating_sub(keep);
     for item in items.into_iter().take(excess) {
-        let _ = fs::remove_dir_all(&item.path);
+        let _ = fsretry::remove_dir_all(&item.path);
     }
 }
 

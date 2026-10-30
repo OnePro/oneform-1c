@@ -20,6 +20,7 @@ pub mod feedback;
 pub mod form_basic;
 pub mod form_patch;
 pub mod formbin;
+pub mod fsretry;
 pub mod history;
 pub mod layout_warnings;
 pub mod lint;

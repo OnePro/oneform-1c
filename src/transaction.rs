@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 use crate::canonical::{dumps_with, sha256_hex, ASCII_SORTED_PRETTY};
 use crate::config::load_json_bytes;
 use crate::discovery::{is_link, scan_dir, DirEnt};
+use crate::fsretry;
 use crate::errors::{
     ExtractionError, Result, GENERATED_FILE_MODIFIED, IO_ERROR, OUTPUT_NOT_OWNED, OUTPUT_SCHEMA_UNKNOWN,
     PROCESSOR_LOCKED, RECOVERY_REQUIRED, SOURCE_CHANGED,
@@ -22,6 +23,7 @@ pub const WORK_NAME: &str = ".extract-work";
 pub const JOURNAL_NAME: &str = "journal.json";
 pub const PREPARED: &str = "prepared";
 pub const SRC_MOVED: &str = "src-moved";
+pub const IN_PLACE: &str = "in-place";
 pub const COMMITTED: &str = "committed";
 
 pub type Tree = BTreeMap<String, Vec<u8>>;
@@ -52,7 +54,7 @@ fn rename(src: &Path, dst: &Path) -> std::io::Result<()> {
     let hooked = RENAME_HOOK.with(|h| h.borrow_mut().as_mut().map(|f| f(src, dst)));
     match hooked {
         Some(r) => r,
-        None => fs::rename(src, dst),
+        None => fsretry::rename(src, dst),
     }
 }
 
@@ -83,7 +85,7 @@ impl Drop for ProcessorLock {
 
 pub fn processor_lock(root: &Path, proc_rel: &str) -> Result<ProcessorLock> {
     let locks = work_dir(root).join("locks");
-    fs::create_dir_all(&locks)?;
+    fsretry::create_dir_all(&locks)?;
     let digest = sha256_hex(proc_rel.as_bytes());
     let mut file = OpenOptions::new().read(true).append(true).create(true).open(locks.join(format!("{}.lock", &digest[..16])))?;
     if file.metadata()?.len() == 0 {
@@ -240,8 +242,8 @@ fn fsync_dir(_path: &Path) {}
 fn write_journal(run_dir: &Path, journal: &Value) -> Result<()> {
     let tmp = run_dir.join(format!("{JOURNAL_NAME}.tmp"));
     let text = dumps_with(journal, &ASCII_SORTED_PRETTY)?;
-    fs::write(&tmp, text.as_bytes())?;
-    fs::rename(&tmp, run_dir.join(JOURNAL_NAME))?;
+    fsretry::write(&tmp, text.as_bytes())?;
+    fsretry::rename(&tmp, &run_dir.join(JOURNAL_NAME))?;
     fsync_dir(run_dir);
     Ok(())
 }
@@ -270,7 +272,7 @@ fn rmtree(path: &Path) -> Result<()> {
         return Ok(());
     }
     clear_readonly(path);
-    fs::remove_dir_all(path)?;
+    fsretry::remove_dir_all(path)?;
     Ok(())
 }
 
@@ -346,6 +348,19 @@ pub fn recover(root: &Path, proc_rel: &str) -> Result<Vec<String>> {
                     return Err(stop("src is neither absent nor the expected new tree"));
                 }
             }
+            Some(IN_PLACE) => {
+                if !backup.is_dir() {
+                    return Err(stop("src was being updated in place and Backup is missing"));
+                }
+                if journal.get("newManifestSha256").and_then(Value::as_str).is_some_and(|s| is_valid_new(&src, s)) {
+                    journal["state"] = Value::from(COMMITTED);
+                    write_journal(&run_dir, &journal)?;
+                    actions.push(format!("completed commit of {run_name}"));
+                } else {
+                    apply_in_place(&src, &read_tree(&backup)?).map_err(|e| stop(&format!("in-place restore failed: {}", e.message)))?;
+                    actions.push(format!("restored src from {run_name} (in place)"));
+                }
+            }
             _ => return Err(stop("unknown journal state")),
         }
         rmtree(&run_dir)?;
@@ -364,7 +379,7 @@ pub struct PublishResult {
 }
 
 pub fn write_tree(base: &Path, files: &Tree) -> Result<()> {
-    fs::create_dir(base).or_else(|e| if base.is_dir() { Err(e) } else { fs::create_dir_all(base) })?;
+    fsretry::create_dir(base).or_else(|e| if base.is_dir() { Err(e) } else { fsretry::create_dir_all(base) })?;
     for (path, data) in files {
         let parts: Vec<&str> = path.split('/').collect();
         let joined = safe_join(&parts)?;
@@ -373,9 +388,9 @@ pub fn write_tree(base: &Path, files: &Tree) -> Result<()> {
             target.push(part);
         }
         if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent)?;
+            fsretry::create_dir_all(parent)?;
         }
-        fs::write(&target, data)?;
+        fsretry::write(&target, data)?;
     }
     Ok(())
 }
@@ -390,6 +405,47 @@ fn token_hex8() -> String {
 
 fn io_failure(e: &std::io::Error) -> ExtractionError {
     ExtractionError::new(IO_ERROR, "could not move the new tree into place").with("error", e.to_string())
+}
+
+/// Update the files inside `src` when `src` itself cannot be renamed. The old tree is copied to `Backup` first (the journal
+/// state `in-place` says that `Backup` is complete), then the files of `new_files` replace the files of `src` one by one,
+/// the manifest last; the result is read back and compared. On any failure the old files are put back from the copy.
+fn publish_in_place(
+    run_dir: &Path,
+    src: &Path,
+    existing: &Tree,
+    new_files: &Tree,
+    journal: &mut Value,
+    retain: &mut bool,
+) -> Result<()> {
+    let backup = run_dir.join("Backup");
+    let partial = run_dir.join("Backup.partial");
+    write_tree(&partial, existing)?;
+    if &read_tree(&partial)? != existing {
+        return Err(ExtractionError::new(IO_ERROR, "the backup copy of src differs from src"));
+    }
+    fsretry::rename(&partial, &backup)?;
+    journal["state"] = Value::from(IN_PLACE);
+    write_journal(run_dir, journal)?;
+    *retain = true;
+    let applied = apply_in_place(src, new_files);
+    let Err(e) = applied else { return Ok(()) };
+    if apply_in_place(src, existing).is_err() {
+        return Err(ExtractionError::new(RECOVERY_REQUIRED, "publish and rollback failed; old tree is in the workspace")
+            .with("run", name_of(run_dir))
+            .with("error", e.message.clone()));
+    }
+    *retain = false;
+    Err(e)
+}
+
+/// Make `src` hold exactly `tree` by replacing files inside it, and read it back to check.
+fn apply_in_place(src: &Path, tree: &Tree) -> Result<()> {
+    fsretry::sync_dir(src, tree, &|_| false, Some(MANIFEST_PATH))?;
+    if &read_tree(src)? != tree {
+        return Err(ExtractionError::new(IO_ERROR, "src does not hold the expected files after the in-place update"));
+    }
+    Ok(())
 }
 
 /// Replace `<processor>/src` with `new_files`; call under the processor lock.
@@ -419,7 +475,7 @@ pub fn publish(
     let mut retain = false; // true while the run dir may hold the only copy of the old tree
 
     let outcome = (|| -> Result<()> {
-        fs::create_dir_all(&run_dir)?;
+        fsretry::create_dir_all(&run_dir)?;
         write_tree(&new_src, new_files)?;
         before_publish();
         verify_source_unchanged(epf_path, snap)?;
@@ -436,9 +492,24 @@ pub fn publish(
         let had_src = fs::symlink_metadata(&src).is_ok();
         if had_src {
             retain = true;
-            rename(&src, &backup)?;
-            journal["state"] = Value::from(SRC_MOVED);
-            write_journal(&run_dir, &journal)?;
+            match rename(&src, &backup) {
+                Ok(()) => {
+                    journal["state"] = Value::from(SRC_MOVED);
+                    write_journal(&run_dir, &journal)?;
+                }
+                // another process holds `src` itself (a file watcher): the files inside can still be replaced
+                Err(e) if fsretry::is_transient(&e) => {
+                    publish_in_place(&run_dir, &src, &existing, new_files, &mut journal, &mut retain).map_err(|err| {
+                        if err.code == RECOVERY_REQUIRED { err } else { io_failure(&e).with("inPlaceError", err.message.clone()) }
+                    })?;
+                    journal["state"] = Value::from(COMMITTED);
+                    write_journal(&run_dir, &journal)?;
+                    retain = false;
+                    eprintln!("oneform: warning: {proc_rel}: src updated in place (the directory is held by another process)");
+                    return Ok(());
+                }
+                Err(e) => return Err(e.into()),
+            }
         }
         if let Err(e) = rename(&new_src, &src) {
             if had_src {
@@ -649,6 +720,102 @@ mod tests {
         assert!(!recover(&e.root, PROC).unwrap().is_empty());
         assert_eq!(read_tree(&e.src).unwrap(), v1);
         assert!(e.runs().is_empty());
+    }
+
+    /// `rename(src, Backup)` fails like a directory that another process holds.
+    #[cfg(windows)]
+    fn hold_src_dir() {
+        set_rename_hook(Some(Box::new(|a, b| {
+            if name_of(a) == "src" {
+                Err(std::io::Error::from_raw_os_error(5))
+            } else {
+                fs::rename(a, b)
+            }
+        })));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn held_src_is_updated_in_place() {
+        let e = env();
+        let (v1, v2) = (files("A"), files("B"));
+        e.publish(&v1, false).unwrap();
+        hold_src_dir();
+        let res = e.publish(&v2, false);
+        set_rename_hook(None);
+        assert_eq!(res.unwrap().status, "UPDATED");
+        assert_eq!(read_tree(&e.src).unwrap(), v2);
+        assert!(e.runs().is_empty());
+        // files that the new tree lacks are gone, new ones are there, no temporary file is left behind
+        let mut v3 = files("C");
+        v3.remove("Forms/X/FormModule.bsl");
+        v3.insert("New/Deep/F.bsl".into(), b"deep".to_vec());
+        let entries: Vec<Value> = v3.iter().filter(|(p, _)| *p != MANIFEST_PATH).map(|(p, d)| json!({"path": p, "sha256": sha256_hex(d)})).collect();
+        v3.insert(MANIFEST_PATH.into(), crate::canonical::dumps_json(&json!({"schemaVersion": 1, "files": entries})).unwrap());
+        hold_src_dir();
+        let res = e.publish(&v3, false);
+        set_rename_hook(None);
+        res.unwrap();
+        assert_eq!(read_tree(&e.src).unwrap(), v3);
+        assert!(!e.src.join("Forms").exists());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn failed_in_place_update_restores_the_old_files() {
+        let e = env();
+        // `Zed` is a file in the old tree and a directory in the new one: the update fails after `ObjectModule.bsl` was replaced
+        let mut v1 = files("A");
+        v1.insert("Zed".into(), b"file".to_vec());
+        let entries: Vec<Value> = v1.iter().filter(|(p, _)| *p != MANIFEST_PATH).map(|(p, d)| json!({"path": p, "sha256": sha256_hex(d)})).collect();
+        v1.insert(MANIFEST_PATH.into(), crate::canonical::dumps_json(&json!({"schemaVersion": 1, "files": entries})).unwrap());
+        write_tree(&e.src, &v1).unwrap();
+        let mut v2 = files("B");
+        v2.insert("Zed/sub/f.txt".into(), b"x".to_vec());
+        hold_src_dir();
+        let err = e.publish(&v2, false).unwrap_err();
+        set_rename_hook(None);
+        assert_eq!(err.code, IO_ERROR);
+        assert_eq!(read_tree(&e.src).unwrap(), v1);
+        assert!(e.runs().is_empty());
+    }
+
+    #[test]
+    fn recover_in_place_rolls_back_a_half_updated_src() {
+        let e = env();
+        let (v1, v2) = (files("A"), files("B"));
+        e.publish(&v1, false).unwrap();
+        let run = e.crash_run("in-place", &v2, "abc123", PROC);
+        write_tree(&run.join("Backup"), &v1).unwrap();
+        // half way: one file of the new tree is in place, the manifest is still the old one
+        fs::write(e.src.join("ObjectModule.bsl"), &v2["ObjectModule.bsl"]).unwrap();
+        fs::write(e.src.join(format!("Forms/X/FormModule.bsl{}", crate::fsretry::TMP_SUFFIX)), b"half").unwrap();
+        let actions = recover(&e.root, PROC).unwrap();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(read_tree(&e.src).unwrap(), v1);
+        assert!(e.runs().is_empty());
+    }
+
+    #[test]
+    fn recover_in_place_completes_a_fully_updated_src() {
+        let e = env();
+        let (v1, v2) = (files("A"), files("B"));
+        e.publish(&v1, false).unwrap();
+        let run = e.crash_run("in-place", &v2, "abc123", PROC);
+        write_tree(&run.join("Backup"), &v1).unwrap();
+        crate::fsretry::sync_dir(&e.src, &v2, &|_| false, Some(MANIFEST_PATH)).unwrap();
+        recover(&e.root, PROC).unwrap();
+        assert_eq!(read_tree(&e.src).unwrap(), v2);
+        assert!(e.runs().is_empty());
+    }
+
+    #[test]
+    fn recover_in_place_without_backup_stops() {
+        let e = env();
+        e.publish(&files("A"), false).unwrap();
+        let run = e.crash_run("in-place", &files("B"), "abc123", PROC);
+        assert_eq!(recover(&e.root, PROC).unwrap_err().code, RECOVERY_REQUIRED);
+        assert!(run.exists());
     }
 
     #[test]

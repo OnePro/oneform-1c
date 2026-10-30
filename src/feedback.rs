@@ -118,9 +118,9 @@ fn files_of(dir: &Path) -> Vec<String> {
 
 fn write(path: &Path, data: &[u8]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        crate::fsretry::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
-    fs::write(path, data).map_err(|e| format!("{}: {e}", path.display()))
+    crate::fsretry::write(path, data).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 fn copy_tree(from: &Path, to: &Path) -> Result<(), String> {
@@ -244,7 +244,7 @@ fn add(path: &Path, o: &AddOptions) -> i32 {
         Ok(())
     })();
     if let Err(m) = written {
-        let _ = fs::remove_dir_all(&dir);
+        let _ = crate::fsretry::remove_dir_all(&dir);
         return failure(&format!("the report was not written: {m}"));
     }
 
@@ -256,7 +256,7 @@ fn add(path: &Path, o: &AddOptions) -> i32 {
     if let Some(mirror) = std::env::var_os(MIRROR_ENV).filter(|v| !v.is_empty()) {
         let name = project.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "project".to_string());
         let target = PathBuf::from(mirror).join(name).join(&id);
-        let _ = fs::remove_dir_all(&target);
+        let _ = crate::fsretry::remove_dir_all(&target);
         match copy_tree(&dir, &target) {
             Ok(()) => println!("  mirrored to {}", target.display()),
             Err(m) => eprintln!("oneform: warning: the report was not mirrored to {}: {m}", target.display()),
