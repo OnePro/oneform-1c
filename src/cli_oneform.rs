@@ -72,7 +72,8 @@ STABLE (no flag needed):
                             when src/ holds unpacked edits unless --replace-generated. history diff [PATH] [id] prints a unified diff of
                             before/ and after/ (Form.xml, FormModule.bsl) of the latest or the given snapshot.
   diagnose [PATH] [--json]  (read-only) shows the last 10 diagnostics entries, the last snapshot, the validate verdicts, the section of
-                            docs/agent-guide.md for each refusal code and the commands for 'the form did not open in 1C'.
+                            docs/agent-guide.md or docs/experimental-form-editing.md for each refusal code and the commands for 'the form did
+                            not open in 1C'.
   feedback add [PATH] [--history ID] [--note TEXT] [--1c-error TEXT] [--kind bug|wish] [--no-files] [--include-binaries]
                             writes <project dir>/.oneform/feedback/<time>-<kind>/ (report.md, report.json, the text files of the
                             snapshot; modules may hold tokens or passwords: read the report before you share it; binaries only with

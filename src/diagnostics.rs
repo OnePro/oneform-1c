@@ -25,6 +25,7 @@ pub const RECENT: usize = 10;
 const WARNINGS_KEPT: usize = 5;
 const MESSAGE_MAX: usize = 300;
 const GUIDE: &str = "docs/agent-guide.md";
+const EXPERIMENTAL: &str = "docs/experimental-form-editing.md";
 
 /// `<project dir>/.oneform/diagnostics.jsonl`.
 pub fn diag_path(project: &Path) -> PathBuf {
@@ -214,31 +215,32 @@ pub fn project_dirs(root: &Path) -> Vec<PathBuf> {
 
 // --------------------------------------------------------------------------- hints
 
-/// Error code or kind -> the section of `docs/agent-guide.md` that explains it. The first matching key wins.
-const HINTS: [(&str, &str); 14] = [
-    ("unsupported-stream-version", "Форма старой версии потока (25 / 26): что сказать пользователю"),
-    ("unsupported-button", "Каталог стандартных команд (`Standard:N`)"),
-    ("unsupported-panel", "Типичные отказы и что делать"),
-    ("bsl-procedure-after-body", "Типичные отказы и что делать"),
-    ("FORM_EDIT_REJECTED", "Типичные отказы и что делать"),
-    ("PUBLISH_VERIFY_FAILED", "Типичные отказы и что делать"),
-    ("GENERATED_FILE_MODIFIED", "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"),
-    ("SOURCE_CHANGED", "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"),
-    ("OUTPUT_NOT_OWNED", "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"),
-    ("MANAGED_FORM_UNSUPPORTED", "Область применимости: `oneform validate`"),
-    ("METADATA_LAYOUT_UNSUPPORTED", "Область применимости: `oneform validate`"),
-    ("CONTAINER_CORRUPT", "Область применимости: `oneform validate`"),
-    ("IO_ERROR", "Типичные отказы и что делать"),
-    ("INTERNAL_ERROR", "Что гарантируется и что проверять в 1С"),
+/// Error code or kind -> the document and the section that explain it. The first matching key wins.
+const HINTS: [(&str, &str, &str); 15] = [
+    ("EXPERIMENTAL_REQUIRED", GUIDE, "Экспериментальный режим"),
+    ("unsupported-stream-version", GUIDE, "Форма старой версии потока (25 / 26): что сказать пользователю"),
+    ("unsupported-button", EXPERIMENTAL, "Каталог стандартных команд (`Standard:N`)"),
+    ("unsupported-panel", EXPERIMENTAL, "Отказы записи Form.xml и что делать"),
+    ("bsl-procedure-after-body", GUIDE, "Типичные отказы и что делать"),
+    ("FORM_EDIT_REJECTED", EXPERIMENTAL, "Отказы записи Form.xml и что делать"),
+    ("PUBLISH_VERIFY_FAILED", EXPERIMENTAL, "Отказы записи Form.xml и что делать"),
+    ("GENERATED_FILE_MODIFIED", GUIDE, "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"),
+    ("SOURCE_CHANGED", GUIDE, "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"),
+    ("OUTPUT_NOT_OWNED", GUIDE, "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"),
+    ("MANAGED_FORM_UNSUPPORTED", GUIDE, "Область применимости: `oneform validate`"),
+    ("METADATA_LAYOUT_UNSUPPORTED", GUIDE, "Область применимости: `oneform validate`"),
+    ("CONTAINER_CORRUPT", GUIDE, "Область применимости: `oneform validate`"),
+    ("IO_ERROR", GUIDE, "Типичные отказы и что делать"),
+    ("INTERNAL_ERROR", GUIDE, "Что гарантируется и что проверять в 1С"),
 ];
-const GENERIC_HINT: &str = "Типичные отказы и что делать";
+const GENERIC_HINT: (&str, &str) = (GUIDE, "Типичные отказы и что делать");
 
-/// The section of the guide for an error `code` / `kind` (unknown: the generic table of refusals).
-pub fn hint_section(code: &str, kind: &str) -> &'static str {
+/// The document and the section for an error `code` / `kind` (unknown: the generic table of refusals).
+pub fn hint_target(code: &str, kind: &str) -> (&'static str, &'static str) {
     HINTS
         .iter()
-        .find(|(k, _)| (!kind.is_empty() && *k == kind) || (!code.is_empty() && *k == code))
-        .map_or(GENERIC_HINT, |(_, s)| s)
+        .find(|(k, _, _)| (!kind.is_empty() && *k == kind) || (!code.is_empty() && *k == code))
+        .map_or(GENERIC_HINT, |(_, d, s)| (d, s))
 }
 
 // --------------------------------------------------------------------------- diagnose
@@ -288,13 +290,14 @@ pub fn run_cli(path: &str, json_output: bool) -> i32 {
     let id = last.as_ref().map_or("<id>".to_string(), |(_, i)| i.id.clone());
     let verdicts = validate::validate_root(&root, 1, None);
 
-    let mut hints: Vec<(String, String, &'static str)> = Vec::new();
+    let mut hints: Vec<(String, String, &'static str, &'static str)> = Vec::new();
     for (_, e) in entries {
         let (code, kind) = (e["code"].as_str().unwrap_or(""), e["kind"].as_str().unwrap_or(""));
         if code.is_empty() && kind.is_empty() {
             continue;
         }
-        let item = (code.to_string(), kind.to_string(), hint_section(code, kind));
+        let (doc, section) = hint_target(code, kind);
+        let item = (code.to_string(), kind.to_string(), doc, section);
         if !hints.contains(&item) {
             hints.push(item);
         }
@@ -324,7 +327,7 @@ pub fn run_cli(path: &str, json_output: bool) -> i32 {
             })),
             "validate": validate_json,
             "validate_error": verdicts.as_ref().err().map(|e| e.to_string()),
-            "hints": hints.iter().map(|(c, k, s)| json!({"code": c, "kind": k, "doc": GUIDE, "section": s})).collect::<Vec<_>>(),
+            "hints": hints.iter().map(|(c, k, d, s)| json!({"code": c, "kind": k, "doc": d, "section": s})).collect::<Vec<_>>(),
             "checklist": {"title": "Форма не открылась в 1С", "commands": commands},
         });
         println!("{}", serde_json::to_string_pretty(&out).unwrap_or_default());
@@ -360,10 +363,10 @@ pub fn run_cli(path: &str, json_output: bool) -> i32 {
         Err(e) => println!("  validate не выполнен: {e}"),
     }
     if !hints.is_empty() {
-        println!("Что почитать ({GUIDE}):");
-        for (c, k, s) in &hints {
+        println!("Что почитать:");
+        for (c, k, d, s) in &hints {
             let name = if k.is_empty() { c.clone() } else if c.is_empty() { k.clone() } else { format!("{c}/{k}") };
-            println!("  {name}: раздел «{s}»");
+            println!("  {name}: {d}, раздел «{s}»");
         }
     }
     println!("Форма не открылась в 1С:");
@@ -383,9 +386,11 @@ mod tests {
         assert_eq!(first_line("\n  a b\nsecond"), "a b");
         assert_eq!(stream_version("line 3: adding Table to forms of stream version 26 is not supported"), Some(26));
         assert_eq!(stream_version("no version"), None);
-        assert_eq!(hint_section("FORM_EDIT_REJECTED", "unsupported-stream-version"), "Форма старой версии потока (25 / 26): что сказать пользователю");
-        assert_eq!(hint_section("SOURCE_CHANGED", ""), "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)");
-        assert_eq!(hint_section("SOMETHING_NEW", "x"), GENERIC_HINT);
+        assert_eq!(hint_target("FORM_EDIT_REJECTED", "unsupported-stream-version"), (GUIDE, "Форма старой версии потока (25 / 26): что сказать пользователю"));
+        assert_eq!(hint_target("FORM_EDIT_REJECTED", "invalid-xml"), (EXPERIMENTAL, "Отказы записи Form.xml и что делать"));
+        assert_eq!(hint_target("EXPERIMENTAL_REQUIRED", ""), (GUIDE, "Экспериментальный режим"));
+        assert_eq!(hint_target("SOURCE_CHANGED", ""), (GUIDE, "Изменить форму из выгрузки конфигурации (справочник, документ, обработка)"));
+        assert_eq!(hint_target("SOMETHING_NEW", "x"), GENERIC_HINT);
     }
 
     #[test]

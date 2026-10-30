@@ -192,7 +192,7 @@ fn the_attribute_example_of_the_manual_is_accepted_by_pack() {
     let source = stream("MailGroupForm");
     let s = parse_spanned(&source).unwrap();
     let base = baseline("MailGroupForm");
-    for doc in ["docs/agent-guide.md", "skills/oneform-forms/SKILL.md"] {
+    for doc in ["docs/experimental-form-editing.md", "skills/oneform-forms-experimental/SKILL.md"] {
         let manual = std::fs::read_to_string(root.join(doc)).unwrap();
         let from = manual.find("<Attribute id=\"200\"").unwrap_or_else(|| panic!("{doc}: no Attribute example"));
         let example = &manual[from..from + manual[from..].find("</Attribute>").unwrap() + "</Attribute>".len()];

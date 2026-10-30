@@ -5024,17 +5024,17 @@ fn unsupported_hint(cat: &str, form_level: bool, msg: &str) -> &'static str {
     match (cat, form_level) {
         ("attribute", true) => "the attributes of the <Form> element cannot be changed",
         ("attribute", false) => "of the XML attributes of an existing control only name can be changed (id identifies the control)",
-        ("event", _) => "this change of <Events> is not supported; events of existing controls are edited inside <Events>, see docs/agent-guide.md",
+        ("event", _) => "this change of <Events> is not supported; events of existing controls are edited inside <Events>, see docs/experimental-form-editing.md",
         ("form-value", _) if structural => {
-            "this element of the form itself cannot be added or removed; the form editable through Form.xml: Caption, Width, Height, events and <Attributes>, see docs/agent-guide.md"
+            "this element of the form itself cannot be added or removed; the form editable through Form.xml: Caption, Width, Height, events and <Attributes>, see docs/experimental-form-editing.md"
         }
-        ("form-value", _) => "this value of the form itself is not editable or is invalid; the form editable through Form.xml: Caption, Width, Height, events and <Attributes>, see docs/agent-guide.md",
-        ("panel", _) => "panel pages and <ShowTabs> are changed as described in docs/agent-guide.md (rows about panels)",
-        ("table", _) => "table columns are added, removed and changed as described in docs/agent-guide.md (rows about tables)",
-        ("command-bar", _) => "command bar buttons are changed as described in docs/agent-guide.md (rows about command bars)",
+        ("form-value", _) => "this value of the form itself is not editable or is invalid; the form editable through Form.xml: Caption, Width, Height, events and <Attributes>, see docs/experimental-form-editing.md",
+        ("panel", _) => "panel pages and <ShowTabs> are changed as described in docs/experimental-form-editing.md (rows about panels)",
+        ("table", _) => "table columns are added, removed and changed as described in docs/experimental-form-editing.md (rows about tables)",
+        ("command-bar", _) => "command bar buttons are changed as described in docs/experimental-form-editing.md (rows about command bars)",
         ("child-items", _) => "this change of <ChildItems> is not supported; controls are added, removed and edited in place, moving a control to another parent or page is not supported",
-        (_, true) if structural => "this element of the form cannot be added or removed through Form.xml; what is editable at the form level (Caption, Width, Height, events, <Attributes>) is in docs/agent-guide.md",
-        (_, true) => "this value of the form cannot be changed through Form.xml; what is editable at the form level (Caption, Width, Height, events, <Attributes>) is in docs/agent-guide.md",
+        (_, true) if structural => "this element of the form cannot be added or removed through Form.xml; what is editable at the form level (Caption, Width, Height, events, <Attributes>) is in docs/experimental-form-editing.md",
+        (_, true) => "this value of the form cannot be changed through Form.xml; what is editable at the form level (Caption, Width, Height, events, <Attributes>) is in docs/experimental-form-editing.md",
         ("unknown-element", false) if structural => {
             "an element that this kind of control does not have, or that pack does not write; the tags per control kind are in docs/xml-reference.md"
         }

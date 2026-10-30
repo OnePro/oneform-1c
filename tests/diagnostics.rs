@@ -258,6 +258,21 @@ fn diagnose_summarizes_in_text_and_json() {
 }
 
 #[test]
+fn the_gate_refusal_points_to_the_experimental_section_of_the_guide() {
+    let w = Work::config();
+    w.edit_caption();
+    // no `--experimental`: the layout edit is refused before any write
+    let out = Command::new(env!("CARGO_BIN_EXE_oneform")).args(["pack", ".", "-j", "1", "--no-progress"]).current_dir(w.root()).output().unwrap();
+    assert_eq!(out.status.code(), Some(2), "{}", text(&out));
+    assert_eq!(w.lines()[0]["code"], "EXPERIMENTAL_REQUIRED");
+    let human = ok(&run(w.root(), &["diagnose", "."]));
+    assert!(human.contains("EXPERIMENTAL_REQUIRED: docs/agent-guide.md, раздел «Экспериментальный режим»"), "{human}");
+    let json: Value = serde_json::from_slice(&run(w.root(), &["diagnose", ".", "--json"]).stdout).unwrap();
+    assert_eq!(json["hints"][0]["doc"], "docs/agent-guide.md");
+    assert_eq!(json["hints"][0]["section"], "Экспериментальный режим");
+}
+
+#[test]
 fn feedback_add_list_show_and_mirror() {
     let w = Work::config();
     let id = w.pack_caption();

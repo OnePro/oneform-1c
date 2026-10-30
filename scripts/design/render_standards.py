@@ -249,6 +249,8 @@ def main():
     P = L.append
     P('# Стандарты дизайна обычных форм')
     P('')
+    P('> **Применение раскладки экспериментально.** Проверка (`oneform lint`, `validate`, `preview`) стабильна; чтобы записать раскладку в форму, нужен экспериментальный режим (`pack --experimental`, см. [`experimental-form-editing.md`](experimental-form-editing.md)) и подтверждение пользователя.')
+    P('')
     P('Правила выведены из двух реальных конфигураций: **%s** (формы обычного приложения). Числа посчитаны скриптами '
       '`scripts/design/analyze_forms.py` и `scripts/design/render_standards.py`; машинная версия — '
       '`docs/design/design-rules.json` (id правила, вид формы, параметр, значение, доля, n). Файл генерируется, '

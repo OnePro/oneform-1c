@@ -4,7 +4,7 @@
 Usage: python scripts/package_release.py <binary> <platform-name> [--out DIR]
 
 Archive (zip on Windows, tar.gz elsewhere): `oneform[.exe]`, `README.md`, `INSTALL.txt`, `VERSION.txt`,
-`docs/agent-guide.md`, `skills/` (the agent skills). Name: `oneform-<version>-<platform-name>.<ext>`.
+`docs/agent-guide.md`, `docs/experimental-form-editing.md`, `skills/` (the agent skills). Name: `oneform-<version>-<platform-name>.<ext>`.
 Prints the archive path. Version is read from Cargo.toml.
 """
 import argparse, hashlib, os, re, shutil, sys, tarfile, zipfile
@@ -25,9 +25,10 @@ INSTALL = r"""oneform {version} ({platform})
 1. Put `{exe}` in a folder that is on PATH (or call it by full path).
 2. Check: `{exe} --help`.
 3. Agent skills are in `skills/`: copy them to your agent's skills folder (for example %USERPROFILE%\.agents\skills on Windows,
-   ~/.agents/skills on macOS). The guide for agents is `docs/agent-guide.md`.
+   ~/.agents/skills on macOS). The guide for agents is `docs/agent-guide.md` (stable mode); writing the form layout is
+   experimental and described in `docs/experimental-form-editing.md` (it needs the flag `--experimental`).
 {mac}
-Status of features (stable / experimental): see the first section of `docs/agent-guide.md`.
+Status of features (stable / experimental): see the first section of `docs/agent-guide.md` and `docs/experimental-form-editing.md`.
 """
 
 MAC = """
@@ -58,7 +59,8 @@ def main() -> None:
     shutil.copy2(binary, stage / exe)
     shutil.copy2(ROOT / "README.md", stage / "README.md")
     (stage / "docs").mkdir()
-    shutil.copy2(ROOT / "docs" / "agent-guide.md", stage / "docs" / "agent-guide.md")
+    for doc in ("agent-guide.md", "experimental-form-editing.md"):
+        shutil.copy2(ROOT / "docs" / doc, stage / "docs" / doc)
     shutil.copytree(ROOT / "skills", stage / "skills")
     (stage / "VERSION.txt").write_text(f"oneform {version}\nplatform: {a.platform}\n", encoding="utf-8")
     (stage / "INSTALL.txt").write_text(
