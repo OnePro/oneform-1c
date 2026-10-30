@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Builds the blank-form templates of `oneform new-form` out of real Configurator forms (read-only on the corpora).
 
     python scripts/mine_blank_forms.py [--oneform target/debug/oneform] [--corpus target/corpus]

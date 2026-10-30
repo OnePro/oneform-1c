@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -17,5 +17,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --locked
+      - name: portable
+        run: python3 scripts/check_repo_portable.py
+      - run: cargo test --locked --no-fail-fast
       - run: cargo clippy --locked --all-targets -- -D warnings

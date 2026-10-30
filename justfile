@@ -1,6 +1,14 @@
 set shell := ["sh", "-cu"]
 set windows-shell := ["cmd.exe", "/D", "/C"]
 
+# Python 3 interpreter: `python` on Windows, `python3` on macOS and Linux.
+py := if os() == "windows" { "python" } else { "python3" }
+
+# Platform name of this machine for release archives: windows-x64, macos-arm64, macos-x64, linux-x64, linux-arm64.
+os_name := if os() == "windows" { "windows" } else if os() == "macos" { "macos" } else { "linux" }
+cpu := if arch() == "aarch64" { "arm64" } else { "x64" }
+platform := os_name + "-" + (if os() == "windows" { "x64" } else { cpu })
+
 bin := justfile_directory() / "target/release/oneform" + (if os() == "windows" { ".exe" } else { "" })
 
 # Build the release binary (`target/release/oneform`).
@@ -13,7 +21,7 @@ test:
 
 # Run clippy lints across all targets.
 clippy:
-    cargo clippy --all-targets -- -D warnings
+    cargo clippy --locked --all-targets -- -D warnings
 
 # Extract all EPF/ERF and Ext/Form.bin configuration objects under DIR (default: .) and build DIR/.oneform/index.html.
 extract dir=".":
@@ -31,22 +39,22 @@ preview dir=".":
 check dir=".":
     "{{bin}}" check "{{dir}}"
 
-# `just release [VERSION]`: test, tag, push; CI builds Windows + macOS and publishes the GitHub release (VERSION bumps Cargo.toml first).
+# `just release [VERSION]`: test, tag, push; CI builds Windows, macOS and Linux and publishes the GitHub release (VERSION bumps Cargo.toml first).
 release version="":
-    python scripts/release.py {{version}}
+    {{py}} scripts/release.py {{version}}
 
-# Release without CI: Windows built here, macOS cross-built with Zig (needs zig + cargo-zigbuild; add `--no-mac` via script for Windows only).
+# Release without CI: this machine built here, macOS cross-built with Zig unless this is a Mac (needs zig + cargo-zigbuild; `--no-mac` via the script builds only this machine).
 release-local version="":
-    python scripts/release.py {{version}} --local
+    {{py}} scripts/release.py {{version}} --local
 
 # Show what `just release` would do, without changing anything.
 release-dry version="":
-    python scripts/release.py {{version}} --dry-run --skip-tests
+    {{py}} scripts/release.py {{version}} --dry-run --skip-tests
 
 # Build the release archive for this machine into target/release-dist (no publishing).
 dist: build
-    python scripts/package_release.py "{{bin}}" {{ if os() == "windows" { "windows-x64" } else { "host" } }}
+    {{py}} scripts/package_release.py "{{bin}}" {{platform}}
 
 # Cross-build and package macOS (arm64 + x64) without a Mac, with Zig (cargo install cargo-zigbuild; pip install ziglang).
 dist-mac arch="both":
-    python scripts/build_mac.py --arch {{arch}}
+    {{py}} scripts/build_mac.py --arch {{arch}}

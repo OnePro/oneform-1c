@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Mines the templates of standard command buttons (`Standard:N`) out of real configurations and writes
 `src/cb_standard.rs`. Read-only on the corpora.
 

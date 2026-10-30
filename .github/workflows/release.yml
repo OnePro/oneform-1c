@@ -16,6 +16,7 @@ jobs:
       matrix:
         include:
           - { os: windows-latest, target: x86_64-pc-windows-msvc, name: windows-x64, exe: oneform.exe }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu, name: linux-x64, exe: oneform }
           - { os: macos-14, target: aarch64-apple-darwin, name: macos-arm64, exe: oneform }
           # Intel build is cross-compiled on the arm64 runner (not run in CI)
           - { os: macos-14, target: x86_64-apple-darwin, name: macos-x64, exe: oneform }

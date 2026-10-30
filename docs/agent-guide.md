@@ -170,7 +170,7 @@ oneform diagnose <PATH>           # последние отказы и пред�
    * для `.epf`/`.erf` выгрузка без базы с конфигурацией теряет ссылочные типы: нужна информационная база с той же конфигурацией;
    * перед конвертацией нужна копия исходного файла; конвертировать только с согласия пользователя.
 5. *Как выполнить C (только с согласия; если платформа и база есть — можно сделать за пользователя):*
-   * выгрузка: навык `epf-dump` (`powershell.exe -NoProfile -File "~/.agents/skills/epf-dump/scripts/epf-dump.ps1" -InfoBasePath <база> -InputFile <файл.epf> -OutputDir <каталог>`; для `.erf` — `erf-dump`);
+   * выгрузка (только Windows, нужна платформа 1С): навык `epf-dump` (`powershell.exe -NoProfile -File "~/.agents/skills/epf-dump/scripts/epf-dump.ps1" -InfoBasePath <база> -InputFile <файл.epf> -OutputDir <каталог>`; для `.erf` — `erf-dump`);
    * сборка: навык `epf-build` (`epf-build.ps1`, `erf-build` для отчёта) — собирает новый файл в `build/`; исходный файл не затирай;
    * затем `oneform extract <новый файл>` (для `.erf` — `extract` на каталоге выгрузки) и обычная работа;
    * после `pack` и сборки откройте форму в 1С и проверьте: кнопки панели, подписи, привязки.

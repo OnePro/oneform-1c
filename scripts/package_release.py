@@ -3,7 +3,7 @@
 
 Usage: python scripts/package_release.py <binary> <platform-name> [--out DIR]
 
-Archive (zip on Windows, tar.gz elsewhere): `oneform[.exe]`, `README.md`, `INSTALL.txt`, `VERSION.txt`,
+Archive (zip on Windows, tar.gz on macOS and Linux): `oneform[.exe]`, `README.md`, `INSTALL.txt`, `VERSION.txt`,
 `docs/agent-guide.md`, `docs/experimental-form-editing.md`, `skills/` (the agent skills). Name: `oneform-<version>-<platform-name>.<ext>`.
 Prints the archive path. Version is read from Cargo.toml.
 """
@@ -25,10 +25,16 @@ INSTALL = r"""oneform {version} ({platform})
 1. Put `{exe}` in a folder that is on PATH (or call it by full path).
 2. Check: `{exe} --help`.
 3. Agent skills are in `skills/`: copy them to your agent's skills folder (for example %USERPROFILE%\.agents\skills on Windows,
-   ~/.agents/skills on macOS). The guide for agents is `docs/agent-guide.md` (stable mode); writing the form layout is
+   ~/.agents/skills on macOS and Linux). The guide for agents is `docs/agent-guide.md` (stable mode); writing the form layout is
    experimental and described in `docs/experimental-form-editing.md` (it needs the flag `--experimental`).
 {mac}
 Status of features (stable / experimental): see the first section of `docs/agent-guide.md` and `docs/experimental-form-editing.md`.
+"""
+
+LINUX = """
+Linux: make the binary executable and put it on PATH:
+   chmod +x ./oneform && sudo install -m 755 ./oneform /usr/local/bin/oneform   (or: mkdir -p ~/.local/bin && cp oneform ~/.local/bin/)
+   mkdir -p ~/.agents/skills && cp -r skills/* ~/.agents/skills/
 """
 
 MAC = """
@@ -49,6 +55,7 @@ def main() -> None:
     version = cargo_version()
     is_win = a.platform.startswith("windows")
     exe = "oneform.exe" if is_win else "oneform"
+    note = "" if is_win else LINUX if a.platform.startswith("linux") else MAC if a.platform.startswith("macos") else ""
     base = f"oneform-{version}-{a.platform}"
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -64,7 +71,7 @@ def main() -> None:
     shutil.copytree(ROOT / "skills", stage / "skills")
     (stage / "VERSION.txt").write_text(f"oneform {version}\nplatform: {a.platform}\n", encoding="utf-8")
     (stage / "INSTALL.txt").write_text(
-        INSTALL.format(version=version, platform=a.platform, exe=exe, mac="" if is_win else MAC), encoding="utf-8")
+        INSTALL.format(version=version, platform=a.platform, exe=exe, mac=note), encoding="utf-8")
     if is_win:
         archive = out / f"{base}.zip"
         archive.unlink(missing_ok=True)

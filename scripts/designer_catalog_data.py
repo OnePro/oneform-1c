@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Curated data for gen_designer_catalog.py (what is visually relevant, how the preview handles it today).
 

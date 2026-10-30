@@ -92,7 +92,7 @@ def candidates(path, dom):
 def main():
     corpus, work = sys.argv[1], sys.argv[2]
     rounds = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-    exe = sys.argv[4] if len(sys.argv) > 4 else os.path.join(ROOT, "target", "release", "oneform.exe")
+    exe = sys.argv[4] if len(sys.argv) > 4 else os.path.join(ROOT, "target", "release", "oneform.exe" if os.name == "nt" else "oneform")
     dom = domains(corpus)
     os.makedirs(work, exist_ok=True)
     findings = open(os.path.join(work, "findings.jsonl"), "a", encoding="utf-8")

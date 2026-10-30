@@ -30,7 +30,7 @@ DEFAULT_ROOTS = [
     'УТ 10.3=target/ut103-extracted',
     'tests=tests',
 ]
-DEFAULT_RESEARCH = 'C:/Users/egor/projects/donor1c_objects/1c-ordinary-forms-research/catalog.json'
+DEFAULT_RESEARCH = os.environ.get('ONEFORM_RESEARCH_CATALOG', 'C:/Users/egor/projects/donor1c_objects/1c-ordinary-forms-research/catalog.json')  # author's machine; set the env var elsewhere
 STRUCT = {'ChildItems', 'Columns', 'Buttons', 'Pages'}
 LAYOUT = ['Left', 'Top', 'Width', 'Height', 'ZOrder', 'Anchors', 'TabOrder']
 RAW = {'Appearance', 'InfoRecord', 'GeometryFlags', 'ColumnProps', 'PanelRecord', 'FormRecord'}

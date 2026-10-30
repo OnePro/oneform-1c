@@ -8,12 +8,15 @@ Forms: the five designer samples (docs/design/preview-designer/tools/samples) an
 (target/designer/gallery/work/<Kind>/<Object>/src/Forms/<Form>/Form.xml listed in target/designer/gallery/forms.txt).
 Each form is built with tools/rebuild_preview.py from assets/form_theme.css + assets/form_render.js
 (override with --theme/--render) and measured in headless Edge in designer and runtime modes."""
-import argparse, concurrent.futures, glob, html, json, os, re, subprocess, sys, tempfile, pathlib
+import argparse, concurrent.futures, glob, html, json, os, re, shutil, subprocess, sys, tempfile, pathlib
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS = os.path.join(ROOT, 'docs', 'design', 'preview-designer', 'tools')
 WORK = os.path.join(ROOT, 'target', 'designer', 'gallery', 'work')
 EDGES = [r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', r'C:\Program Files\Microsoft\Edge\Application\msedge.exe']
+EDGES += ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome']
+EDGES += [p for p in (shutil.which(n) for n in ('microsoft-edge', 'microsoft-edge-stable', 'google-chrome', 'chromium', 'chromium-browser')) if p]
+EDGES = [os.environ['ONEFORM_BROWSER']] + EDGES if os.environ.get('ONEFORM_BROWSER') else EDGES
 INJECT = ('<script>window.addEventListener("load",function(){setTimeout(function(){var o=[];'
           'document.querySelectorAll(".c").forEach(function(e){var r=e.getBoundingClientRect();'
           'o.push([e.id||e.getAttribute("data-k")||"",Math.round(r.left*100)/100,Math.round(r.top*100)/100,'

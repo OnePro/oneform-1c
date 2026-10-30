@@ -21,7 +21,7 @@ NO CHANGES (idempotent). Numbers and the refusal reasons are printed; <work-dir>
 import collections, os, re, shutil, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXE = sys.argv[4] if len(sys.argv) > 4 else os.path.join(ROOT, "target", "release", "oneform.exe")
+EXE = sys.argv[4] if len(sys.argv) > 4 else os.path.join(ROOT, "target", "release", "oneform.exe" if os.name == "nt" else "oneform")
 SCENARIOS = ("append", "remove", "swap", "prepend", "fill", "std", "addsub", "rmsub", "movein")
 CAPTION = '<Caption><Item language="ru">%s</Item></Caption>'
 

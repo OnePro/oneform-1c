@@ -7,6 +7,7 @@ build_coverage_data.py
 """
 
 import json
+import os
 import pathlib
 import sys
 from collections import Counter, defaultdict
@@ -16,8 +17,8 @@ import xml.etree.ElementTree as ET
 sys.stdout.reconfigure(encoding='utf-8')
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-RESEARCH_DIR = pathlib.Path(r"C:\Users\egor\projects\donor1c_objects\1c-ordinary-forms-research")
-BUH_DIR = pathlib.Path(r"C:\Users\egor\Documents\1с\export_db\dental")
+RESEARCH_DIR = pathlib.Path(os.environ.get("ONEFORM_RESEARCH_DIR") or r"C:\Users\egor\projects\donor1c_objects\1c-ordinary-forms-research")
+BUH_DIR = pathlib.Path(os.environ.get("ONEFORM_BUH_DIR") or r"C:\Users\egor\Documents\1с\export_db\dental")
 OUT_DIR = ROOT / "docs" / "coverage" / "data"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

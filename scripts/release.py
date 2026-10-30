@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release oneform: tag, push, let GitHub Actions build Windows and macOS, publish the GitHub release.
+"""Release oneform: tag, push, let GitHub Actions build Windows, macOS and Linux, publish the GitHub release.
 
   python scripts/release.py [VERSION] [--local [--no-mac]] [--dry-run] [--skip-tests]
 
@@ -8,12 +8,13 @@
 * Checks: `gh` is logged in, the branch is main, the working tree is clean, the tag does not exist, `cargo test --locked`
   and `cargo clippy` pass (unless --skip-tests).
 * Default: pushes main and the tag `v<version>`; the workflow `.github/workflows/release.yml` builds
-  windows-x64, macos-arm64, macos-x64 and publishes the release with archives and sha256 files. The script waits for the run.
-* --local: no CI; builds the Windows binary here and the macOS binaries with Zig (scripts/build_mac.py; not run or tested on a
-  Mac) and publishes the release with these archives; --no-mac builds only Windows.
+  windows-x64, macos-arm64, macos-x64, linux-x64 and publishes the release with archives and sha256 files. The script waits for the run.
+* --local: no CI; builds the binary of this machine (windows-x64, macos-arm64/x64, linux-x64/arm64 by platform.system() and
+  platform.machine()) and, unless the host is a Mac, the macOS binaries with Zig (scripts/build_mac.py; not run or tested on
+  a Mac), and publishes the release with these archives; --no-mac builds only the host archive. Works on Windows, macOS, Linux.
 * --dry-run: prints what would happen, changes nothing.
 """
-import argparse, json, re, subprocess, sys, time
+import argparse, json, platform, re, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,6 +31,13 @@ def run(cmd, check=True, capture=False, dry=False, **kw):
     return (r.stdout or "").strip() if capture else ""
 
 
+def host_platform() -> str:
+    """Platform name of this machine for the archive name: windows-x64, macos-arm64, macos-x64, linux-x64, linux-arm64."""
+    os_name = {"Windows": "windows", "Darwin": "macos", "Linux": "linux"}.get(platform.system(), platform.system().lower())
+    arch = "arm64" if platform.machine().lower() in ("arm64", "aarch64") and os_name != "windows" else "x64"
+    return f"{os_name}-{arch}"
+
+
 def cargo_version() -> str:
     m = re.search(r'^version\s*=\s*"([^"]+)"', (ROOT / "Cargo.toml").read_text(encoding="utf-8"), re.M)
     return m.group(1)
@@ -39,7 +47,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("version", nargs="?")
     ap.add_argument("--local", action="store_true")
-    ap.add_argument("--no-mac", action="store_true", help="with --local: skip the Zig macOS build")
+    ap.add_argument("--no-mac", action="store_true", help="with --local: skip the Zig macOS build (always skipped on a Mac)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--skip-tests", action="store_true")
     a = ap.parse_args()
@@ -71,20 +79,23 @@ def main() -> None:
         if not dry:
             text = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
             text = re.sub(r'^version\s*=\s*"[^"]+"', f'version = "{version}"', text, count=1, flags=re.M)
-            (ROOT / "Cargo.toml").write_text(text, encoding="utf-8")
+            with open(ROOT / "Cargo.toml", "w", encoding="utf-8", newline="\n") as f:
+                f.write(text)
         run(["cargo", "update", "-p", "oneform", "--offline"], dry=dry)
         run(["git", "add", "Cargo.toml", "Cargo.lock"], dry=dry)
         run(["git", "commit", "-m", f"release {version}"], dry=dry)
 
     if a.local:
         run(["cargo", "build", "--release", "--locked"], dry=dry)
-        exe = ROOT / "target" / "release" / "oneform.exe"
+        host = host_platform()
+        exe = ROOT / "target" / "release" / ("oneform.exe" if host.startswith("windows") else "oneform")
+        with_mac = not a.no_mac and not host.startswith("macos")
         archives = []
         if dry:
-            archives = ["<windows archive>"] + ([] if a.no_mac else ["<macos-arm64 archive>", "<macos-x64 archive>"])
+            archives = [f"<{host} archive>"] + (["<macos-arm64 archive>", "<macos-x64 archive>"] if with_mac else [])
         else:
-            archives.append(run([sys.executable, "scripts/package_release.py", str(exe), "windows-x64"], capture=True))
-            if not a.no_mac:
+            archives.append(run([sys.executable, "scripts/package_release.py", str(exe), host], capture=True))
+            if with_mac:
                 out = run([sys.executable, "scripts/build_mac.py"], capture=True)
                 archives += [l.strip() for l in out.splitlines() if l.strip()]
         files = []
@@ -93,13 +104,13 @@ def main() -> None:
         run(["git", "tag", tag], dry=dry)
         run(["git", "push", "origin", "main", tag], dry=dry)
         run(["gh", "release", "create", tag, *files, "--title", f"oneform {version}", "--generate-notes"], dry=dry)
-        print(f"released {tag} ({'Windows' if a.no_mac else 'Windows + macOS built with Zig, not tested on a Mac'})")
+        print(f"released {tag} ({host if not with_mac else host + ' + macOS built with Zig, not tested on a Mac'})")
         return
 
     run(["git", "tag", tag], dry=dry)
     run(["git", "push", "origin", "main", tag], dry=dry)
     if dry:
-        print("dry run: CI would build windows-x64, macos-arm64, macos-x64 and publish the release")
+        print("dry run: CI would build windows-x64, macos-arm64, macos-x64, linux-x64 and publish the release")
         return
     print("waiting for the workflow run ...")
     run_id = ""

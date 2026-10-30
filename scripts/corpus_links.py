@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Corpus check of lossless data links. It works on a COPY of an extracted configuration; the original is never touched.
 
     python scripts/corpus_links.py prepare <corpus> <copy>   # copy <corpus> to <copy> and run `oneform extract` there
@@ -15,7 +15,7 @@
     `PictureDataPath` of a `<Column>`;
   * the number of remaining `[token]` segments by kind;
   * `oneform pack --dry-run` says NO CHANGES for the objects whose forms have a link of three or more rows.
-Environment: ONEFORM=path/to/oneform.exe (default target/release/oneform.exe).
+Environment: ONEFORM=path/to/oneform.exe (default target/release/oneform[.exe]).
 """
 import collections
 import json
@@ -29,7 +29,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ONEFORM = os.environ.get("ONEFORM", str(ROOT / "target" / "release" / "oneform.exe"))
+ONEFORM = os.environ.get("ONEFORM", str(ROOT / "target" / "release" / ("oneform.exe" if os.name == "nt" else "oneform")))
 COLUMN_GUIDS = {"c2cf1953-2796-4fe2-b78c-ff84140b124e", "48a6ebc3-fcc8-4f8f-b399-459fb32aa46b"}
 PATH_TAGS = {"DataPath": 0, "CheckBoxDataPath": 1, "PictureDataPath": 2}
 SPACE = ", \r\n\t\ufeff"

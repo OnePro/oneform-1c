@@ -1,5 +1,7 @@
 # End-to-end check in real 1C (Windows, interactive session)
 
+> **Только Windows (нужна платформа 1С).** These scripts start `1cv8.exe`; they do not run on macOS or Linux.
+
 Runs an edited ordinary-form processor in 1C:Enterprise and compares the runtime properties of every control
 with the original: only the intended differences may appear.
 

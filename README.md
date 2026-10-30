@@ -1,6 +1,6 @@
 # oneform
 
-`oneform` — однофайловая программа командной строки (Rust, Windows и macOS) для работы с **обычными формами 1С:Предприятие 8.2 / 8.3**: внешние обработки (`.epf`), формы справочников, документов и других объектов из XML-выгрузки конфигурации, формы внешних отчётов из XML-выгрузки платформы.
+`oneform` — однофайловая программа командной строки (Rust; Windows x64, macOS arm64/x64, Linux x64) для работы с **обычными формами 1С:Предприятие 8.2 / 8.3**: внешние обработки (`.epf`), формы справочников, документов и других объектов из XML-выгрузки конфигурации, формы внешних отчётов из XML-выгрузки платформы.
 
 Что она делает по существу:
 
@@ -37,10 +37,11 @@
 
 ## Установка
 
-**Готовые сборки.** В релизах репозитория (GitHub Releases) лежат архивы `oneform-<версия>-windows-x64.zip`, `oneform-<версия>-macos-arm64.tar.gz`, `oneform-<версия>-macos-x64.tar.gz` и `SHA256SUMS.txt`. В архиве: `oneform` (`oneform.exe`), `INSTALL.txt`, `README.md`, `docs/agent-guide.md` (стабильный режим), `docs/experimental-form-editing.md` (экспериментальная запись раскладки), `skills/` (три навыка для ИИ-агента). Положите исполняемый файл в каталог из `PATH` и проверьте `oneform --help`.
+**Готовые сборки.** В релизах репозитория (GitHub Releases) лежат архивы `oneform-<версия>-windows-x64.zip`, `oneform-<версия>-macos-arm64.tar.gz`, `oneform-<версия>-macos-x64.tar.gz`, `oneform-<версия>-linux-x64.tar.gz` и `SHA256SUMS.txt`. В архиве: `oneform` (`oneform.exe`), `INSTALL.txt`, `README.md`, `docs/agent-guide.md` (стабильный режим), `docs/experimental-form-editing.md` (экспериментальная запись раскладки), `skills/` (три навыка для ИИ-агента). Положите исполняемый файл в каталог из `PATH` и проверьте `oneform --help`.
 
+* Linux: `tar xzf oneform-*-linux-x64.tar.gz && chmod +x oneform`, затем положите `oneform` в каталог из `PATH` (например `~/.local/bin`). Сборка для glibc (Ubuntu 22.04 и новее).
 * macOS: файл не подписан Apple. Если система не запускает его: `xattr -d com.apple.quarantine ./oneform`. Сборки macOS получены кросс-компиляцией и в CI, полная проверка на реальном Mac не проводилась.
-* Навыки агента (`skills/oneform-forms`, `skills/oneform-forms-experimental`, `skills/oneform-form-design`) скопируйте в каталог навыков вашего агента (`%USERPROFILE%\.agents\skills` на Windows, `~/.agents/skills` на macOS).
+* Навыки агента (`skills/oneform-forms`, `skills/oneform-forms-experimental`, `skills/oneform-form-design`) скопируйте в каталог навыков вашего агента (`%USERPROFILE%\.agents\skills` на Windows, `~/.agents/skills` на macOS и Linux).
 
 **Из исходников** (нужен Rust stable, см. `rust-toolchain.toml`):
 
@@ -48,6 +49,16 @@
 cargo build --release --locked      # target/release/oneform (oneform.exe)
 cargo test --locked                 # модульные, фикстурные и golden-тесты (платформа 1С не нужна)
 ```
+
+### Платформы
+
+| Платформа | Сборка релиза | Сборка из исходников и тесты |
+|---|---|---|
+| Windows x64 | `windows-x64.zip` | да (CI: `windows-latest`) |
+| macOS arm64 / x64 | `macos-arm64.tar.gz`, `macos-x64.tar.gz` | да (CI: `macos-14`) |
+| Linux x64 | `linux-x64.tar.gz` | да (CI: `ubuntu-latest`; локально проверено на Debian) |
+
+Сборка из исходников одинакова на всех трёх системах: Rust stable (`rust-toolchain.toml`), для Linux ещё компилятор C (`build-essential`). Для `just` (по желанию) нужны [`just`](https://github.com/casey/just) и Python 3 (`python` на Windows, `python3` на macOS и Linux; сценарии в `scripts/` используют только стандартную библиотеку). Только Windows: инструменты живой проверки в платформе 1С (`scripts/1c-e2e/`, `explore --platform`, запуск `1cv8.exe`) — нужна установленная платформа 1С; сам `oneform` (extract, pack, check, preview, lint, new-form) от неё не зависит.
 
 ---
 
@@ -158,13 +169,19 @@ oneform explore run --matrix <spec.json|dir> --epf <donor.epf> --base <infobase>
 | `just extract/pack/preview/check [DIR]` | запуск собранного `oneform` |
 | `just dist` | архив релиза для текущей машины в `target/release-dist/` |
 | `just dist-mac [arm64\|x64\|both]` | сборка и упаковка macOS без Mac (нужны Zig и `cargo-zigbuild`) |
-| `just release [ВЕРСИЯ]` | тесты, тег `v<версия>`, push; GitHub Actions собирает Windows и macOS и публикует релиз с архивами и `SHA256SUMS.txt` |
-| `just release-local [ВЕРСИЯ]` | то же без CI: Windows собирается локально, macOS через Zig |
+| `just release [ВЕРСИЯ]` | тесты, тег `v<версия>`, push; GitHub Actions собирает Windows, macOS и Linux и публикует релиз с архивами и `SHA256SUMS.txt` |
+| `just release-local [ВЕРСИЯ]` | то же без CI: бинарник этой машины собирается локально, macOS через Zig (если это не Mac) |
 | `just release-dry` | показать, что сделает релиз, ничего не меняя |
 
-CI (`.github/workflows/ci.yml`) прогоняет тесты и `clippy` на Windows и macOS; сборку релиза выполняет `.github/workflows/release.yml`.
+CI (`.github/workflows/ci.yml`) прогоняет проверку переносимости (`scripts/check_repo_portable.py`), тесты и `clippy` на Linux, Windows и macOS; сборку релиза выполняет `.github/workflows/release.yml`.
 
 Правила разработки: байты, которых правка не касается, сохраняются; `cargo test --locked` проходит без платформы 1С; `cargo clippy --locked --all-targets` без замечаний; golden-эталоны меняются только осознанно (`GOLDEN_BLESS=1`). Изменения по спецификациям (OpenSpec) в репозиторий не входят.
+
+### Разработка на разных ОС
+
+* Окончания строк: `.gitattributes` задаёт LF для всех текстовых файлов (в репозитории и в рабочей копии на любой ОС, независимо от `core.autocrlf`); бинарные файлы (`.epf`, `.erf`, `.bin`, `.gz`, изображения) и `tests/golden/` не преобразуются, они сравниваются побайтно. После клонирования ничего настраивать не нужно; `git config core.autocrlf` можно оставить любым.
+* Имена файлов: кириллица допустима, имена хранятся в Unicode NFC; `python3 scripts/check_repo_portable.py` (его запускает CI) проверяет зарезервированные имена Windows, длину пути, различия только в регистре и NFC. Порядок обхода каталогов в коде и тестах не должен зависеть от ОС: списки сортируются.
+* Тесты: Windows (PowerShell или cmd) — `cargo test --locked`; macOS и Linux — то же в терминале (`cargo test --locked --no-fail-fast`). Тест `tests/held_directories.rs` — только Windows, на остальных ОС пропускается. Линтер: `cargo clippy --locked --all-targets -- -D warnings`.
 
 ### Структура репозитория
 
