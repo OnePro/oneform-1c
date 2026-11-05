@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-04
+
 ### Добавлено
 
 - Флаг `--experimental`: без него `pack` пишет только текст модулей, а запись потока формы (`Form.xml`, `FormStream.bin`, `Template.html`, `Template.bin`), `new-form` и `clone-form` отклоняются целиком до любой записи.
