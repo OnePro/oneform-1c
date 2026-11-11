@@ -1,1 +1,1 @@
-oneform: error: unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history, diagnose, feedback
+oneform: error: unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history, diagnose, feedback, export-forms

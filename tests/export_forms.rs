@@ -672,3 +672,328 @@ fn removal_does_not_follow_links() {
     assert_eq!(fs::read(outside.path().join("FormModule.bsl")).unwrap(), b"outside");
     assert!(fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Stage C: the command line (`oneform export-forms`)
+// ---------------------------------------------------------------------------------------------------------------------
+
+struct Run {
+    code: i32,
+    stdout: String,
+    stderr: String,
+}
+
+fn oneform(args: &[&str], envs: &[(&str, &str)]) -> Run {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_oneform"));
+    cmd.args(args).env_remove("EPF_OOF_PATH").env_remove("ONEFORM_CARRIERS");
+    for (k, v) in envs {
+        cmd.env(k, v);
+    }
+    let o = cmd.output().unwrap();
+    Run {
+        code: o.status.code().unwrap(),
+        stdout: String::from_utf8_lossy(&o.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&o.stderr).into_owned(),
+    }
+}
+
+fn s(p: &Path) -> &str {
+    p.to_str().unwrap()
+}
+
+/// A temporary folder with the dump in `dump/`; the output goes to `out/` next to it.
+struct Work {
+    base: tempfile::TempDir,
+}
+
+impl Work {
+    fn new() -> Work {
+        let base = tempfile::tempdir().unwrap();
+        copy_dir(&fixture(), &base.path().join("dump"));
+        Work { base }
+    }
+    fn dump(&self) -> PathBuf {
+        self.base.path().join("dump")
+    }
+    fn out(&self) -> PathBuf {
+        self.base.path().join("out")
+    }
+    fn export(&self, extra: &[&str], envs: &[(&str, &str)]) -> Run {
+        let (d, o) = (self.dump(), self.out());
+        let mut args = vec!["export-forms", s(&d), "--out", s(&o)];
+        args.extend_from_slice(extra);
+        oneform(&args, envs)
+    }
+}
+
+fn no_workspace_files(snap: &Snapshot) {
+    for key in snap.keys() {
+        let key = key.trim_end_matches('/');
+        assert!(
+            !key.split('/').any(|c| c == ".oneform" || c == "diagnostics.jsonl" || c == "src" || c == ".extract-work"),
+            "unexpected {key}"
+        );
+    }
+}
+
+fn under(snap: &Snapshot, prefix: &str) -> Snapshot {
+    snap.iter().filter(|(k, _)| k.starts_with(prefix)).map(|(k, v)| (k.clone(), v.clone())).collect()
+}
+
+#[test]
+fn cli_missing_out_is_a_usage_error_and_writes_nothing() {
+    let w = Work::new();
+    let before = snapshot(w.base.path());
+    let d = w.dump();
+    let r = oneform(&["export-forms", s(&d)], &[]);
+    assert_eq!(r.code, 2, "{}{}", r.stdout, r.stderr);
+    assert!(r.stderr.contains("--out"), "{}", r.stderr);
+    assert_eq!(before, snapshot(w.base.path()));
+}
+
+#[test]
+fn cli_oof_path_and_foreign_options_are_usage_errors() {
+    let w = Work::new();
+    let before = snapshot(w.base.path());
+    let r = w.export(&["--oof-path", "x"], &[]);
+    assert_eq!(r.code, 2, "{}{}", r.stdout, r.stderr);
+    assert!(r.stderr.contains("built-in decoder"), "{}", r.stderr);
+    for flag in [&["--dry-run"][..], &["--replace-generated"], &["--carriers"], &["--experimental"], &["--strict"], &["--name", "x"]] {
+        let r = w.export(flag, &[]);
+        assert_eq!(r.code, 2, "{flag:?}: {}{}", r.stdout, r.stderr);
+    }
+    assert_eq!(w.export(&["-j", "0"], &[]).code, 2);
+    // --out and --check belong to export-forms only
+    let (d, o) = (w.dump(), w.out());
+    assert_eq!(oneform(&["lint", s(&d), "--out", s(&o)], &[]).code, 2);
+    assert_eq!(oneform(&["validate", s(&d), "--check"], &[]).code, 2);
+    assert_eq!(oneform(&["extract", s(&d), "--check"], &[]).code, 2);
+    assert_eq!(before, snapshot(w.base.path()));
+}
+
+#[test]
+fn cli_unsafe_output_is_exit_2_and_the_dump_is_unchanged() {
+    let w = Work::new();
+    let before = snapshot(w.base.path());
+    let d = w.dump();
+    let inside = d.join("forms");
+    let r = oneform(&["export-forms", s(&d), "--out", s(&inside)], &[]);
+    assert_eq!(r.code, 2, "{}{}", r.stdout, r.stderr);
+    assert!(r.stderr.starts_with("oneform: error: "), "{}", r.stderr);
+    let r = oneform(&["export-forms", s(&d), "--out", s(&d)], &[]);
+    assert_eq!(r.code, 2);
+    assert_eq!(before, snapshot(w.base.path()));
+    // a dump that is not a folder
+    let missing = w.base.path().join("nope");
+    assert_eq!(oneform(&["export-forms", s(&missing), "--out", s(&w.out())], &[]).code, 2);
+    assert!(!w.out().exists());
+}
+
+#[test]
+fn cli_a_dump_without_ordinary_forms_is_exit_2() {
+    let base = tempfile::tempdir().unwrap();
+    let dump = base.path().join("dump");
+    fs::create_dir_all(dump.join("Catalogs")).unwrap();
+    fs::write(dump.join("Configuration.xml"), "<x/>").unwrap();
+    let out = base.path().join("out");
+    let r = oneform(&["export-forms", s(&dump), "--out", s(&out)], &[]);
+    assert_eq!(r.code, 2, "{}{}", r.stdout, r.stderr);
+    assert!(r.stderr.contains("no ordinary forms under"), "{}", r.stderr);
+    assert!(!out.exists());
+}
+
+#[test]
+fn cli_run_writes_the_forms_and_nothing_else_anywhere() {
+    let w = Work::new();
+    let before = snapshot(w.base.path());
+    let r = w.export(&[], &[]);
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    assert_eq!(r.stdout.trim_end(), "export-forms: 2 forms, 5 written, 0 removed, 0 unchanged, 0 without Form.xml, 0 failed");
+    assert!(r.stderr.is_empty(), "{}", r.stderr);
+    let out = w.out();
+    for dir in [DOC_DIR, COMMON_DIR] {
+        assert!(!fs::read(out.join(dir).join("Form.xml")).unwrap().is_empty());
+        assert!(out.join(dir).join("FormModule.bsl").is_file());
+    }
+    assert!(out.join(MARKER_FILE).is_file());
+    // the dump is byte- and mtime-identical, the base folder holds only `dump` and `out`
+    let after = snapshot(w.base.path());
+    assert_eq!(under(&before, "dump/"), under(&after, "dump/"));
+    assert!(after.keys().all(|k| k.starts_with("dump") || k.starts_with("out")), "{:?}", after.keys().collect::<Vec<_>>());
+    no_workspace_files(&after);
+    assert_eq!(fs::read_dir(w.base.path()).unwrap().count(), 2);
+    // the output equals the plan of the library
+    let lib = out_dir();
+    export(&w.dump(), lib.path());
+    let (a, b) = (snapshot(&out), snapshot(lib.path()));
+    let (mut a, mut b) = (bytes_only(&a), bytes_only(&b));
+    a.remove(MARKER_FILE);
+    b.remove(MARKER_FILE);
+    assert_eq!(a, b);
+}
+
+#[test]
+fn cli_second_run_writes_nothing_and_keeps_mtimes() {
+    let w = Work::new();
+    assert_eq!(w.export(&[], &[]).code, 0);
+    let before = snapshot(&w.out());
+    std::thread::sleep(std::time::Duration::from_millis(30));
+    let r = w.export(&[], &[]);
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    assert_eq!(r.stdout.trim_end(), "export-forms: 2 forms, 0 written, 0 removed, 5 unchanged, 0 without Form.xml, 0 failed");
+    assert_eq!(before, snapshot(&w.out()));
+}
+
+#[test]
+fn cli_json_has_the_documented_keys_and_a_clean_stdout() {
+    let w = Work::new();
+    let r = w.export(&["--json"], &[]);
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    let v: Value = serde_json::from_str(&r.stdout).unwrap();
+    let keys: Vec<&str> = v.as_object().unwrap().keys().map(String::as_str).collect();
+    assert_eq!(keys, ["check", "dump", "exitCode", "failures", "forms", "out", "removed", "unchanged", "withoutProjection", "written"]);
+    assert_eq!(v["forms"], 2);
+    assert_eq!(v["check"], false);
+    assert_eq!(v["exitCode"], 0);
+    assert_eq!(v["unchanged"], 0);
+    assert_eq!(v["dump"], s(&w.dump()));
+    assert_eq!(v["out"], s(&w.out()));
+    let written: Vec<&str> = v["written"].as_array().unwrap().iter().map(|x| x.as_str().unwrap()).collect();
+    assert_eq!(written.len(), 5);
+    assert!(written.windows(2).all(|p| p[0] <= p[1]));
+    assert!(written.contains(&MARKER_FILE));
+    // --check adds `differences`
+    let c = w.export(&["--check", "--json"], &[]);
+    assert_eq!(c.code, 0);
+    let v: Value = serde_json::from_str(&c.stdout).unwrap();
+    assert_eq!(v["check"], true);
+    assert_eq!(v["differences"], serde_json::json!([]));
+}
+
+#[test]
+fn cli_check_up_to_date_stale_and_edited() {
+    let w = Work::new();
+    assert_eq!(w.export(&["--check"], &[]).code, 3, "nothing exported yet: everything is added");
+    assert!(!w.out().exists(), "--check writes nothing");
+    assert_eq!(w.export(&[], &[]).code, 0);
+    let clean = w.export(&["--check"], &[]);
+    assert_eq!(clean.code, 0, "{}{}", clean.stdout, clean.stderr);
+    assert_eq!(clean.stdout.trim_end(), "export-forms --check: 2 forms, 0 differences, 0 without Form.xml, 0 failed");
+    // the dump changed
+    set_entry(&w.dump(), COMMON_FORM, "module", b"// changed module\n");
+    let before = snapshot(&w.out());
+    let stale = w.export(&["--check"], &[]);
+    assert_eq!(stale.code, 3, "{}{}", stale.stdout, stale.stderr);
+    assert!(stale.stdout.contains(&format!("CHANGED {COMMON_DIR}/FormModule.bsl")), "{}", stale.stdout);
+    assert!(stale.stdout.contains("1 differences"), "{}", stale.stdout);
+    let json: Value = serde_json::from_str(&w.export(&["--check", "--json"], &[]).stdout).unwrap();
+    assert_eq!(json["exitCode"], 3);
+    assert_eq!(json["differences"], serde_json::json!([{"path": format!("{COMMON_DIR}/FormModule.bsl"), "kind": "changed"}]));
+    assert_eq!(before, snapshot(&w.out()), "--check writes nothing");
+    // an edited output file, and a form that is no longer in the dump
+    assert_eq!(w.export(&[], &[]).code, 0);
+    fs::write(w.out().join(DOC_DIR).join("Form.xml"), "edited").unwrap();
+    let edited = w.export(&["--check"], &[]);
+    assert_eq!(edited.code, 3);
+    assert!(edited.stdout.contains(&format!("CHANGED {DOC_DIR}/Form.xml")), "{}", edited.stdout);
+    assert_eq!(fs::read(w.out().join(DOC_DIR).join("Form.xml")).unwrap(), b"edited");
+    fs::remove_dir_all(w.dump().join("CommonForms")).unwrap();
+    let gone = w.export(&["--check"], &[]);
+    assert!(gone.stdout.contains(&format!("REMOVED {COMMON_DIR}/Form.xml")), "{}", gone.stdout);
+}
+
+#[test]
+fn cli_a_damaged_form_is_exit_1_and_the_others_are_exported() {
+    let w = Work::new();
+    assert_eq!(w.export(&[], &[]).code, 0);
+    let old_xml = fs::read(w.out().join(DOC_DIR).join("Form.xml")).unwrap();
+    fs::write(w.dump().join(DOC_FORM), b"damaged").unwrap();
+    set_entry(&w.dump(), COMMON_FORM, "module", b"// changed module\n");
+    let r = w.export(&[], &[]);
+    assert_eq!(r.code, 1, "{}{}", r.stdout, r.stderr);
+    assert!(r.stderr.starts_with(&format!("oneform: failed: {DOC_DIR}: ")), "{}", r.stderr);
+    assert!(r.stdout.contains("2 forms, 1 written, 0 removed, 2 unchanged, 0 without Form.xml, 1 failed"), "{}", r.stdout);
+    assert_eq!(fs::read(w.out().join(DOC_DIR).join("Form.xml")).unwrap(), old_xml);
+    assert_eq!(fs::read(w.out().join(COMMON_DIR).join("FormModule.bsl")).unwrap(), b"// changed module\n");
+    // failures win over differences in --check, and --json lists them
+    set_entry(&w.dump(), COMMON_FORM, "module", b"// again\n");
+    let c = w.export(&["--check", "--json"], &[]);
+    assert_eq!(c.code, 1);
+    let v: Value = serde_json::from_str(&c.stdout).unwrap();
+    assert_eq!(v["exitCode"], 1);
+    assert_eq!(v["failures"][0]["path"], DOC_DIR);
+    assert!(v["failures"][0]["code"].is_string() && v["failures"][0]["message"].is_string());
+    assert_eq!(v["differences"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn cli_a_form_without_a_projection_is_exit_0_with_an_empty_form_xml() {
+    let w = Work::new();
+    edit_stream(&w.dump(), DOC_FORM, |s| s.replacen("{27,", "{20,", 1));
+    let r = w.export(&[], &[]);
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    assert!(r.stdout.contains(&format!("without Form.xml: {DOC_DIR} (format-8.0)")), "{}", r.stdout);
+    assert!(r.stdout.trim_end().ends_with("1 without Form.xml, 0 failed"), "{}", r.stdout);
+    assert!(fs::read(w.out().join(DOC_DIR).join("Form.xml")).unwrap().is_empty());
+    let marker = fs::read_to_string(w.out().join(MARKER_FILE)).unwrap();
+    assert!(marker.contains("format-8.0") && marker.contains(DOC_DIR), "{marker}");
+    let v: Value = serde_json::from_str(&w.export(&["--json"], &[]).stdout).unwrap();
+    assert_eq!(v["withoutProjection"], serde_json::json!([{"path": DOC_DIR, "reason": "format-8.0"}]));
+}
+
+#[test]
+fn cli_the_environment_and_the_project_config_do_not_change_the_output() {
+    let plain = Work::new();
+    assert_eq!(plain.export(&[], &[]).code, 0);
+    let expected = snapshot(&plain.out());
+
+    let w = Work::new();
+    let tiny = r#"{"schemaVersion": 1, "defaults": {"limits": {"maxEntries": 1, "maxInputMiB": 0.0001}}}"#;
+    fs::write(w.dump().join(".oneform.json"), tiny).unwrap();
+    fs::write(w.dump().join("extraction.json"), tiny).unwrap();
+    let r = w.export(&[], &[("EPF_OOF_PATH", "definitely-not-a-program"), ("ONEFORM_CARRIERS", "1")]);
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    assert_eq!(bytes_only(&expected), bytes_only(&snapshot(&w.out())), "tiny limits, bogus decoder, carriers");
+    // the dump got no workspace files either
+    no_workspace_files(&snapshot(w.base.path()));
+}
+
+#[test]
+fn cli_workers_do_not_change_the_tree() {
+    let (a, b) = (Work::new(), Work::new());
+    assert_eq!(a.export(&["-j", "1"], &[]).code, 0);
+    assert_eq!(b.export(&["-j", "8"], &[]).code, 0);
+    assert_eq!(bytes_only(&snapshot(&a.out())), bytes_only(&snapshot(&b.out())));
+}
+
+#[test]
+fn cli_extract_is_unchanged_and_writes_no_marker() {
+    let _env = ENV.lock().unwrap_or_else(|e| e.into_inner());
+    let w = Work::new();
+    assert_eq!(w.export(&[], &[]).code, 0);
+    let plain = config_copy();
+    let r = oneform(&["extract", s(plain.path()), "-j", "1", "--no-progress"], &[]);
+    assert_eq!(r.code, 0, "{}{}", r.stdout, r.stderr);
+    let after = snapshot(plain.path());
+    assert!(after.keys().all(|k| !k.contains(MARKER_FILE)), "extract must not write the marker");
+    // extract's Form.xml / FormModule.bsl are the exported ones
+    for (src, dir) in [
+        ("Documents/ДокументТест/src/Forms/ФормаДокумента", DOC_DIR),
+        ("CommonForms/ОбщаяФорма/src/Forms/ОбщаяФорма", COMMON_DIR),
+    ] {
+        for file in ["Form.xml", "FormModule.bsl"] {
+            assert_eq!(after[&format!("{src}/{file}")].0, fs::read(w.out().join(dir).join(file)).unwrap(), "{dir}/{file}");
+        }
+    }
+}
+
+#[test]
+fn cli_help_lists_export_forms_in_the_stable_group() {
+    let r = oneform(&["--help"], &[]);
+    assert_eq!(r.code, 0);
+    let stable = r.stdout.find("STABLE (no flag needed)").unwrap();
+    let experimental = r.stdout.rfind("EXPERIMENTAL (needs --experimental):").unwrap();
+    let at = r.stdout.find("  export-forms DUMP --out DIR").unwrap();
+    assert!(stable < at && at < experimental);
+    assert!(r.stdout.contains("--out <DIR>") && r.stdout.contains("--check"), "{}", r.stdout);
+}

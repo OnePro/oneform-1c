@@ -21,6 +21,8 @@ use crate::formbin::{
 use crate::metaref::ConfigTypeLookup;
 
 mod apply;
+mod cli;
+pub use cli::run_cli;
 pub use apply::{
     apply_export, check_export, check_out_location, ApplyReport, Difference, DifferenceKind, ExportError, ExportRefusal, MARKER_FILE,
 };
