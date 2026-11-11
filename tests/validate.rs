@@ -151,20 +151,40 @@ fn epf_form_is_in_scope() {
 }
 
 #[test]
-fn duplicate_control_names_are_out_of_scope() {
+fn duplicate_control_names_are_in_scope_with_a_reason() {
     let w = config_copy();
     edit_stream(w.path(), DOC_FORM, |s| replace_first(&s, "\"ПолеВвода2\"", "\"ПолеВвода3\""));
+    let (c, items) = json(w.path());
+    assert_eq!(c, 0);
+    let item = find(&items, DOC_LABEL);
+    assert_eq!(item["in_scope"], true);
+    assert_eq!(codes(item), ["duplicate-name"]);
+    let hint = item["reasons"][0]["hint"].as_str().unwrap();
+    assert!(hint.contains("ПолеВвода3"), "{hint}");
+    assert!(hint.contains("cannot be edited") && hint.contains("`pack` refuses") && hint.contains("ЭлементыФормы.<Имя>"), "{hint}");
+    assert!(find(&items, COMMON_LABEL)["in_scope"].as_bool().unwrap());
+    let o = run(&["validate", "."], w.path());
+    assert_eq!(code(&o), 0);
+    let text = out(&o);
+    assert!(text.contains(&format!("{DOC_LABEL}: IN_SCOPE (layout cannot be edited: duplicate-name \u{2014} ")), "{text}");
+    assert!(text.contains("2 forms, 2 in scope (100.0 %)"), "{text}");
+    assert!(text.contains("  duplicate-name: 1"), "{text}");
+}
+
+#[test]
+fn duplicate_names_with_an_unsupported_control_stay_out_of_scope() {
+    let w = config_copy();
+    edit_stream(w.path(), DOC_FORM, |s| replace_first(&s, "\"ПолеВвода2\"", "\"ПолеВвода3\""));
+    edit_stream(w.path(), DOC_FORM, |s| replace_first(&s, LABEL_GUID, ACTIVEX_GUID));
     let (c, items) = json(w.path());
     assert_eq!(c, 1);
     let item = find(&items, DOC_LABEL);
     assert_eq!(item["in_scope"], false);
-    assert_eq!(codes(item), ["duplicate-name"]);
-    assert!(item["reasons"][0]["hint"].as_str().unwrap().contains("ПолеВвода3"));
-    assert!(find(&items, COMMON_LABEL)["in_scope"].as_bool().unwrap());
+    let cs = codes(item);
+    assert!(cs.contains(&"duplicate-name") && cs.contains(&"unsupported-control"), "{cs:?}");
     let text = out(&run(&["validate", "."], w.path()));
-    assert!(text.contains(&format!("{DOC_LABEL}: OUT_OF_SCOPE duplicate-name \u{2014} ")), "{text}");
-    assert!(text.contains("2 forms, 1 in scope (50.0 %)"), "{text}");
-    assert!(text.contains("  duplicate-name: 1"), "{text}");
+    let line = text.lines().find(|l| l.contains(&format!("{DOC_LABEL}:"))).unwrap();
+    assert!(line.contains("OUT_OF_SCOPE") && line.contains("duplicate-name") && line.contains("unsupported-control"), "{line}");
 }
 
 #[test]
@@ -257,8 +277,8 @@ fn validate_writes_nothing() {
     let w = config_copy();
     edit_stream(w.path(), DOC_FORM, |s| replace_first(&s, "\"ПолеВвода2\"", "\"ПолеВвода3\""));
     let before = snapshot(w.path());
-    assert_eq!(code(&run(&["validate", "."], w.path())), 1);
-    assert_eq!(code(&run(&["validate", ".", "--json"], w.path())), 1);
+    assert_eq!(code(&run(&["validate", "."], w.path())), 0);
+    assert_eq!(code(&run(&["validate", ".", "--json"], w.path())), 0);
     assert_eq!(snapshot(w.path()), before, "validate changed the tree");
     // after an extract as well (src/, .oneform and .extract-work exist now)
     assert_eq!(code(&run(&["extract", "."], w.path())), 0);

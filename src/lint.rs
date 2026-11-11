@@ -5,7 +5,7 @@
 //! function that looks for violations. Thresholds come from the compact table `src/lint_table.csv`
 //! (`scripts/design/export_lint_table.py`): a rule is a `warning` only when at least [`SHARE_MIN`] % of the forms of
 //! the kind follow it and the two configurations (УТ and Бух.) do not disagree; otherwise it is reported as `info`
-//! with its `share`. `error` rules (outside the container, duplicate name or id) do not depend on the table.
+//! with its `share`. `error` rules (outside the container, duplicate id) do not depend on the table.
 //!
 //! Form kinds are derived like in `scripts/design/analyze_forms.py` (object family + form name + main attribute).
 
@@ -508,7 +508,10 @@ fn r_duplicates(f: &Form, out: &mut Vec<Finding>) {
     // page names live apart from control names (the same page name is used by several panels)
     for (i, c) in f.ctls.iter().enumerate().filter(|(_, c)| c.tag != "Page") {
         if let Some(&first) = names.get(c.name.as_str()) {
-            let message = format!("name '{}' is already used by the control at line {}", c.name, f.ctls[first].line);
+            let message = format!(
+                "name '{}' is already used by the control at line {}; the layout of the form cannot be edited until the names are unique",
+                c.name, f.ctls[first].line
+            );
             f.report("duplicate-name", None, Some(i), message, "give the control a unique name".to_string(), out);
         } else {
             names.insert(c.name.as_str(), i);
@@ -881,7 +884,7 @@ fn r_form_size(f: &Form, out: &mut Vec<Finding>) {
 static RULES: [Rule; 27] = [
     Rule { id: "invalid-xml", severity: Severity::Error, table: None },
     Rule { id: "outside-container", severity: Severity::Error, table: None },
-    Rule { id: "duplicate-name", severity: Severity::Error, table: None },
+    Rule { id: "duplicate-name", severity: Severity::Warning, table: None },
     Rule { id: "duplicate-id", severity: Severity::Error, table: None },
     Rule { id: "anchor-mismatch", severity: Severity::Warning, table: None },
     Rule { id: "overlap", severity: Severity::Warning, table: None },

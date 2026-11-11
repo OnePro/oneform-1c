@@ -62,10 +62,11 @@ STABLE (no flag needed):
   preview [PATH]            renders FormPreview.html next to every ordinary Form.xml.
   lint [PATH] [--json] [--strict]   checks the layout of every extracted Form.xml (outside the form, overlap, stretching, bottom panel,
                             tab order, deviations from the usual values of the form kind) and writes nothing; exit 1 when an error is
-                            found, 3 with --strict when there are warnings.
+                            found, 3 with --strict when there are warnings (a repeated control name is a warning, a repeated id an error).
   validate [PATH] [--json]  decides for every ordinary form whether it can be edited safely: IN_SCOPE, or OUT_OF_SCOPE with reason codes
                             (format-8.0, metadata-layout, unsupported-control, duplicate-name, round-trip-differs, stale-projection,
-                            unreadable); it reads the Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is
+                            unreadable); duplicate-name and stale-projection do not block (IN_SCOPE = readable, module text editable; the layout of a form with
+                            repeated names cannot be edited); it reads the Form.bin / .epf sources in memory and writes nothing; exit 0 when every form is
                             in scope, 1 when any is not.
   history [PATH] [--json]   lists the snapshots; history restore [PATH] <id> [--dry-run] [--replace-generated] puts the saved Form.bin /
                             .epf back (the current state is saved as a new snapshot first) and refreshes src/ with extract; it refuses

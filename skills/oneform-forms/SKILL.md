@@ -17,7 +17,7 @@ description: Чтение, ревью и правка текста модуле�
 
 ## Цикл
 
-1. **Перед работой** `oneform validate <каталог> [--json]` — решает по каждой форме `IN_SCOPE` или `OUT_OF_SCOPE` с кодами причин (`format-8.0`, `metadata-layout`, `unsupported-control`, `duplicate-name`, `round-trip-differs`, `stale-projection`, `unreadable`) и ничего не пишет; код выхода 0 — все формы в области, 1 — есть вне области. Форму `OUT_OF_SCOPE` не правь через `oneform`: открой её в Конфигураторе (`stale-projection` лечится повторным `oneform extract`).
+1. **Перед работой** `oneform validate <каталог> [--json]` — решает по каждой форме `IN_SCOPE` или `OUT_OF_SCOPE` с кодами причин (`format-8.0`, `metadata-layout`, `unsupported-control`, `duplicate-name`, `round-trip-differs`, `stale-projection`, `unreadable`) и ничего не пишет; код выхода 0 — все формы в области, 1 — есть вне области. `IN_SCOPE` — форму можно читать и править текст её модуля. Форму `OUT_OF_SCOPE` не правь через `oneform`: открой её в Конфигураторе (`stale-projection` лечится повторным `oneform extract`). `duplicate-name` форму из области не выводит, но раскладку (`Form.xml`) такой формы править нельзя (`pack` откажет), а `ЭлементыФормы.<Имя>` в её модуле неоднозначно для повторяющихся имён.
 2. `oneform extract <каталог>` — создаёт `src/Forms/<Форма>/Form.xml`, `FormModule.bsl`, `FormPreview.html`.
 3. Читайте `Form.xml` и правьте `FormModule.bsl` (и `ObjectModule.bsl`). Правила чтения:
    * нет тега = «не трогать»; значение по умолчанию в файле не показывается; бинарные служебные блоки (`raw`/`sig`, `*Record`) в XML не выводятся, если встретились (`extract --carriers`) — не править;
