@@ -77,8 +77,9 @@ pub struct Verdict {
 
 impl Verdict {
     pub fn in_scope(&self) -> bool {
-        // A stale projection is not a scope problem: `extract` refreshes it.
-        self.reasons.iter().all(|r| r.code == STALE_PROJECTION)
+        // A stale projection is not a scope problem: `extract` refreshes it. Repeated control names
+        // only block layout edits (`pack` refuses them); reading and module edits work.
+        self.reasons.iter().all(|r| r.code == STALE_PROJECTION || r.code == DUPLICATE_NAME)
     }
 }
 
@@ -169,7 +170,7 @@ pub fn judge_stream(stream: &[u8], xml: Option<&[u8]>, why_no_xml: &str) -> Vec<
     if !dups.is_empty() {
         let shown = dups.iter().take(NAMES_SHOWN).map(|n| format!("'{n}'")).collect::<Vec<_>>().join(", ");
         let more = if dups.len() > NAMES_SHOWN { format!(" and {} more", dups.len() - NAMES_SHOWN) } else { String::new() };
-        out.push(reason(DUPLICATE_NAME, format!("control names used more than once: {shown}{more}; give the controls unique names in the Configurator")));
+        out.push(reason(DUPLICATE_NAME, format!("control names used more than once: {shown}{more}; the layout (Form.xml) cannot be edited while names repeat and `pack` refuses such edits, the module text can be edited; in module code `ЭлементыФормы.<Имя>` is ambiguous for the repeated names")));
     }
 
     let Some(xml) = xml else {
@@ -395,10 +396,19 @@ pub fn percent(part: usize, total: usize) -> f64 {
 
 pub(crate) fn verdict_line(v: &Verdict) -> String {
     if v.in_scope() {
-        return match v.reasons.first() {
-            None => format!("{}/{}: IN_SCOPE", v.object, v.form),
-            Some(r) => format!("{}/{}: IN_SCOPE (run extract: {} \u{2014} {})", v.object, v.form, r.code, r.hint),
-        };
+        if v.reasons.is_empty() {
+            return format!("{}/{}: IN_SCOPE", v.object, v.form);
+        }
+        let parts = v
+            .reasons
+            .iter()
+            .map(|r| {
+                let lead = if r.code == STALE_PROJECTION { "run extract" } else { "layout cannot be edited" };
+                format!("{lead}: {} \u{2014} {}", r.code, r.hint)
+            })
+            .collect::<Vec<_>>()
+            .join("; ");
+        return format!("{}/{}: IN_SCOPE ({parts})", v.object, v.form);
     }
     let codes = v.reasons.iter().map(|r| r.code).collect::<Vec<_>>().join(",");
     let hints = v.reasons.iter().map(|r| r.hint.as_str()).collect::<Vec<_>>().join("; ");

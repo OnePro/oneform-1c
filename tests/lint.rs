@@ -171,7 +171,7 @@ fn overflow_hints_name_a_position_or_a_container_size_and_never_a_size_below_one
 }
 
 #[test]
-fn negative_coordinates_duplicate_name_and_id_are_errors() {
+fn negative_coordinates_and_duplicate_id_are_errors_duplicate_name_is_a_warning() {
     let mut c = clean_item();
     c.push(field(5, "Наименование", [-4, 60, 100, 19]));
     c.push(field(4, "Другое", [8, 90, 100, 19]));
@@ -179,9 +179,24 @@ fn negative_coordinates_duplicate_name_and_id_are_errors() {
     let f = findings(&root, &[]);
     let r = rules(&f);
     assert!(r.contains(&"error:outside-container".to_string()), "{r:?}");
-    assert!(r.contains(&"error:duplicate-name".to_string()), "{r:?}");
+    assert!(r.contains(&"warning:duplicate-name".to_string()), "{r:?}");
     assert!(r.contains(&"error:duplicate-id".to_string()), "{r:?}");
     assert_eq!(lint(&root, &[]).0, 1);
+}
+
+#[test]
+fn duplicate_name_alone_is_a_warning_and_strict_exits_3() {
+    let mut c = clean_item();
+    c.push(field(6, "Наименование", [92, 120, 100, 19]));
+    let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &form_xml(400, 200, &c));
+    let f = findings(&root, &[]);
+    let r = rules(&f);
+    assert!(r.contains(&"warning:duplicate-name".to_string()), "{r:?}");
+    assert!(!r.iter().any(|x| x.starts_with("error:")), "{r:?}");
+    let msg = f.iter().find(|x| x["rule"] == "duplicate-name").unwrap()["message"].as_str().unwrap();
+    assert!(msg.contains("layout of the form cannot be edited until the names are unique"), "{msg}");
+    assert_eq!(lint(&root, &[]).0, 0);
+    assert_eq!(lint(&root, &["--strict"]).0, 3);
 }
 
 #[test]
