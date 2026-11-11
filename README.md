@@ -55,7 +55,7 @@ cargo test --locked                 # модульные, фикстурные �
 | Платформа | Сборка релиза | Сборка из исходников и тесты |
 |---|---|---|
 | Windows x64 | `windows-x64.zip` | да (CI: `windows-latest`) |
-| macOS arm64 / x64 | `macos-arm64.tar.gz`, `macos-x64.tar.gz` | да (CI: `macos-14`) |
+| macOS arm64 / x64 | `macos-arm64.tar.gz`, `macos-x64.tar.gz` | да (CI: `macos-15`) |
 | Linux x64 | `linux-x64.tar.gz` | да (CI: `ubuntu-latest`; локально проверено на Debian) |
 
 Сборка из исходников одинакова на всех трёх системах: Rust stable (`rust-toolchain.toml`), для Linux ещё компилятор C (`build-essential`). Для `just` (по желанию) нужны [`just`](https://github.com/casey/just) и Python 3 (`python` на Windows, `python3` на macOS и Linux; сценарии в `scripts/` используют только стандартную библиотеку). Только Windows: инструменты живой проверки в платформе 1С (`scripts/1c-e2e/`, `explore --platform`, запуск `1cv8.exe`) — нужна установленная платформа 1С; сам `oneform` (extract, pack, check, preview, lint, new-form) от неё не зависит.
