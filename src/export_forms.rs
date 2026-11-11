@@ -20,6 +20,11 @@ use crate::formbin::{
 };
 use crate::metaref::ConfigTypeLookup;
 
+mod apply;
+pub use apply::{
+    apply_export, check_export, check_out_location, ApplyReport, Difference, DifferenceKind, ExportError, ExportRefusal, MARKER_FILE,
+};
+
 pub const FORM_XML_FILE: &str = "Form.xml";
 pub const FORM_MODULE_FILE: &str = "FormModule.bsl";
 /// Failure code of a form whose projection panicked.
