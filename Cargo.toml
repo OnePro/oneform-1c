@@ -1,6 +1,6 @@
 [package]
 name = "oneform"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 rust-version = "1.89"
 description = "Single-binary extractor, 1:1 HTML previewer, and packer for 1C 8.2/8.3 ordinary forms and external processors"
