@@ -16,6 +16,7 @@ pub mod donor;
 pub mod encoding;
 pub mod errors;
 pub mod explore;
+pub mod export_forms;
 pub mod feedback;
 pub mod form_basic;
 pub mod form_patch;

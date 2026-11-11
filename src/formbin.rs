@@ -17,7 +17,7 @@ use crate::cli_epf::{plan_lines, plural, Outcome};
 use crate::config::load_json_bytes;
 use crate::container::{parse_container, serialize_container, EntryOut, Limits};
 use crate::discovery::{is_link, scan_dir, DirEnt};
-use crate::encoding::{decode_payload, decode_payload_hashed};
+use crate::encoding::{decode_payload, decode_payload_hashed, DecodedText};
 use crate::errors::{
     diagnostic, ExtractionError, Result, FORM_PREVIEW_FAILED, FORM_PROJECTION_UNSUPPORTED, GENERATED_FILE_MODIFIED,
     IO_ERROR, OUTPUT_NOT_OWNED, PAYLOAD_MISSING, PUBLISH_VERIFY_FAILED, SOURCE_CHANGED,
@@ -29,7 +29,7 @@ use crate::metadata::{FormInfo, Payload};
 use crate::metaref::ConfigTypeLookup;
 use crate::object_schema::{with_object_schema, ObjectSchema};
 use crate::naming::{is_uuid, resolve_1c_aliases, safe_join};
-use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, FORM_XML_NAME, META_KIND_KEY};
+use crate::oof::{apply_projection, build_oof_with_types, MetaLookup, OofResult, FORM_XML_NAME, META_KIND_KEY};
 use crate::pack::{
     atomic_write, encode_text, experimental_done_line, experimental_dry_line, experimental_refusal, plan_layout_patch, LayoutPatch,
     PACK_PACKED, PACK_SRC_ONLY, PACK_UNCHANGED, READ_ONLY_ROLES,
@@ -40,6 +40,7 @@ use crate::transaction::{
     check_ownership, manifest_hashes, plan, processor_lock, publish, read_tree, recover, snapshot_epf,
     verify_source_unchanged, Snapshot, Tree,
 };
+use crate::validate::{judge_stream, FORMAT_80, METADATA_LAYOUT};
 
 pub use crate::preview::OBJECT_CLASS_TITLES;
 
@@ -321,6 +322,114 @@ fn quote(s: &str) -> Result<String> {
     dumps_with(&Value::String(s.to_string()), &SORTED_SPACED)
 }
 
+/// The `Form.bin` of one form as the input of the projection: its [`FormInfo`] and the metadata of its `Forms/<name>.xml`
+/// (the object's own metadata for a common form).
+fn parse_form(obj: &ConfigObject, base: &Path, ometa: &Meta, name: &str, raw: &[u8], limits: &Limits) -> Result<(FormInfo, Meta)> {
+    let bin_rel = form_bin_rel(obj, name);
+    let container = parse_container(raw, limits, 0, None)?;
+    let form_entry = container.get("form").ok_or_else(|| {
+        ExtractionError::new(PAYLOAD_MISSING, "Form.bin has no 'form' entry").with("path", bin_rel.as_str())
+    })?;
+    let mod_raw = container.get("module").map(|e| e.raw.clone()).unwrap_or_default();
+    let fmeta = if obj.common { ometa.clone() } else { meta_of(&base.join("Forms").join(format!("{name}.xml"))) };
+    let form_uuid = uuid_or_fallback(&fmeta.uuid, &format!("{}/{bin_rel}", obj.rel));
+    let form_name = if fmeta.name.is_empty() { name.to_string() } else { fmeta.name.clone() };
+    let form_raw = form_entry.raw.clone();
+    let payload = |suffix: &str, data: Vec<u8>| Payload {
+        locator: format!("{bin_rel}#{suffix}"),
+        sha256: sha256_hex(&data),
+        raw: data,
+    };
+    let info = FormInfo {
+        uuid: form_uuid,
+        name: form_name,
+        synonym: fmeta.synonym.clone(),
+        kind_code: 0,
+        header_payload: payload("header", Vec::new()),
+        layout_payload: payload("form", form_raw),
+        module_payload: payload("module", mod_raw),
+        kind: "OrdinaryForm".to_string(),
+    };
+    Ok((info, fmeta))
+}
+
+/// Module text and `Form.xml` projection of one parsed form. `alias` only labels diagnostics; it does not reach the
+/// `Form.xml` bytes.
+fn project_info(
+    info: &FormInfo,
+    alias: &str,
+    oof_path: Option<&str>,
+    meta_lookup: &MetaLookup,
+    type_lookup: &ConfigTypeLookup,
+) -> Result<(DecodedText, OofResult)> {
+    let key = format!("Forms/{}/FormModule", info.uuid);
+    let decoded = decode_payload_hashed(&info.module_payload.raw, &key, "auto", Some(&info.module_payload.sha256))?;
+    let oof = build_oof_with_types(info, alias, oof_path, Some(meta_lookup), Some(type_lookup));
+    Ok((decoded, oof))
+}
+
+/// Metadata of an object (or common form) read from `<ObjDir>.xml`, shared by all of its forms.
+#[derive(Debug, Clone, Default)]
+pub struct ObjectMeta {
+    pub meta: Meta,
+    /// Metadata uuid -> name (see [`read_meta_lookup`]).
+    pub lookup: MetaLookup,
+}
+
+/// [`ObjectMeta`] of `obj` (empty when `<ObjDir>.xml` is missing or unreadable).
+pub fn read_object_meta(root: &Path, obj: &ConfigObject) -> ObjectMeta {
+    let base = object_dir(root, obj);
+    match base.parent().map(|p| p.join(format!("{}.xml", name_of(&base)))) {
+        Some(x) => {
+            let (meta, lookup) = read_meta_and_lookup(&x);
+            ObjectMeta { meta, lookup }
+        }
+        None => ObjectMeta::default(),
+    }
+}
+
+/// Result of [`project_form`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FormProjection {
+    /// `Form.xml` bytes; `None` when the projection cannot be built (then `reason` is set).
+    pub form_xml: Option<Vec<u8>>,
+    /// Module text: UTF-8, no BOM, LF; empty when the form has no module.
+    pub module: Vec<u8>,
+    /// Why there is no `Form.xml`: [`crate::validate::FORMAT_80`] or [`crate::validate::METADATA_LAYOUT`].
+    pub reason: Option<&'static str>,
+}
+
+/// Project ONE form: `Form.bin` bytes -> `Form.xml` and module text, exactly as `extract` writes them, with no
+/// preview, definition, stream copy or manifest. Nothing is read from disk except the form's own `Forms/<name>.xml`.
+///
+/// `obj_meta` is the shared [`read_object_meta`] of the object and `type_lookup` the lookup of the whole configuration
+/// (build it once with [`ConfigTypeLookup::from_config_dir`]; this function never scans the configuration). `alias`
+/// is the name the form gets in a projection tree; it only labels diagnostics. Errors: unreadable container, no
+/// `form` entry, undecodable module text.
+#[allow(clippy::too_many_arguments)]
+pub fn project_form(
+    root: &Path,
+    obj: &ConfigObject,
+    name: &str,
+    raw: &[u8],
+    obj_meta: &ObjectMeta,
+    type_lookup: &ConfigTypeLookup,
+    limits: &Limits,
+    alias: &str,
+    oof_path: Option<&str>,
+) -> Result<FormProjection> {
+    let (info, _) = parse_form(obj, &object_dir(root, obj), &obj_meta.meta, name, raw, limits)?;
+    let (decoded, oof) = project_info(&info, alias, oof_path, &obj_meta.lookup, type_lookup)?;
+    let reason = match oof.xml {
+        Some(_) => None,
+        None => {
+            let reasons = judge_stream(&info.layout_payload.raw, None, "");
+            Some(if reasons.iter().any(|r| r.code == FORMAT_80) { FORMAT_80 } else { METADATA_LAYOUT })
+        }
+    };
+    Ok(FormProjection { form_xml: oof.xml, module: decoded.canonical, reason })
+}
+
 /// Build the complete `<ObjDir>/src/` tree in memory (`sources`: form name -> `Form.bin` bytes).
 ///
 /// `meta_lookup` (metadata uuid -> name) defaults to the attributes of `<ObjDir>.xml`.
@@ -393,30 +502,7 @@ fn stage_config_object_hashed(
         let raw = sources
             .get(name)
             .ok_or_else(|| ExtractionError::new(PAYLOAD_MISSING, "Form.bin source is missing").with("path", bin_rel.as_str()))?;
-        let container = parse_container(raw, limits, 0, None)?;
-        let form_entry = container.get("form").ok_or_else(|| {
-            ExtractionError::new(PAYLOAD_MISSING, "Form.bin has no 'form' entry").with("path", bin_rel.as_str())
-        })?;
-        let mod_raw = container.get("module").map(|e| e.raw.clone()).unwrap_or_default();
-        let fmeta = if obj.common { ometa.clone() } else { meta_of(&base.join("Forms").join(format!("{name}.xml"))) };
-        let form_uuid = uuid_or_fallback(&fmeta.uuid, &format!("{}/{bin_rel}", obj.rel));
-        let form_name = if fmeta.name.is_empty() { name.clone() } else { fmeta.name.clone() };
-        let form_raw = form_entry.raw.clone();
-        let payload = |suffix: &str, data: Vec<u8>| Payload {
-            locator: format!("{bin_rel}#{suffix}"),
-            sha256: sha256_hex(&data),
-            raw: data,
-        };
-        let info = FormInfo {
-            uuid: form_uuid,
-            name: form_name,
-            synonym: fmeta.synonym.clone(),
-            kind_code: 0,
-            header_payload: payload("header", Vec::new()),
-            layout_payload: payload("form", form_raw),
-            module_payload: payload("module", mod_raw),
-            kind: "OrdinaryForm".to_string(),
-        };
+        let (info, fmeta) = parse_form(obj, &base, &ometa, name, raw, limits)?;
         let raw_sha = source_shas.and_then(|s| s.get(name)).cloned().unwrap_or_else(|| sha256_hex(raw));
         parsed.push(Parsed { bin_rel, raw, raw_sha, info, fmeta });
     }
@@ -438,8 +524,7 @@ fn stage_config_object_hashed(
     let mut source_forms = Map::new();
     for Parsed { bin_rel, raw, raw_sha, info, fmeta } in &parsed {
         let alias = alias_of[&info.uuid].as_str();
-        let key = format!("Forms/{}/FormModule", info.uuid);
-        let decoded = decode_payload_hashed(&info.module_payload.raw, &key, "auto", Some(&info.module_payload.sha256))?;
+        let (decoded, oof) = project_info(info, alias, oof_path, meta_lookup, type_lookup.as_ref())?;
         let mod_path = safe_join(&["Forms", alias, MODULE_NAME])?;
         put(&mut files, &mut roles, &mod_path, decoded.canonical.clone(), "form-module");
         known_sha.insert(mod_path.clone(), decoded.output_sha256.clone());
@@ -454,7 +539,6 @@ fn stage_config_object_hashed(
         let mut layout_status = "unsupported";
         let mut xml_path: Option<String> = None;
         let mut preview_path: Option<String> = None;
-        let oof = build_oof_with_types(info, alias, oof_path, Some(meta_lookup), Some(type_lookup.as_ref()));
         diags.extend(oof.diagnostics.clone());
         let component = format!("Forms/{}", info.uuid);
         if let Some(xml) = &oof.xml {
