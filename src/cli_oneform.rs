@@ -41,9 +41,9 @@ use crate::preview::{
 use crate::stage::{stage_processor, StageOpts};
 use crate::transaction::{check_ownership, plan, processor_lock, publish, read_tree, recover, snapshot_epf};
 
-pub const COMMANDS: [&str; 12] = [
+pub const COMMANDS: [&str; 14] = [
     "extract", "pack", "preview", "check", "clone-form", "new-form", "lint", "validate", "history", "diagnose", "feedback",
-    "export-forms",
+    "export-forms", "container-entries", "container-diff",
 ];
 pub const DEFAULT_WORKERS: usize = 3;
 const SKIP_DIRS: [&str; 5] = [".git", ".venv", ".extract-work", WORKSPACE_DIR, "src"];
@@ -93,6 +93,24 @@ STABLE (no flag needed):
                             be neither inside nor around DUMP; an existing DIR must be empty or hold the marker. --check compares and
                             writes nothing: lists ADDED / CHANGED / REMOVED paths, exit 3 when any. Exit 1 when a form cannot be read
                             (the others are still exported). Never run preview or lint on the result.
+  container-entries FILE [--json] [--strict]
+                            (read-only) lists the top-level records of a 1C container FILE (.cf, .cfe, .epf, .erf; not a directory)
+                            with name, stored size, SHA-256 of the stored bytes, compression (deflate / none / invalid), inflated
+                            size, nested marker and the stored dates, plus the layout (32bit, 64bit-stub = a 8.3.16+ .cf, 64bit),
+                            the record count, the compatibility version and the SHA-256 of the file. The layout is decided from the
+                            bytes, not from the extension. A damaged container fails with CONTAINER_* and an offset (exit 1; --json
+                            prints an object with status error). --strict: exit 3 when there are warnings. Writes nothing, never reads
+                            .oneform, EPF_OOF_PATH, ONEFORM_CARRIERS or .oneform.json; --json prints one object with sorted keys.
+  container-diff A B [--by stored|inflated] [--owners DUMP]... [--expect-owners FILE] [--json]
+                            (read-only) compares the records of two containers by name: counts (a, b, same, differ, onlyA, onlyB) and
+                            the sorted lists. --by stored (default): same when the stored bytes are equal; --by inflated: when the
+                            inflated bytes are equal (fails with CONTAINER_ENTRY_INVALID for an invalid record present in both files).
+                            Every differing record has contentSame (true = only the packing differs, null = unknown). --owners DUMP
+                            (repeatable, the first dump that knows a UUID wins) names the owner of each record from XML dumps of the
+                            configuration (Document.Name, ..., `service` for names that are not UUIDs, `unmapped` for UUIDs of no
+                            dump) and adds byOwner. --expect-owners FILE (one owner per line, # comments; needs --owners) lists the
+                            owners that are not in it as unexpectedOwners. Exit 0 identical (or only expected owners differ), 3
+                            differences, 1 failure, 2 usage. Writes nothing, same environment independence as container-entries.
   pack [PATH]               writes edited module text (FormModule.bsl, ObjectModule.bsl) back; --dry-run prints the plan. A pack that
                             would also change the form stream is refused (see EXPERIMENTAL). Every pack that changes a form first saves
                             the previous state in <object directory>/.oneform/history/<time>-<form>/ (before/, after/, manifest.json;
@@ -906,6 +924,9 @@ pub struct Cli {
     pub no_files: bool,
     pub include_binaries: bool,
     pub experimental: bool,
+    pub by: Option<String>,
+    pub owners: Vec<String>,
+    pub expect_owners: Option<String>,
 }
 
 const STABLE_HEADING: &str = "STABLE";
@@ -914,13 +935,15 @@ const EXPERIMENTAL_HEADING: &str = "EXPERIMENTAL (needs --experimental)";
 fn build_command() -> Command {
     let cmd = Command::new("oneform")
         .version(env!("CARGO_PKG_VERSION"))
-        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|export-forms|clone-form|new-form|history|diagnose|feedback] [PATH]
-       oneform export-forms DUMP --out DIR [--check] [--json] [-j N]")
+        .override_usage("oneform [OPTIONS] [extract|pack|preview|check|lint|validate|export-forms|container-entries|container-diff|clone-form|new-form|history|diagnose|feedback] [PATH]
+       oneform export-forms DUMP --out DIR [--check] [--json] [-j N]
+       oneform container-entries FILE [--json] [--strict] [-j N]
+       oneform container-diff A B [--by stored|inflated] [--owners DUMP]... [--expect-owners FILE] [--json] [-j N]")
         .about("Extract, pack, check and preview 1C ordinary forms of EPF files and configuration dumps.")
         .after_help(EPILOG)
-        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|export-forms|clone-form|new-form|history|diagnose|feedback]").help("command (default: extract). STABLE: extract, check, preview, lint, validate, export-forms (forms of a dump into --out for version control; not for pack), history, diagnose, feedback, pack (module text). EXPERIMENTAL (needs --experimental): pack that rewrites the form stream, new-form, clone-form. clone-form and new-form take the object directory as PATH; history: list snapshots, `history diff [PATH] [id]` or `history restore [PATH] <id>`; diagnose: summary of refusals and the last snapshot; feedback: `feedback add [PATH]`, `feedback list`, `feedback show <id>`)"))
-        .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .)"))
-        .arg(Arg::new("extra").value_name("ID").num_args(0..).help("history diff [PATH] [id], history restore [PATH] <id>, feedback show <id>: the snapshot / report id"))
+        .arg(Arg::new("first").value_name("[extract|pack|preview|check|lint|validate|export-forms|container-entries|container-diff|clone-form|new-form|history|diagnose|feedback]").help("command (default: extract). STABLE: extract, check, preview, lint, validate, export-forms (forms of a dump into --out for version control; not for pack), container-entries FILE (records of a .cf/.cfe/.epf/.erf container), container-diff A B (compare two containers by record), history, diagnose, feedback, pack (module text). EXPERIMENTAL (needs --experimental): pack that rewrites the form stream, new-form, clone-form. clone-form and new-form take the object directory as PATH; history: list snapshots, `history diff [PATH] [id]` or `history restore [PATH] <id>`; diagnose: summary of refusals and the last snapshot; feedback: `feedback add [PATH]`, `feedback list`, `feedback show <id>`)"))
+        .arg(Arg::new("second").value_name("PATH").help("directory to process (default: .); container-entries: the container file; container-diff: the first container file"))
+        .arg(Arg::new("extra").value_name("ID").num_args(0..).help("history diff [PATH] [id], history restore [PATH] <id>, feedback show <id>: the snapshot / report id; container-diff A B: the second container file"))
         .arg(
             Arg::new("workers")
                 .short('j')
@@ -965,8 +988,11 @@ fn build_command() -> Command {
         .arg(Arg::new("include_binaries").long("include-binaries").action(ArgAction::SetTrue).help("feedback add: also copy the saved Form.bin / .epf (they may hold tokens or passwords)"))
         .arg(Arg::new("out").long("out").value_name("DIR").help("export-forms: the folder that receives the forms (required; not inside or around the dump)"))
         .arg(Arg::new("check").long("check").action(ArgAction::SetTrue).help("export-forms: compare with --out and write nothing; exit 3 when it differs"))
-        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate, export-forms, history, diagnose: print the findings / snapshots / the summary as JSON"))
-        .arg(Arg::new("strict").long("strict").action(ArgAction::SetTrue).help("lint: exit 3 when there are warnings"))
+        .arg(Arg::new("json").long("json").action(ArgAction::SetTrue).help("lint, validate, export-forms, container-entries, container-diff, history, diagnose: print the findings / snapshots / the summary as JSON"))
+        .arg(Arg::new("strict").long("strict").action(ArgAction::SetTrue).help("lint, container-entries: exit 3 when there are warnings"))
+        .arg(Arg::new("by").long("by").value_name("stored|inflated").help("container-diff: compare the stored bytes (default) or the inflated bytes of the records"))
+        .arg(Arg::new("owners").long("owners").value_name("DUMP").action(ArgAction::Append).help("container-diff: a directory with an XML dump of the configuration that names the owner of each record (repeatable; the first dump that knows a UUID wins)"))
+        .arg(Arg::new("expect_owners").long("expect-owners").value_name("FILE").help("container-diff: a text file with the owners that may differ, one per line (needs --owners); exit 0 when only they differ, 3 otherwise"))
         .arg(Arg::new("default").long("default").action(ArgAction::SetTrue).help("new-form: make the new form the default form of the object"))
         .arg(
             Arg::new("carriers")
@@ -982,7 +1008,7 @@ fn build_command() -> Command {
         );
     let stable = [
         "workers", "dry_run", "backup", "no_backup", "replace_generated", "oof_path", "progress", "no_progress", "history_id", "note",
-        "onec_error", "no_files", "include_binaries", "json", "strict", "carriers", "out", "check",
+        "onec_error", "no_files", "include_binaries", "json", "strict", "carriers", "out", "check", "by", "owners", "expect_owners",
     ];
     let experimental = ["experimental", "from", "name", "synonym", "kind", "default"];
     let cmd = stable.iter().fold(cmd, |c, id| c.mut_arg(*id, |a| a.help_heading(STABLE_HEADING)));
@@ -1032,6 +1058,9 @@ pub fn parse_cli(argv: &[String]) -> std::result::Result<Cli, i32> {
         no_files: m.get_flag("no_files"),
         include_binaries: m.get_flag("include_binaries"),
         experimental: m.get_flag("experimental"),
+        by: m.get_one::<String>("by").cloned(),
+        owners: m.get_many::<String>("owners").map(|v| v.cloned().collect()).unwrap_or_default(),
+        expect_owners: m.get_one::<String>("expect_owners").cloned(),
     })
 }
 
@@ -1169,6 +1198,12 @@ pub fn main(argv: &[String]) -> i32 {
     if (args.out.is_some() || args.check) && command != "export-forms" {
         return fail("--out and --check are only valid for export-forms");
     }
+    if command != "container-diff" {
+        let given = [(args.by.is_some(), "--by"), (!args.owners.is_empty(), "--owners"), (args.expect_owners.is_some(), "--expect-owners")];
+        if let Some((_, flag)) = given.iter().find(|(g, _)| *g) {
+            return fail(&format!("{flag} is only valid for container-diff"));
+        }
+    }
     if args.experimental && !matches!(command.as_str(), "pack" | "new-form" | "clone-form") {
         return fail("--experimental is only valid for pack, new-form and clone-form");
     }
@@ -1225,14 +1260,21 @@ pub fn main(argv: &[String]) -> i32 {
     if args.default_form || (args.kind.is_some() && command != "feedback") {
         return fail("--kind and --default are only valid for new-form (--kind also for feedback add)");
     }
-    if !matches!(command.as_str(), "history" | "feedback") && !args.extra.is_empty() {
-        return fail(&format!("unexpected argument '{}'", args.extra[0]));
+    let extra_allowed = match command.as_str() {
+        "history" | "feedback" => usize::MAX,
+        "container-diff" => 1,
+        _ => 0,
+    };
+    if args.extra.len() > extra_allowed {
+        return fail(&format!("unexpected argument '{}'", args.extra[extra_allowed]));
     }
-    if args.strict && command != "lint" {
-        return fail("--strict is only valid for lint");
+    if args.strict && !matches!(command.as_str(), "lint" | "container-entries") {
+        return fail("--strict is only valid for lint and container-entries");
     }
-    if args.json && !matches!(command.as_str(), "lint" | "validate" | "export-forms" | "history" | "diagnose" | "feedback") {
-        return fail("--json is only valid for lint, validate, export-forms, history, diagnose and feedback list/show");
+    if args.json
+        && !matches!(command.as_str(), "lint" | "validate" | "export-forms" | "container-entries" | "container-diff" | "history" | "diagnose" | "feedback")
+    {
+        return fail("--json is only valid for lint, validate, export-forms, container-entries, container-diff, history, diagnose and feedback list/show");
     }
     if args.workers < 1 {
         return fail("--workers must be at least 1");
@@ -1250,6 +1292,54 @@ pub fn main(argv: &[String]) -> i32 {
             return fail("export-forms needs --out <folder for the exported forms>");
         };
         return crate::export_forms::run_cli(&path, out, args.check, args.json, args.workers as usize);
+    }
+    if matches!(command.as_str(), "container-entries" | "container-diff") {
+        // Nothing below this point runs for the container tools: no `.oneform`, history, diagnostics, project config,
+        // targets, recovery, carriers switch or EPF_OOF_PATH. The arguments are files, not directories.
+        let diff = command == "container-diff";
+        let usage = if diff {
+            "usage: oneform container-diff <A> <B> [--by stored|inflated] [--owners <DIR>]... [--expect-owners <FILE>] [--json] [-j N]"
+        } else {
+            "usage: oneform container-entries <FILE> [--json] [--strict] [-j N]"
+        };
+        if args.oof_path.is_some() {
+            return fail(&format!("--oof-path is not valid for {command} (it uses no external program)"));
+        }
+        if args.dry_run
+            || args.replace_generated
+            || args.carriers
+            || args.backup
+            || args.no_backup
+            || args.progress
+            || args.no_progress
+            || args.from.is_some()
+            || args.name.is_some()
+            || args.synonym.is_some()
+        {
+            return fail(&format!("{command} takes only its file arguments, --json and -j/--workers and its own options ({usage})"));
+        }
+        if !diff {
+            let Some(file) = args.second.as_deref() else { return fail(&format!("container-entries needs a container file ({usage})")) };
+            return crate::container_scan::cli::run_entries(file, args.json, args.strict, args.workers as usize);
+        }
+        let (Some(a), Some(b)) = (args.second.as_deref(), args.extra.first().map(String::as_str)) else {
+            return fail(&format!("container-diff needs two container files ({usage})"));
+        };
+        let inflated = match args.by.as_deref() {
+            None | Some("stored") => false,
+            Some("inflated") => true,
+            Some(other) => return fail(&format!("--by must be stored or inflated, not '{other}'")),
+        };
+        let opts = crate::container_scan::cli::DiffOptions {
+            a,
+            b,
+            inflated,
+            owners: &args.owners,
+            expect_owners: args.expect_owners.as_deref(),
+            json: args.json,
+            workers: args.workers as usize,
+        };
+        return crate::container_scan::cli::run_diff(&opts);
     }
     if (args.backup || args.no_backup) && command != "pack" {
         return fail("--backup/--no-backup require the pack command");
@@ -1424,7 +1514,7 @@ mod tests {
         assert_eq!(resolve_command(Some("dir"), None), Ok(("extract".into(), "dir".into())));
         assert_eq!(
             resolve_command(Some("bogus"), Some(".")),
-            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history, diagnose, feedback, export-forms".to_string())
+            Err("unknown command 'bogus'; expected one of extract, pack, preview, check, clone-form, new-form, lint, validate, history, diagnose, feedback, export-forms, container-entries, container-diff".to_string())
         );
         assert_eq!(py_repr("it's"), "\"it's\"");
     }
