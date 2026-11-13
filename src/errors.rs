@@ -9,6 +9,10 @@ pub const CONTAINER_CYCLE: &str = "CONTAINER_CYCLE";
 pub const CONTAINER_LIMIT_EXCEEDED: &str = "CONTAINER_LIMIT_EXCEEDED";
 pub const CONTAINER_DUPLICATE_ENTRY: &str = "CONTAINER_DUPLICATE_ENTRY";
 pub const CONTAINER_BAD_ENTRY_NAME: &str = "CONTAINER_BAD_ENTRY_NAME";
+/// Bytes after the end of the container that are not a valid 64-bit container (`container_scan`).
+pub const CONTAINER_TRAILING_DATA: &str = "CONTAINER_TRAILING_DATA";
+/// A record cannot be used for the requested comparison, for example it does not inflate (`container_scan`).
+pub const CONTAINER_ENTRY_INVALID: &str = "CONTAINER_ENTRY_INVALID";
 pub const METADATA_PARSE_ERROR: &str = "METADATA_PARSE_ERROR";
 pub const METADATA_LAYOUT_UNSUPPORTED: &str = "METADATA_LAYOUT_UNSUPPORTED";
 pub const METADATA_ORPHAN_ENTRY: &str = "METADATA_ORPHAN_ENTRY";
