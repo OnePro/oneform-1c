@@ -945,3 +945,49 @@ fn help_lists_both_commands_in_the_stable_part() {
     assert_eq!(r.code, 2);
     assert!(r.stderr.contains("export-forms, container-entries, container-diff"), "{}", r.stderr);
 }
+
+/// Real files, driven by the environment (not part of the normal run):
+/// `ONEFORM_REAL_CF_A`, `ONEFORM_REAL_CF_B`, and optionally `ONEFORM_REAL_OWNERS` (XML dump folders separated by the
+/// platform path separator). Compares `container-diff` with the Python oracle (an independent parser), checks that every
+/// listed record has an owner when owners are given, and prints the time.
+#[test]
+#[ignore = "needs ONEFORM_REAL_CF_A and ONEFORM_REAL_CF_B"]
+fn real_pair_matches_the_oracle() {
+    let (Ok(a), Ok(b)) = (std::env::var("ONEFORM_REAL_CF_A"), std::env::var("ONEFORM_REAL_CF_B")) else {
+        panic!("set ONEFORM_REAL_CF_A and ONEFORM_REAL_CF_B");
+    };
+    let owners: Vec<String> = std::env::var("ONEFORM_REAL_OWNERS")
+        .map(|v| std::env::split_paths(&v).map(|p| p.to_string_lossy().into_owned()).collect())
+        .unwrap_or_default();
+    let python = if cfg!(windows) { "python" } else { "python3" };
+    let oracle = Command::new(python)
+        .args(["scripts/container_oracle.py", "diff", &a, &b])
+        .output()
+        .expect("python is needed for the oracle");
+    assert!(oracle.status.success(), "{}", String::from_utf8_lossy(&oracle.stderr));
+    let oracle: Value = serde_json::from_slice(&oracle.stdout).unwrap();
+
+    let mut args: Vec<&str> = vec!["container-diff", &a, &b, "--json"];
+    for o in &owners {
+        args.push("--owners");
+        args.push(o);
+    }
+    let started = std::time::Instant::now();
+    let r = run(&args);
+    let seconds = started.elapsed().as_secs_f64();
+    eprintln!("container-diff of the real pair took {seconds:.1} s ({} build)", if cfg!(debug_assertions) { "debug" } else { "release" });
+    let v = r.json();
+    assert!(r.code == 0 || r.code == 3, "exit {}: {}", r.code, r.stderr);
+    assert_eq!(v["counts"], oracle["counts"], "counts differ from the oracle");
+    for list in ["differ", "onlyA", "onlyB"] {
+        assert_eq!(names(&v[list]), strings(&oracle[list]), "{list} differs from the oracle");
+        if !owners.is_empty() {
+            for item in v[list].as_array().unwrap() {
+                assert!(item["owner"].as_str().is_some_and(|o| !o.is_empty()), "no owner for {item}");
+            }
+        }
+    }
+    if let Some(by) = v.get("byOwner") {
+        eprintln!("byOwner: {}", serde_json::to_string(by).unwrap());
+    }
+}
