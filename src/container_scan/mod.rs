@@ -16,6 +16,8 @@
 //!
 //! Fixed limits (not configurable): input 16 GiB, 2,000,000 records, 4 GiB inflated per record, 64 GiB inflated in total.
 
+pub mod cli;
+pub mod owners;
 mod process;
 
 use std::collections::HashSet;
