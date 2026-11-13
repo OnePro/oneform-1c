@@ -37,6 +37,8 @@ Cargo.lock text eol=lf
 *.epf -text -diff
 *.EPF -text -diff
 *.erf -text -diff
+*.cf -text -diff
+*.cfe -text -diff
 *.bin -text -diff
 *.png -text
 *.gif -text
