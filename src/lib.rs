@@ -10,6 +10,7 @@ pub mod cli_oneform;
 pub mod clone_form;
 pub mod config;
 pub mod container;
+pub mod container_scan;
 pub mod diagnostics;
 pub mod discovery;
 pub mod donor;

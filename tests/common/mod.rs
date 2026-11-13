@@ -1,6 +1,8 @@
 //! Helpers shared by the ordinary-form integration tests.
 #![allow(dead_code)]
 
+pub mod containers;
+
 use std::collections::HashMap;
 use std::path::Path;
 
