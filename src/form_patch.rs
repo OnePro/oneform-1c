@@ -7006,8 +7006,8 @@ fn set_clone_props(n: &mut Node, type_name: &str, v: &ControlValues) -> Result<(
         let geom = clone_geom_mut(n)?;
         for idx in 6..=9 {
             if let Some(rec) = geom.children.get_mut(idx).and_then(Item::as_node_mut).filter(|r| r.children.len() > 2) {
-                for part in 1..=2 {
-                    rec.children[part] = Item::Node(
+                for slot in rec.children.iter_mut().skip(1).take(2) {
+                    *slot = Item::Node(
                         crate::brace::parse_metadata(format_edge_target(&AnchorEdge::UNATTACHED).as_bytes())
                             .map_err(|e| layout_err(e.to_string()))?,
                     );

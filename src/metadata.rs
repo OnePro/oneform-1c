@@ -292,8 +292,8 @@ pub fn discover(
 
     let mut forms_uuids: Option<Vec<String>> = None;
     let mut templates_uuids: Option<Vec<String>> = None;
-    for idx in 2..props.len() {
-        let Item::Node(child) = &props.children[idx] else { continue };
+    for (idx, item) in props.children.iter().enumerate().skip(2) {
+        let Item::Node(child) = item else { continue };
         let Some(Item::Atom(first)) = child.children.first() else { continue };
         if first.kind != BARE {
             continue;
