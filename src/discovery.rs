@@ -22,17 +22,15 @@ pub fn is_link(path: &Path) -> bool {
     let Ok(md) = fs::symlink_metadata(path) else {
         return false;
     };
-    if md.file_type().is_symlink() {
-        return true;
-    }
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
-        if md.file_attributes() & 0x400 != 0 {
-            return true;
-        }
+        md.file_type().is_symlink() || md.file_attributes() & 0x400 != 0
     }
-    false
+    #[cfg(not(windows))]
+    {
+        md.file_type().is_symlink()
+    }
 }
 
 pub fn root_parts(processor_root: &str) -> Result<Vec<String>> {
