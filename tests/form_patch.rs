@@ -6997,3 +6997,114 @@ fn an_html_document_field_inserted_before_a_control_packs() {
     let (pf, got) = structural_round_trip("DonorForm", &xml);
     assert_eq!(got.control(pf.allocated[0].1).unwrap().type_name, "HTMLDocumentField");
 }
+
+// ---------------------------------------------------------------- controls replaced under a reused id
+
+/// New controls of other names and types that reuse the ids of removed controls (the real-world case of an agent that
+/// rewrites the form and numbers the controls from the start).
+mod reused_ids {
+    use super::*;
+
+    const SREDA: &str = "<LabelDecoration name=\"НадписьСреда\" id=\"4\"><Caption><Item language=\"ru\">Среда</Item></Caption><Left>30</Left><Top>500</Top><Width>90</Width><Height>20</Height><ZOrder>50</ZOrder><TabOrder>50</TabOrder><Anchors right=\"Left\" rightTarget=\"4\" rightOffset=\"90\"/></LabelDecoration>\n        ";
+    const FRAME: &str = "<Panel name=\"РамкаПодключение\" id=\"5\"><Left>150</Left><Top>500</Top><Width>300</Width><Height>120</Height><ZOrder>51</ZOrder><TabOrder>51</TabOrder><Anchors top=\"Bottom\" topTarget=\"5\" topOffset=\"3\"/><ShowTabs type=\"ShowTabs\" member=\"None\" code=\"1\"/><ChildItems><Page name=\"Основное\"><Title><Item language=\"ru\">Основное</Item></Title><ChildItems><LabelDecoration name=\"ВнутриРамки\" id=\"901\"><Caption><Item language=\"ru\">Внутри</Item></Caption><Left>8</Left><Top>8</Top><Width>100</Width><Height>19</Height><ZOrder>0</ZOrder><TabOrder>1</TabOrder></LabelDecoration></ChildItems></Page></ChildItems></Panel>\n        ";
+    const FIELD: &str = "<InputField name=\"НовоеПоле\" id=\"8\"><Left>500</Left><Top>500</Top><Width>150</Width><Height>19</Height><ZOrder>52</ZOrder><TabOrder>52</TabOrder></InputField>\n        ";
+
+    /// The form where Кнопка1 (4), Надпись1 (5) and Флажок1 (8) are replaced by `SREDA`, `FRAME` and `FIELD`.
+    fn replaced() -> String {
+        let mut xml = baseline("DonorForm");
+        for (open, close) in [("<Button name=\"Кнопка1\"", "</Button>"), ("<LabelDecoration name=\"Надпись1\"", "</LabelDecoration>"), ("<CheckBox name=\"Флажок1\"", "</CheckBox>")] {
+            xml = cut_block(&xml, open, close).0;
+        }
+        replace_once(&xml, "        <Table name=\"ТабличноеПоле1\"", &format!("        {SREDA}{FRAME}{FIELD}        <Table name=\"ТабличноеПоле1\""))
+    }
+
+    const WARNINGS: [&str; 3] = [
+        "control id 4 'Кнопка1' (Button) is replaced by 'НадписьСреда' (LabelDecoration): the old control, its events and data links are removed",
+        "control id 5 'Надпись1' (LabelDecoration) is replaced by 'РамкаПодключение' (Panel): the old control, its events and data links are removed",
+        "control id 8 'Флажок1' (CheckBox) is replaced by 'НовоеПоле' (InputField): the old control, its events and data links are removed",
+    ];
+
+    #[test]
+    fn controls_under_reused_ids_are_removed_and_added() {
+        let edited = replaced();
+        let (pf, got) = structural_round_trip("DonorForm", &edited);
+        // fresh stream ids (donor max 36), and the local ids of the request are fresh as well
+        assert_eq!(pf.allocated.len(), 4);
+        assert!(pf.allocated.iter().all(|(local, stream)| *local > 36 && *stream > 36), "{:?}", pf.allocated);
+        for id in [4, 5, 8] {
+            assert!(got.control(id).is_none(), "old control {id} is still there");
+        }
+        let by_name = |n: &str| got.controls.iter().find(|c| c.name == n).unwrap_or_else(|| panic!("{n} is missing"));
+        for n in ["Кнопка1", "Надпись1", "Флажок1"] {
+            assert!(!got.controls.iter().any(|c| c.name == n), "{n} is still there");
+        }
+        let sreda = by_name("НадписьСреда");
+        assert_eq!(sreda.type_name, "LabelDecoration");
+        assert_eq!((sreda.values.left, sreda.values.top, sreda.values.width, sreda.values.height), (30, 500, 90, 20));
+        assert!(pf.allocated.iter().any(|(_, s)| *s == sreda.id));
+        let frame = by_name("РамкаПодключение");
+        assert_eq!(frame.type_name, "Panel");
+        assert_eq!(frame.values.pages.len(), 1);
+        let inner = by_name("ВнутриРамки");
+        assert_eq!((inner.parent, inner.page.as_deref()), (Some(frame.id), Some("Основное")));
+        let field = by_name("НовоеПоле");
+        assert_eq!(field.type_name, "InputField");
+        // the anchors follow the controls to their fresh ids: each one to itself
+        let right = sreda.values.anchors.as_ref().and_then(|a| a.right.as_ref()).expect("label anchor");
+        assert_eq!(right.target, sreda.id);
+        let top = frame.values.anchors.as_ref().and_then(|a| a.top.as_ref()).expect("panel anchor");
+        assert_eq!(top.target, frame.id);
+        // untouched controls stay
+        assert!(got.control(6).is_some() && got.control(7).is_some());
+    }
+
+    #[test]
+    fn every_replacement_is_a_warning_in_the_pack_output() {
+        let s = stream("DonorForm");
+        let base = baseline("DonorForm");
+        let edited = replaced();
+        let plan = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).unwrap();
+        let got: Vec<String> = plan.replacements.iter().map(|r| r.warning()).collect();
+        assert_eq!(got, WARNINGS);
+        let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+        let tree = |xml: &str| -> oneform::transaction::Tree {
+            [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), s.source().to_vec())].into_iter().collect()
+        };
+        let lp = oneform::pack::plan_layout_patch(&layout, &tree(&edited), &tree(&base)).unwrap().expect("a layout edit");
+        let summary = lp.summary();
+        for w in WARNINGS {
+            let line = format!("  warning Form.xml: {w}");
+            assert_eq!(summary.iter().filter(|l| **l == line).count(), 1, "{w}: {summary:#?}");
+        }
+        assert_eq!(summary.iter().filter(|l| l.contains("is replaced by")).count(), 3);
+    }
+
+    #[test]
+    fn the_same_name_under_another_type_is_still_refused() {
+        let edited = mutate("<LabelDecoration name=\"Надпись1\" id=\"5\">", "<InputField name=\"Надпись1\" id=\"5\">")
+            .replacen("        </LabelDecoration>", "        </InputField>", 1);
+        let (kind, text) = rejected(&edited);
+        assert_eq!(kind, "retyped-control", "{text}");
+        assert!(text.contains("Надпись1") && text.contains("LabelDecoration -> InputField"), "{text}");
+    }
+
+    #[test]
+    fn another_name_under_the_same_type_is_a_rename() {
+        let edited = mutate("<Button name=\"Кнопка1\" id=\"4\">", "<Button name=\"Кнопка1Новая\" id=\"4\">");
+        let s = stream("DonorForm");
+        let plan = plan_form_patch(&s, baseline("DonorForm").as_bytes(), edited.as_bytes()).unwrap();
+        assert!(plan.replacements.is_empty());
+        assert!(plan.diff.additions.is_empty() && plan.diff.deletions.is_empty());
+        let (pf, got) = structural_round_trip("DonorForm", &edited);
+        assert!(pf.allocated.is_empty());
+        assert_eq!(got.control(4).map(|c| c.name.as_str()), Some("Кнопка1Новая"));
+    }
+
+    #[test]
+    fn two_edited_controls_with_one_id_are_still_refused() {
+        let twin = SREDA.replace("НадписьСреда", "Двойник");
+        let edited = replace_once(&replaced(), "        <Table name=\"ТабличноеПоле1\"", &format!("        {twin}        <Table name=\"ТабличноеПоле1\""));
+        let (_, text) = rejected(&edited);
+        assert!(text.contains("duplicate control id 4"), "{text}");
+    }
+}

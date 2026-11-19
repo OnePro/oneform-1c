@@ -11,6 +11,7 @@
 - `pack`: добавленное поле ввода без `<DataPath>` и без `<ValueType>` получает тип «Строка» неограниченной длины (раньше — `ValueList` донора), кнопки выпадающего списка и счётчика у него выключены, пока их не задаст `Form.xml`.
 - `pack`: добавленная таблица, привязанная к реквизиту `ValueTable`, без `<Columns>` (или с `<Columns/>`) получает пустой список колонок вместо двух колонок донора; у существующей такой таблицы можно убрать все колонки (раньше отказ `unsupported-table`), убрать часть колонок по-прежнему нельзя.
 - `pack` добавляет элементы видов `Chart`, `HTMLDocumentField`, `TextDocumentField`, `SpreadsheetDocumentField`, `GeographicalSchemaField`, `GraphicalSchemaField`, `PDFDocumentField` без `<Caption>`: раньше отказ `METADATA_LAYOUT_UNSUPPORTED: prototype: properties block missing`; `<Caption>` у этих видов по-прежнему отказ.
+- `pack`: элемент, который взял `id` существующего, но сменил и `name`, и вид (например `LabelDecoration` → `Panel`), считается удалением старого элемента и добавлением нового (новый `id` выдаётся из счётчика формы); на каждую такую замену `pack` и `pack --dry-run` печатают `warning control id N 'Старое' (Вид1) is replaced by 'Новое' (Вид2): ...`. Раньше отказ `retyped-control`; смена вида при том же `name` по-прежнему отказ.
 
 ## [0.4.0] - 2026-11-12
 

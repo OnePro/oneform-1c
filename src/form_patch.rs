@@ -5499,6 +5499,87 @@ pub struct FormPatchPlan<'a> {
     pub diff: FormDiff,
     /// The edited `Form.xml` as the plan builds it: the defaults of an added field bound to the object are applied.
     pub edited: FormXml,
+    /// Controls of the baseline that the edited form replaces under a reused `id` (see [`reused_id_replacements`]).
+    pub replacements: Vec<ControlReplacement>,
+}
+
+/// A baseline control whose `id` the edited form gives to a control of another name and type: pack removes the old
+/// control and adds the new one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ControlReplacement {
+    pub xml_id: i64,
+    pub old_name: String,
+    pub old_type: String,
+    pub new_name: String,
+    pub new_type: String,
+}
+
+impl ControlReplacement {
+    /// The warning that names both controls.
+    pub fn warning(&self) -> String {
+        format!(
+            "control id {} '{}' ({}) is replaced by '{}' ({}): the old control, its events and data links are removed",
+            self.xml_id, self.old_name, self.old_type, self.new_name, self.new_type
+        )
+    }
+}
+
+/// Edited controls that reuse the `id` of a baseline control but have both another name and another type (or guid):
+/// each gets a fresh local id above every id of both forms, in the control itself, its children, the shell and parent
+/// stubs and the anchors, so the pipeline sees a removal of the old control and an addition of a new one. An id that
+/// two edited controls share is left for the duplicate check; a changed type under the same name stays a refusal.
+fn reused_id_replacements(baseline: &FormXml, edited: &mut FormXml) -> Vec<ControlReplacement> {
+    let mut next = baseline.controls.iter().chain(&edited.controls).map(|c| c.id).max().unwrap_or(0);
+    let mut replacements = Vec::new();
+    let mut map: Vec<(i64, i64)> = Vec::new();
+    for c in &edited.controls {
+        let Some(b) = baseline.control(c.id) else { continue };
+        let retyped = c.type_name != b.type_name || (b.type_name == UNKNOWN_CONTROL && c.guid != b.guid);
+        if c.name == b.name || !retyped || edited.controls.iter().filter(|o| o.id == c.id).count() != 1 {
+            continue;
+        }
+        next += 1;
+        map.push((c.id, next));
+        replacements.push(ControlReplacement {
+            xml_id: c.id,
+            old_name: b.name.clone(),
+            old_type: b.type_name.clone(),
+            new_name: c.name.clone(),
+            new_type: c.type_name.clone(),
+        });
+    }
+    if map.is_empty() {
+        return replacements;
+    }
+    let lookup = |id: i64| map.iter().find(|(from, _)| *from == id).map(|(_, to)| *to).unwrap_or(id);
+    for c in &mut edited.controls {
+        c.id = lookup(c.id);
+        c.rest.attrs.insert("id".into(), c.id.to_string());
+        c.parent = c.parent.map(lookup);
+        if let Some(a) = &mut c.values.anchors {
+            let edges = [&mut a.top, &mut a.bottom, &mut a.left, &mut a.right];
+            for e in edges.into_iter().chain(a.alt.iter_mut()).flatten() {
+                e.target = lookup(e.target);
+            }
+        }
+    }
+    fn stubs(el: &mut XmlElement, lookup: &dyn Fn(i64) -> i64) {
+        if el.tag == CONTROL_STUB {
+            if let Some(v) = el.attrs.get_mut("id") {
+                if let Ok(id) = v.parse::<i64>() {
+                    *v = lookup(id).to_string();
+                }
+            }
+        }
+        for c in &mut el.children {
+            stubs(c, lookup);
+        }
+    }
+    stubs(&mut edited.shell, &lookup);
+    for c in &mut edited.controls {
+        stubs(&mut c.rest, &lookup);
+    }
+    replacements
 }
 
 impl<'a> FormPatchPlan<'a> {
@@ -5525,13 +5606,14 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     let mut edited = parse_form_xml(edited_xml, "edited")?;
     let index = ControlIndex::build(source)?;
     index.validate(&baseline)?;
+    let replacements = reused_id_replacements(&baseline, &mut edited);
     index.validate_mode(&edited, true)?;
     binding_defaults::apply(&mut edited, &baseline);
     apply_value_table_defaults(&mut edited, &baseline);
     let diff = diff_forms_mode(&baseline, &edited, true)?;
     check_stream_version_additions(source, &diff, &edited)?;
     check_object_bindings(&diff, &baseline, &edited)?;
-    Ok(FormPatchPlan { source, index, diff, edited })
+    Ok(FormPatchPlan { source, index, diff, edited, replacements })
 }
 
 /// Control kinds that were added to a form of the stream version in a live platform and showed the expected properties
