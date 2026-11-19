@@ -46,6 +46,7 @@ pub use anchors::{anchor_graph_stale_entries, anchor_graph_violations};
 mod ext_read;
 pub use ext_read::enrich_ext_properties;
 mod binding_defaults;
+mod bottom_bar;
 pub use binding_defaults::unresolved_type_warnings;
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
@@ -2461,6 +2462,11 @@ pub struct ControlXml {
     /// Whether the element has a `<ValueType>` tag (an absent one is `None` in `values`, but an added field bound to
     /// the object takes the type of its attribute).
     pub explicit_value_type: bool,
+    /// Whether the element has a `<HorizontalAlign>`, `<AutoFill>` / `<Anchors>` tag (an added bottom command bar
+    /// takes the Designer default for an absent one).
+    pub explicit_bar: [bool; 3],
+    /// An added command bar that is the bottom bar of the form: written with the border `ЧертаСверху`.
+    pub bottom_bar: bool,
     /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
     pub column_sources: Vec<ColumnSource>,
     /// The control element without nested controls (replaced by [`CONTROL_STUB`]) and without the
@@ -2988,6 +2994,8 @@ impl Parser<'_> {
                     data_steps: None,
                     explicit_buttons: ["ChoiceButton", "OpenButton"].map(|t| c.children.iter().any(|x| x.tag == t)),
                     explicit_value_type: c.children.iter().any(|x| x.tag == "ValueType"),
+                    explicit_bar: ["HorizontalAlign", "AutoFill", "Anchors"].map(|t| c.children.iter().any(|x| x.tag == t)),
+                    bottom_bar: false,
                     column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),
                 });
@@ -5501,6 +5509,8 @@ pub struct FormPatchPlan<'a> {
     pub edited: FormXml,
     /// Controls of the baseline that the edited form replaces under a reused `id` (see [`reused_id_replacements`]).
     pub replacements: Vec<ControlReplacement>,
+    /// Notes and warnings about the added bottom command bars (output lines with `{path}` for the `Form.xml` path).
+    pub bottom_bar_lines: Vec<String>,
 }
 
 /// A baseline control whose `id` the edited form gives to a control of another name and type: pack removes the old
@@ -5610,10 +5620,11 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     index.validate_mode(&edited, true)?;
     binding_defaults::apply(&mut edited, &baseline);
     apply_value_table_defaults(&mut edited, &baseline);
+    let bottom_bar_lines = bottom_bar::apply(&mut edited, &baseline);
     let diff = diff_forms_mode(&baseline, &edited, true)?;
     check_stream_version_additions(source, &diff, &edited)?;
     check_object_bindings(&diff, &baseline, &edited)?;
-    Ok(FormPatchPlan { source, index, diff, edited, replacements })
+    Ok(FormPatchPlan { source, index, diff, edited, replacements, bottom_bar_lines })
 }
 
 /// Control kinds that were added to a form of the stream version in a live platform and showed the expected properties
@@ -11238,6 +11249,9 @@ impl FormPatchPlan<'_> {
             set_clone_geometry(&mut clone, &c.values, page)?;
             set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
             set_clone_props(&mut clone, &c.type_name, &c.values)?;
+            if c.bottom_bar {
+                bottom_bar::write_border(clone_info_mut(&mut clone)?)?;
+            }
             if let Some(tb) = table_binding(c).map_err(|why| layout_err(why.join("; ")))? {
                 crate::ts_table::bind_info(clone_info_mut(&mut clone)?, &tb.type_id, &tb.columns).map_err(layout_err)?;
             } else if let Some(vb) = vt_binding(c, &self.edited.attributes).map_err(|why| layout_err(why.join("; ")))? {
