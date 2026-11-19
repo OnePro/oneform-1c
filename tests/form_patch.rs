@@ -6790,3 +6790,76 @@ fn report_form_adds_a_control_where_a_removed_one_stood() {
     assert_eq!(names.last().map(String::as_str), Some("НадписьАгента"));
     assert!(!names.iter().any(|n| n == "Кнопка1"));
 }
+
+// ---------------------------------------------------------------- types without a properties block
+
+fn captionless_control(tag: &str, name: &str, id: i64, caption: bool) -> String {
+    let cap = if caption { "<Caption><Item language=\"ru\">Заголовок</Item></Caption>" } else { "" };
+    format!(
+        "<{tag} name=\"{name}\" id=\"{id}\">{cap}<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height><ZOrder>50</ZOrder><TabOrder>50</TabOrder></{tag}>\n    "
+    )
+}
+
+#[test]
+fn every_donor_type_can_be_added_without_a_caption() {
+    let mut failed = Vec::new();
+    let mut tried = 0;
+    for (i, (_, tag)) in oneform::oof::CONTROL_GUIDS.iter().enumerate() {
+        // Panel needs <Page> children (covered by panel_pages); ActiveXControl has no prototype.
+        if *tag == "Panel" || oneform::donor::prototype(tag).is_err() {
+            continue;
+        }
+        tried += 1;
+        let id = 900 + i as i64;
+        let xml = insert_before_control(
+            &baseline("DonorForm"),
+            "Table",
+            "ТабличноеПоле1",
+            &captionless_control(tag, "Новый", id, false),
+        );
+        let s = stream("DonorForm");
+        let res = patch_form(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).and_then(|pf| {
+            let decoded = decode_xml("DonorForm", &pf.bytes);
+            let got = parse_form_xml(decoded.as_bytes(), "decoded").unwrap();
+            let c = got.control(pf.allocated[0].1).ok_or_else(|| layout_like("control missing"))?;
+            if c.type_name != *tag || (c.values.left, c.values.top, c.values.width, c.values.height) != (500, 500, 80, 20) {
+                return Err(layout_like("type or geometry differs"));
+            }
+            Ok(())
+        });
+        if let Err(e) = res {
+            failed.push(format!("{tag}: {e}"));
+        }
+    }
+    assert!(tried >= 25, "tried {tried}");
+    assert!(failed.is_empty(), "types that failed to pack: {failed:#?}");
+}
+
+fn layout_like(m: &str) -> ExtractionError {
+    ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, m)
+}
+
+#[test]
+fn a_caption_on_a_type_without_a_caption_slot_is_refused() {
+    let xml = insert_before_control(
+        &baseline("DonorForm"),
+        "Table",
+        "ТабличноеПоле1",
+        &captionless_control("HTMLDocumentField", "Новый", 999, true),
+    );
+    let s = stream("DonorForm");
+    let err = patch_form(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).unwrap_err();
+    assert!(err.to_string().contains("HTMLDocumentField"), "{err}");
+}
+
+#[test]
+fn an_html_document_field_inserted_before_a_control_packs() {
+    let xml = insert_before_control(
+        &baseline("DonorForm"),
+        "Table",
+        "ТабличноеПоле1",
+        &captionless_control("HTMLDocumentField", "Новый", 999, false),
+    );
+    let (pf, got) = structural_round_trip("DonorForm", &xml);
+    assert_eq!(got.control(pf.allocated[0].1).unwrap().type_name, "HTMLDocumentField");
+}

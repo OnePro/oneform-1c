@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Экспериментальное
+
+- `pack` добавляет элементы видов `Chart`, `HTMLDocumentField`, `TextDocumentField`, `SpreadsheetDocumentField`, `GeographicalSchemaField`, `GraphicalSchemaField`, `PDFDocumentField` без `<Caption>`: раньше отказ `METADATA_LAYOUT_UNSUPPORTED: prototype: properties block missing`; `<Caption>` у этих видов по-прежнему отказ.
+
 ## [0.4.0] - 2026-11-12
 
 ### Добавлено

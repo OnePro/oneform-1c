@@ -6245,7 +6245,12 @@ fn set_clone_caption(n: &mut Node, type_name: &str, caption: &[(String, String)]
     // Fallback types (Button, ...): the first localized node among the properties block.
     let Item::Node(info) = &mut n.children[info_index] else { unreachable!() };
     let Some(Item::Node(props)) = info.children.get_mut(1) else {
-        return Err(layout_err("prototype: properties block missing"));
+        // Donor records of Chart, HTMLDocumentField, ... have no properties block: no caption slot.
+        return if caption.is_empty() {
+            Ok(())
+        } else {
+            Err(layout_err(format!("prototype '{type_name}': no caption slot to write")))
+        };
     };
     let at = props.children.iter().position(|c| localized(c).is_some_and(|l| !l.is_empty()));
     match (at, caption.is_empty()) {
