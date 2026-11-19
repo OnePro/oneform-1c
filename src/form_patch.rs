@@ -2465,6 +2465,9 @@ pub struct ControlXml {
     /// Whether the element has a `<HorizontalAlign>`, `<AutoFill>` / `<Anchors>` tag (an added bottom command bar
     /// takes the Designer default for an absent one).
     pub explicit_bar: [bool; 3],
+    /// For a `CommandBar`: whether each root `<Button>` of its `<Buttons>` has a `representation` attribute (a button of
+    /// an added bottom bar without one shows its text, as in the Designer).
+    pub explicit_representation: Vec<bool>,
     /// An added command bar that is the bottom bar of the form: written with the border `ЧертаСверху`.
     pub bottom_bar: bool,
     /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
@@ -2995,6 +2998,14 @@ impl Parser<'_> {
                     explicit_buttons: ["ChoiceButton", "OpenButton"].map(|t| c.children.iter().any(|x| x.tag == t)),
                     explicit_value_type: c.children.iter().any(|x| x.tag == "ValueType"),
                     explicit_bar: ["HorizontalAlign", "AutoFill", "Anchors"].map(|t| c.children.iter().any(|x| x.tag == t)),
+                    explicit_representation: c
+                        .children
+                        .iter()
+                        .filter(|x| x.tag == "Buttons")
+                        .flat_map(|x| &x.children)
+                        .filter(|x| x.tag == "Button")
+                        .map(|x| x.attrs.contains_key("representation"))
+                        .collect(),
                     bottom_bar: false,
                     column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),

@@ -2,7 +2,8 @@
 //!
 //! An added `CommandBar` that sits at the bottom of the form (or of a page of the form itself) gets the border
 //! `ЧертаСверху` (code 7; the donor record carries 4, the top bar) and, for what its XML omits, `HorizontalAlign`
-//! `Right`, `AutoFill` `false` and the anchors to the bottom and both sides. Explicit values are kept; a placement that
+//! `Right`, `AutoFill` `false`, the anchors to the bottom and both sides, `Secondary` `false` and the `Text`
+//! representation of its root action buttons. Explicit values are kept; a placement that
 //! differs from the Designer's is reported.
 
 use super::{bare, nav_mut, AnchorEdge, AnchorsSpec, ControlXml, FormXml, Result, XmlElement};
@@ -33,6 +34,22 @@ fn page_size(shell: &XmlElement, name: &str) -> (Option<i64>, Option<i64>) {
         .find(|e| e.tag == "Page" && e.attrs.get("name").map(String::as_str) == Some(name));
     let num = |tag: &str| page.and_then(|p| p.children.iter().find(|e| e.tag == tag)).and_then(|e| e.text.trim().parse().ok());
     (num("Width"), num("Height"))
+}
+
+/// Root action buttons of the bar without a `representation` attribute get `Text`, as in a new Designer form (an
+/// `Auto` standard command shows its picture instead of its caption). Returns whether any button was changed.
+fn text_buttons(c: &mut ControlXml) -> bool {
+    if c.explicit_representation.len() != c.values.buttons.len() {
+        return false;
+    }
+    let mut changed = false;
+    for (b, explicit) in c.values.buttons.iter_mut().zip(c.explicit_representation.iter()) {
+        if b.kind == "Action" && !*explicit && b.representation != "Text" {
+            b.representation = "Text".to_string();
+            changed = true;
+        }
+    }
+    changed
 }
 
 /// `(width, height)` of the form, or of the page of the form that holds the control; `None` for a control of a `Panel`
@@ -104,6 +121,15 @@ pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) -> Vec<String> {
         if !c.explicit_bar[2] {
             c.values.anchors = Some(wanted.clone());
             set.push(format!("anchors {}", anchors_xml(&wanted)));
+        }
+        // A secondary bar does not hold the default button of the form (live check); the Designer bottom bar is not
+        // secondary in 781 of 782 forms of the UT corpus, the donor (a top bar) is.
+        if c.values.secondary.is_none() {
+            c.values.secondary = Some(false);
+            set.push("Secondary false".to_string());
+        }
+        if text_buttons(c) {
+            set.push("buttons representation Text".to_string());
         }
         set.push("border ЧертаСверху".to_string());
         lines.push(format!("  note {{path}}: bottom command bar '{}' gets the Designer defaults: {}", c.name, set.join(", ")));

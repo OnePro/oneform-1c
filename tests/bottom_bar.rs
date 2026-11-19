@@ -151,3 +151,23 @@ fn a_bar_placed_like_scany_is_reported_and_kept() {
     assert!(bar.contains("<Left>116</Left>") && bar.contains("<Width>480</Width>"), "{bar}");
     assert!(parse_form_xml(xml.as_bytes(), "decoded").is_ok());
 }
+
+#[test]
+fn a_bottom_bar_is_not_secondary_and_its_buttons_show_their_text() {
+    let (lp, xml) = pack(&with_bar(&geometry(0, 648, 935, 25), ""));
+    let bar = bar_xml(&xml);
+    assert!(bar.contains("<Secondary>false</Secondary>"), "{bar}");
+    assert!(bar.contains("representation=\"Text\""), "{bar}");
+    let notes = lines(&lp, "note");
+    assert!(notes[0].contains("Secondary false") && notes[0].contains("buttons representation Text"), "{notes:?}");
+
+    // explicit values win
+    let edited = with_bar(&geometry(0, 648, 935, 25), "\n          <Secondary>true</Secondary>")
+        .replace("<Button name=\"Закрыть\" kind=\"Action\" action=\"Standard:142\"/>", "<Button name=\"Закрыть\" kind=\"Action\" representation=\"Picture\" action=\"Standard:142\"/>");
+    let (lp, xml) = pack(&edited);
+    let bar = bar_xml(&xml);
+    assert!(!bar.contains("<Secondary>false</Secondary>"), "{bar}");
+    assert!(bar.contains("representation=\"Picture\""), "{bar}");
+    let notes = lines(&lp, "note");
+    assert!(!notes[0].contains("Secondary") && !notes[0].contains("representation"), "{notes:?}");
+}
