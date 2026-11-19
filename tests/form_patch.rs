@@ -3411,6 +3411,71 @@ mod object_binding {
         assert!(plan(&other).verify_staged(&tree(&staged_xml, &lp.patched.bytes)).is_err(), "length 40 built, 10 requested");
     }
 
+    /// An added field without `<DataPath>`; `extra` holds its further tags.
+    fn unbound_field(extra: &str) -> String {
+        with_added_field("НовоеПоле", 999, extra, &baseline("DonorForm"))
+    }
+
+    /// The drop-list and spin slots `info[2][0][6]` and `[9]` of the control `id`.
+    fn list_slots(bytes: &[u8], id: i64) -> (String, String) {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let q = idx.get(id).expect("control").info().unwrap().child(2).unwrap().child(0).unwrap();
+        (q.atom(6).unwrap().0.value.clone(), q.atom(9).unwrap().0.value.clone())
+    }
+
+    /// `(value type, drop-list slot, spin slot, decoded Form.xml)` of the unbound field that the pack of `extra` adds.
+    fn packed_unbound(extra: &str) -> (Option<oneform::form_patch::ValueTypeSpec>, (String, String), String) {
+        let s = stream("DonorForm");
+        let pf = patch_form(&s, baseline("DonorForm").as_bytes(), unbound_field(extra).as_bytes()).unwrap();
+        assert_only_authorized_changes(s.source(), &pf);
+        let id = pf.allocated[0].1;
+        let xml = decode_xml("DonorForm", &pf.bytes);
+        let got = parse_form_xml(xml.as_bytes(), "decoded").unwrap();
+        let v = &got.control(id).unwrap().values;
+        assert_eq!((v.choice_button, v.clear_button, v.open_button), (Some(false), Some(false), Some(false)));
+        (v.value_type.clone(), list_slots(&pf.bytes, id), xml)
+    }
+
+    #[test]
+    fn an_unbound_added_field_is_an_unlimited_string_without_list_buttons() {
+        let (value_type, slots, _) = packed_unbound("");
+        assert_eq!(value_type, vt("String", |_| {}));
+        assert_eq!(slots, ("0".to_string(), "0".to_string()));
+    }
+
+    #[test]
+    fn an_unbound_added_field_keeps_an_explicit_drop_list_button() {
+        let (value_type, slots, _) = packed_unbound("<DropListButton>true</DropListButton>");
+        assert_eq!(value_type, vt("String", |_| {}));
+        assert_eq!(slots, ("1".to_string(), "0".to_string()));
+    }
+
+    #[test]
+    fn an_unbound_added_field_keeps_an_explicit_value_type() {
+        let (value_type, slots, _) = packed_unbound("<ValueType kind=\"Number\" digits=\"5\" fractionDigits=\"0\" composite=\"false\"/>");
+        assert_eq!(value_type.as_ref().map(|v| (v.kind.as_str(), v.digits)), Some(("Number", Some(5))));
+        assert_eq!(slots, ("0".to_string(), "0".to_string()));
+        // the donor prototype is a value list: its drop-list and spin slots are 1 and an explicit `ValueList` keeps them
+        let (value_type, slots, _) = packed_unbound("<ValueType kind=\"ValueList\" composite=\"false\"/>");
+        assert_eq!(value_type.as_ref().map(|v| v.kind.as_str()), Some("ValueList"));
+        assert_eq!(slots, ("1".to_string(), "1".to_string()));
+    }
+
+    #[test]
+    fn the_pack_verification_accepts_an_unbound_added_field() {
+        let s = stream("DonorForm");
+        let base = baseline("DonorForm");
+        let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+        let tree = |xml: &str, bytes: &[u8]| -> oneform::transaction::Tree {
+            [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), bytes.to_vec())].into_iter().collect()
+        };
+        let lp = oneform::pack::plan_layout_patch(&layout, &tree(&unbound_field(""), s.source()), &tree(&base, s.source())).unwrap().expect("a layout edit");
+        let staged_xml = decode_xml("DonorForm", &lp.patched.bytes);
+        assert!(staged_xml.contains("<ValueType kind=\"String\" composite=\"false\"/>"), "{staged_xml}");
+        lp.verify_staged(&tree(&staged_xml, &lp.patched.bytes)).unwrap_or_else(|e| panic!("{e} {:?}", e.params));
+    }
+
     #[test]
     fn standard_attributes_are_written_with_the_code_of_the_object_kind() {
         for (kind, name, code) in [("Catalog", "Код", -2), ("Catalog", "Наименование", -3), ("Document", "Номер", -2), ("Document", "Дата", -3)] {

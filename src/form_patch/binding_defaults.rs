@@ -1,12 +1,14 @@
 //! Selection buttons of an added `InputField` bound to an attribute of the object.
 //!
-//! The donor prototype of an `InputField` has no buttons. The Configurator gives a field bound to a reference
+//! The donor prototype of an `InputField` has no choice, clear or open buttons, but its drop-list and spin slots
+//! (`info[2][0][6]` and `[9]`) are 1 (it is a `ValueList` field). The Configurator gives a field bound to a reference
 //! attribute the choice and open buttons, a date field the choice button (the calendar); a number, string or
 //! boolean field has none (as the donor). A button the XML does not mention takes that default; a mentioned one always wins.
 //!
 //! The same field has its own `<ValueType>` in the Configurator: the type of the bound data (string with its length,
 //! number with digits, date, boolean, reference). The donor prototype carries a `ValueList` there; a `<ValueType>` the
 //! XML does not state is taken from the schema (a single known type; a composite or unknown one stays as the donor has it).
+//! A field without `<DataPath>` and `<ValueType>` is a plain string of unlimited length.
 
 use super::{FormAttribute, FormXml, ValueTypeSpec};
 use crate::brace::{parse_metadata, Item};
@@ -60,8 +62,8 @@ fn form_attribute_type(a: &FormAttribute) -> Option<ValueTypeSpec> {
     })
 }
 
-/// Applies the defaults to the `InputField`s of `edited` that are not in `baseline` and are bound to an attribute of
-/// the object or of the form, for the buttons and the `<ValueType>` their XML does not mention. A path that cannot be
+/// Applies the defaults to the `InputField`s of `edited` that are not in `baseline` (bound to an attribute of
+/// the object or of the form, or unbound), for the buttons and the `<ValueType>` their XML does not mention. A path that cannot be
 /// resolved is left to the planner, which refuses it.
 ///
 /// A field of a known simple type is not a list or a spin field: the donor's drop-down and spin buttons (it carries a
@@ -73,7 +75,13 @@ pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) {
         if c.type_name != "InputField" || baseline.control(c.id).is_some() {
             continue;
         }
-        let Some((attr_id, path)) = c.values.data_path.clone() else { continue };
+        let Some((attr_id, path)) = c.values.data_path.clone() else {
+            if !c.explicit_value_type {
+                c.values.value_type = Some(ValueTypeSpec { kind: "String".to_string(), ..Default::default() });
+            }
+            turn_off_list_buttons(c);
+            continue;
+        };
         let parts: Vec<&str> = path.split('.').collect();
         match (parts.as_slice(), &schema) {
             ([_, name], Some(schema)) => {
@@ -100,10 +108,16 @@ pub(super) fn apply(edited: &mut FormXml, baseline: &FormXml) {
             }
             _ => {}
         }
-        if c.values.value_type.as_ref().is_some_and(|vt| !vt.composite && !vt.kind.is_empty() && vt.kind != "ValueList") {
-            c.values.drop_list_button.get_or_insert(false);
-            c.values.spin_button.get_or_insert(false);
-        }
+        turn_off_list_buttons(c);
+    }
+}
+
+/// A field of a known type other than `ValueList` is not a list or a spin field: the drop-down and spin buttons of
+/// the donor are off unless the XML says otherwise.
+fn turn_off_list_buttons(c: &mut super::ControlXml) {
+    if c.values.value_type.as_ref().is_some_and(|vt| !vt.composite && !vt.kind.is_empty() && vt.kind != "ValueList") {
+        c.values.drop_list_button.get_or_insert(false);
+        c.values.spin_button.get_or_insert(false);
     }
 }
 
