@@ -265,6 +265,7 @@
             <Item language="ru">Провести отмеченные документы по выписке банка</Item>
             <Item language="ro">Înregistra documente marcate in extras bancar</Item>
           </Tooltip>
+          <DefaultButton>true</DefaultButton>
         </Button>
         <Button name="Разделитель6" id="185" kind="Separator" checked="false">
           <Caption>

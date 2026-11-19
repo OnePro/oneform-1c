@@ -354,7 +354,8 @@
               ]
             ],
             "representation": "Text",
-            "hasPicture": false
+            "hasPicture": false,
+            "defaultButton": true
           },
           {
             "name": "Разделитель",

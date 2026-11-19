@@ -100,6 +100,7 @@ pub fn plan_layout_patch(layout: &Value, existing: &Tree, current: &Tree) -> Res
     }
     let mut warnings = handler_warnings(&plan, existing, xml_path);
     warnings.extend(layout_warnings(&plan, existing, xml_path));
+    warnings.extend(plan.bottom_bar_lines.iter().map(|l| l.replace("{path}", xml_path)));
     let (requested, diff) = (plan.edited.clone(), plan.diff.clone());
     let mut patched = plan.apply().map_err(|e| e.with("path", xml_path))?;
     PATCH_HOOK.with(|h| {

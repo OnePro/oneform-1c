@@ -46,6 +46,7 @@ pub use anchors::{anchor_graph_stale_entries, anchor_graph_violations};
 mod ext_read;
 pub use ext_read::enrich_ext_properties;
 mod binding_defaults;
+mod bottom_bar;
 pub use binding_defaults::unresolved_type_warnings;
 
 pub const UNKNOWN_CONTROL: &str = "UnknownControl";
@@ -2461,6 +2462,14 @@ pub struct ControlXml {
     /// Whether the element has a `<ValueType>` tag (an absent one is `None` in `values`, but an added field bound to
     /// the object takes the type of its attribute).
     pub explicit_value_type: bool,
+    /// Whether the element has a `<HorizontalAlign>`, `<AutoFill>` / `<Anchors>` tag (an added bottom command bar
+    /// takes the Designer default for an absent one).
+    pub explicit_bar: [bool; 3],
+    /// For a `CommandBar`: whether each root `<Button>` of its `<Buttons>` has a `representation` attribute (a button of
+    /// an added bottom bar without one shows its text, as in the Designer).
+    pub explicit_representation: Vec<bool>,
+    /// An added command bar that is the bottom bar of the form: written with the border `ЧертаСверху`.
+    pub bottom_bar: bool,
     /// For a `Table`: one entry per `values.columns` (empty when the columns were not understood).
     pub column_sources: Vec<ColumnSource>,
     /// The control element without nested controls (replaced by [`CONTROL_STUB`]) and without the
@@ -2730,7 +2739,7 @@ impl FormXml {
             for page in &mut c.values.pages {
                 page.title_picture = None;
             }
-            c.values.buttons = buttons_without_extras(&c.values.buttons);
+            c.values.buttons = buttons_decoder_view(&c.values.buttons);
             for col in &mut c.values.columns {
                 col.read_only |= location_reads_as_read_only(&col.ext);
                 col.ext = ColumnExt::default();
@@ -2988,6 +2997,16 @@ impl Parser<'_> {
                     data_steps: None,
                     explicit_buttons: ["ChoiceButton", "OpenButton"].map(|t| c.children.iter().any(|x| x.tag == t)),
                     explicit_value_type: c.children.iter().any(|x| x.tag == "ValueType"),
+                    explicit_bar: ["HorizontalAlign", "AutoFill", "Anchors"].map(|t| c.children.iter().any(|x| x.tag == t)),
+                    explicit_representation: c
+                        .children
+                        .iter()
+                        .filter(|x| x.tag == "Buttons")
+                        .flat_map(|x| &x.children)
+                        .filter(|x| x.tag == "Button")
+                        .map(|x| x.attrs.contains_key("representation"))
+                        .collect(),
+                    bottom_bar: false,
                     column_sources: Vec::new(),
                     rest: XmlElement::new(&c.tag, c.line),
                 });
@@ -5501,6 +5520,8 @@ pub struct FormPatchPlan<'a> {
     pub edited: FormXml,
     /// Controls of the baseline that the edited form replaces under a reused `id` (see [`reused_id_replacements`]).
     pub replacements: Vec<ControlReplacement>,
+    /// Notes and warnings about the added bottom command bars (output lines with `{path}` for the `Form.xml` path).
+    pub bottom_bar_lines: Vec<String>,
 }
 
 /// A baseline control whose `id` the edited form gives to a control of another name and type: pack removes the old
@@ -5610,10 +5631,13 @@ pub fn plan_form_patch<'a>(source: &'a SpannedMetadata, baseline_xml: &[u8], edi
     index.validate_mode(&edited, true)?;
     binding_defaults::apply(&mut edited, &baseline);
     apply_value_table_defaults(&mut edited, &baseline);
+    let bottom_bar_lines = bottom_bar::apply(&mut edited, &baseline);
     let diff = diff_forms_mode(&baseline, &edited, true)?;
     check_stream_version_additions(source, &diff, &edited)?;
     check_object_bindings(&diff, &baseline, &edited)?;
-    Ok(FormPatchPlan { source, index, diff, edited, replacements })
+    let plan = FormPatchPlan { source, index, diff, edited, replacements, bottom_bar_lines };
+    plan.default_header()?;
+    Ok(plan)
 }
 
 /// Control kinds that were added to a form of the stream version in a live platform and showed the expected properties
@@ -9166,6 +9190,70 @@ fn buttons_without_extras(btns: &[CommandBarButton]) -> Vec<CommandBarButton> {
         .collect()
 }
 
+/// The buttons as `extract` shows them: only the flag of the default button stays (`true`), the write-only
+/// `Picture` / `Shortcut` / `Description` / `ButtonOrder` go.
+fn buttons_decoder_view(btns: &[CommandBarButton]) -> Vec<CommandBarButton> {
+    btns.iter()
+        .cloned()
+        .map(|b| CommandBarButton {
+            picture: None,
+            shortcut: None,
+            description: Vec::new(),
+            default_button: b.default_button.filter(|d| *d),
+            button_order: None,
+            buttons: buttons_decoder_view(&b.buttons),
+            ..b
+        })
+        .collect()
+}
+
+/// The buttons that hold `DefaultButton=true`, at any depth.
+fn flagged_buttons(list: &[CommandBarButton]) -> Vec<&CommandBarButton> {
+    let mut out = Vec::new();
+    for b in list {
+        if b.default_button == Some(true) {
+            out.push(b);
+        }
+        out.extend(flagged_buttons(&b.buttons));
+    }
+    out
+}
+
+/// The id of the default button of the bar that `site` edits, as the patched stream will hold it (a new button has the
+/// id that `cb_edit::resolve` allocates). `None`: no button of the request holds the flag.
+fn bar_default_target(site: &Site) -> Result<Option<i64>> {
+    let resolved = cb_edit::resolved_for(site)?;
+    let list = resolved.as_deref().unwrap_or(&site.edit.new.buttons);
+    Ok(flagged_buttons(list).first().and_then(|b| b.id))
+}
+
+/// `x[11]` of a command bar: the id of its default button, 0 = none.
+fn bar_default_slot(site: &Site, prop: Property) -> Result<(i64, Span)> {
+    let x = info_node_at(site, &[1], prop)?;
+    int_slot(site, x, 11, "the default button of the command bar", prop.xml_name())
+}
+
+/// The value `x[11]` of the edited bar has to get, `None` when the edit leaves it. The bar holds the default button of
+/// the form when the form header names it, so a bar that loses its flag is cleared only then.
+fn bar_default_value(site: &Site) -> Result<Option<i64>> {
+    let e = site.edit;
+    let names = |l: &[CommandBarButton]| flagged_buttons(l).iter().map(|b| b.name.clone()).collect::<Vec<_>>();
+    if names(&e.old.buttons) == names(&e.new.buttons) {
+        return Ok(None);
+    }
+    Ok(match bar_default_target(site)? {
+        Some(id) => Some(id),
+        None => (read_default_button_id(site.source) == Some(e.id)).then_some(0),
+    })
+}
+
+/// The replacement of `x[11]` of an existing command bar whose default button changes.
+fn bar_default_piece(site: &Site, prop: Property) -> Result<Option<Piece>> {
+    let Some(want) = bar_default_value(site)? else { return Ok(None) };
+    let (cur, span) = bar_default_slot(site, prop)?;
+    Ok((cur != want).then(|| piece(span, want, &[prop])))
+}
+
 /// `(action table, action count, root button group)` of a command bar.
 fn cb_table<'a>(site: &Site<'_, 'a>, prop: Property) -> Result<(NodeRef<'a>, usize, NodeRef<'a>)> {
     let x = info_node_at(site, &[1], prop)?;
@@ -9227,14 +9315,14 @@ fn cb_action_meta<'a>(t: NodeRef<'a>, action_count: usize, guid: &str) -> Option
         .and_then(|b| b.child(2))
 }
 
-/// Every root button that sets a `Picture` / `Shortcut` / `Description` / `DefaultButton` / `ButtonOrder` holds it in the patched stream.
+/// Every root button that sets a `Picture` / `Shortcut` / `Description` / `ButtonOrder` holds it in the patched stream
+/// (`DefaultButton` is not a slot of the button: see [`bar_default_target`]).
 fn cb_extras_match(site: &Site, new_btns: &[CommandBarButton]) -> Result<bool> {
     fn plain(btns: &[CommandBarButton]) -> bool {
         btns.iter().all(|b| {
             b.picture.is_none()
                 && b.shortcut.is_none()
                 && b.description.is_empty()
-                && b.default_button.is_none()
                 && b.button_order.is_none()
                 && plain(&b.buttons)
         })
@@ -9256,11 +9344,6 @@ fn cb_group_extras_match(
 ) -> Result<bool> {
     for (i, nb) in new_btns.iter().enumerate() {
         let Some(bnode) = group.child(6 + 2 * i) else { return Ok(false) };
-        if let Some(want) = nb.default_button {
-            if int_slot(site, bnode, 13, "Buttons", "DefaultButton")?.0 != i64::from(want) {
-                return Ok(false);
-            }
-        }
         if let Some(want) = nb.button_order {
             if int_slot(site, bnode, 14, "Buttons", "ButtonOrder")?.0 != want {
                 return Ok(false);
@@ -9383,12 +9466,6 @@ fn patch_cb_button(
             .atom(12)
             .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button checked missing".into()))?;
         out.push(piece(span, i32::from(nb.checked), &[prop]));
-    }
-    if let Some(def) = nb.default_button.filter(|_| ob.default_button != nb.default_button) {
-        let (_, span) = bnode
-            .atom(13)
-            .ok_or_else(|| site.layout("unexpected-shape", "Buttons", "button DefaultButton slot missing".into()))?;
-        out.push(piece(span, i32::from(def), &[prop]));
     }
     if let Some(ord) = nb.button_order.filter(|_| ob.button_order != nb.button_order) {
         let (_, span) = bnode
@@ -10276,6 +10353,7 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
             }
             Property::Buttons => {
                 out.extend(patch_cb_buttons(site, &old.buttons, &new.buttons, prop)?);
+                out.extend(bar_default_piece(site, prop)?);
             }
             Property::ContextMenu | Property::ActionSource => {
                 let name = prop.xml_name();
@@ -10653,7 +10731,12 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
                     cb_edit::verify(site, original, list)?;
                 }
                 let want = resolved.as_deref().unwrap_or(&new.buttons);
-                read_cb_buttons(site.entry.info().unwrap().node) == buttons_without_extras(want) && cb_extras_match(site, want)?
+                read_cb_buttons(site.entry.info().unwrap().node) == buttons_without_extras(want)
+                    && cb_extras_match(site, want)?
+                    && match bar_default_value(original)? {
+                        Some(v) => bar_default_slot(site, p)?.0 == v,
+                        None => true,
+                    }
             }
             Property::BorderStyle => Some(info_int_slot(site, &[1, 3], 3, p)?.0) == new.border_style,
             _ => true,
@@ -10705,6 +10788,93 @@ fn read_back(site: &Site, original: &Site) -> Result<Vec<DerivedPage>> {
 }
 
 type ZMember<'e, 'a> = (&'e ControlEntry<'a>, i64, i64);
+
+/// What the pack writes into the default control slot of the form header (`root[1][1][2]`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HeaderDefault {
+    /// No default button: the control that held it is gone or lost the flag.
+    Zero,
+    /// The control (`Button` or `CommandBar`) with this id of the edited `Form.xml`; an added one is mapped to its stream id.
+    Control(i64),
+}
+
+impl FormPatchPlan<'_> {
+    /// The change of the default button of the form that the request makes (`None`: it leaves the header alone), after
+    /// the checks of the request: at most one control may hold `DefaultButton=true` when the request changes it, and
+    /// only an action button of a command bar can be the default button.
+    fn default_header(&self) -> Result<Option<HeaderDefault>> {
+        let refuse = |kind: &'static str, message: String| ExtractionError::new(FORM_EDIT_REJECTED, message).with("kind", kind);
+        let flags = |l: &[CommandBarButton]| flagged_buttons(l).iter().map(|b| b.name.clone()).collect::<Vec<_>>();
+        // the controls that become the default one and the bars that lose the default button
+        let (mut named, mut lost_bars, mut touched) = (Vec::<i64>::new(), Vec::<i64>::new(), false);
+        let mut bars: Vec<(&str, &[CommandBarButton])> = Vec::new();
+        for e in &self.diff.edits {
+            if e.type_name == "Button" && e.changed.contains(&Property::DefaultButton) {
+                touched = true;
+                if e.new.default_button == Some(true) {
+                    named.push(e.id);
+                }
+            } else if e.type_name == "CommandBar" && e.changed.contains(&Property::Buttons) && flags(&e.old.buttons) != flags(&e.new.buttons) {
+                touched = true;
+                bars.push((&e.name, &e.new.buttons));
+                if flags(&e.new.buttons).is_empty() {
+                    lost_bars.push(e.id);
+                } else {
+                    named.push(e.id);
+                }
+            }
+        }
+        for c in &self.diff.additions {
+            let holds = match c.type_name.as_str() {
+                "Button" => c.values.default_button == Some(true),
+                "CommandBar" => {
+                    bars.push((&c.name, &c.values.buttons));
+                    !flagged_buttons(&c.values.buttons).is_empty()
+                }
+                _ => false,
+            };
+            if holds {
+                touched = true;
+                named.push(c.id);
+            }
+        }
+        for (bar, buttons) in bars {
+            if let Some(b) = flagged_buttons(buttons).into_iter().find(|b| b.kind != "Action") {
+                return Err(refuse(
+                    "unsupported-button",
+                    format!(
+                        "CommandBar '{bar}', line {}: button '{}' is a {}: only an action button can be the default button; set DefaultButton on an action button",
+                        b.line.0,
+                        b.name,
+                        b.kind.to_lowercase()
+                    ),
+                ));
+            }
+        }
+        let mut holders: Vec<String> = Vec::new();
+        for c in &self.edited.controls {
+            match c.type_name.as_str() {
+                "Button" if c.values.default_button == Some(true) => holders.push(format!("Button '{}'", c.name)),
+                "CommandBar" => holders.extend(flagged_buttons(&c.values.buttons).iter().map(|b| format!("button '{}' of CommandBar '{}'", b.name, c.name))),
+                _ => {}
+            }
+        }
+        if (touched || !lost_bars.is_empty()) && holders.len() > 1 {
+            return Err(refuse(
+                "duplicate-default-button",
+                format!("only one control can be the default button of the form, the request holds DefaultButton=true on: {}", holders.join(", ")),
+            ));
+        }
+        let current = read_default_button_id(self.source);
+        Ok(match named.first() {
+            Some(&id) => Some(HeaderDefault::Control(id)),
+            None => {
+                let gone = current.is_some_and(|h| h != 0 && (lost_bars.contains(&h) || self.diff.deletions.iter().any(|d| d.id == h)));
+                gone.then_some(HeaderDefault::Zero)
+            }
+        })
+    }
+}
 
 /// The default button id held by the form header (`root[1][1][2]`).
 fn read_default_button_id(source: &SpannedMetadata) -> Option<i64> {
@@ -10760,13 +10930,7 @@ impl FormPatchPlan<'_> {
     fn structural_pieces(&self, out: &mut Vec<AppliedReplacement>) -> Result<Vec<(i64, i64)>> {
         let mut allocated: Vec<(i64, i64)> = Vec::new();
         let has_dp_edits = self.diff.edits.iter().any(|e| e.changed.contains(&Property::DataPath));
-        let default_buttons: Vec<i64> = self
-            .diff
-            .edits
-            .iter()
-            .filter(|e| e.changed.contains(&Property::DefaultButton) && e.new.default_button == Some(true))
-            .map(|e| e.id)
-            .collect();
+        let default_header = self.default_header()?;
         if self.diff.additions.is_empty()
             && self.diff.deletions.is_empty()
             && !self.diff.form_caption_changed
@@ -10775,7 +10939,7 @@ impl FormPatchPlan<'_> {
             && !self.diff.attributes_changed
             && !self.diff.form_props_changed
             && !has_dp_edits
-            && default_buttons.is_empty()
+            && default_header.is_none()
             && !self.diff.edits.iter().any(restructures_pages)
         {
             return Ok(allocated);
@@ -10848,24 +11012,6 @@ impl FormPatchPlan<'_> {
                     }
                 }
             }
-        }
-
-        // ---- default button (root[1][1][2])
-        if let Some(&id) = default_buttons.first() {
-            if default_buttons.len() > 1 {
-                return Err(layout_err("form stream: only one button can be the default button"));
-            }
-            let (_, span) = self
-                .index
-                .at_path(&[1, 1])?
-                .atom(2)
-                .ok_or_else(|| layout_err("form stream: default button slot missing at root[1][1][2]"))?;
-            out.push(AppliedReplacement {
-                control_id: id,
-                properties: vec![Property::DefaultButton],
-                range: span,
-                bytes: id.to_string().into_bytes(),
-            });
         }
 
         // ---- form root properties
@@ -11238,6 +11384,9 @@ impl FormPatchPlan<'_> {
             set_clone_geometry(&mut clone, &c.values, page)?;
             set_clone_caption(&mut clone, &c.type_name, &c.values.caption)?;
             set_clone_props(&mut clone, &c.type_name, &c.values)?;
+            if c.bottom_bar {
+                bottom_bar::write_border(clone_info_mut(&mut clone)?)?;
+            }
             if let Some(tb) = table_binding(c).map_err(|why| layout_err(why.join("; ")))? {
                 crate::ts_table::bind_info(clone_info_mut(&mut clone)?, &tb.type_id, &tb.columns).map_err(layout_err)?;
             } else if let Some(vb) = vt_binding(c, &self.edited.attributes).map_err(|why| layout_err(why.join("; ")))? {
@@ -11447,6 +11596,28 @@ impl FormPatchPlan<'_> {
             };
             out.push(AppliedReplacement { control_id: 0, properties: Vec::new(), range: span, bytes: max_id.to_string().into_bytes() });
         }
+
+        // ---- default button of the form (root[1][1][2])
+        if let Some(to) = default_header {
+            let (value, control_id) = match to {
+                HeaderDefault::Zero => (0, 0),
+                HeaderDefault::Control(id) => (allocated.iter().find(|(x, _)| *x == id).map_or(id, |a| a.1), id),
+            };
+            let (current, span) = self
+                .index
+                .at_path(&[1, 1])?
+                .atom(2)
+                .and_then(|(a, s)| Some((strict_int(&a.value)?, s)))
+                .ok_or_else(|| layout_err("form stream: default control slot missing at root[1][1][2]"))?;
+            if current != value {
+                out.push(AppliedReplacement {
+                    control_id,
+                    properties: vec![Property::DefaultButton],
+                    range: span,
+                    bytes: value.to_string().into_bytes(),
+                });
+            }
+        }
         Ok(allocated)
     }
 
@@ -11479,22 +11650,35 @@ impl FormPatchPlan<'_> {
                 form_class: crate::cb_standard::form_class(&self.edited.main_attribute),
             };
             let site = Site { source: &spanned, edit: &edit, entry };
-            let (piece, resolved) = cb_edit::patch_added(&site)?;
-            let mut delta = 0i64;
-            let mut spliced = false;
-            for r in replacements.iter_mut() {
-                let start = (r.range.start as i64 + delta) as usize;
-                let end = start + r.bytes.len();
-                delta += r.bytes.len() as i64 - (r.range.end - r.range.start) as i64;
-                if start <= piece.range.start && piece.range.end <= end {
-                    let (lo, hi) = (piece.range.start - start, piece.range.end - start);
-                    r.bytes.splice(lo..hi, piece.bytes.iter().copied());
-                    spliced = true;
-                    break;
+            let (table, resolved) = cb_edit::patch_added(&site)?;
+            let mut pieces = vec![table];
+            // The default button of the bar: its id is known once the table is resolved.
+            let default = flagged_buttons(&resolved).first().and_then(|b| b.id);
+            if let Some(id) = default {
+                let (cur, span) = bar_default_slot(&site, Property::Buttons)?;
+                if cur != id {
+                    pieces.push(piece(span, id, &[Property::Buttons]));
                 }
             }
-            if !spliced {
-                return Err(layout_err(format!("added command bar '{}': its button table lies outside the inserted record", c.name)));
+            // the later piece first: the offsets of the earlier ones stay valid
+            pieces.sort_by_key(|p| std::cmp::Reverse(p.range.start));
+            for piece in &pieces {
+                let mut delta = 0i64;
+                let mut spliced = false;
+                for r in replacements.iter_mut() {
+                    let start = (r.range.start as i64 + delta) as usize;
+                    let end = start + r.bytes.len();
+                    delta += r.bytes.len() as i64 - (r.range.end - r.range.start) as i64;
+                    if start <= piece.range.start && piece.range.end <= end {
+                        let (lo, hi) = (piece.range.start - start, piece.range.end - start);
+                        r.bytes.splice(lo..hi, piece.bytes.iter().copied());
+                        spliced = true;
+                        break;
+                    }
+                }
+                if !spliced {
+                    return Err(layout_err(format!("added command bar '{}': its button table lies outside the inserted record", c.name)));
+                }
             }
             let edits: Vec<Replacement> = replacements.iter().map(|r| Replacement { range: r.range, bytes: r.bytes.clone() }).collect();
             bytes = self.source.apply(&edits)?;
@@ -11504,7 +11688,9 @@ impl FormPatchPlan<'_> {
             let patched_site = Site { source: &after, edit: &edit, entry: patched };
             cb_edit::verify(&patched_site, &site, &resolved)?;
             let want = buttons_without_extras(&resolved);
-            let got_ok = patched.info().is_some_and(|i| read_cb_buttons(i.node) == want) && cb_extras_match(&patched_site, &resolved)?;
+            let got_ok = patched.info().is_some_and(|i| read_cb_buttons(i.node) == want)
+                && cb_extras_match(&patched_site, &resolved)?
+                && default.is_none_or(|id| bar_default_slot(&patched_site, Property::Buttons).is_ok_and(|(v, _)| v == id));
             if !got_ok {
                 return Err(patched_site.layout("verification-failed", "Buttons", "the patched stream does not hold the requested buttons".into()));
             }
@@ -11734,6 +11920,17 @@ impl FormPatchPlan<'_> {
         }
         if self.diff.form_props_changed {
             self.verify_form_props(&index)?;
+        }
+        if let Some(to) = self.default_header()? {
+            let want = match to {
+                HeaderDefault::Zero => 0,
+                HeaderDefault::Control(id) => allocated.iter().find(|(x, _)| *x == id).map_or(id, |a| a.1),
+            };
+            if read_default_button_id(&reparsed) != Some(want) {
+                return Err(ExtractionError::new(FORM_EDIT_REJECTED, "the default button of the form header did not read back")
+                    .with("kind", "verification-failed")
+                    .with("property", "DefaultButton"));
+            }
         }
         let mut derived_pages = Vec::new();
         let mut button_lists = added_buttons;

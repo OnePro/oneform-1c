@@ -372,7 +372,7 @@ KNOWN_PROPERTIES_STATUS = {
     ("CommandBarButton", "Description"): {"xml": "Description", "status": "rw", "priority": "P1", "slot": "action[4][2][4]"},
     ("CommandBarButton", "Picture"): {"xml": "Picture", "status": "rw", "priority": "P1", "slot": "action[4][2][5]"},
     ("CommandBarButton", "Shortcut"): {"xml": "Shortcut", "status": "rw", "priority": "P1", "slot": "action[4][2][6]"},
-    ("CommandBarButton", "DefaultButton"): {"xml": "DefaultButton", "status": "rw", "priority": "P1", "slot": "b[13]"},
+    ("CommandBarButton", "DefaultButton"): {"xml": "DefaultButton", "status": "rw", "priority": "P1", "slot": "root[1][1][2] + info[1][11]"},
     ("CommandBarButton", "ButtonOrder"): {"xml": "ButtonOrder", "status": "rw", "priority": "P1", "slot": "b[14]"},
     ("CommandBarButton", "Buttons"): {"xml": "Buttons", "status": "rw", "priority": "P0", "slot": "X[7] group"},
 

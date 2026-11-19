@@ -1062,6 +1062,11 @@ fn command_bar(props: &mut Map<String, Value>, info: &Node, warn: &mut dyn FnMut
     if is_bare(&x.children[4], "2") {
         props.insert("horizontalAlign".into(), "Right".into());
     }
+    // `x[11]`: the id of the default button of the bar (0 = none). It is the default button of the form only when
+    // the form header names this bar; `oof::decode_oof_stream` resolves that and drops the key.
+    if let Some(id) = x.children.get(11).and_then(|c| int(c, "default button").ok()).filter(|id| *id > 0) {
+        props.insert("defaultButtonId".into(), id.into());
+    }
     if x.len() > 7 {
         let root = if x.len() > 9 { Some((atom(&x.children[8]), atom(&x.children[9]))) } else { None };
         match buttons(&x.children[7], root) {

@@ -24,6 +24,7 @@
 | Командные панели: 14 кодов `Standard:N`, подменю 3 уровней (V4, V7) | [verification-debt-night](verification-debt-night.md) | подтверждено в «Бух.»; нажатие кнопок не проверено |
 | Командные панели и панели со страницами в `.epf` (пилот Scany1C, закрытие PL-2) | [pilot-scany1c-command-bars-epf](pilot-scany1c-command-bars-epf.md) | подтверждено в 1С 8.3.27 на 2 базах (УТ 10.3 и Бух.): 7 форм `.epf`, 9 новых CommandBar, Panel со страницами; стенд Scany1C |
 | Виды без подписи, таблица значений без колонок, поле без данных, замена под прежним `id` (`fix-scany-form-pack-issues`) | [fix-scany-form-pack-issues](fix-scany-form-pack-issues.md) | подтверждено в 1С 8.3.27 на 2 базах (УТ 10.3 `Версия8_2_13`, Бух. `Версия8_3_9`), форма `.epf` версии 27; формы конфигурации не проверялись |
+| Нижняя командная панель как в Конфигураторе: рамка `ЧертаСверху`, `Secondary`, привязки, кнопка по умолчанию (`standard-bottom-command-bar`) | [standard-bottom-command-bar](standard-bottom-command-bar.md) | подтверждено в 1С 8.3.27 на 2 базах: форма с панелью из `pack` попиксельно равна форме Конфигуратора; формы конфигурации не проверялись |
 | Сплошная проверка свойств | [property-sweep](property-sweep.md) | частично: 9 наблюдаемых изменений из 40 мутаций, 1 566 строк кнопок панелей не разобраны |
 | `clone-form` | [clone-form](clone-form.md) | обработка и отчёт — да; справочник — нет дампа |
 | Добавление элемента в малые формы | [add-remove-elements-small-forms](add-remove-elements-small-forms.md) | надпись в 3 формах; удаление и 26 типов — нет |
