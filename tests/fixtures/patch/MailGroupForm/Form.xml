@@ -160,6 +160,7 @@
             <Item language="ru">OK</Item>
             <Item language="ro">OK</Item>
           </Caption>
+          <DefaultButton>true</DefaultButton>
         </Button>
         <Button name="Разделитель" id="2" kind="Separator" checked="false" representation="Text"/>
         <Button name="Действие1" id="3" kind="Action" checked="false" representation="Text" actionKind="Standard" action="Standard:140">

@@ -358,14 +358,13 @@ fn validate_new(site: &Site, b: &CommandBarButton) -> Result<()> {
     if b.picture.is_some()
         || b.shortcut.is_some()
         || !b.description.is_empty()
-        || b.default_button.is_some()
         || b.button_order.is_some()
         || b.has_picture
     {
         return Err(refuse(
             site,
             b,
-            "a new button can set only Caption, Tooltip, checked and representation; picture, shortcut, description, DefaultButton and ButtonOrder are not supported yet",
+            "a new button can set only Caption, Tooltip, checked, representation and DefaultButton; picture, shortcut, description and ButtonOrder are not supported yet",
         ));
     }
     let lang_ok = |items: &[(String, String)]| items.iter().all(|(l, _)| !l.is_empty());

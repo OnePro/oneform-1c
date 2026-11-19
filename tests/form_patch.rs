@@ -2402,7 +2402,7 @@ fn remaining_table_column_page_button_and_form_root_properties_round_trip() {
         "КоманднаяПанель2",
         &[(
             "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">",
-            "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">\n              <Picture kind=\"2\" stdId=\"8\"/>\n              <Shortcut key=\"3\" shift=\"true\"/>\n              <DefaultButton>true</DefaultButton>\n              <ButtonOrder>Ascending</ButtonOrder>\n              <Description>\n                <Item language=\"ru\">Пояснение кнопки</Item>\n                <Item language=\"ro\">Пояснение кнопки</Item>\n              </Description>",
+            "<Button name=\"НоваяКнопкаНаПанели\" id=\"1\" kind=\"Action\" checked=\"false\" actionKind=\"Handler\" action=\"КоманднаяПанель2НоваяКнопкаНаПанели\">\n              <Picture kind=\"2\" stdId=\"8\"/>\n              <Shortcut key=\"3\" shift=\"true\"/>\n              <ButtonOrder>Ascending</ButtonOrder>\n              <Description>\n                <Item language=\"ru\">Пояснение кнопки</Item>\n                <Item language=\"ro\">Пояснение кнопки</Item>\n              </Description>",
         )],
     );
 
@@ -2434,6 +2434,9 @@ fn read_only_of_an_existing_choice_field_round_trips() {
 fn final_catalog_extensions_choiceitem_and_spreadsheet_doc_round_trip() {
     const STYLE: &str = "6b2c1a56-4e1f-4f27-8d93-2f0b5f4e9a10";
     let mut edited = baseline("DonorForm");
+    // The default button moves from the bar button `Выполнить` (header = bar, `x[11]` = button) to the button `Кнопка1`;
+    // a request that kept both flags would be refused as `duplicate-default-button`.
+    edited = replace_once(&edited, "\n              <DefaultButton>true</DefaultButton>", "");
     edited = replace_once(
         &edited,
         "reconstructionComplete=\"false\">",
@@ -2482,9 +2485,11 @@ fn final_catalog_extensions_choiceitem_and_spreadsheet_doc_round_trip() {
     };
     let info = |id: i64| idx.get(id).unwrap().info().unwrap().node;
     let meta = |id: i64| idx.get(id).unwrap().meta().unwrap().node;
-    // DefaultButton: the button flag and the coupled form header slot.
+    // DefaultButton of a `Button`: the button flag and the coupled form header slot; the bar that held the default
+    // button lets it go (`x[11]` = 0).
     assert_eq!(int(info(4), &[1, 5]), 1);
     assert_eq!(int(&s.root, &[1, 1, 2]), 4);
+    assert_eq!(int(info(3), &[1, 11]), 0);
     assert_eq!(int(meta(4), &[2]), 12);
     assert_eq!(int(meta(2), &[2]), 6);
     assert_eq!(int(meta(5), &[2]), 7);
@@ -5054,7 +5059,13 @@ mod command_bar_edit {
         let pf = run(name, &edited).unwrap_or_else(|e| panic!("{e}"));
         let original = raw(name);
         assert_only_authorized_changes(&original, &pf);
-        assert_eq!(pf.replacements.len(), 1, "the table is one replacement");
+        // The table is one replacement; a bar that loses its default button also clears the form header and `x[11]`.
+        let flag = |xml: &str| {
+            let (a, b) = panel_bounds(xml, panel);
+            xml[a..b].contains("<DefaultButton>true</DefaultButton>")
+        };
+        let slots = if flag(&base(name)) && !flag(&edited) { 2 } else { 0 };
+        assert_eq!(pf.replacements.len(), 1 + slots, "the table is one replacement");
         let id = panel_id(name, panel);
         let (before, after) = (table(&original, id), table(&pf.bytes, id));
         let got = buttons_of(name, &pf.bytes, panel);
@@ -5422,7 +5433,7 @@ mod command_bar_edit {
         refused(V2, EMPTY, &[ok.clone(), ok], "name exists");
         // the same id twice
         let b = blocks(&base(V2), MAIN);
-        refused(V2, MAIN, &[b[0].clone(), b[0].clone()], "used twice");
+        refused(V2, MAIN, &[b[2].clone(), b[2].clone()], "used twice");
     }
 
     fn submenu(name: &str, caption: &str, list: &[String]) -> String {

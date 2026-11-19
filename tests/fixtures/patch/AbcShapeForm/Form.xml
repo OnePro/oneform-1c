@@ -102,6 +102,7 @@
           <Tooltip>
             <Item language="ru">Сформировать</Item>
           </Tooltip>
+          <DefaultButton>true</DefaultButton>
         </Button>
         <Button name="Разделитель3" id="96" kind="Separator" checked="false"/>
         <Button name="Отбор" id="97" kind="Action" checked="false" actionKind="Handler" action="КоманднаяПанельФормыОтбор">

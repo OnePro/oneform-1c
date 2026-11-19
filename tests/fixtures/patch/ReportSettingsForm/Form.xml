@@ -85,6 +85,7 @@
           <Caption>
             <Item language="#">Действие</Item>
           </Caption>
+          <DefaultButton>true</DefaultButton>
         </Button>
         <Button name="Разделитель1" id="23" kind="Separator" checked="false"/>
         <Button name="Действие1" id="24" kind="Action" checked="false" representation="PictureAndText" actionKind="Standard" action="Standard:88">

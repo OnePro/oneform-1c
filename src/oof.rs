@@ -1123,6 +1123,41 @@ fn apply_links(ctrls: &mut [Value], links: &HashMap<i64, Value>) {
     }
 }
 
+/// The button that is the default button of the form: the header names the bar (`default_control`) and the bar
+/// names the button (`defaultButtonId`, left by the decoder of the bar). Marks it with `defaultButton` and drops the
+/// key from every bar.
+fn mark_default_bar_button(controls: &mut [Value], default_control: i64) {
+    fn mark(buttons: &mut [Value], id: i64) -> bool {
+        for b in buttons {
+            if b.get("id").and_then(Value::as_i64) == Some(id) {
+                b["defaultButton"] = true.into();
+                return true;
+            }
+            if let Some(Value::Array(sub)) = b.get_mut("buttons") {
+                if mark(sub, id) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    for c in controls {
+        let own = c.get("id").and_then(Value::as_i64);
+        if let Some(Value::Object(props)) = c.get_mut("props") {
+            if let Some(button) = props.shift_remove("defaultButtonId").and_then(|v| v.as_i64()) {
+                if own == Some(default_control) {
+                    if let Some(Value::Array(list)) = props.get_mut("buttons") {
+                        mark(list, button);
+                    }
+                }
+            }
+        }
+        if let Some(Value::Array(children)) = c.get_mut("children") {
+            mark_default_bar_button(children, default_control);
+        }
+    }
+}
+
 pub fn decode_form(info: &FormInfo, meta_lookup: Option<&MetaLookup>) -> Res<Value> {
     decode_form_with_types(info, meta_lookup, None)
 }
@@ -1173,6 +1208,8 @@ pub fn decode_oof_stream_with_types(
     for c in table(Some(&panel.children[2]), "root panel children")? {
         controls.push(control(c, &mut warnings, form_uuid, meta_lookup, type_lookup)?);
     }
+    let default_control = head.children.get(2).and_then(|c| int(c, "default control").ok()).unwrap_or(0);
+    mark_default_bar_button(&mut controls, default_control);
     let (root_show_tabs, root_pages) = match &panel.children[1] {
         Item::Node(pinfo) => panel_pages(pinfo, width, height),
         Item::Atom(_) => (0, Vec::new()),
@@ -1585,11 +1622,15 @@ impl Writer {
             if truthy(b.get("action")) {
                 attrs.push(("action", pystr(&b["action"])));
             }
-            let has_children = truthy(b.get("caption")) || truthy(b.get("tooltip")) || truthy(b.get("buttons"));
+            let default = truthy(b.get("defaultButton"));
+            let has_children = truthy(b.get("caption")) || truthy(b.get("tooltip")) || truthy(b.get("buttons")) || default;
             if has_children {
                 self.open("Button", &attrs);
                 self.localized("Caption", arr(b, "caption"));
                 self.localized("Tooltip", arr(b, "tooltip"));
+                if default {
+                    self.leaf("DefaultButton", Some("true"), &[]);
+                }
                 if truthy(b.get("buttons")) {
                     self.buttons(arr(b, "buttons"));
                 }
