@@ -3744,7 +3744,7 @@
     "xml_tag": "DefaultButton",
     "status": "rw",
     "priority": "P1",
-    "slot": "b[13]",
+    "slot": "root[1][1][2] + info[1][11]",
     "buh_count": 0,
     "api_access": "read_write",
     "source_excerpt": "Указывает, является ли кнопка кнопкой \"по умолчанию\". Истина - является."
