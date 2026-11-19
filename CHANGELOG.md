@@ -8,6 +8,7 @@
 
 ### Экспериментальное
 
+- `pack`: добавленная таблица, привязанная к реквизиту `ValueTable`, без `<Columns>` (или с `<Columns/>`) получает пустой список колонок вместо двух колонок донора; у существующей такой таблицы можно убрать все колонки (раньше отказ `unsupported-table`), убрать часть колонок по-прежнему нельзя.
 - `pack` добавляет элементы видов `Chart`, `HTMLDocumentField`, `TextDocumentField`, `SpreadsheetDocumentField`, `GeographicalSchemaField`, `GraphicalSchemaField`, `PDFDocumentField` без `<Caption>`: раньше отказ `METADATA_LAYOUT_UNSUPPORTED: prototype: properties block missing`; `<Caption>` у этих видов по-прежнему отказ.
 
 ## [0.4.0] - 2026-11-12

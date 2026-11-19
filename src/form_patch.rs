@@ -5399,6 +5399,20 @@ pub fn diff_forms_full(
         };
         // Added controls (sparse user XML vs full decoded projection) compare identity and values only.
         let (rest_a, rest_b) = match changed_column_ids(&b.values.columns, &c.values.columns) {
+            _ if !b.values.columns.is_empty()
+                && c.values.columns.is_empty()
+                && c.column_sources.is_empty()
+                && c.rest.children.iter().all(|e| e.tag != "Columns" || e.children.is_empty())
+                && value_table_attribute(c, &edited.attributes).is_some() =>
+            {
+                // all columns of a table bound to a value table are removed: `Property::Columns` writes `{0}`
+                let without = |r: &XmlElement| {
+                    let mut r = r.clone();
+                    r.children.retain(|e| e.tag != "Columns");
+                    r
+                };
+                (without(&rest_a), without(&rest_b))
+            }
             Some(skip_cols) if is_section_table(c) => (
                 neutral_column_stubs(&rest_a, &b.values.columns, &skip_cols),
                 neutral_column_stubs(&rest_b, &c.values.columns, &skip_cols),
@@ -5958,11 +5972,12 @@ fn value_table_attribute<'a>(c: &ControlXml, attrs: &'a [FormAttribute]) -> Opti
 }
 
 /// The binding of an added `Table` whose `DataPath` is a ValueTable form attribute: `Ok(None)` for another table;
-/// a table without `<Columns>` keeps the columns of the donor. The errors are the refusals, each with its line.
+/// a table without `<Columns>` gets no columns. The errors are the refusals, each with its line.
 fn vt_binding(c: &ControlXml, attrs: &[FormAttribute]) -> std::result::Result<Option<VtBinding>, Vec<String>> {
     use crate::vt_table::VtColumnRequest;
     let Some(attr) = value_table_attribute(c, attrs) else { return Ok(None) };
-    let Some(columns_el) = c.rest.children.iter().find(|e| e.tag == "Columns") else { return Ok(None) };
+    // no `<Columns>` or an empty one: the table has no columns (`{0}`), not the two columns of the donor
+    let Some(columns_el) = c.rest.children.iter().find(|e| e.tag == "Columns") else { return Ok(Some(VtBinding { columns: Vec::new() })) };
     if c.values.columns.len() != c.column_sources.len() || (c.values.columns.is_empty() && !columns_el.children.is_empty()) {
         return Err(vec![format!(
             "line {}: <Columns> is not understood (each <Column> needs name, id, Width and only the supported children)",
@@ -8674,6 +8689,13 @@ fn columns_need_section(old: &[ColumnValues], new: &[ColumnValues]) -> bool {
     !old.iter().map(|c| c.id).eq(new.iter().map(|c| c.id)) || old.iter().zip(new).any(|(o, n)| o.field_name != n.field_name || o.check_field != n.check_field)
 }
 
+/// Whether the table record of the site has the value type and the row source of a table bound to a value table.
+fn is_value_table_record(site: &Site) -> bool {
+    let Some(info) = site.entry.info() else { return false };
+    let text = |i: usize| info.node.node(i).map(crate::ts_table::text_of).unwrap_or_default();
+    text(1) == crate::vt_table::VALUE_TABLE_PATTERN && text(3) == crate::vt_table::ROW_SOURCE
+}
+
 /// The counted list of the columns (`info[2][1][23]`) of a table with `expect` columns.
 fn column_list<'a>(site: &Site<'_, 'a>, expect: usize) -> Result<NodeRef<'a>> {
     let list = site
@@ -9977,6 +9999,12 @@ fn info_pieces(site: &Site) -> Result<Vec<Piece>> {
                     ));
                 }
                 let tabular = if columns_need_section(&old.columns, &new.columns) { bound_tabular(site)? } else { None };
+                if new.columns.is_empty() && !old.columns.is_empty() && is_value_table_record(site) {
+                    // all columns of a table bound to a value table are removed: the list becomes `{0}`
+                    let list = column_list(site, old.columns.len())?;
+                    out.push(piece(list.span.span, "{0}", &[prop]));
+                    continue;
+                }
                 if !old.columns.iter().map(|c| c.id).eq(new.columns.iter().map(|c| c.id)) {
                     let Some(ts) = &tabular else {
                         return Err(site.invalid(

@@ -6696,6 +6696,75 @@ fn columns_of_an_existing_value_table_are_not_added_or_removed() {
     assert!(text.contains("ТабличноеПоле1") && text.contains("olumn"), "{kind}: {text}");
 }
 
+/// The decoded text of the table `ТаблицаДанных` of a packed stream.
+fn table_text(raw: &[u8]) -> String {
+    let decoded = decode_xml("DonorForm", raw);
+    let at = decoded.find("<Table name=\"ТаблицаДанных\"").unwrap();
+    decoded[at..at + decoded[at..].find("</Table>").unwrap()].to_string()
+}
+
+#[test]
+fn an_added_value_table_table_without_columns_has_none_and_no_donor_handlers() {
+    let attr = "<DataPath attributeId=\"16\">Таблица</DataPath>";
+    let base = with_attributes(&baseline("DonorForm"), VT_ATTRIBUTE);
+    for edited in [
+        with_table(&base, attr, ""),
+        // no <Columns> element at all
+        with_table(&base, attr, "").replace("<Columns>
+          </Columns>", ""),
+    ] {
+        let (pf, got) = structural_round_trip("DonorForm", &edited);
+        let table = got.control(pf.allocated[0].1).unwrap();
+        assert!(table.values.columns.is_empty());
+        // the handlers of the donor columns exist once (the donor table itself), the new table adds none
+        let raw = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+        let handlers = |d: &str| d.matches("ТабличноеПоле1Колонка1").count();
+        assert!(handlers(&decode_xml("DonorForm", &raw)) > 0);
+        assert_eq!(handlers(&decode_xml("DonorForm", &pf.bytes)), handlers(&decode_xml("DonorForm", &raw)));
+        assert!(!table_text(&pf.bytes).contains("<Column "));
+        // the other tables keep their columns
+        assert_eq!(got.control(6).unwrap().values.columns.len(), 2);
+    }
+}
+
+#[test]
+fn an_added_table_without_a_value_table_binding_still_gets_the_donor_columns() {
+    let (pf, got) = structural_round_trip("DonorForm", &with_table(&baseline("DonorForm"), "", "").replace("<Columns>
+          </Columns>", ""));
+    assert_eq!(got.control(pf.allocated[0].1).unwrap().values.columns.len(), 2);
+}
+
+#[test]
+fn all_columns_of_an_existing_value_table_table_can_be_removed_but_not_some() {
+    let attr = "<DataPath attributeId=\"16\">Таблица</DataPath>";
+    let columns = [vt_column("А", 0, 100, ""), vt_column("Б", 1, 100, ""), vt_column("В", 2, 100, "")].concat();
+    let first = with_table(&with_attributes(&baseline("DonorForm"), VT_ATTRIBUTE), attr, &columns);
+    let (pf, got) = structural_round_trip("DonorForm", &first);
+    let id = pf.allocated[0].1;
+    assert_eq!(got.control(id).unwrap().values.columns.len(), 3);
+
+    let packed = stream_of(&pf.bytes);
+    let base = decode_xml("DonorForm", &pf.bytes);
+    let columns_at = base.find("<Table name=\"ТаблицаДанных\"").unwrap();
+    let from = columns_at + base[columns_at..].find("<Columns>").unwrap();
+    let to = from + base[from..].find("</Columns>").unwrap() + "</Columns>".len();
+
+    // some columns: refused
+    let (some, _) = cut_block(&base, "<Column name=\"Б\"", "</Column>");
+    let err = patch_form(&packed, base.as_bytes(), some.as_bytes()).expect_err("some columns must be refused");
+    assert_eq!(err.params["kind"].as_str(), Some("unsupported-table"), "{err}");
+
+    // all columns, with `<Columns/>` or without the element: removed
+    for without in [format!("{}<Columns/>{}", &base[..from], &base[to..]), format!("{}{}", &base[..from], &base[to..])] {
+        let pf2 = patch_form(&packed, base.as_bytes(), without.as_bytes()).unwrap();
+        assert_only_authorized_changes(packed.source(), &pf2);
+        let again = parse_form_xml(decode_xml("DonorForm", &pf2.bytes).as_bytes(), "decoded").unwrap();
+        assert!(again.control(id).unwrap().values.columns.is_empty());
+        assert!(!table_text(&pf2.bytes).contains("<Column "));
+        assert_eq!(again.control(6).unwrap().values.columns.len(), 2);
+    }
+}
+
 // ---------------------------------------------------------------- report form made by the Configurator
 
 fn report_label(name: &str, id: i64, top: i64) -> String {
