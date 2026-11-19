@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Form id="637a2a20-fab2-465f-addf-9fb74e76c15c" name="ФормаФотоScany" ordinaryFormVersion="2.2" reconstructionComplete="false">
+  <Caption>
+    <Item language="ru">Снимок накладной</Item>
+  </Caption>
+  <Width>760</Width>
+  <Height>560</Height>
+  <MainAttribute attributeId="3"/>
+  <DataProcessorFormExtension/>
+  <Events>
+    <OnOpen id="70001">ПриОткрытии</OnOpen>
+    <BeforeClose id="70002">ПередЗакрытием</BeforeClose>
+  </Events>
+  <Attributes>
+    <Attribute id="3" name="ОбработкаОбъект">
+      <Main>true</Main>
+      <ValueType kind="Ref" composite="false"/>
+    </Attribute>
+    <Attribute id="6" name="ИдДокумента">
+      <ValueType kind="String" composite="false" length="30"/>
+    </Attribute>
+    <Attribute id="50" name="ТЗ1">
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+    <Attribute id="51" name="ТЗ2">
+      <ValueType kind="ValueTable" composite="false"/>
+    </Attribute>
+  </Attributes>
+  <ChildItems>
+    <CommandBar name="ДействияФормы" id="10">
+      <Left>0</Left>
+      <Top>0</Top>
+      <Width>756</Width>
+      <Height>25</Height>
+      <ZOrder>1</ZOrder>
+      <TabOrder>2</TabOrder>
+      <Anchors bottom="Top" bottomTarget="10" bottomOffset="25" right="Right" rightOffset="-4"/>
+      <AutoFill>false</AutoFill>
+      <Buttons>
+        <Button name="Предыдущая" id="31" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыПредыдущая">
+          <Caption>
+            <Item language="ru">◄ Предыдущая</Item>
+          </Caption>
+        </Button>
+        <Button name="Страница" id="32" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыСтраница">
+          <Caption>
+            <Item language="ru">Страница 1 из 1</Item>
+          </Caption>
+        </Button>
+        <Button name="Следующая" id="33" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыСледующая">
+          <Caption>
+            <Item language="ru">Следующая ►</Item>
+          </Caption>
+        </Button>
+        <Button name="Разделитель" id="34" kind="Separator" checked="false"/>
+        <Button name="ОткрытьВScany" id="35" kind="Action" checked="false" actionKind="Handler" action="ДействияФормыОткрытьВScany">
+          <Caption>
+            <Item language="ru">Открыть в Scany</Item>
+          </Caption>
+        </Button>
+      </Buttons>
+    </CommandBar>
+    <LabelDecoration name="НадписьЗамена" id="11">
+      <Caption>
+        <Item language="ru">Замена под id 9</Item>
+      </Caption>
+      <Left>8</Left>
+      <Top>32</Top>
+      <Width>200</Width>
+      <Height>19</Height>
+      <ZOrder>0</ZOrder>
+      <TabOrder>1</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="7" bottom="Top" bottomTarget="11" bottomOffset="19" right="Left" rightTarget="11" rightOffset="200"/>
+    </LabelDecoration>
+    <Chart name="ТChart" id="12">
+      <Left>8</Left>
+      <Top>60</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>2</ZOrder>
+      <TabOrder>3</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="35" bottom="Top" bottomTarget="12" bottomOffset="100" right="Left" rightTarget="12" rightOffset="180"/>
+    </Chart>
+    <HTMLDocumentField name="ТHTMLDocumentField" id="13">
+      <Left>194</Left>
+      <Top>60</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>3</ZOrder>
+      <TabOrder>4</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="35" bottom="Top" bottomTarget="13" bottomOffset="100" right="Left" rightTarget="13" rightOffset="180"/>
+    </HTMLDocumentField>
+    <TextDocumentField name="ТTextDocumentField" id="14">
+      <Left>380</Left>
+      <Top>60</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>4</ZOrder>
+      <TabOrder>5</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="35" bottom="Top" bottomTarget="14" bottomOffset="100" right="Left" rightTarget="14" rightOffset="180"/>
+    </TextDocumentField>
+    <SpreadsheetDocumentField name="ТSpreadsheetDocumentField" id="15">
+      <Left>566</Left>
+      <Top>60</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>5</ZOrder>
+      <TabOrder>6</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="35" bottom="Top" bottomTarget="15" bottomOffset="100" right="Left" rightTarget="15" rightOffset="180"/>
+    </SpreadsheetDocumentField>
+    <GeographicalSchemaField name="ТGeographicalSchemaField" id="16">
+      <Left>8</Left>
+      <Top>170</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>6</ZOrder>
+      <TabOrder>7</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="145" bottom="Top" bottomTarget="16" bottomOffset="100" right="Left" rightTarget="16" rightOffset="180"/>
+    </GeographicalSchemaField>
+    <GraphicalSchemaField name="ТGraphicalSchemaField" id="17">
+      <Left>194</Left>
+      <Top>170</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>7</ZOrder>
+      <TabOrder>8</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="145" bottom="Top" bottomTarget="17" bottomOffset="100" right="Left" rightTarget="17" rightOffset="180"/>
+    </GraphicalSchemaField>
+    <PDFDocumentField name="ТPDFDocumentField" id="18">
+      <Left>380</Left>
+      <Top>170</Top>
+      <Width>180</Width>
+      <Height>100</Height>
+      <ZOrder>8</ZOrder>
+      <TabOrder>9</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="145" bottom="Top" bottomTarget="18" bottomOffset="100" right="Left" rightTarget="18" rightOffset="180"/>
+    </PDFDocumentField>
+    <Table name="ТаблицаБезКолонок" id="19">
+      <DataPath attributeId="50">ТЗ1</DataPath>
+      <Left>8</Left>
+      <Top>290</Top>
+      <Width>360</Width>
+      <Height>120</Height>
+      <ZOrder>9</ZOrder>
+      <TabOrder>10</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="265" bottom="Top" bottomTarget="19" bottomOffset="120" right="Left" rightTarget="19" rightOffset="360"/>
+      <Footer>false</Footer>
+    </Table>
+    <Table name="ТаблицаБылиКолонки" id="20">
+      <DataPath attributeId="51">ТЗ2</DataPath>
+      <Left>380</Left>
+      <Top>290</Top>
+      <Width>370</Width>
+      <Height>120</Height>
+      <ZOrder>10</ZOrder>
+      <TabOrder>11</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="265" bottom="Top" bottomTarget="20" bottomOffset="120" right="Left" rightTarget="20" rightOffset="370"/>
+      <Footer>false</Footer>
+    </Table>
+    <InputField name="ПолеБезДанных" id="21">
+      <Left>8</Left>
+      <Top>420</Top>
+      <Width>300</Width>
+      <Height>19</Height>
+      <ZOrder>11</ZOrder>
+      <TabOrder>12</TabOrder>
+      <Anchors top="Bottom" topTarget="10" topOffset="395" bottom="Top" bottomTarget="21" bottomOffset="19" right="Left" rightTarget="21" rightOffset="300"/>
+      <ValueType kind="String" composite="false"/>
+      <ChoiceButton>false</ChoiceButton>
+      <ClearButton>false</ClearButton>
+      <OpenButton>false</OpenButton>
+      <DropListButton>false</DropListButton>
+      <SpinButton>false</SpinButton>
+    </InputField>
+  </ChildItems>
+</Form>

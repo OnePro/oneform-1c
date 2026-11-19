@@ -166,6 +166,7 @@ fn layout_warnings(plan: &crate::form_patch::FormPatchPlan, existing: &Tree, xml
         let text = String::from_utf8_lossy(bytes.strip_prefix(&UTF8_BOM[..]).unwrap_or(bytes));
         out.extend(crate::layout_warnings::module_warnings(&plan.diff, &plan.edited, "FormModule.bsl", &text, true));
     }
+    out.extend(plan.replacements.iter().map(|r| r.warning()));
     out.extend(crate::form_patch::unresolved_type_warnings(&plan.diff));
     out.extend(crate::layout_warnings::tabs_warnings(&plan.diff, &plan.edited));
     if let Some(bytes) = existing.get(xml_path) {

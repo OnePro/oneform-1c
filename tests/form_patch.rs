@@ -3411,6 +3411,71 @@ mod object_binding {
         assert!(plan(&other).verify_staged(&tree(&staged_xml, &lp.patched.bytes)).is_err(), "length 40 built, 10 requested");
     }
 
+    /// An added field without `<DataPath>`; `extra` holds its further tags.
+    fn unbound_field(extra: &str) -> String {
+        with_added_field("НовоеПоле", 999, extra, &baseline("DonorForm"))
+    }
+
+    /// The drop-list and spin slots `info[2][0][6]` and `[9]` of the control `id`.
+    fn list_slots(bytes: &[u8], id: i64) -> (String, String) {
+        let s = parse_spanned(bytes).unwrap();
+        let idx = ControlIndex::build(&s).unwrap();
+        let q = idx.get(id).expect("control").info().unwrap().child(2).unwrap().child(0).unwrap();
+        (q.atom(6).unwrap().0.value.clone(), q.atom(9).unwrap().0.value.clone())
+    }
+
+    /// `(value type, drop-list slot, spin slot, decoded Form.xml)` of the unbound field that the pack of `extra` adds.
+    fn packed_unbound(extra: &str) -> (Option<oneform::form_patch::ValueTypeSpec>, (String, String), String) {
+        let s = stream("DonorForm");
+        let pf = patch_form(&s, baseline("DonorForm").as_bytes(), unbound_field(extra).as_bytes()).unwrap();
+        assert_only_authorized_changes(s.source(), &pf);
+        let id = pf.allocated[0].1;
+        let xml = decode_xml("DonorForm", &pf.bytes);
+        let got = parse_form_xml(xml.as_bytes(), "decoded").unwrap();
+        let v = &got.control(id).unwrap().values;
+        assert_eq!((v.choice_button, v.clear_button, v.open_button), (Some(false), Some(false), Some(false)));
+        (v.value_type.clone(), list_slots(&pf.bytes, id), xml)
+    }
+
+    #[test]
+    fn an_unbound_added_field_is_an_unlimited_string_without_list_buttons() {
+        let (value_type, slots, _) = packed_unbound("");
+        assert_eq!(value_type, vt("String", |_| {}));
+        assert_eq!(slots, ("0".to_string(), "0".to_string()));
+    }
+
+    #[test]
+    fn an_unbound_added_field_keeps_an_explicit_drop_list_button() {
+        let (value_type, slots, _) = packed_unbound("<DropListButton>true</DropListButton>");
+        assert_eq!(value_type, vt("String", |_| {}));
+        assert_eq!(slots, ("1".to_string(), "0".to_string()));
+    }
+
+    #[test]
+    fn an_unbound_added_field_keeps_an_explicit_value_type() {
+        let (value_type, slots, _) = packed_unbound("<ValueType kind=\"Number\" digits=\"5\" fractionDigits=\"0\" composite=\"false\"/>");
+        assert_eq!(value_type.as_ref().map(|v| (v.kind.as_str(), v.digits)), Some(("Number", Some(5))));
+        assert_eq!(slots, ("0".to_string(), "0".to_string()));
+        // the donor prototype is a value list: its drop-list and spin slots are 1 and an explicit `ValueList` keeps them
+        let (value_type, slots, _) = packed_unbound("<ValueType kind=\"ValueList\" composite=\"false\"/>");
+        assert_eq!(value_type.as_ref().map(|v| v.kind.as_str()), Some("ValueList"));
+        assert_eq!(slots, ("1".to_string(), "1".to_string()));
+    }
+
+    #[test]
+    fn the_pack_verification_accepts_an_unbound_added_field() {
+        let s = stream("DonorForm");
+        let base = baseline("DonorForm");
+        let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+        let tree = |xml: &str, bytes: &[u8]| -> oneform::transaction::Tree {
+            [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), bytes.to_vec())].into_iter().collect()
+        };
+        let lp = oneform::pack::plan_layout_patch(&layout, &tree(&unbound_field(""), s.source()), &tree(&base, s.source())).unwrap().expect("a layout edit");
+        let staged_xml = decode_xml("DonorForm", &lp.patched.bytes);
+        assert!(staged_xml.contains("<ValueType kind=\"String\" composite=\"false\"/>"), "{staged_xml}");
+        lp.verify_staged(&tree(&staged_xml, &lp.patched.bytes)).unwrap_or_else(|e| panic!("{e} {:?}", e.params));
+    }
+
     #[test]
     fn standard_attributes_are_written_with_the_code_of_the_object_kind() {
         for (kind, name, code) in [("Catalog", "Код", -2), ("Catalog", "Наименование", -3), ("Document", "Номер", -2), ("Document", "Дата", -3)] {
@@ -6696,6 +6761,75 @@ fn columns_of_an_existing_value_table_are_not_added_or_removed() {
     assert!(text.contains("ТабличноеПоле1") && text.contains("olumn"), "{kind}: {text}");
 }
 
+/// The decoded text of the table `ТаблицаДанных` of a packed stream.
+fn table_text(raw: &[u8]) -> String {
+    let decoded = decode_xml("DonorForm", raw);
+    let at = decoded.find("<Table name=\"ТаблицаДанных\"").unwrap();
+    decoded[at..at + decoded[at..].find("</Table>").unwrap()].to_string()
+}
+
+#[test]
+fn an_added_value_table_table_without_columns_has_none_and_no_donor_handlers() {
+    let attr = "<DataPath attributeId=\"16\">Таблица</DataPath>";
+    let base = with_attributes(&baseline("DonorForm"), VT_ATTRIBUTE);
+    for edited in [
+        with_table(&base, attr, ""),
+        // no <Columns> element at all
+        with_table(&base, attr, "").replace("<Columns>
+          </Columns>", ""),
+    ] {
+        let (pf, got) = structural_round_trip("DonorForm", &edited);
+        let table = got.control(pf.allocated[0].1).unwrap();
+        assert!(table.values.columns.is_empty());
+        // the handlers of the donor columns exist once (the donor table itself), the new table adds none
+        let raw = std::fs::read(dir("DonorForm").join("FormStream.bin")).unwrap();
+        let handlers = |d: &str| d.matches("ТабличноеПоле1Колонка1").count();
+        assert!(handlers(&decode_xml("DonorForm", &raw)) > 0);
+        assert_eq!(handlers(&decode_xml("DonorForm", &pf.bytes)), handlers(&decode_xml("DonorForm", &raw)));
+        assert!(!table_text(&pf.bytes).contains("<Column "));
+        // the other tables keep their columns
+        assert_eq!(got.control(6).unwrap().values.columns.len(), 2);
+    }
+}
+
+#[test]
+fn an_added_table_without_a_value_table_binding_still_gets_the_donor_columns() {
+    let (pf, got) = structural_round_trip("DonorForm", &with_table(&baseline("DonorForm"), "", "").replace("<Columns>
+          </Columns>", ""));
+    assert_eq!(got.control(pf.allocated[0].1).unwrap().values.columns.len(), 2);
+}
+
+#[test]
+fn all_columns_of_an_existing_value_table_table_can_be_removed_but_not_some() {
+    let attr = "<DataPath attributeId=\"16\">Таблица</DataPath>";
+    let columns = [vt_column("А", 0, 100, ""), vt_column("Б", 1, 100, ""), vt_column("В", 2, 100, "")].concat();
+    let first = with_table(&with_attributes(&baseline("DonorForm"), VT_ATTRIBUTE), attr, &columns);
+    let (pf, got) = structural_round_trip("DonorForm", &first);
+    let id = pf.allocated[0].1;
+    assert_eq!(got.control(id).unwrap().values.columns.len(), 3);
+
+    let packed = stream_of(&pf.bytes);
+    let base = decode_xml("DonorForm", &pf.bytes);
+    let columns_at = base.find("<Table name=\"ТаблицаДанных\"").unwrap();
+    let from = columns_at + base[columns_at..].find("<Columns>").unwrap();
+    let to = from + base[from..].find("</Columns>").unwrap() + "</Columns>".len();
+
+    // some columns: refused
+    let (some, _) = cut_block(&base, "<Column name=\"Б\"", "</Column>");
+    let err = patch_form(&packed, base.as_bytes(), some.as_bytes()).expect_err("some columns must be refused");
+    assert_eq!(err.params["kind"].as_str(), Some("unsupported-table"), "{err}");
+
+    // all columns, with `<Columns/>` or without the element: removed
+    for without in [format!("{}<Columns/>{}", &base[..from], &base[to..]), format!("{}{}", &base[..from], &base[to..])] {
+        let pf2 = patch_form(&packed, base.as_bytes(), without.as_bytes()).unwrap();
+        assert_only_authorized_changes(packed.source(), &pf2);
+        let again = parse_form_xml(decode_xml("DonorForm", &pf2.bytes).as_bytes(), "decoded").unwrap();
+        assert!(again.control(id).unwrap().values.columns.is_empty());
+        assert!(!table_text(&pf2.bytes).contains("<Column "));
+        assert_eq!(again.control(6).unwrap().values.columns.len(), 2);
+    }
+}
+
 // ---------------------------------------------------------------- report form made by the Configurator
 
 fn report_label(name: &str, id: i64, top: i64) -> String {
@@ -6789,4 +6923,188 @@ fn report_form_adds_a_control_where_a_removed_one_stood() {
     assert_eq!(names.len(), 6);
     assert_eq!(names.last().map(String::as_str), Some("НадписьАгента"));
     assert!(!names.iter().any(|n| n == "Кнопка1"));
+}
+
+// ---------------------------------------------------------------- types without a properties block
+
+fn captionless_control(tag: &str, name: &str, id: i64, caption: bool) -> String {
+    let cap = if caption { "<Caption><Item language=\"ru\">Заголовок</Item></Caption>" } else { "" };
+    format!(
+        "<{tag} name=\"{name}\" id=\"{id}\">{cap}<Left>500</Left><Top>500</Top><Width>80</Width><Height>20</Height><ZOrder>50</ZOrder><TabOrder>50</TabOrder></{tag}>\n    "
+    )
+}
+
+#[test]
+fn every_donor_type_can_be_added_without_a_caption() {
+    let mut failed = Vec::new();
+    let mut tried = 0;
+    for (i, (_, tag)) in oneform::oof::CONTROL_GUIDS.iter().enumerate() {
+        // Panel needs <Page> children (covered by panel_pages); ActiveXControl has no prototype.
+        if *tag == "Panel" || oneform::donor::prototype(tag).is_err() {
+            continue;
+        }
+        tried += 1;
+        let id = 900 + i as i64;
+        let xml = insert_before_control(
+            &baseline("DonorForm"),
+            "Table",
+            "ТабличноеПоле1",
+            &captionless_control(tag, "Новый", id, false),
+        );
+        let s = stream("DonorForm");
+        let res = patch_form(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).and_then(|pf| {
+            let decoded = decode_xml("DonorForm", &pf.bytes);
+            let got = parse_form_xml(decoded.as_bytes(), "decoded").unwrap();
+            let c = got.control(pf.allocated[0].1).ok_or_else(|| layout_like("control missing"))?;
+            if c.type_name != *tag || (c.values.left, c.values.top, c.values.width, c.values.height) != (500, 500, 80, 20) {
+                return Err(layout_like("type or geometry differs"));
+            }
+            Ok(())
+        });
+        if let Err(e) = res {
+            failed.push(format!("{tag}: {e}"));
+        }
+    }
+    assert!(tried >= 25, "tried {tried}");
+    assert!(failed.is_empty(), "types that failed to pack: {failed:#?}");
+}
+
+fn layout_like(m: &str) -> ExtractionError {
+    ExtractionError::new(METADATA_LAYOUT_UNSUPPORTED, m)
+}
+
+#[test]
+fn a_caption_on_a_type_without_a_caption_slot_is_refused() {
+    let xml = insert_before_control(
+        &baseline("DonorForm"),
+        "Table",
+        "ТабличноеПоле1",
+        &captionless_control("HTMLDocumentField", "Новый", 999, true),
+    );
+    let s = stream("DonorForm");
+    let err = patch_form(&s, baseline("DonorForm").as_bytes(), xml.as_bytes()).unwrap_err();
+    assert!(err.to_string().contains("HTMLDocumentField"), "{err}");
+}
+
+#[test]
+fn an_html_document_field_inserted_before_a_control_packs() {
+    let xml = insert_before_control(
+        &baseline("DonorForm"),
+        "Table",
+        "ТабличноеПоле1",
+        &captionless_control("HTMLDocumentField", "Новый", 999, false),
+    );
+    let (pf, got) = structural_round_trip("DonorForm", &xml);
+    assert_eq!(got.control(pf.allocated[0].1).unwrap().type_name, "HTMLDocumentField");
+}
+
+// ---------------------------------------------------------------- controls replaced under a reused id
+
+/// New controls of other names and types that reuse the ids of removed controls (the real-world case of an agent that
+/// rewrites the form and numbers the controls from the start).
+mod reused_ids {
+    use super::*;
+
+    const SREDA: &str = "<LabelDecoration name=\"НадписьСреда\" id=\"4\"><Caption><Item language=\"ru\">Среда</Item></Caption><Left>30</Left><Top>500</Top><Width>90</Width><Height>20</Height><ZOrder>50</ZOrder><TabOrder>50</TabOrder><Anchors right=\"Left\" rightTarget=\"4\" rightOffset=\"90\"/></LabelDecoration>\n        ";
+    const FRAME: &str = "<Panel name=\"РамкаПодключение\" id=\"5\"><Left>150</Left><Top>500</Top><Width>300</Width><Height>120</Height><ZOrder>51</ZOrder><TabOrder>51</TabOrder><Anchors top=\"Bottom\" topTarget=\"5\" topOffset=\"3\"/><ShowTabs type=\"ShowTabs\" member=\"None\" code=\"1\"/><ChildItems><Page name=\"Основное\"><Title><Item language=\"ru\">Основное</Item></Title><ChildItems><LabelDecoration name=\"ВнутриРамки\" id=\"901\"><Caption><Item language=\"ru\">Внутри</Item></Caption><Left>8</Left><Top>8</Top><Width>100</Width><Height>19</Height><ZOrder>0</ZOrder><TabOrder>1</TabOrder></LabelDecoration></ChildItems></Page></ChildItems></Panel>\n        ";
+    const FIELD: &str = "<InputField name=\"НовоеПоле\" id=\"8\"><Left>500</Left><Top>500</Top><Width>150</Width><Height>19</Height><ZOrder>52</ZOrder><TabOrder>52</TabOrder></InputField>\n        ";
+
+    /// The form where Кнопка1 (4), Надпись1 (5) and Флажок1 (8) are replaced by `SREDA`, `FRAME` and `FIELD`.
+    fn replaced() -> String {
+        let mut xml = baseline("DonorForm");
+        for (open, close) in [("<Button name=\"Кнопка1\"", "</Button>"), ("<LabelDecoration name=\"Надпись1\"", "</LabelDecoration>"), ("<CheckBox name=\"Флажок1\"", "</CheckBox>")] {
+            xml = cut_block(&xml, open, close).0;
+        }
+        replace_once(&xml, "        <Table name=\"ТабличноеПоле1\"", &format!("        {SREDA}{FRAME}{FIELD}        <Table name=\"ТабличноеПоле1\""))
+    }
+
+    const WARNINGS: [&str; 3] = [
+        "control id 4 'Кнопка1' (Button) is replaced by 'НадписьСреда' (LabelDecoration): the old control, its events and data links are removed",
+        "control id 5 'Надпись1' (LabelDecoration) is replaced by 'РамкаПодключение' (Panel): the old control, its events and data links are removed",
+        "control id 8 'Флажок1' (CheckBox) is replaced by 'НовоеПоле' (InputField): the old control, its events and data links are removed",
+    ];
+
+    #[test]
+    fn controls_under_reused_ids_are_removed_and_added() {
+        let edited = replaced();
+        let (pf, got) = structural_round_trip("DonorForm", &edited);
+        // fresh stream ids (donor max 36), and the local ids of the request are fresh as well
+        assert_eq!(pf.allocated.len(), 4);
+        assert!(pf.allocated.iter().all(|(local, stream)| *local > 36 && *stream > 36), "{:?}", pf.allocated);
+        for id in [4, 5, 8] {
+            assert!(got.control(id).is_none(), "old control {id} is still there");
+        }
+        let by_name = |n: &str| got.controls.iter().find(|c| c.name == n).unwrap_or_else(|| panic!("{n} is missing"));
+        for n in ["Кнопка1", "Надпись1", "Флажок1"] {
+            assert!(!got.controls.iter().any(|c| c.name == n), "{n} is still there");
+        }
+        let sreda = by_name("НадписьСреда");
+        assert_eq!(sreda.type_name, "LabelDecoration");
+        assert_eq!((sreda.values.left, sreda.values.top, sreda.values.width, sreda.values.height), (30, 500, 90, 20));
+        assert!(pf.allocated.iter().any(|(_, s)| *s == sreda.id));
+        let frame = by_name("РамкаПодключение");
+        assert_eq!(frame.type_name, "Panel");
+        assert_eq!(frame.values.pages.len(), 1);
+        let inner = by_name("ВнутриРамки");
+        assert_eq!((inner.parent, inner.page.as_deref()), (Some(frame.id), Some("Основное")));
+        let field = by_name("НовоеПоле");
+        assert_eq!(field.type_name, "InputField");
+        // the anchors follow the controls to their fresh ids: each one to itself
+        let right = sreda.values.anchors.as_ref().and_then(|a| a.right.as_ref()).expect("label anchor");
+        assert_eq!(right.target, sreda.id);
+        let top = frame.values.anchors.as_ref().and_then(|a| a.top.as_ref()).expect("panel anchor");
+        assert_eq!(top.target, frame.id);
+        // untouched controls stay
+        assert!(got.control(6).is_some() && got.control(7).is_some());
+    }
+
+    #[test]
+    fn every_replacement_is_a_warning_in_the_pack_output() {
+        let s = stream("DonorForm");
+        let base = baseline("DonorForm");
+        let edited = replaced();
+        let plan = plan_form_patch(&s, base.as_bytes(), edited.as_bytes()).unwrap();
+        let got: Vec<String> = plan.replacements.iter().map(|r| r.warning()).collect();
+        assert_eq!(got, WARNINGS);
+        let layout = serde_json::json!({"xml": "Form.xml", "binary": {"path": "FormStream.bin"}});
+        let tree = |xml: &str| -> oneform::transaction::Tree {
+            [("Form.xml".to_string(), xml.as_bytes().to_vec()), ("FormStream.bin".to_string(), s.source().to_vec())].into_iter().collect()
+        };
+        let lp = oneform::pack::plan_layout_patch(&layout, &tree(&edited), &tree(&base)).unwrap().expect("a layout edit");
+        let summary = lp.summary();
+        for w in WARNINGS {
+            let line = format!("  warning Form.xml: {w}");
+            assert_eq!(summary.iter().filter(|l| **l == line).count(), 1, "{w}: {summary:#?}");
+        }
+        assert_eq!(summary.iter().filter(|l| l.contains("is replaced by")).count(), 3);
+    }
+
+    #[test]
+    fn the_same_name_under_another_type_is_still_refused() {
+        let edited = mutate("<LabelDecoration name=\"Надпись1\" id=\"5\">", "<InputField name=\"Надпись1\" id=\"5\">")
+            .replacen("        </LabelDecoration>", "        </InputField>", 1);
+        let (kind, text) = rejected(&edited);
+        assert_eq!(kind, "retyped-control", "{text}");
+        assert!(text.contains("Надпись1") && text.contains("LabelDecoration -> InputField"), "{text}");
+    }
+
+    #[test]
+    fn another_name_under_the_same_type_is_a_rename() {
+        let edited = mutate("<Button name=\"Кнопка1\" id=\"4\">", "<Button name=\"Кнопка1Новая\" id=\"4\">");
+        let s = stream("DonorForm");
+        let plan = plan_form_patch(&s, baseline("DonorForm").as_bytes(), edited.as_bytes()).unwrap();
+        assert!(plan.replacements.is_empty());
+        assert!(plan.diff.additions.is_empty() && plan.diff.deletions.is_empty());
+        let (pf, got) = structural_round_trip("DonorForm", &edited);
+        assert!(pf.allocated.is_empty());
+        assert_eq!(got.control(4).map(|c| c.name.as_str()), Some("Кнопка1Новая"));
+    }
+
+    #[test]
+    fn two_edited_controls_with_one_id_are_still_refused() {
+        let twin = SREDA.replace("НадписьСреда", "Двойник");
+        let edited = replace_once(&replaced(), "        <Table name=\"ТабличноеПоле1\"", &format!("        {twin}        <Table name=\"ТабличноеПоле1\""));
+        let (_, text) = rejected(&edited);
+        assert!(text.contains("duplicate control id 4"), "{text}");
+    }
 }
