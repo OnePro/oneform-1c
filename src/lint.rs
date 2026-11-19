@@ -111,6 +111,7 @@ fn usual(id: &str, kind: &str) -> Option<&'static Row> {
 // --------------------------------------------------------------------------- form model
 
 // edge indices; the left edge is 0 (`edge >> 1` is the axis, `edge & !1` the near edge of the axis)
+const LEFT: usize = 0;
 const RIGHT: usize = 1;
 const TOP: usize = 2;
 const BOTTOM: usize = 3;
@@ -136,6 +137,7 @@ struct Ctl {
     z: Option<f64>,
     visible: bool,
     anchors: Option<Anchors>,
+    horizontal_align: Option<String>,
     caption: String,
     cont: usize,
 }
@@ -276,6 +278,7 @@ impl Parser<'_, '_> {
                 z: child_num(x, "ZOrder"),
                 visible: child(x, "Visible").and_then(|v| v.text()).map(str::trim) != Some("false"),
                 anchors: parse_anchors(x),
+                horizontal_align: child(x, "HorizontalAlign").and_then(|v| v.text()).map(|s| s.trim().to_string()),
                 caption: caption_of(x),
                 cont,
                 tag: tag.clone(),
@@ -363,6 +366,34 @@ impl Form {
 
     fn bar(&self, name: &str) -> Option<usize> {
         self.conts[0].els.iter().copied().find(|&i| self.ctls[i].tag == "CommandBar" && self.ctls[i].name == name)
+    }
+
+    fn bottom_bar(&self) -> Option<usize> {
+        if let Some(i) = self.bar("ОсновныеДействияФормы") {
+            return Some(i);
+        }
+        let fh = self.h?;
+        self.conts[0]
+            .els
+            .iter()
+            .copied()
+            .filter(|&i| {
+                let c = &self.ctls[i];
+                c.tag == "CommandBar"
+                    && match (c.t, c.h) {
+                        (Some(t), Some(h)) => (fh - (t + h)).abs() <= 10.0,
+                        _ => false,
+                    }
+            })
+            .max_by(|&a, &b| {
+                let ca = &self.ctls[a];
+                let cb = &self.ctls[b];
+                let ba = ca.t.unwrap_or(0.0) + ca.h.unwrap_or(0.0);
+                let bb = cb.t.unwrap_or(0.0) + cb.h.unwrap_or(0.0);
+                ba.partial_cmp(&bb)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| ca.t.unwrap_or(0.0).partial_cmp(&cb.t.unwrap_or(0.0)).unwrap_or(std::cmp::Ordering::Equal))
+            })
     }
 
     /// Whether the container follows the size of the window along an axis (the form always does; a page does when
@@ -602,7 +633,7 @@ fn r_no_stretch_right(f: &Form, out: &mut Vec<Finding>) {
 }
 
 fn r_no_stretch_bottom(f: &Form, out: &mut Vec<Finding>) {
-    let bar_top = f.bar("ОсновныеДействияФормы").and_then(|b| f.visible_bounds(b)).map(|b| b[1]);
+    let bar_top = f.bottom_bar().and_then(|b| f.visible_bounds(b)).map(|b| b[1]);
     for (ci, cont) in f.conts.iter().enumerate().filter(|(_, c)| !c.skip) {
         let Some(ch) = cont.h else { continue };
         if !f.container_follows(ci, BOTTOM) {
@@ -627,7 +658,7 @@ fn r_no_stretch_bottom(f: &Form, out: &mut Vec<Finding>) {
 }
 
 fn r_bottom_bar(f: &Form, out: &mut Vec<Finding>) {
-    let (Some(b), Some(fw), Some(fh)) = (f.bar("ОсновныеДействияФормы"), f.w, f.h) else { return };
+    let (Some(b), Some(fw), Some(fh)) = (f.bottom_bar(), f.w, f.h) else { return };
     let Some([l, t, w, h]) = f.ctls[b].bounds() else { return };
     let want = fh - h;
     if (t - want).abs() > BAR_SLACK {
@@ -638,16 +669,21 @@ fn r_bottom_bar(f: &Form, out: &mut Vec<Finding>) {
         let message = format!("the bottom panel spans Left {} Width {}, the form is {} wide", num(l), num(w), num(fw));
         f.report("bottom-bar-width", None, Some(b), message, format!("set Left to 0 and Width to {}", num(fw)), out);
     }
-    if !f.hi(b, TOP) || !f.hi(b, RIGHT) {
+    if !f.hi(b, TOP) || !f.hi(b, RIGHT) || f.hi(b, LEFT) {
         let id = f.ctls[b].id.clone().unwrap_or_default();
         let message = "the bottom panel is not anchored to the bottom and right edges, so it stays behind when the window is resized".to_string();
         let fix = format!("<Anchors top=\"Bottom\" topTarget=\"{id}\" topOffset=\"-{}\" bottom=\"Bottom\" left=\"Left\" right=\"Right\"/>", num(h));
         f.report("bottom-bar-anchor", None, Some(b), message, fix, out);
     }
+    let align = f.ctls[b].horizontal_align.as_deref().unwrap_or("Left");
+    if align != "Right" {
+        let message = format!("the bottom panel aligns its buttons {align}; the Designer aligns them Right");
+        f.report("bottom-bar-align", None, Some(b), message, "<HorizontalAlign>Right</HorizontalAlign>".to_string(), out);
+    }
 }
 
 fn r_covers_bar(f: &Form, out: &mut Vec<Finding>) {
-    let Some(b) = f.bar("ОсновныеДействияФормы") else { return };
+    let Some(b) = f.bottom_bar() else { return };
     let Some([bl, bt, bw, _]) = f.visible_bounds(b) else { return };
     for &i in &f.conts[0].els {
         if matches!(f.ctls[i].tag.as_str(), "CommandBar" | "Page") {
@@ -801,7 +837,7 @@ fn r_margins(f: &Form, out: &mut Vec<Finding>) {
         return;
     }
     let top_edge = f.bar("ДействияФормы").and_then(|b| f.ctls[b].bounds()).map(|b| b[1] + b[3]).unwrap_or(0.0);
-    let bottom_top = f.bar("ОсновныеДействияФормы").and_then(|b| f.ctls[b].bounds()).map(|b| b[1]).unwrap_or(fh);
+    let bottom_top = f.bottom_bar().and_then(|b| f.ctls[b].bounds()).map(|b| b[1]).unwrap_or(fh);
     // (control, value) with the smallest / largest value of `key`
     let extreme = |items: &[(usize, [f64; 4])], key: &dyn Fn(&[f64; 4]) -> f64, max: bool| -> Option<(usize, f64)> {
         let mut it = items.iter().map(|(i, b)| (*i, key(b)));
@@ -837,9 +873,14 @@ fn r_margins(f: &Form, out: &mut Vec<Finding>) {
 }
 
 fn r_bar_height(f: &Form, out: &mut Vec<Finding>) {
-    for (name, rule) in [("ДействияФормы", "top-bar-height"), ("ОсновныеДействияФормы", "bottom-bar-height")] {
-        let (Some(b), Some(u)) = (f.bar(name), usual(rule_table(rule), f.kind).and_then(|u| u.value)) else { continue };
+    let bars = [
+        (f.bar("ДействияФормы"), "top-bar-height"),
+        (f.bottom_bar(), "bottom-bar-height"),
+    ];
+    for (b, rule) in bars {
+        let (Some(b), Some(u)) = (b, usual(rule_table(rule), f.kind).and_then(|u| u.value)) else { continue };
         if let Some(h) = f.ctls[b].h.filter(|h| *h != u) {
+            let name = &f.ctls[b].name;
             f.report(rule, None, Some(b), format!("panel '{name}' is {} px high, usual {}", num(h), num(u)), format!("set Height to {}", num(u)), out);
         }
     }
@@ -881,7 +922,7 @@ fn r_form_size(f: &Form, out: &mut Vec<Finding>) {
 /// Every finding id with its base severity and the measured rule that grades it. A measured warning is demoted to
 /// `info` (with its share) when the table says fewer than `SHARE_MIN` % of the forms of the kind follow it, or the
 /// corpora disagree; the info rules are reported only for kinds whose usual value is that clear.
-static RULES: [Rule; 27] = [
+static RULES: [Rule; 28] = [
     Rule { id: "invalid-xml", severity: Severity::Error, table: None },
     Rule { id: "outside-container", severity: Severity::Error, table: None },
     Rule { id: "duplicate-name", severity: Severity::Warning, table: None },
@@ -895,6 +936,7 @@ static RULES: [Rule; 27] = [
     Rule { id: "bottom-bar-position", severity: Severity::Warning, table: Some("bar.bottom.top_eq_h_minus_height") },
     Rule { id: "bottom-bar-width", severity: Severity::Warning, table: Some("bar.bottom.left0_full_width") },
     Rule { id: "bottom-bar-anchor", severity: Severity::Warning, table: Some("bar.bottom.anchor_class") },
+    Rule { id: "bottom-bar-align", severity: Severity::Warning, table: None },
     Rule { id: "top-bar-position", severity: Severity::Warning, table: Some("bar.top.top0") },
     Rule { id: "top-bar-width", severity: Severity::Warning, table: Some("bar.top.left0_full_width") },
     Rule { id: "tab-order", severity: Severity::Info, table: Some("tab.form.reading_order_exact") },

@@ -15,14 +15,19 @@ struct Ctl {
     tab: u32,
     anchors: String,
     caption: Option<&'static str>,
+    halign: Option<&'static str>,
 }
 
 impl Ctl {
     fn new(tag: &'static str, name: &str, id: u32, rect: [i32; 4]) -> Ctl {
-        Ctl { tag, name: name.to_string(), id, rect, tab: id, anchors: String::new(), caption: None }
+        Ctl { tag, name: name.to_string(), id, rect, tab: id, anchors: String::new(), caption: None, halign: None }
     }
     fn tab(mut self, tab: u32) -> Ctl {
         self.tab = tab;
+        self
+    }
+    fn halign(mut self, h: &'static str) -> Ctl {
+        self.halign = Some(h);
         self
     }
     fn anchors(mut self, a: &str) -> Ctl {
@@ -41,6 +46,9 @@ impl Ctl {
         }
         s += &format!("      <Left>{l}</Left>\n      <Top>{t}</Top>\n      <Width>{w}</Width>\n      <Height>{h}</Height>\n");
         s += &format!("      <ZOrder>{}</ZOrder>\n      <TabOrder>{}</TabOrder>\n", self.id, self.tab);
+        if let Some(ha) = self.halign {
+            s += &format!("      <HorizontalAlign>{ha}</HorizontalAlign>\n");
+        }
         if !self.anchors.is_empty() {
             s += &format!("      <Anchors {}/>\n", self.anchors);
         }
@@ -57,6 +65,7 @@ fn top_bar(id: u32, w: i32) -> Ctl {
 fn bottom_bar(id: u32, w: i32, h: i32) -> Ctl {
     Ctl::new("CommandBar", "ОсновныеДействияФормы", id, [0, h - 25, w, 25])
         .tab(99)
+        .halign("Right")
         .anchors(&format!("top=\"Bottom\" topTarget=\"{id}\" topOffset=\"-25\" bottom=\"Bottom\" left=\"Left\" right=\"Right\""))
 }
 
@@ -286,6 +295,7 @@ fn bottom_panel_not_at_the_bottom() {
     let mut c = clean_item();
     c[1] = Ctl::new("CommandBar", "ОсновныеДействияФормы", 2, [0, 150, 360, 25])
         .tab(99)
+        .halign("Right")
         .anchors("bottom=\"Top\" bottomTarget=\"2\" bottomOffset=\"25\" left=\"Left\" right=\"Right\"");
     let xml = form_xml(400, 200, &c);
     let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &xml);
@@ -409,10 +419,60 @@ fn lint_does_not_touch_the_files() {
     assert_eq!(before, snapshot(&root));
 }
 
+#[test]
+fn scany_bottom_bar_found_by_position() {
+    let bar = Ctl::new("CommandBar", "ДействияНастроек", 33, [116, 479, 480, 25])
+        .anchors("top=\"Bottom\" topOffset=\"-31\" bottom=\"Bottom\" bottomOffset=\"-6\" left=\"Right\" leftOffset=\"-484\" right=\"Right\" rightOffset=\"-4\"");
+    let xml = form_xml(600, 510, &[bar]);
+    let (_g, root) = workspace("DataProcessors", "ФормаНастроек", &xml);
+    let f = findings(&root, &[]);
+    let bar_findings: Vec<_> = f.iter().filter(|x| x["control"] == "ДействияНастроек").collect();
+    let r: Vec<_> = bar_findings.iter().map(|x| x["rule"].as_str().unwrap()).collect();
+    for want in ["bottom-bar-width", "bottom-bar-position", "bottom-bar-anchor", "bottom-bar-align"] {
+        assert!(r.contains(&want), "{want} not found in {r:?}");
+    }
+}
+
+#[test]
+fn bottom_bar_align_rule() {
+    // With <HorizontalAlign>Right</HorizontalAlign>: no bottom-bar-align
+    let bar_right = bottom_bar(2, 400, 200).halign("Right");
+    let xml_right = form_xml(400, 200, &[bar_right]);
+    let (_g1, root1) = workspace("Catalogs", "ФормаЭлемента", &xml_right);
+    let f1 = findings(&root1, &[]);
+    assert!(!f1.iter().any(|x| x["rule"] == "bottom-bar-align"), "unexpected bottom-bar-align in {f1:?}");
+
+    // Without <HorizontalAlign>: gets bottom-bar-align
+    let mut bar_no_align = bottom_bar(2, 400, 200);
+    bar_no_align.halign = None;
+    let xml_no_align = form_xml(400, 200, &[bar_no_align]);
+    let (_g2, root2) = workspace("Catalogs", "ФормаЭлемента", &xml_no_align);
+    let f2 = findings(&root2, &[]);
+    let hit = f2.iter().find(|x| x["rule"] == "bottom-bar-align").expect("expected bottom-bar-align");
+    assert_eq!(hit["severity"], "warning");
+    assert_eq!(hit["control"], "ОсновныеДействияФормы");
+    assert!(hit["message"].as_str().unwrap().contains("the bottom panel aligns its buttons Left; the Designer aligns them Right"));
+    assert_eq!(hit["fix"], "<HorizontalAlign>Right</HorizontalAlign>");
+}
+
+#[test]
+fn bar_at_top_with_other_name_is_not_bottom_bar() {
+    // A command bar at Top 0 with another name (e.g. ПанельИнструментов) is not treated as the bottom bar
+    let bar = Ctl::new("CommandBar", "ПанельИнструментов", 10, [0, 0, 400, 25])
+        .anchors("bottom=\"Top\" bottomTarget=\"10\" bottomOffset=\"25\" left=\"Left\" right=\"Right\"");
+    let xml = form_xml(400, 200, &[bar]);
+    let (_g, root) = workspace("Catalogs", "ФормаЭлемента", &xml);
+    let f = findings(&root, &[]);
+    for rule in ["bottom-bar-position", "bottom-bar-width", "bottom-bar-anchor", "bottom-bar-align"] {
+        assert!(!f.iter().any(|x| x["rule"] == rule), "{rule} reported unexpectedly: {f:?}");
+    }
+}
+
 /// The text format is a golden file: `tests/golden-lint/text.txt` (`GOLDEN_BLESS=1` rewrites it).
 #[test]
 fn text_format_golden() {
     let mut c = clean_item();
+    c[1].halign = None;
     c[3] = field(4, "Наименование", [92, 33, 340, 19]).anchors(&stretch(-8));
     c.push(field(5, "Второе", [92, 40, 200, 19]));
     c.push(label(6, "НадписьТретье", [8, 90, 84, 19]));
